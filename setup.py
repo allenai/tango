@@ -29,7 +29,7 @@ with open("tango/version.py", "r") as version_file:
     exec(version_file.read(), VERSION)
 
 setup(
-    name="tango",
+    name="ai2-tango",
     version=VERSION["VERSION"],
     description="",
     long_description=open("README.md").read(),
