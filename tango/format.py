@@ -40,25 +40,26 @@ class Format(Registrable, Generic[T]):
     Formats write objects to directories and read them back out.
 
     In the context of AllenNLP, the objects that are written by formats are usually
-    results from `Step`s.
+    the result of a :class:`~tango.step.Step`.
     """
 
     VERSION: int = NotImplemented
     """
-    Formats can have versions. Versions are part of a step's unique signature, part of `Step.unique_id()`,
-    so when a step's format changes, that will cause the step to be recomputed.
+    Formats can have versions. Versions are part of a step's unique signature, part of
+    :meth:`~tango.step.Step.unique_id()`, so when a step's format changes,
+    that will cause the step to be recomputed.
     """
 
     default_implementation = "dill"
 
     @abstractmethod
     def write(self, artifact: T, dir: PathOrStr):
-        """Writes the `artifact` to the directory at `dir`."""
+        """Writes the ``artifact`` to the directory at ``dir``."""
         raise NotImplementedError()
 
     @abstractmethod
     def read(self, dir: PathOrStr) -> T:
-        """Reads an artifact from the directory at `dir` and returns it."""
+        """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
 
     def checksum(self, dir: PathOrStr) -> str:
@@ -66,7 +67,7 @@ class Format(Registrable, Generic[T]):
         Produces a checksum of a serialized artifact.
 
         The default checksum mechanism computes a checksum of all the files in the
-        directory except for `metadata.json`.
+        directory except for ``metadata.json``.
         """
         dir = Path(dir)
         files = []
@@ -166,7 +167,7 @@ class DillFormat(Format[T], Generic[T]):
 
 
 class DillFormatIterator(Iterator[T], Generic[T]):
-    """This class is used so we can return an iterator from `DillFormat.read()`."""
+    """This class is used so we can return an iterator from ``DillFormat.read()``."""
 
     def __init__(self, filename: PathOrStr):
         self.f: Optional[IO[Any]] = _open_compressed(filename, "rb")
@@ -294,7 +295,7 @@ class JsonFormat(Format[T], Generic[T]):
 
 
 class JsonFormatIterator(Iterator[T], Generic[T]):
-    """This class is used so we can return an iterator from `JsonFormat.read()`."""
+    """This class is used so we can return an iterator from ``JsonFormat.read()``."""
 
     def __init__(self, filename: PathOrStr):
         self.f: Optional[IO[Any]] = _open_compressed(filename, "rt")

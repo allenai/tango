@@ -20,6 +20,15 @@ Contents
    CHANGELOG
 
 .. toctree::
+   :maxdepth: 2
+   :caption: API Docs:
+
+   api/components/index
+   api/integrations/index
+   api/exceptions
+   api/utilities
+
+.. toctree::
    :hidden:
    :caption: Development
 

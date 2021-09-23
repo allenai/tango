@@ -8,15 +8,19 @@ import dill
 
 
 class CustomDetHash:
+    """
+    By default, :func:`det_hash()` pickles an object, and returns the hash of the pickled
+    representation. Sometimes you want to take control over what goes into
+    that hash. In that case, implement this :meth:`det_hash_object()`.
+    :func:`det_hash()` will pickle the result of this method instead of the object itself.
+
+    If you return ``None``, :func:`det_hash()` falls back to the original behavior and pickles
+    the object.
+    """
+
     def det_hash_object(self) -> Any:
         """
-        By default, `det_hash()` pickles an object, and returns the hash of the pickled
-        representation. Sometimes you want to take control over what goes into
-        that hash. In that case, implement this method. `det_hash()` will pickle the
-        result of this method instead of the object itself.
-
-        If you return `None`, `det_hash()` falls back to the original behavior and pickles
-        the object.
+        Return an object to use for hashing instead of ``self``.
         """
         raise NotImplementedError()
 
@@ -45,7 +49,7 @@ class DetHashFromInitParams(CustomDetHash):
 class DetHashWithVersion(CustomDetHash):
     """
     Add this class as a mixing base class to make sure your class's det_hash can be modified
-    by altering a static `VERSION` member of your class.
+    by altering a static ``VERSION`` member of your class.
     """
 
     VERSION = None
@@ -95,7 +99,7 @@ def det_hash(o: Any) -> str:
     Returns a deterministic hash code of arbitrary Python objects.
 
     If you want to override how we calculate the deterministic hash, derive from the
-    `CustomDetHash` class and implement `det_hash_object()`.
+    :class:`CustomDetHash` class and implement :meth:`CustomDetHash.det_hash_object()`.
     """
     m = hashlib.blake2b()
     with io.BytesIO() as buffer:

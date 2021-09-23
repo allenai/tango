@@ -163,15 +163,15 @@ def create_kwargs(
     constructor: Callable[..., T], cls: Type[T], params: Params, **extras
 ) -> Dict[str, Any]:
     """
-    Given some class, a `Params` object, and potentially other keyword arguments,
+    Given some class, a ``Params`` object, and potentially other keyword arguments,
     create a dict of keyword args suitable for passing to the class's constructor.
 
     The function does this by finding the class's constructor, matching the constructor
-    arguments to entries in the `params` object, and instantiating values for the parameters
+    arguments to entries in the ``params`` object, and instantiating values for the parameters
     using the type annotation and possibly a from_params method.
 
-    Any values that are provided in the `extras` will just be used as is.
-    For instance, you might provide an existing `Vocabulary` this way.
+    Any values that are provided in the ``extras`` will just be used as is.
+    For instance, you might provide an existing ``Vocabulary`` this way.
     """
     # Get the signature of the constructor.
 
@@ -257,16 +257,16 @@ def pop_and_construct_arg(
 ) -> Any:
     """
     Does the work of actually constructing an individual argument for
-    [`create_kwargs`](./#create_kwargs).
+    [``create_kwargs``](./#create_kwargs).
 
     Here we're in the inner loop of iterating over the parameters to a particular constructor,
     trying to construct just one of them.  The information we get for that parameter is its name,
-    its type annotation, and its default value; we also get the full set of `Params` for
-    constructing the object (which we may mutate), and any `extras` that the constructor might
+    its type annotation, and its default value; we also get the full set of ``Params`` for
+    constructing the object (which we may mutate), and any ``extras`` that the constructor might
     need.
 
     We take the type annotation and default value here separately, instead of using an
-    `inspect.Parameter` object directly, so that we can handle `Union` types using recursion on
+    ``inspect.Parameter`` object directly, so that we can handle ``Union`` types using recursion on
     this method, trying the different annotation types in the union in turn.
     """
     # We used `argument_name` as the method argument to avoid conflicts with 'name' being a key in
@@ -538,7 +538,7 @@ def construct_arg(
 class FromParams(CustomDetHash):
     """
     Mixin to give a from_params method to classes. We create a distinct base class for this
-    because sometimes we want non-Registrable classes to be instantiatable from_params.
+    because sometimes we want non-``Registrable`` classes to be instantiatable from_params.
     """
 
     @classmethod
@@ -550,25 +550,25 @@ class FromParams(CustomDetHash):
         **extras,
     ) -> T:
         """
-        This is the automatic implementation of `from_params`. Any class that subclasses
-        `FromParams` (or `Registrable`, which itself subclasses `FromParams`) gets this
+        This is the automatic implementation of ``from_params``. Any class that subclasses
+        ``FromParams`` (or ``Registrable``, which itself subclasses ``FromParams``) gets this
         implementation for free.  If you want your class to be instantiated from params in the
         "obvious" way -- pop off parameters and hand them to your constructor with the same names --
         this provides that functionality.
 
-        If you need more complex logic in your from `from_params` method, you'll have to implement
+        If you need more complex logic in your from ``from_params`` method, you'll have to implement
         your own method that overrides this one.
 
-        The `constructor_to_call` and `constructor_to_inspect` arguments deal with a bit of
-        redirection that we do.  We allow you to register particular `@classmethods` on a class as
+        The ``constructor_to_call`` and ``constructor_to_inspect`` arguments deal with a bit of
+        redirection that we do.  We allow you to register particular ``@classmethods`` on a class as
         the constructor to use for a registered name.  This lets you, e.g., have a single
-        `Vocabulary` class that can be constructed in two different ways, with different names
+        ``Vocabulary`` class that can be constructed in two different ways, with different names
         registered to each constructor.  In order to handle this, we need to know not just the class
-        we're trying to construct (`cls`), but also what method we should inspect to find its
-        arguments (`constructor_to_inspect`), and what method to call when we're done constructing
-        arguments (`constructor_to_call`).  These two methods are the same when you've used a
-        `@classmethod` as your constructor, but they are `different` when you use the default
-        constructor (because you inspect `__init__`, but call `cls()`).
+        we're trying to construct (``cls``), but also what method we should inspect to find its
+        arguments (``constructor_to_inspect``), and what method to call when we're done constructing
+        arguments (``constructor_to_call``).  These two methods are the same when you've used a
+        ``@classmethod`` as your constructor, but they are ``different`` when you use the default
+        constructor (because you inspect ``__init__``, but call ``cls()``).
         """
 
         from tango.common.registrable import Registrable  # import here to avoid circular imports
@@ -667,11 +667,11 @@ class FromParams(CustomDetHash):
 
     def to_params(self) -> Params:
         """
-        Returns a `Params` object that can be used with `.from_params()` to recreate an
+        Returns a ``Params`` object that can be used with ``.from_params()`` to recreate an
         object just like it.
 
-        This relies on `_to_params()`. If you need this in your custom `FromParams` class,
-        override `_to_params()`, not this method.
+        This relies on ``_to_params()``. If you need this in your custom ``FromParams`` class,
+        override ``_to_params()``, not this method.
         """
 
         def replace_object_with_params(o: Any) -> Any:
@@ -690,8 +690,8 @@ class FromParams(CustomDetHash):
 
     def _to_params(self) -> Dict[str, Any]:
         """
-        Returns a dictionary of parameters that, when turned into a `Params` object and
-        then fed to `.from_params()`, will recreate this object.
+        Returns a dictionary of parameters that, when turned into a ``Params`` object and
+        then fed to ``.from_params()``, will recreate this object.
 
         You don't need to implement this all the time. AllenNLP will let you know if you
         need it.

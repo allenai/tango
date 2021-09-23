@@ -61,11 +61,11 @@ T = TypeVar("T")
 
 
 class StepCache(Registrable):
-    """This is a mapping from instances of `Step` to the results of that step."""
+    """This is a mapping from instances of :class:`Step` to the results of that step."""
 
     def __contains__(self, step: object) -> bool:
         """This is a generic implementation of __contains__. If you are writing your own
-        `StepCache`, you might want to write a faster one yourself."""
+        ``StepCache``, you might want to write a faster one yourself."""
         if not isinstance(step, Step):
             return False
         try:
@@ -91,14 +91,14 @@ class StepCache(Registrable):
 
     def path_for_step(self, step: "Step") -> Optional[Path]:
         """Steps that can be restarted (like a training job that gets interrupted half-way through)
-        must save their state somewhere. A `StepCache` can help by providing a suitable location
+        must save their state somewhere. A ``StepCache`` can help by providing a suitable location
         in this method."""
         return None
 
 
 @StepCache.register("memory")
 class MemoryStepCache(StepCache):
-    """This is a `StepCache` that stores results in memory. It is little more than a Python dictionary."""
+    """This is a ``StepCache`` that stores results in memory. It is little more than a Python dictionary."""
 
     def __init__(self):
         self.cache: Dict[str, Any] = {}
@@ -129,12 +129,12 @@ default_step_cache = MemoryStepCache()
 
 @StepCache.register("directory")
 class DirectoryStepCache(StepCache):
-    """This is a `StepCache` that stores its results on disk, in the location given in `dir`.
+    """This is a ``StepCache`` that stores its results on disk, in the location given in ``dir``.
 
-    Every cached step gets a directory under `dir` with that step's `unique_id()`. In that
-    directory we store the results themselves in some format according to the step's `FORMAT`,
-    and we also write a `metadata.json` file that stores some metadata. The presence of
-    `metadata.json` signifies that the cache entry is complete and has been written successfully.
+    Every cached step gets a directory under ``dir`` with that step's ``unique_id()``. In that
+    directory we store the results themselves in some format according to the step's ``FORMAT``,
+    and we also write a ``metadata.json`` file that stores some metadata. The presence of
+    ``metadata.json`` signifies that the cache entry is complete and has been written successfully.
     """
 
     LRU_CACHE_MAX_SIZE = 8
@@ -231,20 +231,20 @@ class DirectoryStepCache(StepCache):
 class Step(Registrable, Generic[T]):
     """
     This class defines one step in your experiment. To write your own step, just derive from this class
-    and overwrite the `run()` method. The `run()` method must have parameters with type hints.
+    and overwrite the :meth:`run()` method. The :meth:`run()` method must have parameters with type hints.
 
-    `Step.__init__()` takes all the arguments we want to run the step with. They get passed
-    to `Step.run()` (almost) as they are. If the arguments are other instances of `Step`, those
-    will be replaced with the step's results before calling `run()`. Further, there are four special
+    ``Step.__init__()`` takes all the arguments we want to run the step with. They get passed
+    to :meth:`run()` (almost) as they are. If the arguments are other instances of ``Step``, those
+    will be replaced with the step's results before calling :meth:`run()`. Further, there are four special
     parameters:
 
-    * `step_name` contains an optional human-readable name for the step. This name is used for
+    * ``step_name`` contains an optional human-readable name for the step. This name is used for
       error messages and the like, and has no consequence on the actual computation.
-    * `cache_results` specifies whether the results of this step should be cached. If this is
-      `False`, the step is recomputed every time it is needed. If this is not set at all,
-      we cache if the step is marked as `DETERMINISTIC`, and we don't cache otherwise.
-    * `step_format` gives you a way to override the step's default format (which is given in `FORMAT`).
-    * `only_if_needed` specifies whether we can skip this step if no other step depends on it. The
+    * ``cache_results`` specifies whether the results of this step should be cached. If this is
+      ``False``, the step is recomputed every time it is needed. If this is not set at all,
+      we cache if the step is marked as :attr:`DETERMINISTIC`, and we don't cache otherwise.
+    * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
+    * ``only_if_needed`` specifies whether we can skip this step if no other step depends on it. The
       default for this setting is to set it for all steps that don't have an explicit name.
     """
 
@@ -252,24 +252,24 @@ class Step(Registrable, Generic[T]):
 
     DETERMINISTIC: bool = False
     """This describes whether this step can be relied upon to produce the same results every time
-    when given the same inputs. If this is `False`, the step can't be cached, and neither can any
+    when given the same inputs. If this is ``False``, the step can't be cached, and neither can any
     step that depends on it."""
 
     CACHEABLE: Optional[bool] = None
     """This provides a direct way to turn off caching. For example, a step that reads a HuggingFace
     dataset doesn't need to be cached, because HuggingFace datasets already have their own caching
     mechanism. But it's still a deterministic step, and all following steps are allowed to cache.
-    If it is `None`, the step figures out by itself whether it should be cacheable or not."""
+    If it is ``None``, the step figures out by itself whether it should be cacheable or not."""
 
     VERSION: Optional[str] = None
-    """This is optional, but recommended. Specifying a version gives you a way to tell AllenNLP that
+    """This is optional, but recommended. Specifying a version gives you a way to tell Tango that
     a step has changed during development, and should now be recomputed. This doesn't invalidate
     the old results, so when you revert your code, the old cache entries will stick around and be
     picked up."""
 
     FORMAT: Format = DillFormat("gz")
     """This specifies the format the results of this step will be serialized in. See the documentation
-    for `Format` for details."""
+    for :class:`~tango.format.Format` for details."""
 
     def __init__(
         self,
@@ -380,7 +380,7 @@ class Step(Registrable, Generic[T]):
 
         if not isinstance(params, Params):
             raise ConfigurationError(
-                "from_params was passed a `params` object that was not a `Params`. This probably "
+                "from_params was passed a ``params`` object that was not a ``Params``. This probably "
                 "indicates malformed parameters in a configuration file, where something that "
                 "should have been a dictionary was actually a list, or something else. "
                 f"This happened when constructing an object of type {cls}."
@@ -494,7 +494,7 @@ class Step(Registrable, Generic[T]):
 
     def work_dir(self) -> Path:
         """
-        Returns a work directory that a step can use while its `run()` method runs.
+        Returns a work directory that a step can use while its ``run()`` method runs.
 
         This directory stays around across restarts. You cannot assume that it is empty when your
         step runs, but you can use it to store information that helps you restart a step if it
@@ -560,7 +560,7 @@ class Step(Registrable, Generic[T]):
     def unique_id(self) -> str:
         """Returns the unique ID for this step.
 
-        Unique IDs are of the shape `$class_name-$version-$hash`, where the hash is the hash of the
+        Unique IDs are of the shape ``$class_name-$version-$hash``, where the hash is the hash of the
         inputs for deterministic steps, and a random string of characters for non-deterministic ones."""
         if self.unique_id_cache is None:
             self.unique_id_cache = self.__class__.__name__
@@ -651,9 +651,9 @@ class _RefStep(Step[T], Generic[T]):
 
 
 def step_graph_from_params(params: Dict[str, Params]) -> Dict[str, Step]:
-    """Given a mapping from strings to `Params` objects, this parses each `Params` object
-    into a `Step`, and resolved dependencies between the steps. Returns a dictionary
-    mapping step names to instances of `Step`."""
+    """Given a mapping from strings to ``Params`` objects, this parses each ``Params`` object
+    into a :class:`Step`, and resolved dependencies between the steps. Returns a dictionary
+    mapping step names to instances of :class:`Step`."""
 
     # This algorithm for resolving step dependencies is O(n^2). Since we're
     # anticipating the number of steps to be in the dozens at most, we choose
@@ -707,9 +707,9 @@ def tango_dry_run(
 ) -> List[Tuple[Step, bool]]:
     """
     Returns the list of steps that will be run, or read from cache, if you call
-    a step's `result()` method.
+    a step's ``result()`` method.
 
-    Steps come out as tuples `(step, read_from_cache)`, so you can see which
+    Steps come out as tuples ``(step, read_from_cache)``, so you can see which
     steps will be read from cache, and which have to be run.
     """
     if isinstance(step_or_steps, Step):

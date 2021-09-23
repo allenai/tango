@@ -22,19 +22,19 @@ _SubclassRegistry = Dict[str, Tuple[type, Optional[str]]]
 
 class Registrable(FromParams):
     """
-    Any class that inherits from `Registrable` gains access to a named registry for its
+    Any class that inherits from ``Registrable`` gains access to a named registry for its
     subclasses. To register them, just decorate them with the classmethod
-    `@BaseClass.register(name)`.
+    ``@BaseClass.register(name)``.
 
-    After which you can call `BaseClass.list_available()` to get the keys for the
-    registered subclasses, and `BaseClass.by_name(name)` to get the corresponding subclass.
+    After which you can call ``BaseClass.list_available()`` to get the keys for the
+    registered subclasses, and ``BaseClass.by_name(name)`` to get the corresponding subclass.
     Note that the registry stores the subclasses themselves; not class instances.
-    In most cases you would then call `from_params(params)` on the returned subclass.
+    In most cases you would then call ``from_params(params)`` on the returned subclass.
 
-    You can specify a default by setting `BaseClass.default_implementation`.
-    If it is set, it will be the first element of `list_available()`.
+    You can specify a default by setting ``BaseClass.default_implementation``.
+    If it is set, it will be the first element of ``list_available()``.
 
-    Note that if you use this class to implement a new `Registrable` abstract class,
+    Note that if you use this class to implement a new ``Registrable`` abstract class,
     you must ensure that all subclasses of the abstract class are loaded when the module is
     loaded, because the subclasses register themselves in their respective files. You can
     achieve this by having the abstract class and all subclasses in the __init__.py of the
@@ -53,63 +53,58 @@ class Registrable(FromParams):
         """
         Register a class under a particular name.
 
-        # Parameters
-
-        name : `str`
+        Parameters
+        ----------
+        name :
             The name to register the class under.
-        constructor : `str`, optional (default=`None`)
+        constructor :
             The name of the method to use on the class to construct the object.  If this is given,
-            we will use this method (which must be a `@classmethod`) instead of the default
+            we will use this method (which must be a ``@classmethod``) instead of the default
             constructor.
-        exist_ok : `bool`, optional (default=`False`)
-            If True, overwrites any existing models registered under `name`. Else,
-            throws an error if a model is already registered under `name`.
+        exist_ok :
+            If True, overwrites any existing models registered under ``name``. Else,
+            throws an error if a model is already registered under ``name``.
 
-        # Examples
+        Examples
+        --------
 
-        To use this class, you would typically have a base class that inherits from `Registrable`:
+        To use this class, you would typically have a base class that inherits from ``Registrable``::
 
-        ```python
-        class Vocabulary(Registrable):
-            ...
-        ```
-
-        Then, if you want to register a subclass, you decorate it like this:
-
-        ```python
-        @Vocabulary.register("my-vocabulary")
-        class MyVocabulary(Vocabulary):
-            def __init__(self, param1: int, param2: str):
+            class Vocabulary(Registrable):
                 ...
-        ```
+
+        Then, if you want to register a subclass, you decorate it like this::
+
+            @Vocabulary.register("my-vocabulary")
+            class MyVocabulary(Vocabulary):
+                def __init__(self, param1: int, param2: str):
+                    ...
 
         Registering a class like this will let you instantiate a class from a config file, where you
-        give `"type": "my-vocabulary"`, and keys corresponding to the parameters of the `__init__`
+        give ``"type": "my-vocabulary"``, and keys corresponding to the parameters of the ``__init__``
         method (note that for this to work, those parameters must have type annotations).
 
         If you want to have the instantiation from a config file call a method other than the
         constructor, either because you have several different construction paths that could be
-        taken for the same object (as we do in `Vocabulary`) or because you have logic you want to
-        happen before you get to the constructor (as we do in `Embedding`), you can register a
-        specific `@classmethod` as the constructor to use, like this:
+        taken for the same object (as we do in ``Vocabulary``) or because you have logic you want to
+        happen before you get to the constructor (as we do in ``Embedding``), you can register a
+        specific ``@classmethod`` as the constructor to use, like this::
 
-        ```python
-        @Vocabulary.register("my-vocabulary-from-instances", constructor="from_instances")
-        @Vocabulary.register("my-vocabulary-from-files", constructor="from_files")
-        class MyVocabulary(Vocabulary):
-            def __init__(self, some_params):
-                ...
+            @Vocabulary.register("my-vocabulary-from-instances", constructor="from_instances")
+            @Vocabulary.register("my-vocabulary-from-files", constructor="from_files")
+            class MyVocabulary(Vocabulary):
+                def __init__(self, some_params):
+                    ...
 
-            @classmethod
-            def from_instances(cls, some_other_params) -> MyVocabulary:
-                ...  # construct some_params from instances
-                return cls(some_params)
+                @classmethod
+                def from_instances(cls, some_other_params) -> MyVocabulary:
+                    ...  # construct some_params from instances
+                    return cls(some_params)
 
-            @classmethod
-            def from_files(cls, still_other_params) -> MyVocabulary:
-                ...  # construct some_params from files
-                return cls(some_params)
-        ```
+                @classmethod
+                def from_files(cls, still_other_params) -> MyVocabulary:
+                    ...  # construct some_params from files
+                    return cls(some_params)
         """
         registry = Registrable._registry[cls]
 
@@ -138,7 +133,7 @@ class Registrable(FromParams):
         """
         Returns a callable function that constructs an argument of the registered class.  Because
         you can register particular functions as constructors for specific names, this isn't
-        necessarily the `__init__` method of some class.
+        necessarily the ``__init__`` method of some class.
         """
         logger.debug(f"instantiating registered subclass {name} of {cls}")
         subclass, constructor = cls.resolve_class_name(name)
@@ -152,12 +147,12 @@ class Registrable(FromParams):
         cls: Type[_RegistrableT], name: str
     ) -> Tuple[Type[_RegistrableT], Optional[str]]:
         """
-        Returns the subclass that corresponds to the given `name`, along with the name of the
-        method that was registered as a constructor for that `name`, if any.
+        Returns the subclass that corresponds to the given ``name``, along with the name of the
+        method that was registered as a constructor for that ``name``, if any.
 
-        This method also allows `name` to be a fully-specified module name, instead of a name that
-        was already added to the `Registry`.  In that case, you cannot use a separate function as
-        a constructor (as you need to call `cls.register()` in order to tell us what separate
+        This method also allows ``name`` to be a fully-specified module name, instead of a name that
+        was already added to the ``Registry``.  In that case, you cannot use a separate function as
+        a constructor (as you need to call ``cls.register()`` in order to tell us what separate
         function to use).
         """
         if name in Registrable._registry[cls]:
