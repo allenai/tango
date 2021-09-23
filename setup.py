@@ -25,11 +25,11 @@ with open("requirements.txt") as requirements_file:
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here so we don't import cached_path whilst setting up.
 VERSION = {}  # type: ignore
-with open("my_package/version.py", "r") as version_file:
+with open("tango/version.py", "r") as version_file:
     exec(version_file.read(), VERSION)
 
 setup(
-    name="my_package",
+    name="tango",
     version=VERSION["VERSION"],
     description="",
     long_description=open("README.md").read(),
@@ -42,7 +42,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="",
-    url="https://github.com/allenai/my_package",
+    url="https://github.com/allenai/tango",
     author="Allen Institute for Artificial Intelligence",
     author_email="contact@allenai.org",
     license="Apache",

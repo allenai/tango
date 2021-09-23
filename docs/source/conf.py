@@ -15,12 +15,12 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../../"))
 
-from my_package.version import VERSION, VERSION_SHORT  # noqa: E402
+from tango.version import VERSION, VERSION_SHORT  # noqa: E402
 
 
 # -- Project information -----------------------------------------------------
 
-project = "my_package"
+project = "tango"
 copyright = "2021, Allen Institute for Artificial Intelligence"
 author = "Allen Institute for Artificial Intelligence"
 version = VERSION_SHORT
@@ -52,7 +52,7 @@ source_suffix = [".rst", ".md"]
 #
 html_theme = "furo"
 
-html_title = f"my_package v{VERSION}"
+html_title = f"tango v{VERSION}"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
