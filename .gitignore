@@ -2,7 +2,7 @@
 
 .eggs/
 .mypy_cache
-tango.egg-info/
+ai2_tango.egg-info/
 build/
 dist/
 pip-wheel-metadata/

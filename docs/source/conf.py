@@ -20,7 +20,7 @@ from tango.version import VERSION, VERSION_SHORT  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
-project = "tango"
+project = "AI2 Tango"
 copyright = "2021, Allen Institute for Artificial Intelligence"
 author = "Allen Institute for Artificial Intelligence"
 version = VERSION_SHORT
@@ -52,7 +52,7 @@ source_suffix = [".rst", ".md"]
 #
 html_theme = "furo"
 
-html_title = f"tango v{VERSION}"
+html_title = f"ai2-tango v{VERSION}"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

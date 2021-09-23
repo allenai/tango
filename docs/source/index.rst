@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-**tango**
+**AI2 Tango**
 ===============
 
 .. automodule:: tango
@@ -29,7 +29,7 @@ Contents
 Team
 ----
 
-**tango** is developed and maintained by the AllenNLP team, backed by
+**ai2-tango** is developed and maintained by the AllenNLP team, backed by
 `the Allen Institute for Artificial Intelligence (AI2) <https://allenai.org/>`_.
 AI2 is a non-profit institute with the mission to contribute to humanity through high-impact AI research and engineering.
 To learn more about who specifically contributed to this codebase, see
@@ -38,7 +38,7 @@ To learn more about who specifically contributed to this codebase, see
 License
 -------
 
-**tango** is licensed under `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0>`_.
+**ai2-tango** is licensed under `Apache 2.0 <https://www.apache.org/licenses/LICENSE-2.0>`_.
 A full copy of the license can be found `on GitHub <https://github.com/allenai/tango/blob/main/LICENSE>`_.
 
 Indices and tables
