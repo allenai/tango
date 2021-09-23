@@ -5,7 +5,7 @@ Installation
 
 ## Installing with `pip`
 
-**tango** is available [on PyPI](https://pypi.org/project/tango/). Just run
+**tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
 
 ```bash
 pip install ai2-tango
