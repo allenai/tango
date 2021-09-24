@@ -7,6 +7,7 @@ from tango.common.params import Params
 from tango.common.from_params import FromParams, takes_arg, remove_optional, create_kwargs
 from tango.common.testing import TangoTestCase
 from tango.common.exceptions import ConfigurationError
+from tango.common.registrable import Registrable
 
 
 class TestFromParams(TangoTestCase):
@@ -65,8 +66,6 @@ class TestFromParams(TangoTestCase):
         assert kwargs == {"my_int": 5, "my_bool": True}
 
     def test_extras(self):
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -116,9 +115,6 @@ class TestFromParams(TangoTestCase):
         assert c.size == 20
 
     def test_extras_for_custom_classes(self):
-
-        from tango.common.registrable import Registrable
-
         class BaseClass(Registrable):
             pass
 
@@ -342,9 +338,6 @@ class TestFromParams(TangoTestCase):
             A.from_params(Params({"a": 1.0}))
 
     def test_dict(self):
-
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -388,9 +381,6 @@ class TestFromParams(TangoTestCase):
         assert not isinstance(a.counts, Params)
 
     def test_list(self):
-
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -419,9 +409,6 @@ class TestFromParams(TangoTestCase):
         assert d.items[1].size == 2  # type: ignore[attr-defined]
 
     def test_tuple(self):
-
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -459,9 +446,6 @@ class TestFromParams(TangoTestCase):
         assert f.items[1].name == "item2"
 
     def test_set(self):
-
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             def __init__(self, name: str) -> None:
                 self.name = name
@@ -503,8 +487,6 @@ class TestFromParams(TangoTestCase):
         assert any(item.name == "item2" for item in d.items)
 
     def test_kwargs_with_multiple_inheritance(self):
-        from tango.common.registrable import Registrable
-
         # Basic idea: have two identical classes, differing only in the order of their multiple
         # inheritance, and make sure that passing kwargs up to the super class works in both cases.
         class A(Registrable):
@@ -534,9 +516,6 @@ class TestFromParams(TangoTestCase):
         assert b2.a == 4
 
     def test_only_infer_superclass_params_if_unknown(self):
-
-        from tango.common.registrable import Registrable
-
         class BaseClass(Registrable):
             def __init__(self):
                 self.x = None
@@ -567,9 +546,6 @@ class TestFromParams(TangoTestCase):
         assert instance.rest["raw_a"] == "123"  # type: ignore
 
     def test_kwargs_are_passed_to_deeper_superclasses(self):
-
-        from tango.common.registrable import Registrable
-
         class BaseClass(Registrable):
             def __init__(self):
                 self.a = None
@@ -669,8 +645,6 @@ class TestFromParams(TangoTestCase):
             Testing.from_params(Params({}))
 
     def test_iterable(self):
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -700,8 +674,6 @@ class TestFromParams(TangoTestCase):
         assert items[1].size == 2  # type: ignore
 
     def test_mapping(self):
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -761,8 +733,6 @@ class TestFromParams(TangoTestCase):
         assert b.lazy is True
 
     def test_raises_when_there_are_no_implementations(self):
-        from tango.common.registrable import Registrable
-
         class A(Registrable):
             pass
 
@@ -864,8 +834,6 @@ class TestFromParams(TangoTestCase):
             Foo.from_params(Params({"a": 2, "b": "hi", "invalid_key": "some value"}))
 
     def test_from_params_handles_kwargs_in_non_from_params_registered_class(self):
-        from tango.common.registrable import Registrable
-
         class Bar(Registrable):
             pass
 
@@ -893,8 +861,6 @@ class TestFromParams(TangoTestCase):
         assert foo.c == {"2": "3"}  # type: ignore[attr-defined]
 
     def test_from_params_does_not_pass_extras_to_non_from_params_registered_class(self):
-        from tango.common.registrable import Registrable
-
         class Bar(Registrable):
             pass
 
