@@ -30,7 +30,7 @@ A Python library for choreographing your machine learning research.
 
 ## Installation
 
-**tango** requires Python 3.7.1 or later.
+**ai2-tango** requires Python 3.7.1 or later.
 
 ```bash
 pip install ai2-tango
