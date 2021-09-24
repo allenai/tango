@@ -201,7 +201,7 @@ def _replace_none(params: Any) -> Any:
     return params
 
 
-def remove_keys_from_params(params: Params, keys: List[str] = ["pretrained_file", "initializer"]):
+def remove_keys_from_params(params: "Params", keys: List[str] = ["pretrained_file", "initializer"]):
     if isinstance(params, Params):  # The model could possibly be a string, for example.
         param_keys = params.keys()
         for key in keys:
