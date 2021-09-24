@@ -15,7 +15,7 @@ from typing import (
 )
 
 try:
-    from typing import get_origin, get_args
+    from typing import get_origin, get_args  # type: ignore
 except ImportError:
 
     def get_origin(tp):  # type: ignore
@@ -201,7 +201,10 @@ class DirectoryStepCache(StepCache):
             self._add_to_cache(step.unique_id(), value)
             temp_metadata_location.rename(metadata_location)
         except:  # noqa: E722
-            temp_metadata_location.unlink(missing_ok=True)
+            try:
+                temp_metadata_location.unlink()
+            except FileNotFoundError:
+                pass
             raise
 
     def __len__(self) -> int:

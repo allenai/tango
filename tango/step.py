@@ -25,7 +25,7 @@ from typing import (
 )
 
 try:
-    from typing import get_origin, get_args
+    from typing import get_origin, get_args  # type: ignore
 except ImportError:
 
     def get_origin(tp):  # type: ignore
