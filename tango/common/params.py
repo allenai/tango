@@ -165,6 +165,57 @@ def _is_dict_free(obj: Any) -> bool:
         return True
 
 
+def pop_choice(
+    params: Dict[str, Any],
+    key: str,
+    choices: List[Any],
+    default_to_first_choice: bool = False,
+    history: str = "?.",
+    allow_class_names: bool = True,
+) -> Any:
+    """
+    Performs the same function as ``Params.pop_choice``, but is required in order to deal with
+    places that the Params object is not welcome, such as inside Keras layers.  See the docstring
+    of that method for more detail on how this function works.
+
+    This method adds a ``history`` parameter, in the off-chance that you know it, so that we can
+    reproduce ``Params.pop_choice`` exactly.  We default to using "?." if you don't know the
+    history, so you'll have to fix that in the log if you want to actually recover the logged
+    parameters.
+    """
+    value = Params(params, history).pop_choice(
+        key, choices, default_to_first_choice, allow_class_names=allow_class_names
+    )
+    return value
+
+
+def _replace_none(params: Any) -> Any:
+    if params == "None":
+        return None
+    elif isinstance(params, dict):
+        for key, value in params.items():
+            params[key] = _replace_none(value)
+        return params
+    elif isinstance(params, list):
+        return [_replace_none(value) for value in params]
+    return params
+
+
+def remove_keys_from_params(params: Params, keys: List[str] = ["pretrained_file", "initializer"]):
+    if isinstance(params, Params):  # The model could possibly be a string, for example.
+        param_keys = params.keys()
+        for key in keys:
+            if key in param_keys:
+                del params[key]
+        for value in params.values():
+            if isinstance(value, Params):
+                remove_keys_from_params(value, keys)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, Params):
+                        remove_keys_from_params(item, keys)
+
+
 class Params(MutableMapping):
     """
     A :class:`~collections.abc.MutableMapping` that represents a parameter dictionary with a history,
@@ -193,7 +244,7 @@ class Params(MutableMapping):
     # and passing no value to the default parameter of "pop".
     DEFAULT = object()
 
-    def __init__(self, params: MutableMapping[str, Any], history: str = "") -> None:
+    def __init__(self, params: "MutableMapping[str, Any]", history: str = "") -> None:
         if isinstance(params, Params):
             self.params: MutableMapping = params.params
         else:
@@ -543,54 +594,3 @@ class Params(MutableMapping):
 
     def __str__(self) -> str:
         return f"{self.history}Params({self.params})"
-
-
-def pop_choice(
-    params: Dict[str, Any],
-    key: str,
-    choices: List[Any],
-    default_to_first_choice: bool = False,
-    history: str = "?.",
-    allow_class_names: bool = True,
-) -> Any:
-    """
-    Performs the same function as ``Params.pop_choice``, but is required in order to deal with
-    places that the Params object is not welcome, such as inside Keras layers.  See the docstring
-    of that method for more detail on how this function works.
-
-    This method adds a ``history`` parameter, in the off-chance that you know it, so that we can
-    reproduce ``Params.pop_choice`` exactly.  We default to using "?." if you don't know the
-    history, so you'll have to fix that in the log if you want to actually recover the logged
-    parameters.
-    """
-    value = Params(params, history).pop_choice(
-        key, choices, default_to_first_choice, allow_class_names=allow_class_names
-    )
-    return value
-
-
-def _replace_none(params: Any) -> Any:
-    if params == "None":
-        return None
-    elif isinstance(params, dict):
-        for key, value in params.items():
-            params[key] = _replace_none(value)
-        return params
-    elif isinstance(params, list):
-        return [_replace_none(value) for value in params]
-    return params
-
-
-def remove_keys_from_params(params: Params, keys: List[str] = ["pretrained_file", "initializer"]):
-    if isinstance(params, Params):  # The model could possibly be a string, for example.
-        param_keys = params.keys()
-        for key in keys:
-            if key in param_keys:
-                del params[key]
-        for value in params.values():
-            if isinstance(value, Params):
-                remove_keys_from_params(value, keys)
-            elif isinstance(value, list):
-                for item in value:
-                    if isinstance(item, Params):
-                        remove_keys_from_params(item, keys)
