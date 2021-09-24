@@ -52,8 +52,10 @@ class TestFromParams(TangoTestCase):
         assert remove_optional(Optional[str]) == str  # type: ignore[arg-type]
         assert remove_optional(str) == str
 
-    def test_from_params(self):
-        my_class = MyClass.from_params(Params({"my_int": 10}), my_bool=True)
+    @pytest.mark.parametrize("input_type", [dict, Params])
+    def test_from_params(self, input_type):
+        params = {"my_int": 10}
+        my_class = MyClass.from_params(input_type(params), my_bool=True)
 
         assert isinstance(my_class, MyClass)
         assert my_class.my_int == 10

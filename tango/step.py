@@ -177,7 +177,7 @@ class Step(Registrable, Generic[T]):
     @classmethod
     def from_params(  # type: ignore[override]
         cls: Type["Step"],
-        params: Params,
+        params: Union[Params, dict, str],
         constructor_to_call: Callable[..., "Step"] = None,
         constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
         existing_steps: Optional[Dict[str, "Step"]] = None,
@@ -206,12 +206,15 @@ class Step(Registrable, Generic[T]):
             params = Params({"type": params})
 
         if not isinstance(params, Params):
-            raise ConfigurationError(
-                "from_params was passed a ``params`` object that was not a ``Params``. This probably "
-                "indicates malformed parameters in a configuration file, where something that "
-                "should have been a dictionary was actually a list, or something else. "
-                f"This happened when constructing an object of type {cls}."
-            )
+            if isinstance(params, dict):
+                params = Params(params)
+            else:
+                raise ConfigurationError(
+                    "from_params was passed a ``params`` object that was not a ``Params``. This probably "
+                    "indicates malformed parameters in a configuration file, where something that "
+                    "should have been a dictionary was actually a list, or something else. "
+                    f"This happened when constructing an object of type {cls}."
+                )
 
         as_registrable = cast(Type[Registrable], cls)
         choice = params.pop_choice(
@@ -477,16 +480,16 @@ class _RefStep(Step[T], Generic[T]):
             self.ref = ref
 
 
-def step_graph_from_params(params: Dict[str, Params]) -> Dict[str, Step]:
-    """Given a mapping from strings to :class:`~tango.common.params.Params` objects,
-    this parses each :class:`~tango.common.params.Params` object
-    into a :class:`Step`, and resolved dependencies between the steps. Returns a dictionary
-    mapping step names to instances of :class:`Step`."""
+def step_graph_from_params(params: Union[Params, Dict[str, Dict[str, Any]]]) -> Dict[str, Step]:
+    """Given a mapping from strings to :class:`Step` parameter mappings,
+    this parses each step's parameters into a :class:`Step` and resolves dependencies
+    between the steps.
 
+    Returns a dictionary mapping step names to instances of :class:`Step`."""
     # This algorithm for resolving step dependencies is O(n^2). Since we're
     # anticipating the number of steps to be in the dozens at most, we choose
     # simplicity over cleverness.
-    unparsed_steps: Dict[str, Params] = params
+    unparsed_steps: Dict[str, Params] = {key: Params(value) for key, value in params.items()}
     next_unparsed_steps: Dict[str, Params] = {}
     parsed_steps: Dict[str, Step] = {}
     steps_parsed = 0

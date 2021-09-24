@@ -27,6 +27,9 @@ class TestParams(TangoTestCase):
         assert params["b"][1] is None
         assert params["c"]["d"] is None
 
+    def test_init_with_different_types(self):
+        assert Params({"a": 1, "b": 2}) == Params(Params({"a": 1, "b": 2}))
+
     def test_bad_unicode_environment_variables(self):
         filename = self.FIXTURES_ROOT / "common" / "params_example.jsonnet"
         os.environ["BAD_ENVIRONMENT_VARIABLE"] = "\udce2"

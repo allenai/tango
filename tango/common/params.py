@@ -193,8 +193,11 @@ class Params(MutableMapping):
     # and passing no value to the default parameter of "pop".
     DEFAULT = object()
 
-    def __init__(self, params: Dict[str, Any], history: str = "") -> None:
-        self.params = _replace_none(params)
+    def __init__(self, params: MutableMapping[str, Any], history: str = "") -> None:
+        if isinstance(params, Params):
+            self.params: MutableMapping = params.params
+        else:
+            self.params = _replace_none(params)
         self.history = history
 
     @overrides

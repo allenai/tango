@@ -545,7 +545,7 @@ class FromParams(CustomDetHash):
     @classmethod
     def from_params(
         cls: Type[T],
-        params: Union[Params, str],
+        params: Union[Params, dict, str],
         constructor_to_call: Callable[..., T] = None,
         constructor_to_inspect: Union[Callable[..., T], Callable[[T], None]] = None,
         **extras,
@@ -587,12 +587,15 @@ class FromParams(CustomDetHash):
             params = Params({"type": params})
 
         if not isinstance(params, Params):
-            raise ConfigurationError(
-                "from_params was passed a `params` object that was not a `Params`. This probably "
-                "indicates malformed parameters in a configuration file, where something that "
-                "should have been a dictionary was actually a list, or something else. "
-                f"This happened when constructing an object of type {cls}."
-            )
+            if isinstance(params, dict):
+                params = Params(params)
+            else:
+                raise ConfigurationError(
+                    "from_params was passed a `params` object that was not a `Params`. This probably "
+                    "indicates malformed parameters in a configuration file, where something that "
+                    "should have been a dictionary was actually a list, or something else. "
+                    f"This happened when constructing an object of type {cls}."
+                )
 
         registered_subclasses = Registrable._registry.get(cls)
 

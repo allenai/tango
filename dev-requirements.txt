@@ -7,6 +7,12 @@ mypy==0.910
 # Automatic code formatting
 black==21.9b0
 
+# Running tests
+pytest
+
+# Flaky tests
+flaky
+
 # Allows generation of coverage reports with pytest.
 pytest-cov
 

@@ -45,6 +45,8 @@ class StepCache(Registrable):
     def __contains__(self, step: object) -> bool:
         """This is a generic implementation of ``__contains__``. If you are writing your own
         ``StepCache``, you might want to write a faster one yourself."""
+        from tango.step import Step
+
         if not isinstance(step, Step):
             return False
         try:
@@ -97,6 +99,8 @@ class MemoryStepCache(StepCache):
             logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
 
     def __contains__(self, step: object):
+        from tango.step import Step
+
         if isinstance(step, Step):
             return step.unique_id() in self.cache
         else:
@@ -160,6 +164,8 @@ class DirectoryStepCache(StepCache):
             return None
 
     def __contains__(self, step: object) -> bool:
+        from tango.step import Step
+
         if isinstance(step, Step):
             key = step.unique_id()
             if key in self.strong_cache:
