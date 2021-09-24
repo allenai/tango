@@ -25,6 +25,7 @@ A Python library for orchestrating your machine learning research.
 
 - [Documentation](https://ai2-tango.readthedocs.io/)
 - [PyPI Package](https://pypi.org/project/ai2-tango/)
+- [Contributing](https://github.com/allenai/tango/blob/main/CONTRIBUTING.md)
 - [License](https://github.com/allenai/tango/blob/main/LICENSE)
 
 ## Installation

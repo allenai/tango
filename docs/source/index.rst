@@ -17,6 +17,7 @@ Contents
 
    installation
    overview
+   CONTRIBUTING
    CHANGELOG
 
 .. toctree::
