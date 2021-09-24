@@ -1,3 +1,3 @@
 """
-A Python library for orchestrating your machine learning research.
+A Python library for choreographing your machine learning research.
 """

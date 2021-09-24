@@ -1,6 +1,6 @@
 # [AI2 Tango](https://ai2-tango.readthedocs.io/)
 
-A Python library for orchestrating your machine learning research.
+A Python library for choreographing your machine learning research.
 
 ⚠️ *Currently in ALPHA and under active devepment* ⚠️
 

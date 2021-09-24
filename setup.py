@@ -31,7 +31,7 @@ with open("tango/version.py", "r") as version_file:
 setup(
     name="ai2-tango",
     version=VERSION["VERSION"],
-    description="A library for orchestrating your machine learning research.",
+    description="A library for choreographing your machine learning research.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     classifiers=[
