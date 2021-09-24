@@ -4,4 +4,3 @@ jsonnet>=0.10.0 ; sys.platform != 'win32'
 dill
 base58
 xxhash
-dataclasses; python_version<"3.7"

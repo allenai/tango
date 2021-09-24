@@ -29,15 +29,16 @@ class Registrable(FromParams):
     After which you can call ``BaseClass.list_available()`` to get the keys for the
     registered subclasses, and ``BaseClass.by_name(name)`` to get the corresponding subclass.
     Note that the registry stores the subclasses themselves; not class instances.
-    In most cases you would then call ``from_params(params)`` on the returned subclass.
+    In most cases you would then call :meth:`~tango.common.from_params.FromParams.from_params()`
+    on the returned subclass.
 
     You can specify a default by setting ``BaseClass.default_implementation``.
-    If it is set, it will be the first element of ``list_available()``.
+    If it is set, it will be the first element of :meth:`list_available()`.
 
     Note that if you use this class to implement a new ``Registrable`` abstract class,
     you must ensure that all subclasses of the abstract class are loaded when the module is
     loaded, because the subclasses register themselves in their respective files. You can
-    achieve this by having the abstract class and all subclasses in the __init__.py of the
+    achieve this by having the abstract class and all subclasses in the ``__init__.py`` of the
     module in which they reside (as this causes any import of either the abstract class or
     a subclass to load all other subclasses and the abstract class).
     """
@@ -193,7 +194,7 @@ class Registrable(FromParams):
                     + (". " if not suggestion else f", did you mean '{suggestion}'? ")
                 )
                 + "If your registered class comes from custom code, you'll need to import "
-                "the corresponding modules. If you're using AllenNLP from the command-line, "
+                "the corresponding modules. If you're using Tango or AllenNLP from the command-line, "
                 "this is done by using the '--include-package' flag, or by specifying your imports "
                 "in a '.allennlp_plugins' file. "
                 "Alternatively, you can specify your choices "

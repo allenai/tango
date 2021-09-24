@@ -537,8 +537,9 @@ def construct_arg(
 
 class FromParams(CustomDetHash):
     """
-    Mixin to give a from_params method to classes. We create a distinct base class for this
-    because sometimes we want non-``Registrable`` classes to be instantiatable from_params.
+    Mixin to give a :meth:`from_params` method to classes. We create a distinct base class for this
+    because sometimes we want non :class:`~tango.common.registrable.Registrable`
+    classes to be instantiatable ``from_params``.
     """
 
     @classmethod
@@ -551,7 +552,8 @@ class FromParams(CustomDetHash):
     ) -> T:
         """
         This is the automatic implementation of ``from_params``. Any class that subclasses
-        ``FromParams`` (or ``Registrable``, which itself subclasses ``FromParams``) gets this
+        from ``FromParams`` (or :class:`~tango.common.registrable.Registrable`,
+        which itself subclasses ``FromParams``) gets this
         implementation for free.  If you want your class to be instantiated from params in the
         "obvious" way -- pop off parameters and hand them to your constructor with the same names --
         this provides that functionality.
@@ -693,7 +695,7 @@ class FromParams(CustomDetHash):
         Returns a dictionary of parameters that, when turned into a ``Params`` object and
         then fed to ``.from_params()``, will recreate this object.
 
-        You don't need to implement this all the time. AllenNLP will let you know if you
+        You don't need to implement this all the time. Tango will let you know if you
         need it.
         """
         raise NotImplementedError()

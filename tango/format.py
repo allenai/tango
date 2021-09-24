@@ -39,7 +39,7 @@ class Format(Registrable, Generic[T]):
     """
     Formats write objects to directories and read them back out.
 
-    In the context of AllenNLP, the objects that are written by formats are usually
+    In the context of Tango, the objects that are written by formats are usually
     the result of a :class:`~tango.step.Step`.
     """
 
@@ -167,7 +167,9 @@ class DillFormat(Format[T], Generic[T]):
 
 
 class DillFormatIterator(Iterator[T], Generic[T]):
-    """This class is used so we can return an iterator from ``DillFormat.read()``."""
+    """
+    An ``Iterator`` class that is used so we can return an iterator from ``DillFormat.read()``.
+    """
 
     def __init__(self, filename: PathOrStr):
         self.f: Optional[IO[Any]] = _open_compressed(filename, "rb")
@@ -295,7 +297,9 @@ class JsonFormat(Format[T], Generic[T]):
 
 
 class JsonFormatIterator(Iterator[T], Generic[T]):
-    """This class is used so we can return an iterator from ``JsonFormat.read()``."""
+    """
+    An ``Iterator`` class that is used so we can return an iterator from ``JsonFormat.read()``.
+    """
 
     def __init__(self, filename: PathOrStr):
         self.f: Optional[IO[Any]] = _open_compressed(filename, "rt")

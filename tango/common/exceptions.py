@@ -3,7 +3,7 @@ from typing import Union, Tuple, Any
 
 class TangoError(Exception):
     """
-    Base class for tango exceptions.
+    Base class for Tango exceptions.
     """
 
 

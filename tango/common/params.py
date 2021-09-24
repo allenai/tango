@@ -167,8 +167,8 @@ def _is_dict_free(obj: Any) -> bool:
 
 class Params(MutableMapping):
     """
-    Represents a parameter dictionary with a history, and contains other functionality around
-    parameter passing and validation for AI2 Tango.
+    A :class:`~collections.abc.MutableMapping` that represents a parameter dictionary with a history,
+    and contains other functionality around parameter passing and validation for AI2 Tango.
 
     There are currently two benefits of a ``Params`` object over a plain dictionary for parameter
     passing:
@@ -185,7 +185,7 @@ class Params(MutableMapping):
         as you read them, so that there are none left when you've read everything you expect.  This
         lets us easily validate that you didn't pass in any ``extra`` parameters, just by making sure
         that the parameter dictionary is empty.  You should do this when you're done handling
-        parameters, by calling ``Params.assert_empty``.
+        parameters, by calling :meth:`Params.assert_empty()`.
     """
 
     # This allows us to check for the presence of "None" as a default argument,
@@ -201,12 +201,12 @@ class Params(MutableMapping):
     def pop(self, key: str, default: Any = DEFAULT, keep_as_dict: bool = False) -> Any:
 
         """
-        Performs the functionality associated with dict.pop(key), along with checking for
+        Performs the functionality associated with ``dict.pop(key)``, along with checking for
         returned dictionaries, replacing them with Param objects with an updated history
         (unless keep_as_dict is True, in which case we leave them as dictionaries).
 
         If ``key`` is not present in the dictionary, and no default was specified, we raise a
-        ``ConfigurationError``, instead of the typical ``KeyError``.
+        :class:`~tango.common.exceptions.ConfigurationError`, instead of the typical ``KeyError``.
         """
         if default is self.DEFAULT:
             try:
@@ -264,8 +264,8 @@ class Params(MutableMapping):
     @overrides
     def get(self, key: str, default: Any = DEFAULT):
         """
-        Performs the functionality associated with dict.get(key) but also checks for returned
-        dicts and returns a Params object in their place with an updated history.
+        Performs the functionality associated with ``dict.get(key)`` but also checks for returned
+        dicts and returns a ``Params`` object in their place with an updated history.
         """
         default = None if default is self.DEFAULT else default
         value = self.params.get(key, default)
@@ -292,20 +292,22 @@ class Params(MutableMapping):
             A list of valid options for values corresponding to ``key``.  For example, if you're
             specifying the type of encoder to use for some part of your model, the choices might be
             the list of encoder classes we know about and can instantiate.  If the value we find in
-            the param dictionary is not in ``choices``, we raise a ``ConfigurationError``, because
+            the param dictionary is not in ``choices``, we raise a
+            :class:`~tango.common.exceptions.ConfigurationError`, because
             the user specified an invalid value in their parameter file.
 
         default_to_first_choice :
             If this is ``True``, we allow the ``key`` to not be present in the parameter
             dictionary.  If the key is not present, we will use the return as the value the first
             choice in the ``choices`` list.  If this is ``False``, we raise a
-            ``ConfigurationError``, because specifying the ``key`` is required (e.g., you ``have`` to
+            :class:`~tango.common.exceptions.ConfigurationError`, because
+            specifying the ``key`` is required (e.g., you ``have`` to
             specify your model class when running an experiment, but you can feel free to use
             default settings for encoders if you want).
 
         allow_class_names :
             If this is ``True``, then we allow unknown choices that look like fully-qualified class names.
-            This is to allow e.g. specifying a model type as my_library.my_model.MyModel
+            This is to allow e.g. specifying a model type as ``my_library.my_model.MyModel``
             and importing it on the fly. Our check for "looks like" is extremely lenient
             and consists of checking that the value contains a '.'.
         """
@@ -382,10 +384,10 @@ class Params(MutableMapping):
 
     def assert_empty(self, class_name: str):
         """
-        Raises a ``ConfigurationError`` if ``self.params`` is not empty.  We take ``class_name`` as
-        an argument so that the error message gives some idea of where an error happened, if there
-        was one.  ``class_name`` should be the name of the ``calling`` class, the one that got extra
-        parameters (if there are any).
+        Raises a :class:`~tango.common.exceptions.ConfigurationError` if ``self.params`` is not empty.
+        We take ``class_name`` as an argument so that the error message gives some idea of where an error
+        happened, if there was one.  ``class_name`` should be the name of the ``calling`` class, the one
+        that got extra parameters (if there are any).
         """
         if self.params:
             raise ConfigurationError(
@@ -445,7 +447,7 @@ class Params(MutableMapping):
             for later substitution. Typically we substitute these using environment
             variables; however, you can also specify them here, in which case they
             take priority over environment variables.
-            e.g. {"HOME_DIR": "/Users/allennlp/home"}
+            e.g. ``{"HOME_DIR": "/Users/allennlp/home"}``
         """
         if ext_vars is None:
             ext_vars = {}

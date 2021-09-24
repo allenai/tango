@@ -26,6 +26,7 @@ Classes
 ~~~~~~~~~~~~~~
 .. autoclass:: tango.common.from_params.FromParams
    :members:
+   :private-members: _to_params
 
 ``Lazy``
 ~~~~~~~~

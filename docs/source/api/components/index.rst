@@ -6,4 +6,5 @@ Components
    :caption: Components
 
    step
+   step_cache
    format

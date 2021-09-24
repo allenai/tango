@@ -1,7 +1,7 @@
 Installation
 ============
 
-**ai2-tango** supports Python >= 3.6.
+**ai2-tango** supports Python >= 3.7.
 
 ## Installing with `pip`
 
