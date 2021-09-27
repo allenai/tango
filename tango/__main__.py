@@ -100,7 +100,7 @@ def run(
         for package_name in include_package:
             import_module_and_submodules(package_name)
 
-    params = Params.from_file(experiment)
+    params = Params.from_file(experiment, params_overrides=overrides or "")
     step_graph = step_graph_from_params(params.pop("steps"))
 
     # Prepare directory.
