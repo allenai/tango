@@ -49,6 +49,7 @@ setup(
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
     ),
+    entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
     python_requires=">=3.7.1",
 )

@@ -25,11 +25,11 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common.registrable import Registrable
-from tango.common.util import PathOrStr
+from .common.registrable import Registrable
+from .common.util import PathOrStr
 
 if TYPE_CHECKING:
-    from tango.step import Step
+    from .step import Step
 
 logger = logging.getLogger(__name__)
 

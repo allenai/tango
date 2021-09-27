@@ -35,18 +35,18 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common.det_hash import det_hash
-from tango.common.registrable import Registrable
-from tango.common.params import Params
-from tango.common.exceptions import ConfigurationError
-from tango.common.from_params import (
+from .common.det_hash import det_hash
+from .common.registrable import Registrable
+from .common.params import Params
+from .common.exceptions import ConfigurationError
+from .common.from_params import (
     pop_and_construct_arg,
     infer_method_params,
     infer_constructor_params,
 )
-from tango.common.logging import TangoLogger
-from tango.format import Format, DillFormat
-from tango.step_cache import StepCache, default_step_cache
+from .common.logging import TangoLogger
+from .format import Format, DillFormat
+from .step_cache import StepCache, default_step_cache
 
 logger = logging.getLogger(__name__)
 
