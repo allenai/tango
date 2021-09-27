@@ -15,20 +15,12 @@ from .version import VERSION
     context_settings={"max_content_width": 115},
 )
 @click.version_option(version=VERSION)
-@click.option(
-    "--file-friendly-logging",
-    is_flag=True,
-    help="Outputs progress bar status on separate lines and slows refresh rate",
-)
-def main(file_friendly_logging: bool = False):
+def main():
     LOG_LEVEL = logging._nameToLevel.get(os.environ.get("TANGO_LOG_LEVEL", "INFO"), logging.INFO)
     logging.basicConfig(format="[%(asctime)s %(levelname)s %(name)s] %(message)s", level=LOG_LEVEL)
     # filelock emits too many messages, so tell it to be quiet unless it has something
     # important to say.
     logging.getLogger("filelock").setLevel(max(LOG_LEVEL, logging.WARNING))
-
-    if file_friendly_logging:
-        os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     from tango.common.util import install_sigterm_handler
 
@@ -72,17 +64,26 @@ def main(file_friendly_logging: bool = False):
     help="Python packages or modules to import for tango components.",
     multiple=True,
 )
+@click.option(
+    "--file-friendly-logging",
+    is_flag=True,
+    help="Outputs progress bar status on separate lines and slows refresh rate",
+)
 def run(
     experiment: str,
     directory: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     dry_run: bool = False,
     include_package: Optional[List[str]] = None,
+    file_friendly_logging: bool = False,
 ):
     """
     Run a tango experiment.
     """
     logger = logging.getLogger("tango")
+
+    if file_friendly_logging:
+        os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     from pathlib import Path
     from tango import step_graph_from_params, tango_dry_run, DirectoryStepCache
