@@ -136,7 +136,8 @@ def run(
         for name, step in step_graph.items():
             if step in step_cache:
                 step_link = directory / name
-                step_link.unlink(missing_ok=True)
+                if step_link.exists():
+                    step_link.unlink()
                 step_link.symlink_to(
                     step_cache.path_for_step(step).relative_to(directory),
                     target_is_directory=True,

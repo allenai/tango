@@ -120,6 +120,7 @@ jobs:
 
       - name: Install editable
         run: |
+          . .venv/bin/activate
           pip install --no-deps -e .
 
       - name: Show environment info
@@ -144,7 +145,7 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          pip uninstall -y tango
+          pip uninstall -y ai2-tango
 
   release:
     name: Release
