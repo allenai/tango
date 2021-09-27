@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.0.2](https://github.com/allenai/tango/releases/tag/v0.0.2) - 2021-09-27
+
 ### Added
 
-- Ported over tango components from AllenNLP.
+- Ported over core tango components from AllenNLP.
 
 ## [v0.0.1](https://github.com/allenai/tango/releases/tag/v0.0.1) - 2021-09-22
 
