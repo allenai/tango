@@ -86,7 +86,13 @@ def run(
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     from pathlib import Path
-    from tango import step_graph_from_params, tango_dry_run, DirectoryStepCache
+    from tango import (
+        step_graph_from_params,
+        tango_dry_run,
+        StepCache,
+        DirectoryStepCache,
+        MemoryStepCache,
+    )
     from tango.common.params import Params
     from tango.common.util import import_module_and_submodules
 
@@ -98,25 +104,46 @@ def run(
     step_graph = step_graph_from_params(params.pop("steps"))
 
     # Prepare directory.
-    if directory is None:
+    if directory is None and not dry_run:
         from tempfile import mkdtemp
 
         directory = mkdtemp(prefix="tango-")
-        print(f"Creating temporary directory for run {directory}")
+        click.echo(f"Creating temporary directory for run {directory}")
 
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
-    step_cache = DirectoryStepCache(directory / "step_cache")
+    step_cache: StepCache
+    if directory:
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=True)
+        step_cache = DirectoryStepCache(directory / "step_cache")
+    else:
+        step_cache = MemoryStepCache()
 
     if dry_run:
-        for step, cached in tango_dry_run(
+        click.secho("Dry run:", bold=True)
+        for name, step in step_graph.items():
+            if step.only_if_needed:
+                click.secho(f"Skipping {name} as it is not needed", fg="yellow")
+        dry_run_steps = tango_dry_run(
             (s for s in step_graph.values() if not s.only_if_needed), step_cache
-        ):
+        )
+        for i, (step, cached) in enumerate(dry_run_steps):
             if cached:
-                print(f"Getting {step.name} from cache")
+                click.echo(
+                    f"[{i+1}/{len(dry_run_steps)}] "
+                    + click.style("✓ Getting ", fg="blue")
+                    + click.style(f"{step.name} ", bold=True, fg="blue")
+                    + click.style("from cache", fg="blue")
+                )
             else:
-                print(f"Computing {step.name}")
+                click.echo(
+                    f"[{i+1}/{len(dry_run_steps)}] "
+                    + click.style("● Computing ", fg="green")
+                    + click.style(f"{step.name}", bold=True, fg="green")
+                )
     else:
+        assert isinstance(directory, Path)
+        assert isinstance(step_cache, DirectoryStepCache)
+
         # remove symlinks to old results
         for filename in directory.glob("*"):
             if filename.is_symlink():
@@ -143,7 +170,12 @@ def run(
                     step_cache.path_for_step(step).relative_to(directory),
                     target_is_directory=True,
                 )
-                print(f'The output for "{name}" is in {step_link}.')
+                click.echo(
+                    click.style("✓ The output for ", fg="green")
+                    + click.style(f'"{name}"', bold=True, fg="green")
+                    + click.style(" is in ", fg="green")
+                    + click.style(f"{step_link}.", bold=True, fg="green")
+                )
 
 
 if __name__ == "__main__":
