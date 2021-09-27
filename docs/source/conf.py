@@ -15,12 +15,12 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../../"))
 
-from my_package.version import VERSION, VERSION_SHORT  # noqa: E402
+from tango.version import VERSION, VERSION_SHORT  # noqa: E402
 
 
 # -- Project information -----------------------------------------------------
 
-project = "my_package"
+project = "AI2 Tango"
 copyright = "2021, Allen Institute for Artificial Intelligence"
 author = "Allen Institute for Artificial Intelligence"
 version = VERSION_SHORT
@@ -32,7 +32,12 @@ release = VERSION
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "myst_parser"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "myst_parser",
+    "sphinx.ext.intersphinx",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -44,6 +49,8 @@ exclude_patterns = ["_build"]
 
 source_suffix = [".rst", ".md"]
 
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -52,9 +59,11 @@ source_suffix = [".rst", ".md"]
 #
 html_theme = "furo"
 
-html_title = f"my_package v{VERSION}"
+html_title = f"ai2-tango v{VERSION}"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = ["css/custom.css"]

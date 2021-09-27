@@ -1,52 +1,91 @@
-# python-package-template
+# [AI2 Tango](https://ai2-tango.readthedocs.io/)
 
-This is a template repository for Python package projects.
+<!-- start tagline -->
 
-## Features
+A Python library for choreographing your machine learning research.
 
-This template repo comes with all of the boiler plate for:
+<!-- end tagline -->
 
-- Robust CI with GitHub Actions.
-- Dependabot configuration.
-- Great looking API documentation built using [Sphinx](https://www.sphinx-doc.org/en/master/) (run `make docs` to preview).
-- Automatic GitHub and PyPI releases. Just follow the steps in [`RELEASE_PROCESS.md`](./RELEASE_PROCESS.md) to trigger a new release.
+⚠️ *Currently in ALPHA and under active devepment* ⚠️
 
-## Usage
+<!-- <p align="center"> -->
+<p>
+    <a href="https://github.com/allenai/tango/actions">
+        <img alt="CI" src="https://github.com/allenai/tango/workflows/CI/badge.svg?event=push&branch=main">
+    </a>
+    <a href="https://pypi.org/project/ai2-tango/">
+        <img alt="PyPI" src="https://img.shields.io/pypi/v/ai2-tango">
+    </a>
+    <a href="https://ai2-tango.readthedocs.io/en/latest/?badge=latest">
+        <img src="https://readthedocs.org/projects/ai2-tango/badge/?version=latest" alt="Documentation Status" />
+    </a>
+    <a href="https://github.com/allenai/tango/blob/main/LICENSE">
+        <img alt="License" src="https://img.shields.io/github/license/allenai/tango.svg?color=blue&cachedrop">
+    </a>
+    <br/>
+</p>
 
-1. [Create a new repository](https://github.com/allenai/python-package-template/generate) from this template with the desired name of your Python package.
+## Quick links
 
-    It's important that the name of the repository and the name of the Python package match exactly, otherwise you might end up with some broken links.
-    So you might want to check on [PyPI](https://pypi.org/) first to see if the name is already taken.
+- [Documentation](https://ai2-tango.readthedocs.io/)
+- [PyPI Package](https://pypi.org/project/ai2-tango/)
+- [Contributing](https://github.com/allenai/tango/blob/main/CONTRIBUTING.md)
+- [License](https://github.com/allenai/tango/blob/main/LICENSE)
 
-2. Change the name of the `my_package` directory to the name of your repo / Python package.
+## Installation
 
-3. Replace all mentions of `my_package` throughout this repository with the new name.
+<!-- start py version -->
 
-    On OS X, a quick way to find all mentions of `my_package` is:
+**ai2-tango** requires Python 3.7 or later.
 
-    ```bash
-    find . -type f -not -path './.git/*' -not -path ./README.md -not -path './docs/build/*' -not -path '*__pycache__*' | xargs grep 'my_package'
-    ```
+<!-- end py version -->
 
-    There is also a one-liner to find and replace all mentions `my_package` with `actual_name_of_package`:
+### Installing with `pip`
 
-    ```bash
-    find . -type f -not -path './.git/*' -not -path ./README.md -not -path './docs/build/*' -not -path '*__pycache__*' -exec sed -i '' -e 's/my_package/actual_name_of_package/' {} \;
-    ```
+<!-- start install pip -->
 
-3. Add repository secrets for `PYPI_USERNAME` and `PYPI_PASSWORD`.
+**ai2-tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
 
-4. Commit and push your changes, then make sure all CI checks pass.
+```bash
+pip install ai2-tango
+```
 
-5. Go to [readthedocs.org](https://readthedocs.org/dashboard/import/?) and import your new project.
-    Then click on the "Admin" button, navigate to "Automation Rules" in the sidebar, click "Add Rule", and then enter the following fields:
+<!-- end install pip -->
 
-    - **Description:** Publish new versions from tags
-    - **Match:** Custom Match
-    - **Custom match:** v[vV]
-    - **Version:** Tag
-    - **Action:** Activate version
+### Installing from source
 
-    Then hit "Save".
+<!-- start install source -->
 
-    After your first release, the docs will automatically be publish to [your-project-name.readthedocs.io](https://your-project-name.readthedocs.io/).
+To install **ai2-tango** from source, first clone [the repository](https://github.com/allenai/tango):
+
+```bash
+git clone https://github.com/allenai/tango.git
+cd tango
+```
+
+Then run
+
+```bash
+pip install -e .
+```
+
+<!-- end install source -->
+
+## Team
+
+<!-- start team -->
+
+**ai2-tango** is developed and maintained by the AllenNLP team, backed by [the Allen Institute for Artificial Intelligence (AI2)](https://allenai.org/).
+AI2 is a non-profit institute with the mission to contribute to humanity through high-impact AI research and engineering.
+To learn more about who specifically contributed to this codebase, see [our contributors](https://github.com/allenai/tango/graphs/contributors) page.
+
+<!-- end team -->
+
+## License
+
+<!-- start license -->
+
+**ai2-tango** is licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+A full copy of the license can be found [on GitHub](https://github.com/allenai/tango/blob/main/LICENSE).
+
+<!-- end license -->
