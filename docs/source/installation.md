@@ -1,27 +1,21 @@
 Installation
 ============
 
-**ai2-tango** supports Python >= 3.6.
+```{include} ../../README.md
+:start-after: <!-- start py version -->
+:end-before: <!-- end py version -->
+```
 
 ## Installing with `pip`
 
-**ai2-tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
-
-```bash
-pip install ai2-tango
+```{include} ../../README.md
+:start-after: <!-- start install pip -->
+:end-before: <!-- end install pip -->
 ```
 
 ## Installing from source
 
-To install **ai2-tango** from source, first clone [the repository](https://github.com/allenai/tango):
-
-```bash
-git clone https://github.com/allenai/tango.git
-cd tango
-```
-
-Then run
-
-```bash
-pip install -e .
+```{include} ../../README.md
+:start-after: <!-- start install source -->
+:end-before: <!-- end install source -->
 ```
