@@ -66,6 +66,7 @@ jobs:
             task:
               name: Build
               run: |
+                tango --version
                 python setup.py check
                 python setup.py bdist_wheel sdist
 
@@ -117,6 +118,11 @@ jobs:
           . .venv/bin/activate
           pip install -r requirements.txt -r dev-requirements.txt
 
+      - name: Install editable
+        run: |
+          . .venv/bin/activate
+          pip install --no-deps -e .
+
       - name: Show environment info
         run: |
           . .venv/bin/activate
@@ -135,6 +141,11 @@ jobs:
         with:
           name: package
           path: dist
+
+      - name: Clean up
+        if: always()
+        run: |
+          pip uninstall -y ai2-tango
 
   release:
     name: Release

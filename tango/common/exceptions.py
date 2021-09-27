@@ -22,3 +22,9 @@ class ConfigurationError(TangoError):
 
     def __str__(self):
         return self.message
+
+
+class SigTermReceived(TangoError):
+    """
+    Raised when a SIGTERM is caught.
+    """
