@@ -115,13 +115,19 @@ default_step_cache = MemoryStepCache()
 
 @StepCache.register("directory")
 class DirectoryStepCache(StepCache):
-    """This is a :class:`StepCache` that stores its results on disk, in the location given in ``dir``.
+    """
+    This is a :class:`StepCache` that stores its results on disk, in the location given in ``dir``.
 
     Every cached step gets a directory under ``dir`` with that step's :meth:`~tango.step.Step.unique_id()`.
     In that directory we store the results themselves in some format according to the step's
     :attr:`~tango.step.Step.FORMAT`,
     and we also write a ``metadata.json`` file that stores some metadata. The presence of
     ``metadata.json`` signifies that the cache entry is complete and has been written successfully.
+
+    .. important::
+        The ``tango run`` command always uses a :class:`DirectoryStepCache`
+        as its :class:`StepCache` except for dry runs when no directory is supplied.
+
     """
 
     LRU_CACHE_MAX_SIZE = 8
@@ -217,4 +223,7 @@ class DirectoryStepCache(StepCache):
         return sum(1 for _ in self.dir.glob("*/metadata.json"))
 
     def path_for_step(self, step: "Step") -> Path:
+        """
+        Returns a path within the ``self.dir`` associated with the given step.
+        """
         return self.dir / step.unique_id()
