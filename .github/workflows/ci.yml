@@ -18,7 +18,7 @@ env:
   # Change this to invalidate existing cache.
   CACHE_PREFIX: v0
   PYTHON_PATH: ./
-  DEFAULT_PYTHON: 3.8
+  DEFAULT_PYTHON: 3.7
 
 jobs:
   checks:
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: [3.7, 3.8]
+        python: [3.7]
         task:
           - name: Lint
             run: |
@@ -42,26 +42,19 @@ jobs:
             run: |
               pytest -v --color=yes --ignore=tests/integrations tests/
 
-        include:
-          - python: 3.8
-            task:
-              name: Build
-              run: |
-                tango --version
-                python setup.py check
-                python setup.py bdist_wheel sdist
+          - name: Build
+            run: |
+              tango --version
+              python setup.py check
+              python setup.py bdist_wheel sdist
 
-          - python: 3.8
-            task:
-              name: Style
-              run: |
-                black --check .
+          - name: Style
+            run: |
+              black --check .
 
-          - python: 3.8
-            task:
-              name: Docs
-              run: |
-                cd docs && make html
+          - name: Docs
+            run: |
+              cd docs && make html
 
     steps:
       - uses: actions/checkout@v2
