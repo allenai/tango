@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `tango run` command will acquire a lock on the directory to avoid race conditions.
+
 ## [v0.0.3](https://github.com/allenai/tango/releases/tag/v0.0.3) - 2021-09-27
 
 ### Added

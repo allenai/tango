@@ -1,4 +1,7 @@
+import os
 import logging
+
+from .util import _parse_bool
 
 
 class TangoLogger(logging.Logger):
@@ -41,7 +44,7 @@ logging.setLoggerClass(TangoLogger)
 logger = logging.getLogger(__name__)
 
 
-FILE_FRIENDLY_LOGGING: bool = False
+FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
 """
 If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
 down tqdm's output to only once every 10 seconds.

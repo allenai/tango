@@ -68,3 +68,11 @@ def import_module_and_submodules(package_name: str, exclude: Optional[Set[str]] 
                 continue
             subpackage = f"{package_name}.{name}"
             import_module_and_submodules(subpackage, exclude=exclude)
+
+
+def _parse_bool(value: Union[bool, str]) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value in {"1", "true", "True", "TRUE"}:
+        return True
+    return False
