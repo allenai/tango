@@ -15,12 +15,13 @@ def parse_requirements_file(path):
             else:
                 return f"{m.group('name')} @ {req}"
 
-        install_requirements = []
+        requirements = []
         for line in requirements_file:
             line = line.strip()
             if line.startswith("#") or len(line) <= 0:
                 continue
-            install_requirements.append(fix_url_dependencies(line))
+            requirements.append(fix_url_dependencies(line))
+    return requirements
 
 
 # Load core requirements.
