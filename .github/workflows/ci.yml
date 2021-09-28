@@ -31,21 +31,25 @@ jobs:
         python: [3.7, 3.8]
         task:
           - name: Lint
+            extras: dev
             run: |
               flake8 .
 
           - name: Type check
+            extras: dev
             run: |
               mypy .
 
           - name: Test
+            extras: dev
             run: |
-              pytest -v --color=yes tests/
+              pytest -v --color=yes --ignore=tests/integrations tests/
 
         include:
           - python: 3.8
             task:
               name: Build
+              extras: dev
               run: |
                 tango --version
                 python setup.py check
@@ -54,12 +58,14 @@ jobs:
           - python: 3.8
             task:
               name: Style
+              extras: dev
               run: |
                 black --check .
 
           - python: 3.8
             task:
               name: Docs
+              extras: dev
               run: |
                 cd docs && make html
 
@@ -97,12 +103,12 @@ jobs:
         run: |
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
           . .venv/bin/activate
-          pip install -e .[dev]
+          pip install -e .[${{ matrix.task.extras }}]
 
       - name: Install editable
         run: |
           . .venv/bin/activate
-          pip install --no-deps -e .[dev]
+          pip install --no-deps -e .[${{ matrix.task.extras }}]
 
       - name: Show environment info
         run: |
