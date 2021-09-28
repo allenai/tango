@@ -164,7 +164,8 @@ in addition to everything listed in [Making a pull request](#making-a-pull-reque
 2. Then you must add a module docstring to the `__init__.py` file of the submodule which imports all of the public components of the integration,
     and defines the [`__all__`](https://docs.python.org/3/tutorial/modules.html#importing-from-a-package) special variable to include all of those components.
     This ensures all of the public components will show up in the documentation.
-3. Next add a new file `docs/source/api/integrations/name_of_integration.rst`, and include the directive:
+3. Next that you should add unit tests of your code to `tests/integrations/name_of_integration/`.
+4. Then add a new file `docs/source/api/integrations/name_of_integration.rst`, and include the directive:
 
     ```
     .. automodule:: tango.integrations.name_of_integration
@@ -172,7 +173,7 @@ in addition to everything listed in [Making a pull request](#making-a-pull-reque
     ```
 
     Take a look at any of the other files in that folder to see how it should look exactly.
-4. Then add any additional requirements that your integration depends on to `requirements.txt`. Be sure to put those under the "Extra dependencies for integrations" section,
+5. After that, add any additional requirements that your integration depends on to `requirements.txt`. Be sure to put those under the "Extra dependencies for integrations" section,
     and add the special inline comment `# needed by: name_of_integration`.
-5. And finally, in the `integrations` job definition in `.github/workflows/ci.yml`, add a new object
+6. And finally, in the `integrations` job definition in `.github/workflows/ci.yml`, add a new object
     to the matrix for your integration following the other examples there.

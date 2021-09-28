@@ -38,6 +38,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
+    "sphinx.ext.doctest",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -68,3 +69,5 @@ html_title = f"ai2-tango v{VERSION}"
 html_static_path = ["_static"]
 
 html_css_files = ["css/custom.css"]
+
+html_favicon = "_static/favicon.ico"

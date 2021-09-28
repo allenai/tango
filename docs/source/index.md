@@ -23,6 +23,7 @@ CHANGELOG
 
 api/components/index
 api/integrations/index
+api/steps
 api/exceptions
 api/utilities
 ```

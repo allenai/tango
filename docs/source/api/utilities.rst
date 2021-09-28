@@ -37,3 +37,24 @@ Classes
 ~~~~~~~~~~~~~~~
 .. autoclass:: tango.common.registrable.Registrable
    :members:
+
+``DatasetDict``
+~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.dataset_dict.DatasetDict
+   :members:
+   :special-members: __getitem__,__len__
+
+``ShuffledSequence``
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.sequences.ShuffledSequence
+   :members:
+
+``SlicedSequence``
+~~~~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.sequences.SlicedSequence
+   :members:
+
+``ConcatenatedSequence``
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.sequences.ConcatenatedSequence
+   :members:

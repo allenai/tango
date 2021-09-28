@@ -9,6 +9,7 @@ black==21.9b0
 
 # Running tests
 pytest
+pytest-sphinx
 
 # Flaky tests
 flaky
