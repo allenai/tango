@@ -130,7 +130,7 @@ jobs:
           pip uninstall -y ai2-tango
 
   integrations:
-    name: python ${{ matrix.python }} - integrations - ${{ matrix.integration }}
+    name: python ${{ matrix.python }} - integrations - ${{ matrix.integration.name }}
     runs-on: [ubuntu-latest]
     timeout-minutes: 30
     strategy:
@@ -193,14 +193,17 @@ jobs:
 
       - name: Lint
         run: |
+          . .venv/bin/activate
           flake8 tango/integrations/${{ matrix.integration.name }}
 
       - name: Type check
         run: |
+          . .venv/bin/activate
           mypy tango/integrations/${{ matrix.integration.name }}
 
       - name: Test
         run: |
+          . .venv/bin/activate
           pytest -v --color=yes tests/integrations/${{ matrix.integration.name }}
 
       - name: Clean up
