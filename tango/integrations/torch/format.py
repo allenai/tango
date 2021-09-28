@@ -14,9 +14,14 @@ T = TypeVar("T")
 @Format.register("torch")
 class TorchFormat(Format[T], Generic[T]):
     """
-    This format writes the artifact using torch.save().
+    This format writes the artifact using ``torch.save()``.
 
     Unlike :class:`tango.format.DillFormat`, this has no special support for iterators.
+
+    .. tip::
+
+        Registered as a :class:`~tango.format.Format` under the name ``torch``.
+
     """
 
     VERSION = 2

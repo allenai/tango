@@ -8,3 +8,4 @@ Integrations
    :caption: Integrations
 
    torch
+   datasets
