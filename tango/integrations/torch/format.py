@@ -16,7 +16,7 @@ class TorchFormat(Format[T], Generic[T]):
     """
     This format writes the artifact using torch.save().
 
-    Unlike ``DillFormat``, this has no special support for iterators.
+    Unlike :class:`tango.format.DillFormat`, this has no special support for iterators.
     """
 
     VERSION = 2

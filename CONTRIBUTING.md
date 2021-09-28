@@ -154,3 +154,25 @@ When you're ready to contribute code to address an open issue, please follow the
 
 We use [Sphinx](https://www.sphinx-doc.org/en/master/index.html) to build our API docs, which automatically parses all docstrings
 of public classes and methods. All docstrings should adhere to the [Numpy styling convention](https://www.sphinx-doc.org/en/master/usage/extensions/example_numpy.html).
+
+## Adding a new integration
+
+In order to add a new integration, there are several additional steps and guidelines you should follow
+in addition to everything listed in [Making a pull request](#making-a-pull-request).
+
+1. First start by creating a new submodule `tango.integrations.name_of_integration` and put all of the code for your integration in there.
+2. Then you must add a module docstring to the `__init__.py` file of the submodule which imports all of the public components of the integration,
+    and defines the [`__all__`](https://docs.python.org/3/tutorial/modules.html#importing-from-a-package) special variable to include all of those components.
+    This ensures all of the public components will show up in the documentation.
+3. Next add a new file `docs/source/api/integrations/name_of_integration.rst`, and include the directive:
+
+    ```
+    .. automodule:: tango.integrations.name_of_integration
+       :members:
+    ```
+
+    Take a look at any of the other files in that folder to see how it should look exactly.
+4. Then add any additional requirements that your integration depends on to `requirements.txt`. Be sure to put those under the "Extra dependencies for integrations" section,
+    and add the special inline comment `# needed by: name_of_integration`.
+5. And finally, in the `integrations` job definition in `.github/workflows/ci.yml`, add a new object
+    to the matrix for your integration following the other examples there.
