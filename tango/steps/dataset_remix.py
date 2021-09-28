@@ -12,6 +12,10 @@ class DatasetRemixStep(Step):
     """
     This step can remix splits in a :class:`~tango.common.dataset_dict.DatasetDict` into new splits.
 
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name ``dataset_remix``.
+
     Examples
     --------
 

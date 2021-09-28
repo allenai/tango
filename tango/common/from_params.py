@@ -125,7 +125,9 @@ def infer_constructor_params(
 infer_params = infer_constructor_params  # Legacy name
 
 
-def infer_method_params(cls: Type[T], method: Callable) -> Dict[str, inspect.Parameter]:
+def infer_method_params(
+    cls: Type[T], method: Callable, infer_kwargs: bool = True
+) -> Dict[str, inspect.Parameter]:
     signature = inspect.signature(method)
     parameters = dict(signature.parameters)
 
@@ -140,7 +142,7 @@ def infer_method_params(cls: Type[T], method: Callable) -> Dict[str, inspect.Par
     if var_positional_key:
         del parameters[var_positional_key]
 
-    if not has_kwargs:
+    if not has_kwargs or not infer_kwargs:
         return parameters
 
     # "mro" is "method resolution order". The first one is the current class, the next is the

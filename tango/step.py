@@ -227,7 +227,7 @@ class Step(Registrable, Generic[T]):
                 f"Tried to make a Step of type {choice}, but ended up with a {subclass}."
             )
 
-        parameters = infer_method_params(subclass, subclass.run)
+        parameters = infer_method_params(subclass, subclass.run, infer_kwargs=False)
         del parameters["self"]
         init_parameters = infer_constructor_params(subclass)
         del init_parameters["self"]

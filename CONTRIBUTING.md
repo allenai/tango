@@ -173,7 +173,8 @@ in addition to everything listed in [Making a pull request](#making-a-pull-reque
     ```
 
     Take a look at any of the other files in that folder to see how it should look exactly.
-5. After that, add any additional requirements that your integration depends on to `requirements.txt`. Be sure to put those under the "Extra dependencies for integrations" section,
+5. And then add `name_of_integration` to the `toctree` in `docs/source/api/integrations/index.rst`.
+6. After that, add any additional requirements that your integration depends on to `requirements.txt`. Be sure to put those under the "Extra dependencies for integrations" section,
     and add the special inline comment `# needed by: name_of_integration`.
-6. And finally, in the `integrations` job definition in `.github/workflows/ci.yml`, add a new object
+7. And finally, in the `integrations` job definition in `.github/workflows/ci.yml`, add a new object
     to the matrix for your integration following the other examples there.
