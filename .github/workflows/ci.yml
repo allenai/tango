@@ -170,6 +170,7 @@ jobs:
           key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.integration.name }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}
           restore-keys: |
             ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.integration.name }}
+            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
