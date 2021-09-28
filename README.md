@@ -50,6 +50,12 @@ A Python library for choreographing your machine learning research.
 pip install ai2-tango
 ```
 
+To install with a specific integration, such as `torch` for example, run
+
+```bash
+pip install ai2-tango[torch]
+```
+
 <!-- end install pip -->
 
 ### Installing from source
@@ -67,6 +73,12 @@ Then run
 
 ```bash
 pip install -e .
+```
+
+To install with a specific integration, such as `torch` for example, run
+
+```bash
+pip install -e .[torch]
 ```
 
 <!-- end install source -->
