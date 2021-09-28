@@ -1,3 +1,6 @@
+################################
+###### Core dependencies #######
+################################
 cached-path>=0.3.0,<0.4.0
 overrides>=3.1,<6.2
 jsonnet>=0.10.0 ; sys.platform != 'win32'
@@ -8,3 +11,12 @@ filelock>=3.0,<4.0
 click>=8.0,<9.0
 click-help-colors>=0.9.1,<0.10.0
 tqdm>=4.62,<4.63
+
+##################################################
+###### Extra dependencies for integrations #######
+##################################################
+# NOTE: we use a special trailing comment on each line to denote which extras
+# each package is needed by. For example, PyTorch is needed by the 'torch' extra
+# that you install with 'pip install tango[torch]'.
+torch>=1.9.0,<1.10.0  # needed by: torch
+numpy  # needed by: torch

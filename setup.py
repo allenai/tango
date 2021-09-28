@@ -1,7 +1,10 @@
+from collections import defaultdict
 from setuptools import setup, find_packages
 
 
 def parse_requirements_file(path):
+    requirements = []
+    extras = defaultdict(list)
     with open(path) as requirements_file:
         import re
 
@@ -15,20 +18,26 @@ def parse_requirements_file(path):
             else:
                 return f"{m.group('name')} @ {req}"
 
-        requirements = []
         for line in requirements_file:
             line = line.strip()
             if line.startswith("#") or len(line) <= 0:
                 continue
-            requirements.append(fix_url_dependencies(line))
-    return requirements
+            req, *needed_by = line.split("# needed by:")
+            req = fix_url_dependencies(req.strip())
+            if needed_by:
+                for extra in needed_by[0].strip().split(","):
+                    extras[extra.strip()].append(req)
+                if req not in extras["all"]:
+                    extras["all"].append(req)
+            else:
+                requirements.append(req)
+    return requirements, extras
 
 
-# Load core requirements.
-install_requirements = parse_requirements_file("requirements.txt")
-
-# Load extra requirements.
-extras = {"dev": parse_requirements_file("dev-requirements.txt")}
+# Load requirements.
+install_requirements, extras = parse_requirements_file("requirements.txt")
+dev_requirements, _ = parse_requirements_file("dev-requirements.txt")
+extras["dev"] = dev_requirements
 
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here so we don't import `cached_path` whilst setting up.
