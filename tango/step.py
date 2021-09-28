@@ -278,7 +278,7 @@ class Step(Registrable, Generic[T]):
 
     @abstractmethod
     def run(self, **kwargs) -> T:
-        """This is the main method of a step. Overwrite this method to define your step's action."""
+        """Execute the step's action."""
         raise NotImplementedError()
 
     def _run_with_work_dir(self, cache: StepCache, **kwargs) -> T:

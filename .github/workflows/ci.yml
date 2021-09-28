@@ -40,7 +40,7 @@ jobs:
 
           - name: Test
             run: |
-              pytest -v --color=yes --ignore=tests/integrations tests/
+              pytest -v --doctest-modules --color=yes --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Build
             run: |

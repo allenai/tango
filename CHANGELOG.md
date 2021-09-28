@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `DatasetRemixStep` in `tango.steps`.
+- Added module `tango.common.sequences`.
+- Added `DatasetDict` class in `tango.common.dataset_dict`.
+
 ### Changed
 
 - `tango run` command will acquire a lock on the directory to avoid race conditions.
