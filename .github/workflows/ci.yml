@@ -201,7 +201,7 @@ jobs:
       - name: Test
         run: |
           . .venv/bin/activate
-          pytest -v --color=yes tests/integrations/${{ matrix.integration.name }}
+          pytest -v --color=yes --doctest-modules tango/integrations/${{ matrix.integration.name }} tests/integrations/${{ matrix.integration.name }}
 
       - name: Clean up
         if: always()

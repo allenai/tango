@@ -11,17 +11,31 @@ from datasets import DatasetDict, Dataset, IterableDatasetDict, IterableDataset
 from tango.step import Step
 
 
-__all__ = ["HuggingFaceDataset"]
+__all__ = ["LoadDataset"]
 
 
-@Step.register("hf_dataset")
-class HuggingFaceDataset(Step):
+@Step.register("datasets::load")
+class LoadDataset(Step):
     """
-    This step loads a HuggingFace dataset.
+    This step loads a `HuggingFace dataset <https://huggingface.co/datasets>`_.
 
     .. tip::
 
-        Registered as a :class:`~tango.step.Step` under the name ``hf_dataset``.
+        Registered as a :class:`~tango.step.Step` under the name ``datasets::load``.
+
+    Examples
+    --------
+
+    .. testsetup::
+
+        from tango import Step
+
+    .. testcode::
+
+        load_step = Step.from_params({
+            "type": "datasets::load",
+            "path": "lhoestq/test",
+        })
 
     """
 
@@ -31,9 +45,9 @@ class HuggingFaceDataset(Step):
 
     def run(self, path: str, **kwargs) -> Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]:  # type: ignore
         """
-        Reads and returns a HuggingFace dataset.
+        Loads a HuggingFace dataset.
 
-        ``path`` is the name of or path to the dataset. Additional ``kwargs`` are passed
-        as-is to ``datasets.load_dataset()``.
+        ``path`` is the canonical name or path to the dataset. Additional key word arguments
+        are passed as-is to :func:`datasets.load_dataset()`.
         """
         return datasets.load_dataset(path, **kwargs)

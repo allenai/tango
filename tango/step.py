@@ -217,6 +217,8 @@ class Step(Registrable, Generic[T]):
                 )
 
         as_registrable = cast(Type[Registrable], cls)
+        if "type" in params and params["type"] not in as_registrable.list_available():
+            as_registrable.search_modules(params["type"])
         choice = params.pop_choice(
             "type", choices=as_registrable.list_available(), default_to_first_choice=True
         )

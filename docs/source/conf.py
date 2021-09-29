@@ -51,7 +51,10 @@ exclude_patterns = ["_build"]
 
 source_suffix = [".rst", ".md"]
 
-intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "datasets": ("https://huggingface.co/docs/datasets", None),
+}
 
 
 # -- Options for HTML output -------------------------------------------------

@@ -5,7 +5,7 @@ from os import PathLike
 import pkgutil
 import signal
 import sys
-from typing import Union, Optional, Set
+from typing import Union, Optional, Set, Iterable
 
 from .exceptions import SigTermReceived
 
@@ -76,3 +76,50 @@ def _parse_bool(value: Union[bool, str]) -> bool:
     if value in {"1", "true", "True", "TRUE"}:
         return True
     return False
+
+
+def find_submodules(
+    module: Optional[str] = None,
+    match: Optional[Set[str]] = None,
+    exclude: Optional[Set[str]] = None,
+    recursive: bool = True,
+) -> Iterable[str]:
+    """
+    Find tango submodules.
+    """
+    from fnmatch import fnmatch
+
+    root = Path(__file__).parent / ".."
+    if module:
+        if module.startswith("tango."):
+            module = module.replace("tango.", "", 1)
+        for m in module.split("."):
+            root = root / m
+        module = f"tango.{module}"
+    else:
+        module = "tango"
+    for path in root.iterdir():
+        if path.name[0] in {"_", "."}:
+            continue
+        submodule: str
+        if path.is_dir():
+            submodule = path.name
+        elif path.suffix == ".py":
+            submodule = path.name[:-3]
+        else:
+            continue
+        submodule = f"{module}.{submodule}"
+        if exclude and any((fnmatch(submodule, pat) for pat in exclude)):
+            continue
+        if match and not any((fnmatch(submodule, pat) for pat in match)):
+            continue
+        yield submodule
+        if recursive and path.is_dir():
+            yield from find_submodules(submodule, match=match, exclude=exclude)
+
+
+def find_integrations() -> Iterable[str]:
+    """
+    Find all tango integration modules.
+    """
+    yield from find_submodules("tango.integrations", recursive=False)
