@@ -24,6 +24,13 @@ class ConfigurationError(TangoError):
         return self.message
 
 
+class RegistryKeyError(ConfigurationError):
+    """
+    A configuration error that is raised when attempting to get a class by a registered name
+    that doesn't exist in the registry.
+    """
+
+
 class SigTermReceived(TangoError):
     """
     Raised when a SIGTERM is caught.

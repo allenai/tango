@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tango run` command will acquire a lock on the directory to avoid race conditions.
 - Integrations can now be installed with `pip install tango[INTEGRATION_NAME]`. For example,
   `pip install tango[torch]`.
+- Added method `Registrable.search_modules()` for automatically finding and importing the modules
+  where a given ``name`` might be registered.
+- `FromParams.from_params()` and `Registrable.resolve_class_name` will now call `Registrable.search_modules()` to automatically import modules where the type might be defined.
+  Thus for classes that are defined and registered within any `tango.*` submodules it is not necessary to explicitly import them.
 
 ### Fixed
 

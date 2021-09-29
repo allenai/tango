@@ -7,10 +7,22 @@ for registering them.
 import importlib
 import logging
 from collections import defaultdict
-from typing import Callable, ClassVar, DefaultDict, Dict, List, Optional, Tuple, Type, TypeVar, cast
+from typing import (
+    Callable,
+    ClassVar,
+    DefaultDict,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    cast,
+)
 
-from .exceptions import ConfigurationError
+from .exceptions import ConfigurationError, RegistryKeyError
 from .from_params import FromParams
+from .util import import_module_and_submodules, find_integrations, find_submodules
 
 logger = logging.getLogger(__name__)
 
@@ -144,8 +156,32 @@ class Registrable(FromParams):
             return cast(Callable[..., _RegistrableT], getattr(subclass, constructor))
 
     @classmethod
+    def search_modules(cls: Type[_RegistrableT], name: str):
+        """
+        Search for an import modules where ``name`` might be registered.
+        """
+        integrations = {m.split(".")[-1]: m for m in find_integrations()}
+        modules: List[str] = []
+        if name in integrations:
+            modules.append(integrations[name])
+        elif "::" in name:
+            maybe_integration = name.split("::")[0]
+            if maybe_integration in integrations:
+                modules.append(integrations[maybe_integration])
+        else:
+            for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
+                modules.append(module)
+        for module in modules:
+            try:
+                import_module_and_submodules(module)
+            except (ModuleNotFoundError, ImportError):
+                continue
+
+    @classmethod
     def resolve_class_name(
-        cls: Type[_RegistrableT], name: str
+        cls: Type[_RegistrableT],
+        name: str,
+        search_modules: bool = True,
     ) -> Tuple[Type[_RegistrableT], Optional[str]]:
         """
         Returns the subclass that corresponds to the given ``name``, along with the name of the
@@ -155,6 +191,10 @@ class Registrable(FromParams):
         was already added to the ``Registry``.  In that case, you cannot use a separate function as
         a constructor (as you need to call ``cls.register()`` in order to tell us what separate
         function to use).
+
+        If the ``name`` given is not in the registry and ``search_modules`` is ``True``,
+        it will search for and import modules where the class might be defined according to
+        :meth:`search_modules()`.
         """
         if name in Registrable._registry[cls]:
             subclass, constructor = Registrable._registry[cls][name]
@@ -183,12 +223,15 @@ class Registrable(FromParams):
                     f"tried to interpret {name} as a path to a class "
                     f"but unable to find class {class_name} in {submodule}"
                 )
-
         else:
             # is not a qualified class name
+            if search_modules:
+                cls.search_modules(name)
+                return cls.resolve_class_name(name, search_modules=False)
+
             available = cls.list_available()
             suggestion = _get_suggestion(name, available)
-            raise ConfigurationError(
+            raise RegistryKeyError(
                 (
                     f"'{name}' is not a registered name for '{cls.__name__}'"
                     + (". " if not suggestion else f", did you mean '{suggestion}'? ")

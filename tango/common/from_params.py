@@ -617,6 +617,8 @@ class FromParams(CustomDetHash):
 
             as_registrable = cast(Type[Registrable], cls)
             default_to_first_choice = as_registrable.default_implementation is not None
+            if "type" in params and params["type"] not in as_registrable.list_available():
+                as_registrable.search_modules(params["type"])
             choice = params.pop_choice(
                 "type",
                 choices=as_registrable.list_available(),
