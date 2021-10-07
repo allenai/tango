@@ -64,7 +64,7 @@ setup(
     author_email="contact@allenai.org",
     license="Apache",
     packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests", "test_fixtures", "test_fixtures.*"],
     ),
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
