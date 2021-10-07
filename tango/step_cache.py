@@ -88,13 +88,13 @@ class MemoryStepCache(StepCache):
         self.cache: Dict[str, Any] = {}
 
     def __getitem__(self, step: "Step") -> Any:
-        return self.cache[step.unique_id()]
+        return self.cache[step.unique_id]
 
     def __setitem__(self, step: "Step", value: Any) -> None:
         if step in self:
-            raise ValueError(f"{step.unique_id()} is already cached! Will not overwrite.")
+            raise ValueError(f"{step.unique_id} is already cached! Will not overwrite.")
         if step.cache_results:
-            self.cache[step.unique_id()] = value
+            self.cache[step.unique_id] = value
         else:
             logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
 
@@ -102,7 +102,7 @@ class MemoryStepCache(StepCache):
         from tango.step import Step
 
         if isinstance(step, Step):
-            return step.unique_id() in self.cache
+            return step.unique_id in self.cache
         else:
             return False
 
@@ -118,7 +118,7 @@ class DirectoryStepCache(StepCache):
     """
     This is a :class:`StepCache` that stores its results on disk, in the location given in ``dir``.
 
-    Every cached step gets a directory under ``dir`` with that step's :meth:`~tango.step.Step.unique_id()`.
+    Every cached step gets a directory under ``dir`` with that step's :attr:`~tango.step.Step.unique_id`.
     In that directory we store the results themselves in some format according to the step's
     :attr:`~tango.step.Step.FORMAT`,
     and we also write a ``metadata.json`` file that stores some metadata. The presence of
@@ -173,7 +173,7 @@ class DirectoryStepCache(StepCache):
         from tango.step import Step
 
         if isinstance(step, Step):
-            key = step.unique_id()
+            key = step.unique_id
             if key in self.strong_cache:
                 return True
             if key in self.weak_cache:
@@ -184,7 +184,7 @@ class DirectoryStepCache(StepCache):
             return False
 
     def __getitem__(self, step: "Step") -> Any:
-        key = step.unique_id()
+        key = step.unique_id
         result = self._get_from_cache(key)
         if result is None:
             if step not in self:
@@ -205,12 +205,12 @@ class DirectoryStepCache(StepCache):
         try:
             step.format.write(value, location)
             metadata = {
-                "step": step.unique_id(),
+                "step": step.unique_id,
                 "checksum": step.format.checksum(location),
             }
             with temp_metadata_location.open("wt") as f:
                 json.dump(metadata, f)
-            self._add_to_cache(step.unique_id(), value)
+            self._add_to_cache(step.unique_id, value)
             temp_metadata_location.rename(metadata_location)
         except:  # noqa: E722
             try:
@@ -226,4 +226,4 @@ class DirectoryStepCache(StepCache):
         """
         Returns a path within the ``self.dir`` associated with the given step.
         """
-        return self.dir / step.unique_id()
+        return self.dir / step.unique_id

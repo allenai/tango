@@ -353,7 +353,7 @@ def construct_arg(
                     popped_params = Params({"type": popped_params})
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
-            result = annotation.from_params(params=popped_params, **subextras)
+            result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
                 if isinstance(result, _RefStep):
@@ -547,7 +547,7 @@ class FromParams(CustomDetHash):
     @classmethod
     def from_params(
         cls: Type[T],
-        params: Union[Params, dict, str],
+        params_: Union[Params, dict, str],
         constructor_to_call: Callable[..., T] = None,
         constructor_to_inspect: Union[Callable[..., T], Callable[[T], None]] = None,
         **extras,
@@ -576,6 +576,8 @@ class FromParams(CustomDetHash):
         """
 
         from tango.common.registrable import Registrable  # import here to avoid circular imports
+
+        params = params_
 
         logger.debug(
             f"instantiating class {cls} from params {getattr(params, 'params', params)} "
@@ -639,7 +641,7 @@ class FromParams(CustomDetHash):
                 # mypy can't follow the typing redirection that we do, so we explicitly cast here.
                 retyped_subclass = cast(Type[T], subclass)
                 return retyped_subclass.from_params(
-                    params=params,
+                    params,
                     constructor_to_call=constructor_to_call,
                     constructor_to_inspect=constructor_to_inspect,
                     **extras,
@@ -651,7 +653,7 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                return subclass(**params)  # type: ignore
+                return subclass(**params, **create_extras(subclass, extras))  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 
@@ -705,7 +707,7 @@ class FromParams(CustomDetHash):
         You don't need to implement this all the time. Tango will let you know if you
         need it.
         """
-        raise NotImplementedError()
+        raise NotImplementedError(f"{self.__class__.__name__}._to_params() needs to be implemented")
 
     def det_hash_object(self) -> Any:
         return self.to_params()

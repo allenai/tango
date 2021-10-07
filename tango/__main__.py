@@ -162,7 +162,7 @@ def run(
                     relative_target = os.readlink(filename)
                     if not relative_target.startswith("step_cache/"):
                         continue
-                    logger.info(
+                    logger.debug(
                         f"Removing symlink '{filename.name}' to previous result {relative_target}"
                     )
                     filename.unlink()
