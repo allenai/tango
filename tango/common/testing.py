@@ -55,7 +55,7 @@ class TangoTestCase:
         if isinstance(config, dict):
             params = Params(config)
             config = self.TEST_DIR / "config.json"
-            params.to_file(config)
+            params.to_file(t.cast(Path, config))
 
         run_dir = self.TEST_DIR / "run"
         _run(str(config), directory=str(run_dir), dry_run=dry_run)
