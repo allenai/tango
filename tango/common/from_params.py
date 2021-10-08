@@ -303,30 +303,12 @@ def construct_arg(
     popped_params: Params,
     annotation: Type,
     default: Any,
-    could_be_step: bool = True,
     **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
     """
-    from tango.step import Step, _RefStep
-
-    if could_be_step:
-        # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
-        # it will fall back to returning a dict. So we can't try parsing as a non-step first.
-        backup_params = deepcopy(popped_params)
-        try:
-            return construct_arg(
-                class_name,
-                argument_name,
-                popped_params,
-                Step[annotation],  # type: ignore
-                default,
-                could_be_step=False,
-                **extras,
-            )
-        except (ValueError, TypeError, ConfigurationError, AttributeError):
-            popped_params = backup_params
+    from tango.step import Step
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
@@ -356,13 +338,6 @@ def construct_arg(
             result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
-                if isinstance(result, _RefStep):
-                    existing_steps: Dict[str, Step] = extras.get("existing_steps", {})
-                    try:
-                        result = existing_steps[result.ref()]
-                    except KeyError:
-                        raise _RefStep.MissingStepError(result.ref())
-
                 expected_return_type = args[0]
                 return_type = inspect.signature(result.run).return_annotation
                 if return_type == inspect.Signature.empty:
@@ -400,7 +375,9 @@ def construct_arg(
         if type(popped_params) == str or isinstance(popped_params, Path):
             return str(popped_params)  # type: ignore
         else:
-            raise TypeError(f"Expected {argument_name} to be a string.")
+            raise TypeError(
+                f"Expected {argument_name} to be a string, found {popped_params} ({type(popped_params)})"
+            )
     elif annotation == float:
         # Floats are special because in Python, you can put an int wherever you can put a float.
         # https://mypy.readthedocs.io/en/stable/duck_type_compatibility.html

@@ -110,6 +110,13 @@ You could then run this experiment with a config that looks like this:
     with run_experiment(config) as run_dir:
         assert (run_dir / "step_cache").is_dir()
 
+.. testoutput::
+
+    ● Starting run for "data"
+    ✓ Finished run for "data"
+    ● Starting run for "train"
+    ✓ Finished run for "train"
+
 """
 
 __all__ = [

@@ -1,5 +1,3 @@
-import copy
-import itertools
 import logging
 import random
 import re
@@ -9,18 +7,13 @@ from tempfile import TemporaryDirectory
 from typing import (
     Optional,
     Any,
-    Set,
-    List,
     Dict,
     Type,
     Union,
     cast,
     TypeVar,
     Generic,
-    Iterable,
-    Tuple,
     Iterator,
-    MutableSet,
     Callable,
 )
 
@@ -46,7 +39,7 @@ from .common.from_params import (
 )
 from .common.logging import TangoLogger
 from .format import Format, DillFormat
-from .step_cache import StepCache, default_step_cache
+from .step_cache import StepCache
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +67,6 @@ class Step(Registrable, Generic[T]):
     * ``only_if_needed`` specifies whether we can skip this step if no other step depends on it. The
       default for this setting is to set it for all steps that don't have an explicit name.
     """
-
-    default_implementation = "ref"
 
     DETERMINISTIC: bool = False
     """This describes whether this step can be relied upon to produce the same results every time
@@ -258,7 +249,6 @@ class Step(Registrable, Generic[T]):
                 param.annotation,
                 param.default,
                 params,
-                existing_steps=existing_steps,
                 **extras,
             )
 
@@ -283,7 +273,7 @@ class Step(Registrable, Generic[T]):
         """Execute the step's action."""
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, cache: StepCache, **kwargs) -> T:
+    def _run_with_work_dir(self, cache: StepCache) -> T:
         if self.work_dir_for_run is not None:
             raise ValueError("You can only run a Step's run() method once at a time.")
 
@@ -292,26 +282,12 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
-            try:
-                import numpy
-
-                numpy.random.seed(784507111)
-            except ImportError:
-                pass
-
-            try:
-                import torch
-
-                torch.manual_seed(784507111)
-            except ImportError:
-                pass
-
         step_dir = cache.path_for_step(self)
         if step_dir is None:
             work_dir = TemporaryDirectory(prefix=self.unique_id + "-", suffix=".work")
             self.work_dir_for_run = Path(work_dir.name)
             try:
-                return self.run(**kwargs)
+                return self.run(**self.kwargs)
             finally:
                 self.work_dir_for_run = None
                 work_dir.cleanup()
@@ -319,7 +295,7 @@ class Step(Registrable, Generic[T]):
             self.work_dir_for_run = step_dir / "work"
             try:
                 self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
-                return self.run(**kwargs)
+                return self.run(**self.kwargs)
             finally:
                 # No cleanup, as we want to keep the directory for restarts or serialization.
                 self.work_dir_for_run = None
@@ -336,31 +312,13 @@ class Step(Registrable, Generic[T]):
             raise ValueError("You can only call this method while the step is running.")
         return self.work_dir_for_run
 
-    @classmethod
-    def _replace_steps_with_results(cls, o: Any, cache: StepCache):
-        if isinstance(o, Step):
-            return o.result(cache)
-        elif isinstance(o, list):
-            return [cls._replace_steps_with_results(i, cache) for i in o]
-        elif isinstance(o, tuple):
-            return tuple(cls._replace_steps_with_results(list(o), cache))
-        elif isinstance(o, set):
-            return {cls._replace_steps_with_results(i, cache) for i in o}
-        elif isinstance(o, dict):
-            return {key: cls._replace_steps_with_results(value, cache) for key, value in o.items()}
-        else:
-            return o
-
-    def result(self, cache: Optional[StepCache] = None) -> T:
+    def result(self, cache: StepCache) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there."""
-        if cache is None:
-            cache = default_step_cache
         if self in cache:
             return cache[self]
 
-        kwargs = self._replace_steps_with_results(self.kwargs, cache)
-        result = self._run_with_work_dir(cache, **kwargs)
+        result = self._run_with_work_dir(cache)
         if self.cache_results:
             cache[self] = result
             if hasattr(result, "__next__"):
@@ -369,23 +327,6 @@ class Step(Registrable, Generic[T]):
                 # for the return value.
                 return cache[self]
         return result
-
-    def ensure_result(self, cache: Optional[StepCache] = None) -> None:
-        """This makes sure that the result of this step is in the cache. It does
-        not return the result."""
-        if not self.cache_results:
-            raise ValueError(
-                "It does not make sense to call ensure_result() on a step that's not cacheable."
-            )
-
-        if cache is None:
-            cache = default_step_cache
-        if self in cache:
-            return
-
-        kwargs = self._replace_steps_with_results(self.kwargs, cache)
-        result = self._run_with_work_dir(cache, **kwargs)
-        cache[self] = result
 
     def det_hash_object(self) -> Any:
         return self.unique_id
@@ -424,161 +365,3 @@ class Step(Registrable, Generic[T]):
             return self.unique_id == other.unique_id
         else:
             return False
-
-    def _ordered_dependencies(self) -> Iterable["Step"]:
-        def dependencies_internal(o: Any) -> Iterable[Step]:
-            if isinstance(o, Step):
-                yield o
-            elif isinstance(o, str):
-                return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-            elif isinstance(o, Iterable):
-                yield from itertools.chain(*(dependencies_internal(i) for i in o))
-            elif isinstance(o, dict):
-                yield from dependencies_internal(o.values())
-            else:
-                return
-
-        return dependencies_internal(self.kwargs.values())
-
-    @property
-    def dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        Does not return recursive dependencies."""
-        return set(self._ordered_dependencies())
-
-    @property
-    def recursive_dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        This returns recursive dependencies."""
-
-        seen = set()
-        steps = list(self.dependencies)
-        while len(steps) > 0:
-            step = steps.pop()
-            if step in seen:
-                continue
-            seen.add(step)
-            steps.extend(step.dependencies)
-        return seen
-
-
-@Step.register("ref")
-class _RefStep(Step[T], Generic[T]):
-    def run(self, *, ref: str) -> T:  # type: ignore
-        raise ConfigurationError(
-            f"Step {self.name} is a RefStep (referring to {ref}). RefSteps cannot be executed. "
-            "They are only useful while parsing an experiment."
-        )
-
-    def ref(self) -> str:
-        return self.kwargs["ref"]
-
-    def det_hash_object(self) -> Any:
-        # If we're using a RefStep to compute a unique ID, something has gone wrong. The unique ID would
-        # change once the RefStep is replaced with the actual step. Unique IDs are never supposed to
-        # change.
-        raise ValueError("Cannot compute hash of a _RefStep object.")
-
-    class MissingStepError(Exception):
-        def __init__(self, ref: str):
-            self.ref = ref
-
-
-def step_graph_from_params(params: Union[Params, Dict[str, Dict[str, Any]]]) -> Dict[str, Step]:
-    """Given a mapping from strings to :class:`Step` parameter mappings,
-    this parses each step's parameters into a :class:`Step` and resolves dependencies
-    between the steps.
-
-    Returns a dictionary mapping step names to instances of :class:`Step`."""
-    # This algorithm for resolving step dependencies is O(n^2). Since we're
-    # anticipating the number of steps to be in the dozens at most, we choose
-    # simplicity over cleverness.
-    unparsed_steps: Dict[str, Params] = {key: Params(value) for key, value in params.items()}
-    next_unparsed_steps: Dict[str, Params] = {}
-    parsed_steps: Dict[str, Step] = {}
-    steps_parsed = 0
-    while len(unparsed_steps) > 0 or len(next_unparsed_steps) > 0:
-        if len(unparsed_steps) <= 0:
-            if steps_parsed <= 0:
-                raise ConfigurationError(
-                    f"Cannot parse steps {','.join(next_unparsed_steps.keys())}. Do you have a "
-                    f"circle in your steps, or are you referring to a step that doesn't exist?"
-                )
-            unparsed_steps = next_unparsed_steps
-            next_unparsed_steps = {}
-            steps_parsed = 0
-        step_name, step_params = unparsed_steps.popitem()
-        if step_name in parsed_steps:
-            raise ConfigurationError(f"Duplicate step name {step_name}")
-        step_params_backup = copy.deepcopy(step_params)
-        try:
-            parsed_steps[step_name] = Step.from_params(
-                step_params, existing_steps=parsed_steps, step_name=step_name
-            )
-            steps_parsed += 1
-        except _RefStep.MissingStepError:
-            next_unparsed_steps[step_name] = step_params_backup
-
-    # Sanity-check the graph
-    for step in parsed_steps.values():
-        if step.cache_results:
-            nondeterministic_dependencies = [
-                s for s in step.recursive_dependencies if not s.DETERMINISTIC
-            ]
-            if len(nondeterministic_dependencies) > 0:
-                nd_step = nondeterministic_dependencies[0]
-                logger.warning(
-                    f"Task {step.name} is set to cache results, but depends on non-deterministic "
-                    f"step {nd_step.name}. This will produce confusing results."
-                )
-                # We show this warning only once.
-                break
-
-    return parsed_steps
-
-
-def tango_dry_run(
-    step_or_steps: Union[Step, Iterable[Step]], step_cache: Optional[StepCache]
-) -> List[Tuple[Step, bool]]:
-    """
-    Returns the list of steps that will be run, or read from cache, if you call
-    a step's :meth:`~tango.step.Step.result()` method.
-
-    Steps come out as tuples ``(step, read_from_cache)``, so you can see which
-    steps will be read from cache, and which have to be run.
-    """
-    if isinstance(step_or_steps, Step):
-        steps = [step_or_steps]
-    else:
-        steps = list(step_or_steps)
-
-    cached_steps: MutableSet[Step]
-    if step_cache is None:
-        cached_steps = set()
-    else:
-
-        class SetWithFallback(set):
-            def __contains__(self, item):
-                return item in step_cache or super().__contains__(item)  # type: ignore[operator]
-
-        cached_steps = SetWithFallback()
-
-    result = []
-    seen_steps = set()
-    steps.reverse()
-    while len(steps) > 0:
-        step = steps.pop()
-        if step in seen_steps:
-            continue
-        dependencies = [s for s in step._ordered_dependencies() if s not in seen_steps]
-        if len(dependencies) <= 0:
-            result.append((step, step in cached_steps))
-            cached_steps.add(step)
-            seen_steps.add(step)
-        else:
-            steps.append(step)
-            steps.extend(dependencies)
-
-    return result

@@ -6,16 +6,18 @@ __all__ = [
     "Format",
     "DillFormat",
     "DillFormatIterator",
+    "Executor",
     "JsonFormat",
     "JsonFormatIterator",
     "Step",
-    "step_graph_from_params",
-    "tango_dry_run",
+    "StepGraph",
+    "StepStub",
     "StepCache",
-    "MemoryStepCache",
     "DirectoryStepCache",
 ]
 
+from .executor import Executor, SimpleExecutor
 from .format import Format, DillFormat, DillFormatIterator, JsonFormat, JsonFormatIterator
-from .step import Step, step_graph_from_params, tango_dry_run
-from .step_cache import StepCache, MemoryStepCache, DirectoryStepCache
+from .step import Step
+from .step_cache import StepCache, DirectoryStepCache
+from .step_graph import StepGraph, StepStub

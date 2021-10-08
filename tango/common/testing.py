@@ -48,7 +48,7 @@ class TangoTestCase:
         shutil.rmtree(self.TEST_DIR)
         Registrable._registry = self._original_registry
 
-    def run(self, config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool = False) -> Path:
+    def run(self, config: t.Union[PathOrStr, t.Dict[str, t.Any]]) -> Path:
         from .params import Params
         from tango.__main__ import _run
 
@@ -58,12 +58,12 @@ class TangoTestCase:
             params.to_file(t.cast(Path, config))
 
         run_dir = self.TEST_DIR / "run"
-        _run(str(config), directory=str(run_dir), dry_run=dry_run)
+        _run(str(config), directory=str(run_dir))
         return run_dir
 
 
 @contextmanager
-def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool = False):
+def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]]):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the cache directory, a temporary directory that will be
@@ -72,6 +72,6 @@ def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config, dry_run=dry_run)
+        yield test_case.run(config)
     finally:
         test_case.teardown_method()
