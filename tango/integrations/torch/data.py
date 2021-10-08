@@ -11,6 +11,8 @@ class DataCollator(t.Generic[T], Registrable):
     """
     A :class:`~tango.common.registrable.Registrable` version of a ``collate_fn``
     for a ``DataLoader``.
+
+    Subclasses just need to implement :meth:`__call__()`.
     """
 
     default_implementation = "concat_tensor_dicts"
@@ -19,6 +21,9 @@ class DataCollator(t.Generic[T], Registrable):
     """
 
     def __call__(self, items: t.List[T]) -> t.Dict[str, t.Any]:
+        """
+        Takes a list of items from a dataset and combines them into a batch.
+        """
         raise NotADirectoryError
 
 

@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Set
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
@@ -145,13 +145,13 @@ def _run(
 
     if dry_run:
         click.secho("Dry run:", bold=True)
-        for name, step in step_graph.items():
-            if step.only_if_needed:
-                click.secho(f"Skipping {name} as it is not needed", fg="yellow")
+        all_steps = set(step_graph.keys())
+        steps_needed: Set[str] = set()
         dry_run_steps = tango_dry_run(
             (s for s in step_graph.values() if not s.only_if_needed), step_cache
         )
         for i, (step, cached) in enumerate(dry_run_steps):
+            steps_needed.add(step.name)
             if cached:
                 click.echo(
                     f"[{i+1}/{len(dry_run_steps)}] "
@@ -165,6 +165,9 @@ def _run(
                     + click.style("● Computing ", fg="green")
                     + click.style(f"{step.name}", bold=True, fg="green")
                 )
+        for name in all_steps:
+            if name not in steps_needed:
+                click.secho(f"Skipped {name} as it is not needed", fg="yellow")
     else:
         assert isinstance(directory, Path)
         assert isinstance(step_cache, DirectoryStepCache)

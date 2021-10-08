@@ -10,6 +10,7 @@ Steps
 ~~~~~
 
 .. autoclass:: tango.integrations.torch.TorchTrainStep
+   :members:
 
 Formats
 ~~~~~~~
@@ -33,6 +34,7 @@ Registrable torch classes
 
 .. autoclass:: tango.integrations.torch.DataCollator
    :members:
+   :special-members: __call__
 
 .. autoclass:: tango.integrations.torch.ConcatTensorDictsCollator
    :members:

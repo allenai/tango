@@ -37,7 +37,7 @@ class TorchTrainStep(Step):
 
     def run(  # type: ignore[override]
         self,
-        model: Model,
+        model: Lazy[Model],
         dataset_dict: DatasetDict,
         train_dataloader: Lazy[DataLoader],
         optimizer: Lazy[Optimizer],
@@ -53,6 +53,8 @@ class TorchTrainStep(Step):
         log_every: int = 10,
         checkpoint_every: int = 100,
         validate_every: int = 100,
+        amp: bool = False,
+        max_grad_norm: t.Optional[float] = None,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -60,51 +62,75 @@ class TorchTrainStep(Step):
         Parameters
         ----------
 
-        model :
+        model : :class:`Model`
             The model to train. It should return a ``dict`` that includes the ``loss``
             during training and validation.
-        dataset_dict :
+        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDict`
             The train and optional validation data.
-        train_dataloader :
+        train_dataloader : :class:`DataLoader`
             The data loader that generates training batches. The batches should be :class:`dict`
             objects.
-        optimizer :
+        optimizer : :class:`Optimizer`
             A PyTorch :class:`~torch.optim.Optimizer`.
-        train_split :
+        train_split : :class:`str`, optional
             The name of the data split used for training in the ``dataset_dict``.
-        validation_split :
-            Optional name of the validation split in the ``dataset_dict``.
-        lr_scheduler :
+            Default is "train".
+        validation_split : :class:`str`, optional
+            Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
+            which means no validation.
+        lr_scheduler : :class:`LRScheduler`, optional
             An optional
             `learning rate scheduler <https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate>`_
             to adjust the learning rate throughout training.
-        validation_dataloader :
+        validation_dataloader : :class:`DataLoader`, optional
             An optional data loader for generating validation batches. The batches should be
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
             as the train ``DataLoader``.
-        seed :
+        seed : :class:`int`, optional
             Used to set the RNG states at the beginning of training.
-        train_steps :
+        train_steps : :class:`int`, optional
             The number of steps to train for. If not specified training will
             stop after a complete iteration through the `train_dataloader`.
-        validation_steps :
+        validation_steps : :class:`int`, optional
             The number of steps to validate for. If not specified validation
             will stop after a complete iteration through the `validation_dataloader`.
-        grad_accum :
-            The number of gradient accumulation steps.
-        log_every :
+        grad_accum : :class:`int`, optional
+            The number of gradient accumulation steps. Defaults to 1.
+
+            .. note::
+                This parameter - in conjuction with the settings of your data loader
+                and the number distributed workers -
+                determines the *effective batch size* of your training run.
+
+        log_every : :class:`int`, optional
             Log every this many steps.
-        checkpoint_every :
+        checkpoint_every : :class:`int`, optional
             Save a checkpoint every this many steps.
-        validate_every :
+        validate_every : :class:`int`, optional
             Run the validation loop every this many steps.
+        amp : :class:`bool`, optional
+            Use automatic mixed precision. Default is ``False``.
+        max_grad_norm : :class:`float`, optional
+            If set, gradients will be clipped to have this max norm. Default is ``None``.
+
+        Returns
+        -------
+        :class:`Model`
+            The trained model.
 
         """
         device: torch.device = torch.device("cpu")
         if torch.cuda.is_available():
             self.logger.info("CUDA is available")
             device = torch.device("cuda")
+        else:
+            if amp:
+                raise ValueError("AMP requires CUDA")
+
+        grad_scaler: t.Optional[torch.cuda.amp.GradScaler] = None
+        if amp:
+            grad_scaler = torch.cuda.amp.GradScaler()
 
         # TODO
         is_distributed = False
@@ -142,6 +168,7 @@ class TorchTrainStep(Step):
             initial_state = torch.load(state_path)
 
         # Prepare model.
+        model: Model = model.construct()
         model = model.to(device)
         if initial_state is not None:
             model.load_state_dict(initial_state["model"])
@@ -219,12 +246,19 @@ class TorchTrainStep(Step):
                     micro_batch = move_to_device(micro_batch, device)
 
                     # Get loss.
-                    outputs = model(**micro_batch)
-                    micro_batch_loss = outputs["loss"] / len(batch)
+                    with torch.cuda.amp.autocast(enabled=amp):
+                        outputs = model(**micro_batch)
+                        micro_batch_loss = outputs["loss"] / len(batch)
+
+                    if torch.isnan(micro_batch_loss):
+                        raise ValueError("nan loss encountered")
                     batch_loss += micro_batch_loss.detach().item()
 
                     # Calculate gradients.
-                    micro_batch_loss.backward()
+                    if grad_scaler is not None:
+                        grad_scaler.scale(micro_batch_loss).backward()
+                    else:
+                        micro_batch_loss.backward()
 
                     # Clean up in case it saves memory.
                     del micro_batch
@@ -233,8 +267,22 @@ class TorchTrainStep(Step):
 
                 del batch
 
-                # Take step.
-                optimizer.step()
+                # Unscale gradients.
+                if grad_scaler is not None:
+                    grad_scaler.unscale_(optimizer)
+
+                # Clip gradients.
+                if max_grad_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+
+                # Take optimizer step.
+                if grad_scaler is not None:
+                    grad_scaler.step(optimizer)
+                    grad_scaler.update()
+                else:
+                    optimizer.step()
+
+                # Adjust LR schedule.
                 if lr_scheduler is not None:
                     lr_scheduler.step()
 
@@ -285,8 +333,9 @@ class TorchTrainStep(Step):
                             val_batch = move_to_device(val_batch, device)
 
                             # Get loss.
-                            with torch.inference_mode():
-                                outputs = model(**val_batch)
+                            with torch.cuda.amp.autocast(enabled=amp):
+                                with torch.inference_mode():
+                                    outputs = model(**val_batch)
                             loss = outputs["loss"]
 
                             running_loss += loss.item()
