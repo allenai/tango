@@ -100,8 +100,8 @@ class TestFromParams(TangoTestCase):
         params = Params({"type": "b", "size": 10})
         b = A.from_params(params, name="extra", unwanted=True)  # type: ignore[assignment]
 
-        assert b.name == "extra"
-        assert b.size == 10
+        assert b.name == "extra"  # type: ignore[attr-defined]
+        assert b.size == 10  # type: ignore[attr-defined]
 
         # Now the same with a custom from_params.
         params = Params({"type": "c", "name": "extra_c"})
@@ -113,8 +113,8 @@ class TestFromParams(TangoTestCase):
         params = Params({"type": "c", "name": "extra_c"})
         c = A.from_params(params, size=20, unwanted=True)  # type: ignore[assignment]
 
-        assert c.name == "extra_c"
-        assert c.size == 20
+        assert c.name == "extra_c"  # type: ignore[attr-defined]
+        assert c.size == 20  # type: ignore[attr-defined]
 
     def test_extras_for_custom_classes(self):
         class BaseClass(Registrable):
@@ -217,7 +217,7 @@ class TestFromParams(TangoTestCase):
         tval1 = 5
         tval2 = 6
         d: D = BaseClass.from_params(  # type: ignore[assignment]
-            params=params, extra=extra, a=tval1, c=tval2, n=10
+            params, extra=extra, a=tval1, c=tval2, n=10
         )
 
         # Tests for List # Parameters
@@ -509,11 +509,11 @@ class TestFromParams(TangoTestCase):
                 super().__init__(**kwargs)
                 self.b = b
 
-        b1 = B1.from_params(params=Params({"a": 4, "b": 5}))
+        b1 = B1.from_params(Params({"a": 4, "b": 5}))
         assert b1.b == 5
         assert b1.a == 4
 
-        b2 = B2.from_params(params=Params({"a": 4, "b": 5}))
+        b2 = B2.from_params(Params({"a": 4, "b": 5}))
         assert b2.b == 5
         assert b2.a == 4
 
@@ -774,9 +774,7 @@ class TestFromParams(TangoTestCase):
                 self.nested_class = nested_class
 
         with pytest.raises(ConfigurationError):
-            WrapperClass.from_params(
-                params=Params({"nested_class": {"wrong_varname": "varstring"}})
-            )
+            WrapperClass.from_params(Params({"nested_class": {"wrong_varname": "varstring"}}))
 
     def test_from_params_handles_base_class_kwargs(self):
         class Foo(FromParams):
@@ -858,18 +856,19 @@ class TestFromParams(TangoTestCase):
         foo = Bar.from_params(  # type: ignore[assignment]
             Params({"type": "foo", "a": 2, "b": "hi", "c": {"2": "3"}})
         )
-        assert foo.a == 2
-        assert foo.b == "hi"
+        assert foo.a == 2  # type: ignore[attr-defined]
+        assert foo.b == "hi"  # type: ignore[attr-defined]
         assert foo.c == {"2": "3"}  # type: ignore[attr-defined]
 
-    def test_from_params_does_not_pass_extras_to_non_from_params_registered_class(self):
+    def test_from_params_passes_extras_to_non_from_params_registered_class(self):
         class Bar(Registrable):
             pass
 
         class Baz:
-            def __init__(self, a: int, c: Dict[str, str] = None) -> None:
+            def __init__(self, a: int, c: Dict[str, str] = None, extra: str = "idk") -> None:
                 self.a = a
                 self.c = c
+                self.extra = extra
 
         @Bar.register("foo")
         class Foo(Baz):
@@ -883,11 +882,12 @@ class TestFromParams(TangoTestCase):
         assert foo.c is None
 
         foo = Bar.from_params(  # type: ignore[assignment]
-            params=Params({"type": "foo", "a": 2, "b": "hi", "c": {"2": "3"}}), extra="4"
+            Params({"type": "foo", "a": 2, "b": "hi", "c": {"2": "3"}}), extra="4"
         )
-        assert foo.a == 2
-        assert foo.b == "hi"
+        assert foo.a == 2  # type: ignore[attr-defined]
+        assert foo.b == "hi"  # type: ignore[attr-defined]
         assert foo.c == {"2": "3"}  # type: ignore[attr-defined]
+        assert foo.extra == "4"  # type: ignore[attr-defined]
 
     def test_from_params_child_has_kwargs_base_implicit_constructor(self):
         class Foo(FromParams):

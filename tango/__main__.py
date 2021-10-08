@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Set
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
@@ -81,6 +81,24 @@ def run(
     """
     Run a tango experiment.
     """
+    _run(
+        experiment,
+        directory=directory,
+        overrides=overrides,
+        dry_run=dry_run,
+        include_package=include_package,
+        file_friendly_logging=file_friendly_logging,
+    )
+
+
+def _run(
+    experiment: str,
+    directory: Optional[Union[str, os.PathLike]] = None,
+    overrides: Optional[str] = None,
+    dry_run: bool = False,
+    include_package: Optional[List[str]] = None,
+    file_friendly_logging: bool = False,
+):
     if file_friendly_logging:
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
@@ -127,13 +145,13 @@ def run(
 
     if dry_run:
         click.secho("Dry run:", bold=True)
-        for name, step in step_graph.items():
-            if step.only_if_needed:
-                click.secho(f"Skipping {name} as it is not needed", fg="yellow")
+        all_steps = set(step_graph.keys())
+        steps_needed: Set[str] = set()
         dry_run_steps = tango_dry_run(
             (s for s in step_graph.values() if not s.only_if_needed), step_cache
         )
         for i, (step, cached) in enumerate(dry_run_steps):
+            steps_needed.add(step.name)
             if cached:
                 click.echo(
                     f"[{i+1}/{len(dry_run_steps)}] "
@@ -147,6 +165,9 @@ def run(
                     + click.style("● Computing ", fg="green")
                     + click.style(f"{step.name}", bold=True, fg="green")
                 )
+        for name in all_steps:
+            if name not in steps_needed:
+                click.secho(f"Skipped {name} as it is not needed", fg="yellow")
     else:
         assert isinstance(directory, Path)
         assert isinstance(step_cache, DirectoryStepCache)
@@ -162,7 +183,7 @@ def run(
                     relative_target = os.readlink(filename)
                     if not relative_target.startswith("step_cache/"):
                         continue
-                    logger.info(
+                    logger.debug(
                         f"Removing symlink '{filename.name}' to previous result {relative_target}"
                     )
                     filename.unlink()

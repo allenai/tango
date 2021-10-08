@@ -46,7 +46,7 @@ class Format(Registrable, Generic[T]):
     VERSION: int = NotImplemented
     """
     Formats can have versions. Versions are part of a step's unique signature, part of
-    :meth:`~tango.step.Step.unique_id()`, so when a step's format changes,
+    :attr:`~tango.step.Step.unique_id`, so when a step's format changes,
     that will cause the step to be recomputed.
     """
 

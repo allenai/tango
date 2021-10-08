@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a basic PyTorch training step registered as `"torch::train"`, along with other registrable
+  components, such as `Model`, `DataLoader`, `DataCollator`, `Optimizer`, and `LRScheduler`.
 - Added `DatasetRemixStep` in `tango.steps`.
 - Added module `tango.common.sequences`.
 - Added `DatasetDict` class in `tango.common.dataset_dict`.
@@ -16,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Step.work_dir`, `Step.unique_id`, `Step.dependencies`, and `Step.recursive_dependencies`
+  are now a properties instead of methods.
 - `tango run` command will acquire a lock on the directory to avoid race conditions.
 - Integrations can now be installed with `pip install tango[INTEGRATION_NAME]`. For example,
   `pip install tango[torch]`.

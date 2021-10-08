@@ -123,7 +123,7 @@ class Step(Registrable, Generic[T]):
 
         self.unique_id_cache: Optional[str] = None
         if step_name is None:
-            self.name = self.unique_id()
+            self.name = self.unique_id
         else:
             self.name = step_name
 
@@ -308,7 +308,7 @@ class Step(Registrable, Generic[T]):
 
         step_dir = cache.path_for_step(self)
         if step_dir is None:
-            work_dir = TemporaryDirectory(prefix=self.unique_id() + "-", suffix=".work")
+            work_dir = TemporaryDirectory(prefix=self.unique_id + "-", suffix=".work")
             self.work_dir_for_run = Path(work_dir.name)
             try:
                 return self.run(**kwargs)
@@ -324,6 +324,7 @@ class Step(Registrable, Generic[T]):
                 # No cleanup, as we want to keep the directory for restarts or serialization.
                 self.work_dir_for_run = None
 
+    @property
     def work_dir(self) -> Path:
         """
         Returns a work directory that a step can use while its ``run()`` method runs.
@@ -387,8 +388,9 @@ class Step(Registrable, Generic[T]):
         cache[self] = result
 
     def det_hash_object(self) -> Any:
-        return self.unique_id()
+        return self.unique_id
 
+    @property
     def unique_id(self) -> str:
         """Returns the unique ID for this step.
 
@@ -415,11 +417,11 @@ class Step(Registrable, Generic[T]):
         return self.unique_id_cache
 
     def __hash__(self):
-        return hash(self.unique_id())
+        return hash(self.unique_id)
 
     def __eq__(self, other):
         if isinstance(other, Step):
-            return self.unique_id() == other.unique_id()
+            return self.unique_id == other.unique_id
         else:
             return False
 
@@ -438,25 +440,27 @@ class Step(Registrable, Generic[T]):
 
         return dependencies_internal(self.kwargs.values())
 
+    @property
     def dependencies(self) -> Set["Step"]:
         """Returns a set of steps that this step depends on.
 
         Does not return recursive dependencies."""
         return set(self._ordered_dependencies())
 
+    @property
     def recursive_dependencies(self) -> Set["Step"]:
         """Returns a set of steps that this step depends on.
 
         This returns recursive dependencies."""
 
         seen = set()
-        steps = list(self.dependencies())
+        steps = list(self.dependencies)
         while len(steps) > 0:
             step = steps.pop()
             if step in seen:
                 continue
             seen.add(step)
-            steps.extend(step.dependencies())
+            steps.extend(step.dependencies)
         return seen
 
 
@@ -521,7 +525,7 @@ def step_graph_from_params(params: Union[Params, Dict[str, Dict[str, Any]]]) -> 
     for step in parsed_steps.values():
         if step.cache_results:
             nondeterministic_dependencies = [
-                s for s in step.recursive_dependencies() if not s.DETERMINISTIC
+                s for s in step.recursive_dependencies if not s.DETERMINISTIC
             ]
             if len(nondeterministic_dependencies) > 0:
                 nd_step = nondeterministic_dependencies[0]

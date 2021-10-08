@@ -81,6 +81,23 @@ class TestStep(TangoTestCase):
         assert isinstance(step_graph["hello_world"], ConcatStringsStep)
         assert step_graph["hello_world"].kwargs["string1"] == step_graph["hello"]
 
+    def test_make_step_graph_chained_refs(self):
+        params = {
+            "string0": {"type": "string", "result": "Hello"},
+            "string1": {"type": "string", "result": {"ref": "string0"}},
+            "string2": {"type": "string", "result": "World!"},
+            "hello_world": {
+                "type": "concat_strings",
+                "string1": {"type": "ref", "ref": "string1"},
+                "string2": {"type": "ref", "ref": "string2"},
+                "join_with": ", ",
+            },
+        }
+        step_graph = step_graph_from_params(params)  # type: ignore[arg-type]
+        assert step_graph["hello_world"].kwargs["string1"] == step_graph["string1"]
+        assert step_graph["hello_world"].kwargs["string1"].kwargs["result"] == step_graph["string0"]
+        assert step_graph["hello_world"].kwargs["string2"] == step_graph["string2"]
+
     def test_make_step_graph_missing_step(self):
         params = {
             "hello_world": {
@@ -92,6 +109,35 @@ class TestStep(TangoTestCase):
         }
         with pytest.raises(ConfigurationError):
             step_graph_from_params(params)
+
+    #  def test_ref_step_within_object(self):
+    #      from tango.common.from_params import FromParams
+    #      class Baz:
+    #          def __init__(self, a: str):
+    #              assert isinstance(a, str), a
+    #              self.a = a
+
+    #      @Step.register("baz")
+    #      class BazStep(Step):
+    #          def run(self, a: str) -> Baz:  # type: ignore[override]
+    #              assert isinstance(a, str), a
+    #              return Baz(a)
+
+    #      class Bar(FromParams):
+    #          def __init__(self, baz: Baz):
+    #              assert isinstance(baz, Baz), baz
+    #              self.baz = baz
+
+    #      @Step.register("foo")
+    #      class Foo(Step):
+    #          def run(self, bar: Bar) -> str:  # type: ignore[override]
+    #              return bar.baz.a
+
+    #      params = {
+    #          "baz": {"type": "baz", "a": "hello"},
+    #          "foo": {"type": "foo", "bar": {"baz": {"type": "ref", "ref": "baz"}}},
+    #      }
+    #      step_graph_from_params(params)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("deterministic", [True, False])
     @flaky

@@ -37,7 +37,7 @@ def parse_requirements_file(path):
 # Load requirements.
 install_requirements, extras = parse_requirements_file("requirements.txt")
 dev_requirements, _ = parse_requirements_file("dev-requirements.txt")
-extras["dev"] = dev_requirements
+extras["dev"] = dev_requirements + extras["all"]
 
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here so we don't import `cached_path` whilst setting up.
@@ -64,7 +64,7 @@ setup(
     author_email="contact@allenai.org",
     license="Apache",
     packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests", "test_fixtures", "test_fixtures.*"],
     ),
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,

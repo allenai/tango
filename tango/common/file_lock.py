@@ -1,7 +1,7 @@
 import os
 import warnings
 
-from filelock import FileLock as _FileLock, Timeout
+from filelock import FileLock as _FileLock, Timeout, AcquireReturnProxy
 from overrides import overrides
 
 from .util import PathOrStr
@@ -23,7 +23,7 @@ class FileLock(_FileLock):
         self._read_only_ok = read_only_ok
 
     @overrides
-    def acquire(self, timeout=None, poll_intervall=0.05):
+    def acquire(self, timeout=None, poll_intervall=0.05) -> AcquireReturnProxy:
         try:
             return super().acquire(timeout=timeout, poll_intervall=poll_intervall)
         except OSError as err:

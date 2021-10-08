@@ -31,3 +31,6 @@ class DatasetDict(Generic[T]):
         Returns the number of splits.
         """
         return len(self.splits)
+
+    def keys(self):
+        return self.splits.keys()
