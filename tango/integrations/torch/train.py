@@ -152,7 +152,11 @@ class TorchTrainStep(Step):
         validation_dataloader: t.Optional[DataLoader] = t.cast(
             t.Optional[DataLoader], validation_dataloader
         )
-        train_dataloader: DataLoader = train_dataloader.construct(dataset=dataset_dict[train_split])
+        try:
+            train_dataset = dataset_dict[train_split]
+        except KeyError:
+            raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
+        train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
         if train_steps is None:
             train_steps = len(train_dataloader)
@@ -180,7 +184,7 @@ class TorchTrainStep(Step):
         if lr_scheduler is not None:
             lr_scheduler = lr_scheduler.construct(optimizer=optimizer)
             if initial_state is not None:
-                lr_scheduler.load_state_dict(initial_state["lr_scheduler"])
+                lr_scheduler.load_state_dict(initial_state["scheduler"])
         lr_scheduler: t.Optional[LRScheduler] = t.cast(t.Optional[LRScheduler], lr_scheduler)
 
         # Set random seeds.

@@ -371,11 +371,15 @@ def construct_arg(
                         "debugging, so we recommend them highly.",
                         result.__class__.__name__,
                     )
-                elif not issubclass(return_type, expected_return_type):
-                    raise ConfigurationError(
-                        f"Step {result.name} returns {return_type}, but "
-                        f"we expected {expected_return_type}."
-                    )
+                else:
+                    try:
+                        if not issubclass(return_type, expected_return_type):
+                            raise ConfigurationError(
+                                f"Step {result.name} returns {return_type}, but "
+                                f"we expected {expected_return_type}."
+                            )
+                    except TypeError:
+                        pass
 
             return result
         elif not optional:
@@ -653,7 +657,7 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                return subclass(**params, **create_extras(subclass, extras))  # type: ignore
+                return constructor_to_call(**params, **create_extras(constructor_to_call, extras))  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 
