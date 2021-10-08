@@ -52,7 +52,7 @@ Lastly, we'll need a step to generate data:
         DETERMINISTIC = True
         CACHEABLE = False
 
-        def run(self) -> DatasetDict:  # type: ignore[override]
+        def run(self) -> DatasetDict:
             torch.manual_seed(1)
             return DatasetDict(
                 {
