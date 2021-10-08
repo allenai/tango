@@ -37,7 +37,7 @@ def parse_requirements_file(path):
 # Load requirements.
 install_requirements, extras = parse_requirements_file("requirements.txt")
 dev_requirements, _ = parse_requirements_file("dev-requirements.txt")
-extras["dev"] = dev_requirements
+extras["dev"] = dev_requirements + extras["all"]
 
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here so we don't import `cached_path` whilst setting up.
