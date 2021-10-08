@@ -14,6 +14,9 @@ class DataCollator(t.Generic[T], Registrable):
     """
 
     default_implementation = "concat_tensor_dicts"
+    """
+    The default implementation is :class:`ConcatTensorDictsCollator`.
+    """
 
     def __call__(self, items: t.List[T]) -> t.Dict[str, t.Any]:
         raise NotADirectoryError
@@ -22,8 +25,12 @@ class DataCollator(t.Generic[T], Registrable):
 @DataCollator.register("concat_tensor_dicts")
 class ConcatTensorDictsCollator(DataCollator[t.Dict[str, torch.Tensor]]):
     """
-    A simple ``collate_fn`` that expects them items to be dictionaries of tensors.
+    A simple ``collate_fn`` that expects items to be dictionaries of tensors.
     The tensors are just concatenated together.
+
+    .. tip::
+
+        Registered as a :class:`DataCollator` under the name ``concat_tensor_dicts``.
     """
 
     def __call__(self, items: t.List[t.Dict[str, torch.Tensor]]) -> t.Dict[str, t.Any]:

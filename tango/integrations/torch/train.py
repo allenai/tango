@@ -23,6 +23,14 @@ from tango.step import Step
 
 @Step.register("torch::train")
 class TorchTrainStep(Step):
+    """
+    A basic training loop step.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name ``torch::train``.
+    """
+
     DETERMINISTIC: bool = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()

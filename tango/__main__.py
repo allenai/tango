@@ -81,6 +81,24 @@ def run(
     """
     Run a tango experiment.
     """
+    _run(
+        experiment,
+        directory=directory,
+        overrides=overrides,
+        dry_run=dry_run,
+        include_package=include_package,
+        file_friendly_logging=file_friendly_logging,
+    )
+
+
+def _run(
+    experiment: str,
+    directory: Optional[Union[str, os.PathLike]] = None,
+    overrides: Optional[str] = None,
+    dry_run: bool = False,
+    include_package: Optional[List[str]] = None,
+    file_friendly_logging: bool = False,
+):
     if file_friendly_logging:
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
