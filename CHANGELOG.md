@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `StepGraph` and `Executor` abstractions.
 - Added a basic PyTorch training step registered as `"torch::train"`, along with other registrable
   components, such as `Model`, `DataLoader`, `DataCollator`, `Optimizer`, and `LRScheduler`.
 - Added `DatasetRemixStep` in `tango.steps`.
