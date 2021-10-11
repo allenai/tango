@@ -120,6 +120,11 @@ class TorchTrainStep(Step):
             The trained model.
 
         """
+        # TODO
+        is_distributed = False
+        worker_id = 0
+        is_local_main_process = worker_id == 0
+
         device: torch.device = torch.device("cpu")
         if torch.cuda.is_available():
             self.logger.info("CUDA is available")
@@ -131,11 +136,6 @@ class TorchTrainStep(Step):
         grad_scaler: t.Optional[torch.cuda.amp.GradScaler] = None
         if amp:
             grad_scaler = torch.cuda.amp.GradScaler()
-
-        # TODO
-        is_distributed = False
-        worker_id = 0
-        is_local_main_process = worker_id == 0
 
         state_path = self.work_dir / f"state_worker{worker_id}.pt"
 

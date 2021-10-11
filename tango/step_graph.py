@@ -10,18 +10,34 @@ from tango.common.params import Params
 @dataclass
 class StepStub:
     """
-    Stub for a step.
+    Stub for a :class:`~tango.step.Step`.
     """
 
     name: str
+    """
+    The name of the step.
+    """
+
     config: Dict[str, Any]
+    """
+    The configuration for the step.
+    """
+
     dependencies: Set[str]
+    """
+    The other steps that this step directly depends on.
+    """
 
 
 class StepGraph(Sequence):
     """
-    A step graph represents an experiment. It consists of an ordered sequence
-    of :class:`StepStub`, where later steps may depend on earlier steps.
+    Represents an experiment as a graph.
+
+    It can be treated as either a :class:`~collections.abc.Mapping` of step names (``str``)
+    to :class:`StepStub`, or simply a :class:`~collections.abc.Sequence` of :class:`StepStub`.
+
+    When treated as a sequence, it can be assumed that no step in the sequence depends on a step
+    before it.
     """
 
     def __init__(self, steps: Union[Dict[str, Any], Params]) -> None:

@@ -7,6 +7,8 @@ The core components of **AI2 Tango**.
    :maxdepth: 2
    :caption: Components
 
+   executor
+   format
    step
    step_cache
-   format
+   step_graph

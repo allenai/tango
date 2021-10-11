@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Tuple, Iterable, Any, Dict
 
 import click
@@ -13,6 +14,8 @@ class Executor(Registrable):
     """
     An ``Executor`` is :class:`~tango.common.registrable.Registrable` class that is
     responsible for running steps and returning them with their result.
+
+    Subclasses should implement :meth:`execute_step_group()`.
     """
 
     default_implementation = "simple"
@@ -77,11 +80,16 @@ class Executor(Registrable):
             out.extend(group)
         return out
 
+    @abstractmethod
     def execute_step_group(
         self, step_group: List[Step], step_cache: StepCache
     ) -> Iterable[Tuple[Step, Any]]:
         """
         Execute all steps in the group, returning them with their results.
+
+        The executor can assume that all steps in the group are independent (none of them
+        depend on the result of any other step in the group), so they can be ran
+        in any order or even in parallel.
         """
         raise NotImplementedError
 

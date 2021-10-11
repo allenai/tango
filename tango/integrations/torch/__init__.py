@@ -110,6 +110,14 @@ You could then run this experiment with a config that looks like this:
     with run_experiment(config) as run_dir:
         assert (run_dir / "step_cache").is_dir()
 
+For example,
+
+.. code-block::
+
+    tango run config.jsonnet -i my_package -d /tmp/train
+
+would produce the following output:
+
 .. testoutput::
 
     ● Starting run for "data"

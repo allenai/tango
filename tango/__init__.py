@@ -10,8 +10,6 @@ __all__ = [
     "JsonFormat",
     "JsonFormatIterator",
     "Step",
-    "StepGraph",
-    "StepStub",
     "StepCache",
     "DirectoryStepCache",
 ]

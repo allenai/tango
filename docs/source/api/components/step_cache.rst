@@ -20,4 +20,4 @@ Implementations
 
 .. automodule:: tango.step_cache
    :members:
-   :exclude-members: StepCache,DirectoryStepCache,path_for_step
+   :exclude-members: StepCache,DirectoryStepCache
