@@ -15,12 +15,28 @@ from .version import VERSION
     context_settings={"max_content_width": 115},
 )
 @click.version_option(version=VERSION)
-def main():
-    LOG_LEVEL = logging._nameToLevel.get(os.environ.get("TANGO_LOG_LEVEL", "INFO"), logging.INFO)
-    logging.basicConfig(format="[%(asctime)s %(levelname)s %(name)s] %(message)s", level=LOG_LEVEL)
-    # filelock emits too many messages, so tell it to be quiet unless it has something
-    # important to say.
-    logging.getLogger("filelock").setLevel(max(LOG_LEVEL, logging.WARNING))
+@click.option(
+    "--log-level",
+    help="Set the global log level.",
+    type=click.Choice(["debug", "info", "warning", "error"], case_sensitive=False),
+    show_choices=True,
+    default="info",
+)
+@click.option(
+    "--no-logging",
+    is_flag=True,
+    help="Disable logging altogether.",
+)
+def main(log_level, no_logging):
+    if not no_logging:
+        level = logging._nameToLevel[log_level.upper()]
+        logging.basicConfig(
+            format="[%(asctime)s %(levelname)s %(name)s] %(message)s",
+            level=level,
+        )
+        # filelock emits too many messages, so tell it to be quiet unless it has something
+        # important to say.
+        logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
 
     from tango.common.util import install_sigterm_handler
 

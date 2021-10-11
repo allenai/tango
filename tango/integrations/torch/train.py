@@ -299,7 +299,7 @@ def _train(
     # Check working directory to see if we should recover from a previous run.
     initial_state: t.Optional[t.Dict[str, t.Any]] = None
     if state_path.is_file():
-        print("Recovering from previous run")
+        print(f"Recovering from previous run at {str(state_path)}")
         initial_state = torch.load(state_path)
 
     # Prepare model.
@@ -342,7 +342,7 @@ def _train(
     # Catch data loader up to where we left off before.
     if initial_state is not None:
         training_steps = initial_state["training_steps"]
-        print("Catching data loader up to step %d", training_steps)
+        print(f"Catching data loader up to step {training_steps}")
         for step, batch in training_batches:
             del batch
             if step >= training_steps - 1:
