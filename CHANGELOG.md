@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added module `tango.common.sequences`.
 - Added `DatasetDict` class in `tango.common.dataset_dict`.
 - Added [🤗 Datasets](https://github.com/huggingface/datasets) integration.
+- Added command-line options to set log level or disable logging completely.
 
 ### Changed
 
