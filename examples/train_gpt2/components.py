@@ -17,11 +17,7 @@ import datasets
 
 
 Optimizer.register("transformers_adamw")(AdamW)
-
-
-@Model.register("gpt2", constructor="from_pretrained")
-class GPT2Model(GPT2LMHeadModel, Model):
-    pass
+Model.register("gpt2", constructor="from_pretrained")(GPT2LMHeadModel)
 
 
 class TransformersLambdaLR(LRScheduler):
