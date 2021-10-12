@@ -1,7 +1,3 @@
-"""
-Components for fine-tuning a standard sized GPT-2 LM on WikiText2 or a similar dataset.
-"""
-
 import typing as t
 
 from tango.common.dataset_dict import DatasetDict
@@ -16,25 +12,32 @@ from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 import datasets
 
 
+# Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
 Optimizer.register("transformers_adamw")(AdamW)
+
+# Similarly for our model.
 Model.register("gpt2", constructor="from_pretrained")(GPT2LMHeadModel)
 
-
+# We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
+# to work with, so we just create this dummy class with a classmethod that will call
+# `get_linear_schedule_with_warmup()`.
+@LRScheduler.register("linear_with_warmup", constructor="linear_with_warmup")
 class TransformersLambdaLR(LRScheduler):
     @classmethod
     def linear_with_warmup(cls, optimizer: Optimizer, **kwargs) -> LRScheduler:
         return get_linear_schedule_with_warmup(optimizer, **kwargs)
 
 
-LRScheduler.register("linear_with_warmup", constructor="linear_with_warmup")(TransformersLambdaLR)
-
-
+# And we also want to use the `default_data_collator()` function from HF as a `DataCollator`,
+# so we create simple wrapper class around that function and register it.
 @DataCollator.register("transformers_default")
 class TransformerDefaultCollator(DataCollator[t.Any]):
     def __call__(self, items: t.List[t.Any]) -> t.Dict[str, t.Any]:
         return default_data_collator(items)
 
 
+# Lastly, we need a step to tokenize the raw data. The result of this step will be passed
+# directly into the "torch::train" step.
 @Step.register("tokenize_data")
 class TokenizeData(Step):
     DETERMINISTIC = True
@@ -65,7 +68,21 @@ class TokenizeData(Step):
             },
         )
 
-        group_texts = get_group_texts_function(block_size)
+        def group_texts(examples):
+            # Concatenate all texts.
+            concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}  # type: ignore
+            total_length = len(concatenated_examples[list(examples.keys())[0]])
+            # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+            # customize this part to your needs.
+            if total_length >= block_size:
+                total_length = (total_length // block_size) * block_size
+            # Split by chunks of max_len.
+            result = {
+                k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+                for k, t in concatenated_examples.items()
+            }
+            result["labels"] = result["input_ids"].copy()
+            return result
 
         dataset = dataset.map(
             group_texts,
@@ -80,23 +97,3 @@ class TokenizeData(Step):
         )
 
         return t.cast(DatasetDict, dataset)
-
-
-def get_group_texts_function(block_size: int):
-    def group_texts(examples):
-        # Concatenate all texts.
-        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}  # type: ignore
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-        # customize this part to your needs.
-        if total_length >= block_size:
-            total_length = (total_length // block_size) * block_size
-        # Split by chunks of max_len.
-        result = {
-            k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
-            for k, t in concatenated_examples.items()
-        }
-        result["labels"] = result["input_ids"].copy()
-        return result
-
-    return group_texts
