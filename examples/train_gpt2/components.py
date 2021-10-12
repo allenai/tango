@@ -18,6 +18,7 @@ Optimizer.register("transformers_adamw")(AdamW)
 # Similarly for our model.
 Model.register("gpt2", constructor="from_pretrained")(GPT2LMHeadModel)
 
+
 # We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
 # to work with, so we just create this dummy class with a classmethod that will call
 # `get_linear_schedule_with_warmup()`.
@@ -72,8 +73,8 @@ class TokenizeData(Step):
             # Concatenate all texts.
             concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}  # type: ignore
             total_length = len(concatenated_examples[list(examples.keys())[0]])
-            # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-            # customize this part to your needs.
+            # We drop the small remainder, we could add padding if the model supported
+            # it instead of this drop, you can customize this part to your needs.
             if total_length >= block_size:
                 total_length = (total_length // block_size) * block_size
             # Split by chunks of max_len.
