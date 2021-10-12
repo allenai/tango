@@ -104,11 +104,15 @@ You could then run this experiment with a config that looks like this:
 
     import os
     from tango.common.testing import run_experiment
+    from tango.common.registrable import Registrable
 
     # Don't cache results, otherwise we'll have a pickling error.
     config["steps"]["train"]["cache_results"] = False
     with run_experiment(config) as run_dir:
         assert (run_dir / "step_cache").is_dir()
+    # Restore state of registry.
+    del Registrable._registry[Step]["generate_data"]
+    del Registrable._registry[Model]["basic_regression"]
 
 For example,
 
