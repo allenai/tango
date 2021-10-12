@@ -219,7 +219,7 @@ jobs:
       fail-fast: false
       matrix:
         python: [3.7]
-        integration:
+        example:
           - name: train_gpt2
             pre_install: |
               pip install torch==1.9.1+cpu torchvision==0.10.1+cpu torchaudio==0.9.1 -f https://download.pytorch.org/whl/torch_stable.html
