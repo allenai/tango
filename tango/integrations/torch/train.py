@@ -9,6 +9,8 @@ from more_itertools import chunked
 import numpy as np
 import torch
 from torch import Tensor
+import torch.distributed as dist
+import torch.nn as nn
 from torch.utils.data import DistributedSampler
 
 from .data import DataLoader
@@ -58,6 +60,7 @@ class TorchTrainStep(Step):
         amp: bool = False,
         max_grad_norm: t.Optional[float] = None,
         devices: t.Optional[t.List[int]] = None,
+        distributed_port: str = "54761",
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -118,6 +121,8 @@ class TorchTrainStep(Step):
             If set, gradients will be clipped to have this max norm. Default is ``None``.
         devices : ``List[int]``, optional
             The IDs of the CUDA devices to train on.
+        distributed_port : :class:`str`
+            The port of the distributed process group. Default = "54761".
 
         Returns
         -------
@@ -177,6 +182,8 @@ class TorchTrainStep(Step):
                     max_grad_norm,
                     is_distributed,
                     devices,
+                    distributed_port,
+                    self.executor.include_package,
                 ),
                 nprocs=num_workers,
             )
@@ -220,7 +227,6 @@ def _train(
     dataset_dict: DatasetDict,
     train_dataloader: Lazy[DataLoader],
     optimizer: Lazy[Optimizer],
-    *,
     train_split: str = "train",
     validation_split: t.Optional[str] = None,
     lr_scheduler: t.Optional[Lazy[LRScheduler]] = None,
@@ -236,9 +242,19 @@ def _train(
     max_grad_norm: t.Optional[float] = None,
     is_distributed: bool = False,
     devices: t.Optional[t.List[int]] = None,
+    distributed_port: str = "54761",
+    include_package: t.Optional[t.List[str]] = None,
 ) -> t.Optional[Model]:
-    is_local_main_process = worker_id == 0
+    if include_package:
+        from tango.common.util import import_module_and_submodules
 
+        for package_name in include_package:
+            import_module_and_submodules(package_name)
+
+    is_local_main_process = worker_id == 0
+    world_size = len(devices) if devices else 1
+
+    # Resolve and set device.
     device: torch.device = torch.device("cpu")
     if devices:
         device_id = devices[worker_id]
@@ -247,6 +263,17 @@ def _train(
             torch.cuda.set_device(device)
     elif torch.cuda.is_available():
         device = torch.device("cuda")
+
+    # Init distributed process group.
+    if is_distributed:
+        assert devices
+        backend = "gloo" if device == torch.device("cpu") else "nccl"
+        dist.init_process_group(
+            backend=backend,
+            init_method=f"tcp://127.0.0.1:{distributed_port}",
+            world_size=world_size,
+            rank=worker_id,
+        )
 
     grad_scaler: t.Optional[torch.cuda.amp.GradScaler] = None
     if amp:
@@ -289,7 +316,7 @@ def _train(
                 f"found {type(train_dataloader.sampler)} instead."
             )
         if validation_dataloader is not None and not isinstance(
-            validation_dataloader, DistributedSampler
+            validation_dataloader.sampler, DistributedSampler
         ):
             raise ConfigurationError(
                 "DistributedSampler is required for dataloader during distributed training, "
@@ -304,9 +331,11 @@ def _train(
 
     # Prepare model.
     model: Model = model.construct()
-    model = model.to(device)
     if initial_state is not None:
         model.load_state_dict(initial_state["model"])
+    if is_distributed:
+        model = nn.parallel.DistributedDataParallel(model)
+    model = model.to(device)
 
     # Prepare optimizer and lr scheduler.
     optimizer: Optimizer = optimizer.construct(params=model.parameters())
@@ -348,6 +377,9 @@ def _train(
             if step >= training_steps - 1:
                 break
 
+    if is_distributed:
+        dist.barrier()
+
     with Tqdm.tqdm(
         training_batches,
         desc="Training",
@@ -369,7 +401,9 @@ def _train(
                             "scheduler": None
                             if lr_scheduler is None
                             else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
-                            "model": model.state_dict(),  # type: ignore[attr-defined]
+                            "model": model.module.state_dict()  # type: ignore[attr-defined]
+                            if is_distributed
+                            else model.state_dict(),  # type: ignore[attr-defined]
                             "training_steps": step + 1,
                             "val_loss": val_loss,
                             "best_val_loss": best_val_loss,
@@ -453,9 +487,10 @@ def _train(
             )
 
             # Gather average loss across all workers.
-            if should_log_this_step or should_validate_this_step and is_distributed:
-                # TODO: gather batch_loss across workers in distributed case.
-                pass
+            if (should_log_this_step or should_validate_this_step) and is_distributed:
+                batch_loss_tensor = torch.tensor(batch_loss)
+                dist.all_reduce(batch_loss_tensor)
+                batch_loss = batch_loss_tensor.item() / world_size
 
             # Update progress bar.
             if is_local_main_process and should_log_this_step:
@@ -497,19 +532,24 @@ def _train(
                         running_loss += loss.item()
                         val_loss = running_loss / (val_step + 1)
 
+                        should_log_this_step = (
+                            val_step % log_every == 0 or val_step == validation_steps - 1
+                        )
+
+                        # Average loss across all workers.
+                        if is_distributed and should_log_this_step:
+                            val_loss_tensor = torch.tensor(val_loss)
+                            dist.all_reduce(val_loss_tensor)
+                            val_loss = val_loss_tensor.item() / world_size
+
                         # Update progress bar.
-                        if is_local_main_process and val_step % 10 == 0:
+                        if is_local_main_process and should_log_this_step:
                             val_batch_iterator.set_postfix(loss=val_loss)
 
                         # Clean up.
                         del val_batch
                         del outputs
                         del loss
-
-                # Average loss across all workers.
-                if is_distributed:
-                    # TODO: gather loss across workers.
-                    pass
 
                 # Reset model to train mode.
                 model.train()

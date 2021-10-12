@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Tuple, Iterable, Any, Dict
+from typing import List, Tuple, Iterable, Any, Dict, Optional
 
 import click
 
@@ -19,6 +19,9 @@ class Executor(Registrable):
     """
 
     default_implementation = "simple"
+
+    def __init__(self, include_package: Optional[List[str]] = None) -> None:
+        self.include_package = include_package
 
     def execute_step_graph(self, step_graph: StepGraph, step_cache: StepCache) -> List[Step]:
         """
@@ -72,7 +75,9 @@ class Executor(Registrable):
             # Materialize the next step.
             next_up = remaining.pop(0)
             config = self._replace_refs_with_results(next_up.config, executed, step_cache)
-            group.append(Step.from_params(Params(config), step_name=next_up.name))
+            step = Step.from_params(Params(config), step_name=next_up.name)
+            step._executor = self
+            group.append(step)
 
         # Finish up last group.
         if group:

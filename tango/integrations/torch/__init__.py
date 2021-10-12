@@ -135,10 +135,11 @@ __all__ = [
     "Model",
     "DataLoader",
     "DataCollator",
+    "Sampler",
     "ConcatTensorDictsCollator",
 ]
 
-from .data import DataLoader, DataCollator, ConcatTensorDictsCollator
+from .data import DataLoader, Sampler, DataCollator, ConcatTensorDictsCollator
 from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler

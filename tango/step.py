@@ -15,6 +15,7 @@ from typing import (
     Generic,
     Iterator,
     Callable,
+    TYPE_CHECKING,
 )
 
 try:
@@ -40,6 +41,9 @@ from .common.from_params import (
 from .common.logging import TangoLogger
 from .format import Format, DillFormat
 from .step_cache import StepCache
+
+if TYPE_CHECKING:
+    from .executor import Executor
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +168,8 @@ class Step(Registrable, Generic[T]):
         self.work_dir_for_run: Optional[
             Path
         ] = None  # This is set only while the run() method runs.
+
+        self._executor: Optional["Executor"] = None
 
     @classmethod
     def from_params(  # type: ignore[override]
@@ -311,6 +317,18 @@ class Step(Registrable, Generic[T]):
         if self.work_dir_for_run is None:
             raise ValueError("You can only call this method while the step is running.")
         return self.work_dir_for_run
+
+    @property
+    def executor(self) -> "Executor":
+        """
+        The executor being used to run this step.
+
+        This should only be called during the step's ``run()`` method.
+        """
+        if self._executor is None:
+            raise ValueError("Step.executor cannot be called outside of step execution!")
+        else:
+            return self._executor
 
     def result(self, cache: StepCache) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it

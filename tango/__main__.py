@@ -141,7 +141,9 @@ def _run(
 
     # Initialize step graph, executor, and cache.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    executor = Executor.from_params(params.pop("executor", default={}))
+    executor = Executor.from_params(
+        params.pop("executor", default={}), include_package=include_package
+    )
     step_cache = StepCache.from_params(
         params.pop("cache", default={}), dir=directory / "step_cache"
     )
