@@ -1,4 +1,5 @@
 import collections
+from dataclasses import dataclass
 import json
 import logging
 import weakref
@@ -24,11 +25,12 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from .common.registrable import Registrable
-from .common.util import PathOrStr
+from tango.common.from_params import FromParams
+from tango.common.registrable import Registrable
+from tango.common.util import PathOrStr
 
 if TYPE_CHECKING:
-    from .step import Step
+    from tango.step import Step
 
 logger = logging.getLogger(__name__)
 
@@ -174,12 +176,8 @@ class LocalStepCache(StepCache):
 
         try:
             step.format.write(value, location)
-            metadata = {
-                "step": step.unique_id,
-                "checksum": step.format.checksum(location),
-            }
-            with temp_metadata_location.open("wt") as f:
-                json.dump(metadata, f)
+            metadata = CacheMetadata(step=step.unique_id, checksum=step.format.checksum(location))
+            metadata.to_params().to_file(temp_metadata_location)
             self._add_to_cache(step.unique_id, value)
             temp_metadata_location.rename(metadata_location)
         except:  # noqa: E722
@@ -191,3 +189,9 @@ class LocalStepCache(StepCache):
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))
+
+
+@dataclass
+class CacheMetadata(FromParams):
+    step: str
+    checksum: str

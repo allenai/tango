@@ -385,6 +385,13 @@ def construct_arg(
             return popped_params
         else:
             raise TypeError(f"Expected {argument_name} to be numeric.")
+    elif annotation == Path:
+        if isinstance(popped_params, (str, Path)):
+            return Path(popped_params)
+        else:
+            raise TypeError(
+                f"Expected {argument_name} to be a str or Path, found {popped_params} ({type(popped_params)})"
+            )
 
     # This is special logic for handling types like Dict[str, TokenIndexer],
     # List[TokenIndexer], Tuple[TokenIndexer, Tokenizer], and Set[TokenIndexer],
@@ -668,15 +675,20 @@ class FromParams(CustomDetHash):
 
         def replace_object_with_params(o: Any) -> Any:
             if isinstance(o, FromParams):
-                return o.to_params()
-            elif isinstance(o, List):
+                return o.to_params().as_dict()
+            elif isinstance(o, (list, tuple, set)):
                 return [replace_object_with_params(i) for i in o]
-            elif isinstance(o, Set):
-                return {replace_object_with_params(i) for i in o}
-            elif isinstance(o, Dict):
+            elif isinstance(o, dict):
                 return {key: replace_object_with_params(value) for key, value in o.items()}
-            else:
+            elif isinstance(o, Path):
+                return str(o)
+            elif o is None or isinstance(o, (str, float, int, bool)):
                 return o
+            else:
+                raise NotImplementedError(
+                    f"Unexpected type encountered in to_params(): {o} ({type(o)})\n"
+                    "You may need to implement a custom '_to_params()'."
+                )
 
         return Params(replace_object_with_params(self._to_params()))
 
@@ -688,7 +700,12 @@ class FromParams(CustomDetHash):
         You don't need to implement this all the time. Tango will let you know if you
         need it.
         """
-        raise NotImplementedError(f"{self.__class__.__name__}._to_params() needs to be implemented")
+        try:
+            return self.__dict__
+        except AttributeError:
+            raise NotImplementedError(
+                f"{self.__class__.__name__}._to_params() needs to be implemented"
+            )
 
     def det_hash_object(self) -> Any:
         return self.to_params()

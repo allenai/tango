@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `TorchTrainStep` now displays a progress bar while saving a checkpoint to file.
+- The default executor now saves a "executor-metadata.json" file to the directory for each step.
 
 ### Changed
 
@@ -19,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug with `TorchTrainStep` during distributed training.
+- `FromParams` will automatically convert strings into `Path` types now when the annotation
+  is `Path`.
 
 ## [v0.1.0](https://github.com/allenai/tango/releases/tag/v0.1.0) - 2021-10-11
 
