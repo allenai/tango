@@ -34,3 +34,9 @@ furo==2021.9.22
 
 # Lets Sphinx parse markdown files in addition to rst.
 myst-parser==0.15.2
+
+# Adds a copy button to code examples in the docs.
+sphinx-copybutton==0.4.0
+
+# Live rebuilding and reloading of docs for developing locally.
+sphinx-autobuild==2021.3.14
