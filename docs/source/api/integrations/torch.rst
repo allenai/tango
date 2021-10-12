@@ -32,6 +32,9 @@ Registrable torch classes
 .. autoclass:: tango.integrations.torch.DataLoader
    :members:
 
+.. autoclass:: tango.integrations.torch.Sampler
+   :members:
+
 .. autoclass:: tango.integrations.torch.DataCollator
    :members:
    :special-members: __call__

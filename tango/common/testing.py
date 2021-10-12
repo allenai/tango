@@ -22,9 +22,24 @@ class TangoTestCase:
     """
 
     PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
+    """
+    Root of the git repository.
+    """
+
     MODULE_ROOT = PROJECT_ROOT / "tango"
+    """
+    Root of the tango module.
+    """
+
     TESTS_ROOT = PROJECT_ROOT / "tests"
+    """
+    Root of the tests directory.
+    """
+
     FIXTURES_ROOT = PROJECT_ROOT / "test_fixtures"
+    """
+    Root of the test fixtures directory.
+    """
 
     def setup_method(self):
         logging.basicConfig(
@@ -39,16 +54,26 @@ class TangoTestCase:
         self.TEST_DIR = Path(tempfile.mkdtemp(prefix="tango_tests"))
         os.makedirs(self.TEST_DIR, exist_ok=True)
 
-        # In `teardown_method`, we'll restore the state of `Registrable`'s internal registry
+    @classmethod
+    def setup_class(cls):
+        # During teardown we'll restore the state of `Registrable`'s internal registry
         # to make sure any registered mock test classes are removed so they don't conflict
         # with other tests.
-        self._original_registry = deepcopy(Registrable._registry)
+        cls._original_registry = deepcopy(Registrable._registry)
 
     def teardown_method(self):
         shutil.rmtree(self.TEST_DIR)
-        Registrable._registry = self._original_registry
 
-    def run(self, config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool = False) -> Path:
+    @classmethod
+    def teardown_class(cls):
+        Registrable._registry = cls._original_registry
+
+    def run(
+        self,
+        config: t.Union[PathOrStr, t.Dict[str, t.Any]],
+        overrides: t.Optional[str] = None,
+        include_package: t.Optional[t.List[str]] = None,
+    ) -> Path:
         from .params import Params
         from tango.__main__ import _run
 
@@ -58,12 +83,17 @@ class TangoTestCase:
             params.to_file(t.cast(Path, config))
 
         run_dir = self.TEST_DIR / "run"
-        _run(str(config), directory=str(run_dir), dry_run=dry_run)
+        _run(
+            str(config),
+            directory=str(run_dir),
+            overrides=overrides,
+            include_package=include_package,
+        )
         return run_dir
 
 
 @contextmanager
-def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool = False):
+def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]]):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the cache directory, a temporary directory that will be
@@ -72,6 +102,6 @@ def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]], dry_run: bool
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config, dry_run=dry_run)
+        yield test_case.run(config)
     finally:
         test_case.teardown_method()

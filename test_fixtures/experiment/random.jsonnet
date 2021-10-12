@@ -1,9 +1,11 @@
 {
     "steps": {
+        "rand_string1": {"type": "random_string"},
+        "rand_string2": {"type": "random_string"},
         "string1": {
             "type": "concat_strings",
-            "string1": {"type": "random_string"},
-            "string2": {"type": "random_string"},
+            "string1": {"type": "ref", "ref": "rand_string1"},
+            "string2": {"type": "ref", "ref": "rand_string2"},
         },
         "string2": {
             "type": "string",

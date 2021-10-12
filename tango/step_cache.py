@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import (
     Optional,
     Any,
-    Dict,
     TypeVar,
     MutableMapping,
     OrderedDict,
@@ -42,6 +41,12 @@ class StepCache(Registrable):
     This is a mapping from instances of :class:`~tango.step.Step` to the results of that step.
     """
 
+    default_implementation = "directory"
+
+    def __init__(self, dir: PathOrStr):
+        self.dir = Path(dir)
+        self.dir.mkdir(parents=True, exist_ok=True)
+
     def __contains__(self, step: object) -> bool:
         """This is a generic implementation of ``__contains__``. If you are writing your own
         ``StepCache``, you might want to write a faster one yourself."""
@@ -70,47 +75,11 @@ class StepCache(Registrable):
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()
 
-    def path_for_step(self, step: "Step") -> Optional[Path]:
+    def path_for_step(self, step: "Step") -> Path:
         """Steps that can be restarted (like a training job that gets interrupted half-way through)
         must save their state somewhere. A :class:`StepCache` can help by providing a suitable location
         in this method."""
-        return None
-
-
-@StepCache.register("memory")
-class MemoryStepCache(StepCache):
-    """
-    This is a :class:`StepCache` that stores results in memory.
-    It is little more than a Python dictionary.
-    """
-
-    def __init__(self):
-        self.cache: Dict[str, Any] = {}
-
-    def __getitem__(self, step: "Step") -> Any:
-        return self.cache[step.unique_id]
-
-    def __setitem__(self, step: "Step", value: Any) -> None:
-        if step in self:
-            raise ValueError(f"{step.unique_id} is already cached! Will not overwrite.")
-        if step.cache_results:
-            self.cache[step.unique_id] = value
-        else:
-            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
-
-    def __contains__(self, step: object):
-        from tango.step import Step
-
-        if isinstance(step, Step):
-            return step.unique_id in self.cache
-        else:
-            return False
-
-    def __len__(self) -> int:
-        return len(self.cache)
-
-
-default_step_cache = MemoryStepCache()
+        return self.dir / step.unique_id
 
 
 @StepCache.register("directory")
@@ -124,17 +93,15 @@ class DirectoryStepCache(StepCache):
     and we also write a ``metadata.json`` file that stores some metadata. The presence of
     ``metadata.json`` signifies that the cache entry is complete and has been written successfully.
 
-    .. important::
-        The ``tango run`` command always uses a :class:`DirectoryStepCache`
-        as its :class:`StepCache` except for dry runs when no directory is supplied.
+    .. tip::
+        Registered as :class:`StepCache` under the name `directory`.
 
     """
 
     LRU_CACHE_MAX_SIZE = 8
 
     def __init__(self, dir: PathOrStr):
-        self.dir = Path(dir)
-        self.dir.mkdir(parents=True, exist_ok=True)
+        super().__init__(dir)
 
         # We keep an in-memory cache as well so we don't have to de-serialize stuff
         # we happen to have in memory already.
@@ -221,9 +188,3 @@ class DirectoryStepCache(StepCache):
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob("*/metadata.json"))
-
-    def path_for_step(self, step: "Step") -> Path:
-        """
-        Returns a path within the ``self.dir`` associated with the given step.
-        """
-        return self.dir / step.unique_id

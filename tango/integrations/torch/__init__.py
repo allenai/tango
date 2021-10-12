@@ -104,11 +104,30 @@ You could then run this experiment with a config that looks like this:
 
     import os
     from tango.common.testing import run_experiment
+    from tango.common.registrable import Registrable
 
     # Don't cache results, otherwise we'll have a pickling error.
     config["steps"]["train"]["cache_results"] = False
     with run_experiment(config) as run_dir:
         assert (run_dir / "step_cache").is_dir()
+    # Restore state of registry.
+    del Registrable._registry[Step]["generate_data"]
+    del Registrable._registry[Model]["basic_regression"]
+
+For example,
+
+.. code-block::
+
+    tango run config.jsonnet -i my_package -d /tmp/train
+
+would produce the following output:
+
+.. testoutput::
+
+    ● Starting run for "data"
+    ✓ Finished run for "data"
+    ● Starting run for "train"
+    ✓ Finished run for "train"
 
 """
 
@@ -120,10 +139,11 @@ __all__ = [
     "Model",
     "DataLoader",
     "DataCollator",
+    "Sampler",
     "ConcatTensorDictsCollator",
 ]
 
-from .data import DataLoader, DataCollator, ConcatTensorDictsCollator
+from .data import DataLoader, Sampler, DataCollator, ConcatTensorDictsCollator
 from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler

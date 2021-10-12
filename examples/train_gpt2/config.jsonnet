@@ -1,6 +1,7 @@
 local pretrained_model = "gpt2";
-local training_steps = 100;
+local training_steps = 60;
 local batch_size = 8;
+local checkpoint_every = 20;
 
 {
     "steps": {
@@ -40,12 +41,12 @@ local batch_size = 8;
             },
             "lr_scheduler": {
                 "type": "linear_with_warmup",
-                "num_warmup_steps": 50,
+                "num_warmup_steps": 10,
                 "num_training_steps": training_steps,
             },
             "train_steps": training_steps,
-            "validate_every": 20,
-            "checkpoint_every": 20,
+            "validate_every": checkpoint_every,
+            "checkpoint_every": checkpoint_every,
             "log_every": 1,
         }
     }
