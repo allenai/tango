@@ -1,6 +1,5 @@
 import collections
 from dataclasses import dataclass
-import json
 import logging
 import weakref
 from abc import abstractmethod
