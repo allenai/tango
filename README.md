@@ -6,7 +6,7 @@ A Python library for choreographing your machine learning research.
 
 <!-- end tagline -->
 
-⚠️ *Currently in ALPHA and under active devepment* ⚠️
+⚠️ *Currently under active devepment, use at your own risk!* ⚠️
 
 <!-- <p align="center"> -->
 <p>
