@@ -93,8 +93,8 @@ class LocalStepCache(StepCache):
     Every cached step gets a directory under ``dir`` with that step's :attr:`~tango.step.Step.unique_id`.
     In that directory we store the results themselves in some format according to the step's
     :attr:`~tango.step.Step.FORMAT`,
-    and we also write a ``metadata.json`` file that stores some metadata. The presence of
-    ``metadata.json`` signifies that the cache entry is complete and has been written successfully.
+    and we also write a ``cache-metadata.json`` file that stores some metadata. The presence of
+    ``cache-metadata.json`` signifies that the cache entry is complete and has been written successfully.
 
     .. tip::
         Registered as :class:`StepCache` under the name "local".
@@ -148,7 +148,7 @@ class LocalStepCache(StepCache):
                 return True
             if key in self.weak_cache:
                 return True
-            metadata_file = self.path_for_step(step) / "metadata.json"
+            metadata_file = self.path_for_step(step) / "cache-metadata.json"
             return metadata_file.exists()
         else:
             return False
@@ -167,7 +167,7 @@ class LocalStepCache(StepCache):
         location = self.path_for_step(step)
         location.mkdir(parents=True, exist_ok=True)
 
-        metadata_location = location / "metadata.json"
+        metadata_location = location / "cache-metadata.json"
         if metadata_location.exists():
             raise ValueError(f"{metadata_location} already exists! Will not overwrite.")
         temp_metadata_location = metadata_location.with_suffix(".temp")
@@ -190,4 +190,4 @@ class LocalStepCache(StepCache):
             raise
 
     def __len__(self) -> int:
-        return sum(1 for _ in self.dir.glob("*/metadata.json"))
+        return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))

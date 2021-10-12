@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed `DirectoryStepCache` to `LocalStepCache` (registered as "local").
+- `LocalStepCache` saves metadata to `cache-metadata.json` instead of `metadata.json`.
 
 ### Fixed
 

@@ -1,7 +1,14 @@
+import torch.distributed as dist
+
 from tango.common.testing import TangoTestCase
 
 
 class TestTrainStep(TangoTestCase):
+    def teardown_method(self):
+        super().teardown_method()
+        if dist.is_initialized():
+            dist.destroy_process_group()
+
     def test_basic_train_loop(self):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",

@@ -67,12 +67,12 @@ class Format(Registrable, Generic[T]):
         Produces a checksum of a serialized artifact.
 
         The default checksum mechanism computes a checksum of all the files in the
-        directory except for ``metadata.json``.
+        directory except for ``*-metadata.json``.
         """
         dir = Path(dir)
         files = []
         for file in dir.rglob("*"):
-            if file.name == "metadata.json":
+            if file.name.endswith("-metadata.json"):
                 continue
             if not (file.is_file() or file.is_symlink()):
                 continue
