@@ -3,7 +3,6 @@ import random
 import re
 from abc import abstractmethod
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import (
     Optional,
     Any,
@@ -29,21 +28,21 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from .common.det_hash import det_hash
-from .common.registrable import Registrable
-from .common.params import Params
-from .common.exceptions import ConfigurationError
-from .common.from_params import (
+from tango.common.det_hash import det_hash
+from tango.common.registrable import Registrable
+from tango.common.params import Params
+from tango.common.exceptions import ConfigurationError
+from tango.common.from_params import (
     pop_and_construct_arg,
     infer_method_params,
     infer_constructor_params,
 )
-from .common.logging import TangoLogger
-from .format import Format, DillFormat
-from .step_cache import StepCache
+from tango.common.logging import TangoLogger
+from tango.format import Format, DillFormat
+from tango.step_cache import StepCache
 
 if TYPE_CHECKING:
-    from .executor import Executor
+    from tango.executor import Executor
 
 logger = logging.getLogger(__name__)
 
@@ -289,22 +288,13 @@ class Step(Registrable, Generic[T]):
             random.seed(784507111)
 
         step_dir = cache.path_for_step(self)
-        if step_dir is None:
-            work_dir = TemporaryDirectory(prefix=self.unique_id + "-", suffix=".work")
-            self.work_dir_for_run = Path(work_dir.name)
-            try:
-                return self.run(**self.kwargs)
-            finally:
-                self.work_dir_for_run = None
-                work_dir.cleanup()
-        else:
-            self.work_dir_for_run = step_dir / "work"
-            try:
-                self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
-                return self.run(**self.kwargs)
-            finally:
-                # No cleanup, as we want to keep the directory for restarts or serialization.
-                self.work_dir_for_run = None
+        self.work_dir_for_run = step_dir / "work"
+        try:
+            self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
+            return self.run(**self.kwargs)
+        finally:
+            # No cleanup, as we want to keep the directory for restarts or serialization.
+            self.work_dir_for_run = None
 
     @property
     def work_dir(self) -> Path:

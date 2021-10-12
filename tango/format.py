@@ -27,10 +27,10 @@ from typing import (
 import dill
 import xxhash
 
-from .common.registrable import Registrable
-from .common.exceptions import ConfigurationError
-from .common.logging import TangoLogger
-from .common.util import PathOrStr
+from tango.common.registrable import Registrable
+from tango.common.exceptions import ConfigurationError
+from tango.common.logging import TangoLogger
+from tango.common.util import PathOrStr
 
 T = TypeVar("T")
 
@@ -67,12 +67,12 @@ class Format(Registrable, Generic[T]):
         Produces a checksum of a serialized artifact.
 
         The default checksum mechanism computes a checksum of all the files in the
-        directory except for ``metadata.json``.
+        directory except for ``*-metadata.json``.
         """
         dir = Path(dir)
         files = []
         for file in dir.rglob("*"):
-            if file.name == "metadata.json":
+            if file.name.endswith("-metadata.json"):
                 continue
             if not (file.is_file() or file.is_symlink()):
                 continue

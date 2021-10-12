@@ -24,6 +24,11 @@ class TestMain(TangoTestCase):
         result = subprocess.run(cmd)
         assert result.returncode == 0
         assert len(os.listdir(self.TEST_DIR / "step_cache")) == 2
+        assert (self.TEST_DIR / "hello").is_dir()
+        assert (self.TEST_DIR / "hello" / "cache-metadata.json").is_file()
+        assert (self.TEST_DIR / "hello" / "executor-metadata.json").is_file()
+        assert (self.TEST_DIR / "hello_world").is_dir()
+        assert (self.TEST_DIR / "hello_world" / "executor-metadata.json").is_file()
 
         # Running again shouldn't create any more directories.
         result = subprocess.run(cmd)

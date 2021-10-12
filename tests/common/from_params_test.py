@@ -1,3 +1,5 @@
+from copy import deepcopy
+from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
 
 import pytest
@@ -907,6 +909,46 @@ class TestFromParams(TangoTestCase):
 
         foo = Foo.from_params(Params({"a": 2}))
         assert foo.a == 2
+
+    def test_from_params_with_dataclass(self):
+        @dataclass
+        class Foo(FromParams):
+            x: int
+            y: str
+
+        assert Foo.from_params({"x": 1, "y": "2"}).x == 1
+        with pytest.raises(TypeError):
+            Foo.from_params({"x": 1, "y": 2})
+
+    def test_to_params(self):
+        @dataclass
+        class Bar(FromParams):
+            z: bool
+
+        @dataclass
+        class Foo(FromParams):
+            x: int
+            bar: Bar
+
+        params_dict = {"x": 1, "bar": {"z": True}}
+        foo = Foo.from_params(deepcopy(params_dict))
+        assert foo.bar.z
+        params = foo.to_params()
+        assert params.as_dict() == params_dict
+
+    def test_to_params_needs_custom_to_params(self):
+        @dataclass
+        class Bar:
+            z: bool
+
+        @dataclass
+        class Foo(FromParams):
+            x: int
+            bar: Bar
+
+        foo = Foo.from_params({"x": 1}, bar=Bar(z=True))
+        with pytest.raises(NotImplementedError):
+            foo.to_params()
 
 
 class MyClass(FromParams):

@@ -1,8 +1,17 @@
 from abc import abstractmethod
+from dataclasses import dataclass, field
+import getpass
+import os
+from pathlib import Path
+import platform
+import time
 from typing import List, Tuple, Iterable, Any, Dict, Optional
+import socket
+import sys
 
 import click
 
+from tango.common.from_params import FromParams
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.step import Step
@@ -150,9 +159,66 @@ class SimpleExecutor(Executor):
                 click.style("● Starting run for ", fg="blue")
                 + click.style(f'"{step.name}"', bold=True, fg="blue")
             )
+            metadata = ExecutorMetadata(step=step.unique_id)
             result = step.result(step_cache)
+            metadata.finalize()
+            metadata.to_params().to_file(step_cache.path_for_step(step) / "executor-metadata.json")
             click.echo(
                 click.style("✓ Finished run for ", fg="green")
                 + click.style(f'"{step.name}"', bold=True, fg="green")
             )
             yield step, result
+
+
+@dataclass
+class PlatformMetadata(FromParams):
+    python: str = platform.python_version()
+    operating_system: str = platform.platform()
+    executable: Path = Path(sys.executable)
+    cpu_count: Optional[int] = os.cpu_count()
+    user: str = getpass.getuser()
+    host: str = socket.gethostname()
+    root: Path = Path(os.getcwd())
+
+
+@dataclass
+class GitMetadata(FromParams):
+    commit: Optional[str] = None
+    remote: Optional[str] = None
+
+    @classmethod
+    def check_for_repo(cls) -> Optional["GitMetadata"]:
+        import subprocess
+
+        try:
+            commit = (
+                subprocess.check_output("git rev-parse HEAD".split(" ")).decode("ascii").strip()
+            )
+            remote: Optional[str] = None
+            for line in (
+                subprocess.check_output("git remote -v".split(" "))
+                .decode("ascii")
+                .strip()
+                .split("\n")
+            ):
+                if "(fetch)" in line:
+                    _, line = line.split("\t")
+                    remote = line.split(" ")[0]
+                    break
+            return cls(commit=commit, remote=remote)
+        except subprocess.CalledProcessError:
+            return None
+
+
+@dataclass
+class ExecutorMetadata(FromParams):
+    step: str
+    platform: PlatformMetadata = PlatformMetadata()
+    git: Optional[GitMetadata] = GitMetadata.check_for_repo()
+    started_at: float = field(default_factory=time.time)
+    finished_at: Optional[float] = None
+    duration: Optional[float] = None
+
+    def finalize(self):
+        self.finished_at = time.time()
+        self.duration = round(self.finished_at - self.started_at, 4)

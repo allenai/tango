@@ -5,7 +5,7 @@ from typing import Optional, Union, List
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-from .version import VERSION
+from tango.version import VERSION
 
 
 @click.group(
