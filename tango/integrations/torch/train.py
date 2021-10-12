@@ -395,21 +395,28 @@ def _train(
                     "w+b", dir=work_dir, delete=False, suffix=".pt"
                 )
                 try:
-                    torch.save(
-                        {
-                            "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
-                            "scheduler": None
-                            if lr_scheduler is None
-                            else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
-                            "model": model.module.state_dict()  # type: ignore[attr-defined]
-                            if is_distributed
-                            else model.state_dict(),  # type: ignore[attr-defined]
-                            "training_steps": step + 1,
-                            "val_loss": val_loss,
-                            "best_val_loss": best_val_loss,
-                        },
-                        temp_state_file.name,
-                    )
+                    with Tqdm.wrapattr(
+                        temp_state_file,
+                        "write",
+                        desc="Saving checkpoint",
+                        leave=False,
+                        disable=not is_local_main_process,
+                    ) as f:
+                        torch.save(
+                            {
+                                "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
+                                "scheduler": None
+                                if lr_scheduler is None
+                                else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
+                                "model": model.module.state_dict()  # type: ignore[attr-defined]
+                                if is_distributed
+                                else model.state_dict(),  # type: ignore[attr-defined]
+                                "training_steps": step + 1,
+                                "val_loss": val_loss,
+                                "best_val_loss": best_val_loss,
+                            },
+                            f,
+                        )
                     temp_state_file.close()
                     os.replace(temp_state_file.name, state_path_for_step)
 
@@ -488,7 +495,7 @@ def _train(
 
             # Gather average loss across all workers.
             if (should_log_this_step or should_validate_this_step) and is_distributed:
-                batch_loss_tensor = torch.tensor(batch_loss)
+                batch_loss_tensor = torch.tensor(batch_loss, device=device)
                 dist.all_reduce(batch_loss_tensor)
                 batch_loss = batch_loss_tensor.item() / world_size
 
@@ -538,7 +545,7 @@ def _train(
 
                         # Average loss across all workers.
                         if is_distributed and should_log_this_step:
-                            val_loss_tensor = torch.tensor(val_loss)
+                            val_loss_tensor = torch.tensor(val_loss, device=device)
                             dist.all_reduce(val_loss_tensor)
                             val_loss = val_loss_tensor.item() / world_size
 
@@ -570,6 +577,9 @@ def _train(
             # Checkpoint.
             if should_checkpoint_this_step:
                 save_state()
+
+    if is_distributed:
+        dist.barrier()
 
     if not is_distributed:
         return model
