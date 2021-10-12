@@ -11,11 +11,11 @@ __all__ = [
     "JsonFormatIterator",
     "Step",
     "StepCache",
-    "DirectoryStepCache",
+    "LocalStepCache",
 ]
 
 from .executor import Executor, SimpleExecutor
 from .format import Format, DillFormat, DillFormatIterator, JsonFormat, JsonFormatIterator
 from .step import Step
-from .step_cache import StepCache, DirectoryStepCache
+from .step_cache import StepCache, LocalStepCache
 from .step_graph import StepGraph, StepStub

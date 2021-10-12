@@ -21,7 +21,7 @@ class LoadDataset(Step):
 
     .. tip::
 
-        Registered as a :class:`~tango.step.Step` under the name ``datasets::load``.
+        Registered as a :class:`~tango.step.Step` under the name "datasets::load".
 
     Examples
     --------

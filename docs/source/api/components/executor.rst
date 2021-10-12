@@ -10,7 +10,6 @@ Base class
 
 .. autoclass:: tango.executor.Executor
    :members: 
-   :special-members:
 
 Implementations
 ---------------

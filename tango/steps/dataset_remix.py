@@ -14,7 +14,7 @@ class DatasetRemixStep(Step):
 
     .. tip::
 
-        Registered as a :class:`~tango.step.Step` under the name ``dataset_remix``.
+        Registered as a :class:`~tango.step.Step` under the name "dataset_remix".
 
     Examples
     --------
@@ -53,6 +53,9 @@ class DatasetRemixStep(Step):
         shuffle_after: bool = False,
         random_seed: int = 1532637578,
     ) -> DatasetDict:
+        """
+        Remix the dataset.
+        """
         random.seed(random_seed)
 
         if shuffle_before:

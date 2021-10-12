@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Renamed `DirectoryStepCache` to `LocalStepCache` (registered as "local").
+
 ## [v0.1.0](https://github.com/allenai/tango/releases/tag/v0.1.0) - 2021-10-11
 
 ### Added

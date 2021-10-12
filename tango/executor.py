@@ -19,6 +19,9 @@ class Executor(Registrable):
     """
 
     default_implementation = "simple"
+    """
+    The default implementation is :class:`SimpleExecutor`.
+    """
 
     def __init__(self, include_package: Optional[List[str]] = None) -> None:
         self.include_package = include_package
@@ -133,6 +136,10 @@ class Executor(Registrable):
 class SimpleExecutor(Executor):
     """
     A simple :class:`Executor` that just runs all steps locally one at a time.
+
+    .. tip::
+        Registered as an :class:`Executor` under the name "simple".
+
     """
 
     def execute_step_group(

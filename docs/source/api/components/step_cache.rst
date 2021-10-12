@@ -15,9 +15,9 @@ Base class
 Implementations
 ---------------
 
-.. autoclass:: tango.step_cache.DirectoryStepCache
+.. autoclass:: tango.step_cache.LocalStepCache
    :members:
 
 .. automodule:: tango.step_cache
    :members:
-   :exclude-members: StepCache,DirectoryStepCache
+   :exclude-members: StepCache,LocalStepCache

@@ -20,7 +20,7 @@ class TorchFormat(Format[T], Generic[T]):
 
     .. tip::
 
-        Registered as a :class:`~tango.format.Format` under the name ``torch``.
+        Registered as a :class:`~tango.format.Format` under the name "torch".
 
     """
 
