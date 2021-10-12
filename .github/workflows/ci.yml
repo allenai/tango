@@ -251,7 +251,7 @@ jobs:
         id: virtualenv-cache
         with:
           path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.example.name }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}-${{ hashFiles(join(['examples', matrix.example.name, 'requirements.txt'], '/')) }}
+          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.example.name }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}-${{ hashFiles(format('examples/{0}/requirements.txt', matrix.example.name)) }}
           restore-keys: |
             ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.example.name }}
 
