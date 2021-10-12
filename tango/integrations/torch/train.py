@@ -390,28 +390,33 @@ def _train(
         for step, batch in train_batch_iterator:
 
             def save_state():
-                train_batch_iterator.set_description(desc="Training (saving checkpoint)")
-
                 state_path_for_step = work_dir / f"state_worker{worker_id}_step{step + 1}.pt"
                 temp_state_file = tempfile.NamedTemporaryFile(
                     "w+b", dir=work_dir, delete=False, suffix=".pt"
                 )
                 try:
-                    torch.save(
-                        {
-                            "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
-                            "scheduler": None
-                            if lr_scheduler is None
-                            else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
-                            "model": model.module.state_dict()  # type: ignore[attr-defined]
-                            if is_distributed
-                            else model.state_dict(),  # type: ignore[attr-defined]
-                            "training_steps": step + 1,
-                            "val_loss": val_loss,
-                            "best_val_loss": best_val_loss,
-                        },
-                        temp_state_file.name,
-                    )
+                    with Tqdm.wrapattr(
+                        temp_state_file,
+                        "write",
+                        desc="Saving checkpoint",
+                        leave=False,
+                        disable=not is_local_main_process,
+                    ) as f:
+                        torch.save(
+                            {
+                                "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
+                                "scheduler": None
+                                if lr_scheduler is None
+                                else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
+                                "model": model.module.state_dict()  # type: ignore[attr-defined]
+                                if is_distributed
+                                else model.state_dict(),  # type: ignore[attr-defined]
+                                "training_steps": step + 1,
+                                "val_loss": val_loss,
+                                "best_val_loss": best_val_loss,
+                            },
+                            f,
+                        )
                     temp_state_file.close()
                     os.replace(temp_state_file.name, state_path_for_step)
 
@@ -429,9 +434,6 @@ def _train(
                         if best_state_path.is_symlink():
                             best_state_path.unlink()
                         best_state_path.symlink_to(state_path_for_step)
-
-                    # Reset progress desc.
-                    train_batch_iterator.set_description(desc="Training")
                 finally:
                     if os.path.exists(temp_state_file.name):
                         os.remove(temp_state_file.name)

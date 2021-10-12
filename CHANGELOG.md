@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `TorchTrainStep` now displays a progress bar while saving a checkpoint to file.
+
 ### Changed
 
 - Renamed `DirectoryStepCache` to `LocalStepCache` (registered as "local").
