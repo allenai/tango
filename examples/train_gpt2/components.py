@@ -59,9 +59,9 @@ class TokenizeData(Step):
             remove_columns=["text"],
             desc="Tokenizing dataset",
             cache_file_names={
-                "train": f"/tmp/wikitext2-train-{pretrained_model_name}-tokenized",
-                "test": f"/tmp/wikitext2-test-{pretrained_model_name}-tokenized",
-                "validation": f"/tmp/wikitext2-dev-{pretrained_model_name}-tokenized",
+                "train": f"/tmp/wikitext2-train-{pretrained_model_name.replace('/', '-')}-tokenized",
+                "test": f"/tmp/wikitext2-test-{pretrained_model_name.replace('/', '-')}-tokenized",
+                "validation": f"/tmp/wikitext2-dev-{pretrained_model_name.replace('/', '-')}-tokenized",
             },
         )
 
@@ -73,9 +73,9 @@ class TokenizeData(Step):
             num_proc=num_workers,
             desc=f"Grouping texts into chunks of {block_size}",
             cache_file_names={
-                "train": f"/tmp/wikitext2-train-{pretrained_model_name}-chunked",
-                "test": f"/tmp/wikitext2-test-{pretrained_model_name}-chunked",
-                "validation": f"/tmp/wikitext2-dev-{pretrained_model_name}-chunked",
+                "train": f"/tmp/wikitext2-train-{pretrained_model_name.replace('/', '-')}-chunked",
+                "test": f"/tmp/wikitext2-test-{pretrained_model_name.replace('/', '-')}-chunked",
+                "validation": f"/tmp/wikitext2-dev-{pretrained_model_name.replace('/', '-')}-chunked",
             },
         )
 
