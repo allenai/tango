@@ -19,6 +19,14 @@ CHANGELOG
 ```{toctree}
 :maxdepth: 2
 :hidden:
+:caption: Examples
+
+examples/train_gpt2
+```
+
+```{toctree}
+:maxdepth: 2
+:hidden:
 :caption: API Docs
 
 api/components/index
