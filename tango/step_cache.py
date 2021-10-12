@@ -41,7 +41,10 @@ class StepCache(Registrable):
     This is a mapping from instances of :class:`~tango.step.Step` to the results of that step.
     """
 
-    default_implementation = "directory"
+    default_implementation = "local"
+    """
+    The default implementation is :class:`LocalStepCache`.
+    """
 
     def __init__(self, dir: PathOrStr):
         self.dir = Path(dir)
@@ -82,8 +85,8 @@ class StepCache(Registrable):
         return self.dir / step.unique_id
 
 
-@StepCache.register("directory")
-class DirectoryStepCache(StepCache):
+@StepCache.register("local")
+class LocalStepCache(StepCache):
     """
     This is a :class:`StepCache` that stores its results on disk, in the location given in ``dir``.
 
@@ -94,7 +97,7 @@ class DirectoryStepCache(StepCache):
     ``metadata.json`` signifies that the cache entry is complete and has been written successfully.
 
     .. tip::
-        Registered as :class:`StepCache` under the name `directory`.
+        Registered as :class:`StepCache` under the name "local".
 
     """
 

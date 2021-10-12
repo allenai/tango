@@ -1,7 +1,7 @@
 import pytest
 
 from tango.step import Step
-from tango.step_cache import DirectoryStepCache
+from tango.step_cache import LocalStepCache
 from tango.common.testing import TangoTestCase
 
 
@@ -17,7 +17,7 @@ class TestStep(TangoTestCase):
 
     def setup_method(self):
         super().setup_method()
-        self.step_cache = DirectoryStepCache(self.TEST_DIR / "step_cache")
+        self.step_cache = LocalStepCache(self.TEST_DIR / "step_cache")
 
     def test_from_params(self):
         step = Step.from_params({"type": "float", "result": 3})

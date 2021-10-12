@@ -12,9 +12,12 @@ Base class
    :members: 
    :special-members:
 
-Functions
----------
+Implementations
+---------------
 
-.. automodule:: tango.step
+.. code-block::
+
+    from tango.steps import *
+
+.. automodule:: tango.steps
    :members:
-   :exclude-members: Step

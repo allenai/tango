@@ -1,7 +1,7 @@
 from tango.common.testing import TangoTestCase
 from tango.integrations.datasets import LoadDataset
 from tango.step import Step
-from tango.step_cache import DirectoryStepCache
+from tango.step_cache import LocalStepCache
 
 
 class TestLoadDataset(TangoTestCase):
@@ -13,5 +13,5 @@ class TestLoadDataset(TangoTestCase):
                 "cache_dir": str(self.TEST_DIR / "cache"),
             }
         )
-        dataset = step.result(DirectoryStepCache(self.TEST_DIR / "step_cache"))
+        dataset = step.result(LocalStepCache(self.TEST_DIR / "step_cache"))
         assert "train" in dataset

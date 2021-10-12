@@ -32,7 +32,7 @@ class TorchTrainStep(Step):
 
     .. tip::
 
-        Registered as a :class:`~tango.step.Step` under the name ``torch::train``.
+        Registered as a :class:`~tango.step.Step` under the name "torch::train".
     """
 
     DETERMINISTIC: bool = True

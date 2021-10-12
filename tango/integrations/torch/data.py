@@ -36,7 +36,7 @@ class ConcatTensorDictsCollator(DataCollator[t.Dict[str, torch.Tensor]]):
 
     .. tip::
 
-        Registered as a :class:`DataCollator` under the name ``concat_tensor_dicts``.
+        Registered as a :class:`DataCollator` under the name "concat_tensor_dicts".
     """
 
     def __call__(self, items: t.List[t.Dict[str, torch.Tensor]]) -> t.Dict[str, t.Any]:
