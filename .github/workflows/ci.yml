@@ -55,7 +55,7 @@ jobs:
           - name: Docs
             extras: dev,all
             run: |
-              cd docs && make html SPHINXOPTS="-W --keep-going -n"
+              cd docs && make html SPHINXOPTS="-W --keep-going"
 
           - name: Test
             extras: dev
