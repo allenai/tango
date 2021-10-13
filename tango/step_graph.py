@@ -31,7 +31,7 @@ class StepStub:
 
 class StepGraph(Sequence):
     """
-    Represents an experiment as a graph.
+    Represents an experiment as a directed graph.
 
     It can be treated as either a :class:`~collections.abc.Mapping` of step names (``str``)
     to :class:`StepStub`, or simply a :class:`~collections.abc.Sequence` of :class:`StepStub`.

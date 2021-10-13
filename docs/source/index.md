@@ -12,16 +12,9 @@
 
 installation
 overview
+examples/index
 CONTRIBUTING
 CHANGELOG
-```
-
-```{toctree}
-:maxdepth: 2
-:hidden:
-:caption: Examples
-
-examples/train_gpt2
 ```
 
 ```{toctree}

@@ -1,3 +1,7 @@
+####################################
+###### Main dev dependencies #######
+####################################
+
 # Checks style, syntax, and other useful errors.
 flake8
 
@@ -40,3 +44,8 @@ sphinx-copybutton==0.4.0
 
 # Live rebuilding and reloading of docs for developing locally.
 sphinx-autobuild==2021.3.14
+
+##################################################
+###### Extra dev dependencies for examples #######
+##################################################
+transformers  # needed by: examples

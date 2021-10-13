@@ -179,7 +179,7 @@ def _run(
                     click.style("✓ The output for ", fg="green")
                     + click.style(f'"{name}"', bold=True, fg="green")
                     + click.style(" is in ", fg="green")
-                    + click.style(f"{step_link}.", bold=True, fg="green")
+                    + click.style(f"{step_link}", bold=True, fg="green")
                 )
     finally:
         directory_lock.release()
