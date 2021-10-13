@@ -98,14 +98,15 @@ jobs:
           echo "RUNNER_ARCH=$(uname -m)" >> $GITHUB_ENV
           # Use week number in cache key so we can refresh the cache weekly.
           echo "WEEK_NUMBER=$(date +%V)" >> $GITHUB_ENV
+          echo "EXTRAS_HASH=$(python scripts/hash_extras.py ${{ matrix.task.extras }})"
 
       - uses: actions/cache@v2
         id: virtualenv-cache
         with:
           path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.task.extras }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}
+          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-${{ hashFiles('*requirements.txt') }}
           restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.task.extras }}-
+            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
