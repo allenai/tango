@@ -120,7 +120,7 @@ jobs:
           pip install torch==1.9.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
 
       - name: Install editable (no cache hit)
-        if: steps.virtualenv-cache.outputs.cache-hit == 'true'
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true'
         run: |
           . .venv/bin/activate
           pip install -e .[${{ matrix.task.extras }}]
