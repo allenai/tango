@@ -93,6 +93,7 @@ jobs:
       - name: Set build variables
         shell: bash
         run: |
+          set -e
           # Get the exact Python version to use in the cache key.
           echo "PYTHON_VERSION=$(python --version)" >> $GITHUB_ENV
           echo "RUNNER_ARCH=$(uname -m)" >> $GITHUB_ENV
