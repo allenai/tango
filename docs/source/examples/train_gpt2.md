@@ -1,9 +1,7 @@
 ```{include} ../../../examples/train_gpt2/README.md
 ```
 
-## Getting started
-
-### Components
+## Components
 
 Create a file called `components.py` with following contents:
 
@@ -11,14 +9,14 @@ Create a file called `components.py` with following contents:
 :language: py
 ```
 
-### Config
+## Config
 
 Then create the experiment configuration file, `config.jsonnet`:
 
 ```{literalinclude} ../../../examples/train_gpt2/config.jsonnet
 ```
 
-### Run it
+## Run it
 
 Now we can run the experiment with:
 

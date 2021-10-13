@@ -21,7 +21,7 @@ from tango.step_graph import StepGraph, StepStub
 
 class Executor(Registrable):
     """
-    An ``Executor`` is :class:`~tango.common.registrable.Registrable` class that is
+    An ``Executor`` is a :class:`~tango.common.registrable.Registrable` class that is
     responsible for running steps and returning them with their result.
 
     Subclasses should implement :meth:`execute_step_group()`.
