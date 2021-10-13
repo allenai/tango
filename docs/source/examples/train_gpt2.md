@@ -3,16 +3,9 @@
 
 ## Getting started
 
-### Dependencies
-
-To get started, first install the following dependencies:
-
-```{literalinclude} ../../../examples/train_gpt2/requirements.txt
-```
-
 ### Components
 
-Next create a file called `components.py` with following contents:
+Create a file called `components.py` with following contents:
 
 ```{literalinclude} ../../../examples/train_gpt2/components.py
 :language: py

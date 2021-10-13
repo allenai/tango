@@ -31,30 +31,52 @@ jobs:
         python: [3.7]
         task:
           - name: Lint
+            extras: dev,all
             run: |
               flake8 .
 
           - name: Type check
+            extras: dev,all
             run: |
               mypy .
 
-          - name: Test
-            run: |
-              pytest -v --doctest-modules --color=yes --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-
           - name: Build
+            extras: dev,all
             run: |
               tango --version
               python setup.py check
               python setup.py bdist_wheel sdist
 
           - name: Style
+            extras: dev
             run: |
               black --check .
 
           - name: Docs
+            extras: dev,all
             run: |
               cd docs && make html
+
+          - name: Test
+            extras: dev
+            run: |
+              pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+
+          - name: Datasets integration
+            extras: dev,datasets
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/datasets tests/integrations/datasets
+
+          - name: PyTorch integration
+            extras: dev,torch
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
+
+          - name: GPT2 example
+            extras: dev,examples,datasets,torch
+            run: |
+              cd examples/train_gpt2
+              pytest -v --color=yes test.py
 
     steps:
       - uses: actions/checkout@v2
@@ -81,22 +103,32 @@ jobs:
         id: virtualenv-cache
         with:
           path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-core-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}
+          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.task.extras }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}
           restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-core-
+            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.task.extras }}-
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
         run: |
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
-          . .venv/bin/activate
-          pip install -e .[dev]
 
-      - name: Install editable
+      - name: Pre-install torch
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'torch')
+        run: |
+          . .venv/bin/activate
+          pip install torch==1.9.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
+      - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit == 'true'
         run: |
           . .venv/bin/activate
-          pip install --no-deps -e .[dev]
+          pip install -e .[${{ matrix.task.extras }}]
+
+      - name: Install editable (cache hit)
+        if: steps.virtualenv-cache.outputs.cache-hit == 'true'
+        run: |
+          . .venv/bin/activate
+          pip install --no-deps -e .[${{ matrix.task.extras }}]
 
       - name: Show environment info
         run: |
@@ -117,181 +149,12 @@ jobs:
           name: package
           path: dist
 
-      - name: Clean up
-        if: always()
-        run: |
-          . .venv/bin/activate
-          pip uninstall -y ai2-tango
-
-  integrations:
-    name: python ${{ matrix.python }} - integrations - ${{ matrix.integration.name }}
-    runs-on: [ubuntu-latest]
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        python: [3.7]
-        integration:
-          - name: torch
-            pre_install: |
-              pip install torch==1.9.1+cpu torchvision==0.10.1+cpu torchaudio==0.9.1 -f https://download.pytorch.org/whl/torch_stable.html
-
-          - name: datasets
-            pre_install: |
-              # nothing needed here
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
+      - name: Upload docs build
+        if: matrix.task.name == 'Docs' && matrix.python == env.DEFAULT_PYTHON
+        uses: actions/upload-artifact@v2
         with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install prerequisites
-        run: |
-          pip install --upgrade pip setuptools wheel virtualenv
-
-      - name: Set build variables
-        shell: bash
-        run: |
-          # Get the exact Python version to use in the cache key.
-          echo "PYTHON_VERSION=$(python --version)" >> $GITHUB_ENV
-          echo "RUNNER_ARCH=$(uname -m)" >> $GITHUB_ENV
-          # Use week number in cache key so we can refresh the cache weekly.
-          echo "WEEK_NUMBER=$(date +%V)" >> $GITHUB_ENV
-
-      - uses: actions/cache@v2
-        id: virtualenv-cache
-        with:
-          path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.integration.name }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.integration.name }}
-
-      - name: Setup virtual environment (no cache hit)
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true'
-        run: |
-          test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
-          . .venv/bin/activate
-          ${{ matrix.integration.pre_install }}
-          pip install -e .[dev,${{ matrix.integration.name }}]
-
-      - name: Install editable
-        if: steps.virtualenv-cache.outputs.cache-hit == 'true'
-        run: |
-          . .venv/bin/activate
-          pip install --no-deps -e .[dev,${{ matrix.integration.name }}]
-
-      - name: Show environment info
-        run: |
-          . .venv/bin/activate
-          which python
-          python --version
-          pip freeze
-
-      - name: Lint
-        run: |
-          . .venv/bin/activate
-          flake8 tango/integrations/${{ matrix.integration.name }}
-
-      - name: Type check
-        run: |
-          . .venv/bin/activate
-          mypy tango/integrations/${{ matrix.integration.name }}
-
-      - name: Test
-        run: |
-          . .venv/bin/activate
-          pytest -v --color=yes --doctest-modules tango/integrations/${{ matrix.integration.name }} tests/integrations/${{ matrix.integration.name }}
-
-      - name: Clean up
-        if: always()
-        run: |
-          . .venv/bin/activate
-          pip uninstall -y ai2-tango
-
-  examples:
-    name: python ${{ matrix.python }} - examples - ${{ matrix.example.name }}
-    runs-on: [ubuntu-latest]
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        python: [3.7]
-        example:
-          - name: train_gpt2
-            pre_install: |
-              pip install torch==1.9.1+cpu torchvision==0.10.1+cpu torchaudio==0.9.1 -f https://download.pytorch.org/whl/torch_stable.html
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install prerequisites
-        run: |
-          pip install --upgrade pip setuptools wheel virtualenv
-
-      - name: Set build variables
-        shell: bash
-        run: |
-          # Get the exact Python version to use in the cache key.
-          echo "PYTHON_VERSION=$(python --version)" >> $GITHUB_ENV
-          echo "RUNNER_ARCH=$(uname -m)" >> $GITHUB_ENV
-          # Use week number in cache key so we can refresh the cache weekly.
-          echo "WEEK_NUMBER=$(date +%V)" >> $GITHUB_ENV
-          # Install extras.
-          echo "INSTALL_EXTRAS=$(grep 'tango' examples/${{ matrix.example.name }}/requirements.txt | sed 's/tango\[/[dev,/g')" >> $GITHUB_ENV
-
-      - uses: actions/cache@v2
-        id: virtualenv-cache
-        with:
-          path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.example.name }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('dev-requirements.txt') }}-${{ hashFiles(format('examples/{0}/requirements.txt', matrix.example.name)) }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ matrix.example.name }}
-
-      - name: Setup virtual environment (no cache hit)
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true'
-        run: |
-          test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
-          . .venv/bin/activate
-          ${{ matrix.example.pre_install }}
-          pip install -e ".$INSTALL_EXTRAS"
-          grep -v tango examples/${{ matrix.example.name }}/requirements.txt | pip install -r /dev/stdin
-
-      - name: Install editable
-        if: steps.virtualenv-cache.outputs.cache-hit == 'true'
-        run: |
-          . .venv/bin/activate
-          pip install --no-deps -e ".$INSTALL_EXTRAS"
-
-      - name: Show environment info
-        run: |
-          . .venv/bin/activate
-          which python
-          python --version
-          pip freeze
-
-      - name: Lint
-        run: |
-          . .venv/bin/activate
-          flake8 examples/${{ matrix.example.name }}
-
-      - name: Type check
-        run: |
-          . .venv/bin/activate
-          mypy examples/${{ matrix.example.name }}
-
-      - name: Test
-        run: |
-          . .venv/bin/activate
-          cd examples/${{ matrix.example.name }}
-          pytest -v --color=yes test.py
+          name: docs
+          path: docs/build
 
       - name: Clean up
         if: always()
@@ -302,7 +165,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [checks, integrations]
+    needs: [checks]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v1
