@@ -24,7 +24,7 @@ Definition: **Tango-complete** | adj.
 
 ## Configuration files
 
-Experiments themselves are defined through JSON or [Jsonnet](https://jsonnet.org/) configuration files.
+Experiments themselves are defined through JSON, [Jsonnet](https://jsonnet.org/), or YAML configuration files.
 At a minimum, these files must contain the "steps" field, which should be a mapping of arbitrary (yet unique) step names to the configuration of the corresponding step.
 
 For example, let's create a config file called `config.jsonnet` with following contents:
@@ -119,7 +119,7 @@ class ConcatStringsStep(Step):
 ```
 
 ```{important}
-It's important that you use type hints in your code so that Tango can properly construct Python objects from the corresponding JSON objects
+It's important that you use type hints in your code so that Tango can properly construct Python objects from the corresponding serialized (JSON) objects
 and warn you when the types don't match up.
 ```
 
@@ -360,7 +360,7 @@ This is very useful when you're writing a step that requires a certain type as i
 For example, the {class}`~tango.integrations.torch.TorchTrainStep` step takes several `Registrable` base classes as input, including {class}`~tango.integrations.torch.Model` and
 {class}`~tango.integrations.torch.Optimizer`.
 
-In order to specify which subclass to deserialize to, you just need to add the `"type": "..."` field to the corresponding section of the JSON/Jsonnet config.
+In order to specify which subclass to deserialize to, you just need to add the `"type": "..."` field to the corresponding section of the JSON/Jsonnet/YAML config.
 The value for "type" can either be the name that the class is registered under (e.g. "torch::train" for `TorchTrainStep`), or the fully qualified class name (e.g. `tango.integrations.torch.TorchTrainStep`).
 
 You'll see more examples of this in the [next section](examples/index).

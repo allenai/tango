@@ -16,8 +16,9 @@ from tango.common.testing import TangoTestCase
 
 
 class TestParams(TangoTestCase):
-    def test_load_from_file(self):
-        filename = self.FIXTURES_ROOT / "common" / "params_example.jsonnet"
+    @pytest.mark.parametrize("extension", ["jsonnet", "yaml"])
+    def test_load_from_file(self, extension):
+        filename = self.FIXTURES_ROOT / "common" / f"params_example.{extension}"
         params = Params.from_file(filename)
         assert params["model"]["type"] == "classifier"
 
