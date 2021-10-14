@@ -91,7 +91,7 @@ def run(
     """
     Run a tango experiment.
 
-    EXPERIMENT is the path to experiment's JSON/JSonnet/YAML configuration file.
+    EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
     _run(
         experiment,
