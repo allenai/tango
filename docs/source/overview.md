@@ -158,7 +158,7 @@ Hello, Tango
 
 This particular experiment didn't write any results to disk, but in many situations you'll want to save the output of at least some of your steps.
 
-For example, if you're using the {class}`~tango.integrations.torch.TorchTrainStep` step, the output is a trained model, which is certianly a useful thing to keep around.
+For example, if you're using the {class}`~tango.integrations.torch.TorchTrainStep` step, the output is a trained model, which is certainly a useful thing to keep around.
 In other cases, you may not actually care about the direct result of a particular step, but it could still be useful to save it when possible so that Tango doesn't need to run the step
 again unnecessarily.
 
@@ -356,7 +356,7 @@ class FooStep(Step):
 The {class}`~tango.common.registrable.Registrable` class is special kind of {class}`~tango.common.from_params.FromParams` class that allows you to deserialize
 any subclass of the expected class from JSON.
 
-We've already come across this, actually, because {class}`~tango.step.Step` inherits from `Registrable`, why is why Tango is able to instantiate arbitrary `Step` subclasses from a config.
+We've already come across this, actually, because {class}`~tango.step.Step` inherits from `Registrable`, which is why Tango is able to instantiate arbitrary `Step` subclasses from a config.
 
 This is very useful when you're writing a step that requires a certain type as input, but you want to be able to change the exact subclass of the type from your configuration file.
 For example, the {class}`~tango.integrations.torch.TorchTrainStep` step takes several `Registrable` base classes as input, including {class}`~tango.integrations.torch.Model` and
