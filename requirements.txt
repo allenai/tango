@@ -4,7 +4,7 @@
 cached-path>=0.3.1,<0.4.0
 overrides>=3.1,<6.2
 jsonnet>=0.10.0 ; sys.platform != 'win32'
-PyYAML==5.4.1
+PyYAML==6.0
 dill
 base58
 xxhash
