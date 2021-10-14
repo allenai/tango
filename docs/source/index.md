@@ -13,14 +13,13 @@
 installation
 overview
 examples/index
-CONTRIBUTING
 CHANGELOG
 ```
 
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: API Docs
+:caption: API Reference
 
 api/components/index
 api/integrations/index
@@ -32,6 +31,7 @@ api/utilities
 :hidden:
 :caption: Development
 
+CONTRIBUTING
 License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```
