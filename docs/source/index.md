@@ -19,7 +19,7 @@ CHANGELOG
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: API Docs
+:caption: API Reference
 
 api/components/index
 api/integrations/index
