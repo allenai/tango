@@ -7,10 +7,10 @@ a series of steps.
 A step can do anything, really, such as [prepare a dataset](tango.integrations.datasets.LoadDataset), [train a model](tango.integrations.torch.TorchTrainStep), send an email to your mother wishing her happy birthday, *etc*.
 
 Concretely, each step is just a subclass of {class}`~tango.step.Step`, where the {meth}`~tango.step.Step.run` method in particular defines what the step actually does.
-So anything that can be implemented in Python can be ran as a step.
+So anything that can be implemented in Python can be run as a step.
 
 Steps can also depend on other steps in that the output of one step can be (part of) the input to another step.
-Thefore the steps that make up an experiment form a [directed graph](tango.step_graph.StepGraph).
+Therefore, the steps that make up an experiment form a [directed graph](tango.step_graph.StepGraph).
 
 The concept of the {class}`~tango.step.Step` is the bread and butter that makes Tango so general and powerful.
 *So* powerful, in fact, that you might be wondering if Tango is [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)?
@@ -202,9 +202,7 @@ class ReallyInefficientAdditionStep(Step):
         return num1 + num2
 ```
 
-There's a couple of odd things about this step, other than the obvious inefficiencies.
-Specifically I'm talking about the class variables we've defined: {attr}`~tango.step.Step.DETERMINISTIC`, {attr}`~tango.step.Step.CACHEABLE`, and {attr}`~tango.step.Step.FORMAT`.
-These are all meaningful to Tango.
+There are a couple of things to note about this step, other than the obvious inefficiencies; the class variables we've defined: {attr}`~tango.step.Step.DETERMINISTIC`, {attr}`~tango.step.Step.CACHEABLE`, and {attr}`~tango.step.Step.FORMAT`.
 
 `DETERMINISTIC = True` tells Tango that, given particular inputs, the output to this step will always be the same every time it is ran, which has implications on caching.
 By default Tango assumes steps are non-deterministic, and it will warn you when you try to cache a non-deterministic step.
