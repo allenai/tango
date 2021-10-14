@@ -3,6 +3,8 @@ from itertools import chain
 import json
 import logging
 import os
+from pathlib import Path
+import yaml
 import zlib
 from collections import OrderedDict
 from collections.abc import MutableMapping
@@ -488,7 +490,7 @@ class Params(MutableMapping):
         ----------
 
         params_file :
-            The path to the configuration file to load.
+            The path to the configuration file to load. Can be JSON, Jsonnet, or YAML.
 
         params_overrides :
             A dict of overrides that can be applied to final object.
@@ -507,10 +509,16 @@ class Params(MutableMapping):
             ext_vars = {}
 
         # redirect to cache, if necessary
-        params_file = cached_path(params_file)
-        ext_vars = {**_environment_variables(), **ext_vars}
+        params_file: Path = Path(cached_path(params_file))
 
-        file_dict = json.loads(evaluate_file(params_file, ext_vars=ext_vars))
+        file_dict: Dict[str, Any]
+        if params_file.suffix in {".yml", ".yaml"}:
+            with open(params_file) as f:
+                file_dict = yaml.safe_load(f)
+        else:
+            # Fall back to JSON/Jsonnet.
+            ext_vars = {**_environment_variables(), **ext_vars}
+            file_dict = json.loads(evaluate_file(str(params_file), ext_vars=ext_vars))
 
         if isinstance(params_overrides, dict):
             params_overrides = json.dumps(params_overrides)
