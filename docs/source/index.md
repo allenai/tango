@@ -13,7 +13,6 @@
 installation
 overview
 examples/index
-CONTRIBUTING
 CHANGELOG
 ```
 
@@ -32,6 +31,7 @@ api/utilities
 :hidden:
 :caption: Development
 
+CONTRIBUTING
 License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```
