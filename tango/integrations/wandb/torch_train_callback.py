@@ -13,6 +13,12 @@ class WandbTrainCallback(TrainCallback):
     A torch :class:`~tango.integrations.torch.TrainCallback` for use with
     the :class:`~tango.integrations.torch.TorchTrainStep` that logs training and
     validation metrics to W&B.
+
+    .. tip::
+
+        Registered as a :class:`~tango.integrations.torch.TrainCallback`
+        under the name "wandb::log".
+
     """
 
     def __init__(

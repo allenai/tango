@@ -740,13 +740,13 @@ class TestFromParams(TangoTestCase):
         class A(Registrable):
             pass
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match="not in acceptable choices for type"):
             A.from_params("nonexistent_class")
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match='key "type" is required'):
             A.from_params(Params({"some_spurious": "key", "value": "pairs"}))
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match='key "type" is required'):
             A.from_params(Params({}))
 
         # Some paths through the code are different if there is a constructor here versus not.  We
@@ -755,13 +755,13 @@ class TestFromParams(TangoTestCase):
             def __init__(self):
                 pass
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match="not in acceptable choices for type"):
             B.from_params("nonexistent_class")
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match='key "type" is required'):
             B.from_params(Params({"some_spurious": "key", "value": "pairs"}))
 
-        with pytest.raises(ConfigurationError, match="no registered concrete types"):
+        with pytest.raises(ConfigurationError, match='key "type" is required'):
             B.from_params(Params({}))
 
     def test_from_params_raises_error_on_wrong_parameter_name_in_optional_union(self):

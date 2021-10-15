@@ -589,20 +589,7 @@ class FromParams(CustomDetHash):
                     f"This happened when constructing an object of type {cls}."
                 )
 
-        registered_subclasses = Registrable._registry.get(cls)
-
-        if is_base_registrable(cls) and registered_subclasses is None:
-            # NOTE(mattg): There are some potential corner cases in this logic if you have nested
-            # Registrable types.  We don't currently have any of those, but if we ever get them,
-            # adding some logic to check `constructor_to_call` should solve the issue.  Not
-            # bothering to add that unnecessary complexity for now.
-            raise ConfigurationError(
-                "Tried to construct an abstract Registrable base class that has no registered "
-                "concrete types. This might mean that you need to use --include-package to get "
-                "your concrete classes actually registered."
-            )
-
-        if registered_subclasses is not None and not constructor_to_call:
+        if is_base_registrable(cls) and not constructor_to_call:
             # We know `cls` inherits from Registrable, so we'll use a cast to make mypy happy.
 
             as_registrable = cast(Type[Registrable], cls)
