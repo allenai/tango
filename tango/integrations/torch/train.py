@@ -158,7 +158,7 @@ class TorchTrainStep(Step):
         Returns
         -------
         :class:`Model`
-            The trained model.
+            The trained model on CPU with the weights from the best checkpoint loaded.
 
         """
         # Validate device(s).
@@ -187,6 +187,7 @@ class TorchTrainStep(Step):
             is_distributed = True
             num_workers = len(devices)
 
+        final_model: Model
         if is_distributed:
             import torch.multiprocessing as mp
 
@@ -221,12 +222,8 @@ class TorchTrainStep(Step):
                 ),
                 nprocs=num_workers,
             )
-
-            self.logger.info("Loading final weights")
-            final_model: Model = model.construct()
-            state = torch.load(self.work_dir / "state_worker0_best.pt", map_location="cpu")
-            final_model.load_state_dict(state["model"])
-            return final_model
+            print("Constructing final model")
+            final_model = model.construct()
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
@@ -254,7 +251,16 @@ class TorchTrainStep(Step):
                 aggregate_val_metric=aggregate_val_metric,
             )
             assert final_model is not None
-            return final_model
+            final_model = final_model.cpu()
+
+        # Load best checkpoint before returning model.
+        best_state_path = self.work_dir / "state_worker0_best.pt"
+        if best_state_path.is_file():
+            print(f"Loading best weights from {best_state_path.resolve().name}")
+            state = torch.load(best_state_path, map_location="cpu")
+            final_model.load_state_dict(state["model"])
+
+        return final_model
 
 
 def _train(
@@ -394,11 +400,14 @@ def _train(
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
+    batch_loss: float = 0.0
+    best_batch_loss: t.Optional[float] = None
     val_metric: t.Optional[float] = None
     best_val_metric: t.Optional[float] = None
     if initial_state is not None:
         val_metric = initial_state[val_metric_name]
         best_val_metric = initial_state[f"best_{val_metric_name}"]
+        best_batch_loss = initial_state["best_batch_loss"]
 
     model.train()
     training_batches = enumerate(
@@ -429,6 +438,16 @@ def _train(
     ) as train_batch_iterator:
         for step, batch in train_batch_iterator:
 
+            def is_best_checkpoint() -> bool:
+                if val_metric is not None and best_val_metric is not None:
+                    return (minimize_val_metric and val_metric <= best_val_metric) or (
+                        not minimize_val_metric and val_metric >= best_val_metric
+                    )
+                elif best_batch_loss is not None:
+                    return best_batch_loss <= batch_loss
+                else:
+                    return False
+
             def save_state():
                 state_path_for_step = work_dir / f"state_worker{worker_id}_step{step + 1}.pt"
                 temp_state_file = tempfile.NamedTemporaryFile(
@@ -452,6 +471,7 @@ def _train(
                                 if is_distributed
                                 else model.state_dict(),  # type: ignore[attr-defined]
                                 "training_steps": step + 1,
+                                "best_batch_loss": best_batch_loss,
                                 f"val_{val_metric_name}": val_metric,
                                 f"best_{val_metric_name}": best_val_metric,
                             },
@@ -466,13 +486,10 @@ def _train(
                     state_path.symlink_to(state_path_for_step)
 
                     # Link to best state path.
-                    if val_metric is not None and best_val_metric is not None:
-                        if (minimize_val_metric and val_metric <= best_val_metric) or (
-                            not minimize_val_metric and val_metric >= best_val_metric
-                        ):
-                            if best_state_path.is_symlink():
-                                best_state_path.unlink()
-                            best_state_path.symlink_to(state_path_for_step)
+                    if is_best_checkpoint():
+                        if best_state_path.is_symlink():
+                            best_state_path.unlink()
+                        best_state_path.symlink_to(state_path_for_step)
                 finally:
                     if os.path.exists(temp_state_file.name):
                         os.remove(temp_state_file.name)
@@ -502,6 +519,9 @@ def _train(
                 del micro_batch
                 del outputs
                 del micro_batch_loss
+
+            if best_batch_loss is None or batch_loss <= best_batch_loss:
+                best_batch_loss = batch_loss
 
             del batch
 
