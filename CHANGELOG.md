@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.1.3](https://github.com/allenai/tango/releases/tag/v0.1.3) - 2021-10-15
+
 ### Added
 
 - Added the ability to track a metric other than "loss" for validation in `TorchTrainStep` ("torch::train").
