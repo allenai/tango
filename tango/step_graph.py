@@ -102,6 +102,6 @@ class StepGraph(Sequence):
             else:
                 for value in o.values():
                     dependencies = dependencies | StepGraph._parse_direct_step_dependencies(value)
-        elif not isinstance(o, (bool, str, int, float)):
+        elif o is not None and not isinstance(o, (bool, str, int, float)):
             raise ValueError(o)
         return dependencies

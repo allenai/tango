@@ -28,7 +28,8 @@ from tango.step import Step
 @Step.register("torch::train")
 class TorchTrainStep(Step):
     """
-    A basic training loop step.
+    A basic PyTorch training loop step that supports gradient accumulation, distributed training,
+    and AMP, with configurable dataloaders, optimizer, and LR scheduler.
 
     .. tip::
 
@@ -338,6 +339,8 @@ def _train(
             validation_dataloader = train_dataloader.construct(
                 dataset=dataset_dict[validation_split]
             )
+    else:
+        validation_dataloader = None
     validation_dataloader: t.Optional[DataLoader] = t.cast(
         t.Optional[DataLoader], validation_dataloader
     )
