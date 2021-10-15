@@ -33,7 +33,7 @@ class WandbTrainCallback(TrainCallback):
         watch_model: bool = False,
         wandb_kwargs: Optional[Dict[str, Any]] = None,
         wandb_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)
 
@@ -97,10 +97,11 @@ class WandbTrainCallback(TrainCallback):
     def post_batch(self, step: int, batch_loss: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
-                {"loss": batch_loss, "lr": self.optimizer.param_groups[0]["lr"]}, step=step
+                {"train/loss": batch_loss, "train/lr": self.optimizer.param_groups[0]["lr"]},
+                step=step,
             )
 
     @overrides
     def post_val_loop(self, step: int, val_metric_name: str, val_metric: float) -> None:
         if self.is_local_main_process:
-            self.wandb.log({val_metric_name: val_metric}, step=step)
+            self.wandb.log({f"val/{val_metric_name}": val_metric}, step=step)
