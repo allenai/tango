@@ -167,7 +167,7 @@ class TorchTrainStep(Step):
             if devices is None:
                 print("CUDA is available")
             elif all((x >= 0 for x in devices)):
-                if torch.cuda.device_count() < set(devices):
+                if torch.cuda.device_count() < len(set(devices)):
                     raise ConfigurationError(
                         f"Only found {torch.cuda.device_count()} CUDA devices, "
                         f"but you specified {len(set(devices))} device IDs"
@@ -375,16 +375,17 @@ def _train(
     # Check working directory to see if we should recover from a previous run.
     initial_state: t.Optional[t.Dict[str, t.Any]] = None
     if state_path.is_file():
-        print(f"Recovering from previous run at {str(state_path)}")
+        if is_local_main_process:
+            print(f"Recovering from previous run at {str(state_path.name)}")
         initial_state = torch.load(state_path)
 
     # Prepare model.
     model: Model = model.construct()
     if initial_state is not None:
         model.load_state_dict(initial_state["model"])
+    model = model.to(device)
     if is_distributed:
         model = nn.parallel.DistributedDataParallel(model)
-    model = model.to(device)
 
     # Prepare optimizer and lr scheduler.
     optimizer: Optimizer = optimizer.construct(params=model.parameters())
@@ -408,7 +409,7 @@ def _train(
     val_metric: t.Optional[float] = None
     best_val_metric: t.Optional[float] = None
     if initial_state is not None:
-        val_metric = initial_state[val_metric_name]
+        val_metric = initial_state[f"val_{val_metric_name}"]
         best_val_metric = initial_state[f"best_{val_metric_name}"]
         best_batch_loss = initial_state["best_batch_loss"]
 
@@ -423,11 +424,16 @@ def _train(
     # Catch data loader up to where we left off before.
     if initial_state is not None:
         training_steps = initial_state["training_steps"]
-        print(f"Catching data loader up to step {training_steps}")
-        for step, batch in training_batches:
-            del batch
-            if step >= training_steps - 1:
-                break
+        with Tqdm.tqdm(
+            training_batches,
+            desc=f"Catching dataloader up to step {training_steps}",
+            total=training_steps - 1,
+            disable=not is_local_main_process,
+        ) as batch_iter:
+            for step, batch in batch_iter:
+                del batch
+                if step >= training_steps - 1:
+                    break
 
     if is_distributed:
         dist.barrier()

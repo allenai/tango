@@ -2,8 +2,24 @@ local pretrained_model = "gpt2";
 local training_steps = 200;
 local warmup_steps = 20;
 local batch_size = 8;
-local grad_accum = 4;
 local validate_every = 20;
+local distributed = false;  # Set to `true` to train on 2 (or more) GPUs.
+local devices = if distributed then [0, 1] else null;
+local grad_accum = if distributed then 2 else 4;
+
+local dataloader = if distributed then {
+    "batch_size": batch_size,
+    "collate_fn": {"type": "transformers_default"},
+    "sampler": {
+        "type": "DistributedSampler",
+        "shuffle": true,
+        "drop_last": true,
+    }
+} else {
+    "shuffle": true,
+    "batch_size": batch_size,
+    "collate_fn": {"type": "transformers_default"},
+};
 
 {
     "steps": {
@@ -24,15 +40,7 @@ local validate_every = 20;
                 "pretrained_model_name_or_path": pretrained_model,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
-            "train_dataloader": {
-                "shuffle": true,
-                "batch_size": batch_size,
-                "collate_fn": {"type": "transformers_default"},
-            },
-            "validation_dataloader": {
-                "batch_size": batch_size,
-                "collate_fn": {"type": "transformers_default"},
-            },
+            "train_dataloader": dataloader,
             "validation_split": "validation",
             "optimizer": {
                 "type": "transformers_adamw",
@@ -51,6 +59,7 @@ local validate_every = 20;
             "validate_every": validate_every,
             "checkpoint_every": validate_every,
             "log_every": 1,
+            "devices": devices,
         }
     }
 }
