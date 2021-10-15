@@ -1,6 +1,15 @@
 """
 Components for Tango integration with `PyTorch <https://pytorch.org/>`_.
 
+.. important::
+    To use this integration you should install ``tango`` with the "torch" extra
+    (e.g. ``pip install tango[torch]``) or just install PyTorch after the fact.
+
+    Make sure you install the correct version of torch given your operating system
+    and supported CUDA version. Check
+    `pytorch.org/get-started/locally/ <https://pytorch.org/get-started/locally/>`_
+    for more details.
+
 These include a basic training loop :class:`~tango.step.Step` and registrable versions
 of many ``torch`` classes, such :class:`torch.optim.Optimizer` and :class:`torch.utils.data.DataLoader`.
 

@@ -1,5 +1,11 @@
 """
 Components for Tango integration with `Weights & Biases <https://wandb.ai/>`_.
+
+.. important::
+    To use this integration you should install ``tango`` with the "wandb" extra
+    (e.g. ``pip install tango[wandb]``) or just install the ``wandb`` library after the fact
+    (e.g. ``pip install wandb``).
+
 """
 
 __all__ = []

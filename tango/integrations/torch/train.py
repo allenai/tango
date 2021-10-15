@@ -36,7 +36,7 @@ class TorchTrainStep(Step):
 
         Registered as a :class:`~tango.step.Step` under the name "torch::train".
 
-    .. important::
+    .. warning::
 
         During validation, the validation metric (specified by the ``val_metric_name`` parameter)
         is aggregated by simply averaging across validation batches and distributed processes.

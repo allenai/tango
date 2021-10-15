@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import sys
 
 from overrides import overrides
@@ -19,6 +19,35 @@ class WandbTrainCallback(TrainCallback):
         Registered as a :class:`~tango.integrations.torch.TrainCallback`
         under the name "wandb::log".
 
+    .. important::
+        This class also requires the :mod:`~tango.integrations.torch` integration.
+
+    Parameters
+    ----------
+
+    project : :class:`str`
+        W&B project to associated this run with.
+    entity : :class:`str`
+        W&B entity (user or organization) to associated this run with.
+    group : :class:`str`
+        W&B group to associated this run with.
+    name : :class:`str`
+        Set the name of the run in W&B.
+    notes : :class:`str`
+        Arbitrary notes to add in W&B to this run.
+    tags : ``List[str]``
+        Arbitrary tags to add in W&B to this run.
+    watch_model : :class:`bool`
+        If ``True``, ``wandb.watch()`` is called to collect gradients and other information
+        about the model throughout training.
+        See `docs.wandb.ai/ref/python/watch <https://docs.wandb.ai/ref/python/watch>`_.
+    wandb_config : ``Dict[str, Any]``
+        Arbitrary configuration fields to set in W&B for this run.
+        See `docs.wandb.ai/guides/track/config <https://docs.wandb.ai/guides/track/config>`_.
+    wandb_kwargs : ``Dict[str, Any]``
+        Additional keyword arguments that will be passed to ``wandb.init()``.
+        See `docs.wandb.ai/ref/python/init <https://docs.wandb.ai/ref/python/init>`_.
+
     """
 
     def __init__(
@@ -29,10 +58,10 @@ class WandbTrainCallback(TrainCallback):
         group: Optional[str] = None,
         name: Optional[str] = None,
         notes: Optional[str] = None,
-        tags: Optional[str] = None,
+        tags: Optional[List[str]] = None,
         watch_model: bool = False,
-        wandb_kwargs: Optional[Dict[str, Any]] = None,
         wandb_config: Optional[Dict[str, Any]] = None,
+        wandb_kwargs: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
         super().__init__(*args, **kwargs)

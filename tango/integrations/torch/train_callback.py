@@ -19,6 +19,10 @@ class TrainCallback(Registrable):
         All of the parameters to this base class will be automatically set within
         the training loop, so you shouldn't include them in your config for your callbacks.
 
+    .. seealso::
+        See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
+        implementation.
+
     """
 
     def __init__(
