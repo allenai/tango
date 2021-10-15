@@ -1,4 +1,5 @@
 import torch.distributed as dist
+import pytest
 
 from tango.common.testing import TangoTestCase
 
@@ -9,10 +10,12 @@ class TestTrainStep(TangoTestCase):
         if dist.is_initialized():
             dist.destroy_process_group()
 
-    def test_basic_train_loop(self):
+    @pytest.mark.parametrize("with_validation", [True, False])
+    def test_basic_train(self, with_validation):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",
             include_package=["test_fixtures.integrations.torch"],
+            overrides="" if with_validation else "{'steps.train.validation_split':null}",
         )
         assert (result_dir / "train" / "data.pt").is_file()
         assert (result_dir / "train" / "work" / "state_worker0.pt").is_file()

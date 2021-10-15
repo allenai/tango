@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added the ability to track a metric other than "loss" for validation in `TorchTrainStep` ("torch::train").
+
+### Fixed
+
+- Final model returned from `TorchTrainStep` ("torch::train") will have best weights loaded.
+- Checkpoints are saved from `TorchTrainStep` ("torch::train") even when there is no validation loop.
+- Fixed `TorchTrainStep` ("torch::train") when `validation_split` is `None`.
+- Fixed distributed training with `TorchTrainStep` ("torch::train") on GPU devices.
+
 ## [v0.1.2](https://github.com/allenai/tango/releases/tag/v0.1.2) - 2021-10-13
 
 ### Added

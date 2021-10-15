@@ -135,7 +135,7 @@ class Executor(Registrable):
                     k: Executor._replace_refs_with_results(v, executed, step_cache)
                     for k, v in o.items()
                 }
-        elif isinstance(o, (str, bool, int, float)):
+        elif o is None or isinstance(o, (str, bool, int, float)):
             return o
         else:
             raise ValueError(o)
