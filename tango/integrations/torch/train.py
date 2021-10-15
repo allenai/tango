@@ -17,6 +17,7 @@ from .data import DataLoader
 from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
+from .train_callback import TrainCallback
 from tango.common.dataset_dict import DatasetDict
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
@@ -29,7 +30,7 @@ from tango.step import Step
 class TorchTrainStep(Step):
     """
     A basic PyTorch training loop step that supports gradient accumulation, distributed training,
-    and AMP, with configurable dataloaders, optimizer, and LR scheduler.
+    and AMP, with configurable dataloaders, callbacks, optimizer, and LR scheduler.
 
     .. tip::
 
@@ -81,6 +82,7 @@ class TorchTrainStep(Step):
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
         aggregate_val_metric: bool = True,
+        callbacks: t.Optional[t.List[Lazy[TrainCallback]]] = None,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -155,6 +157,8 @@ class TorchTrainStep(Step):
             validation batches and distributed processes. This may not be the correct
             behavior for some metrics (such as F1), in which you should set this to
             ``False`` and handle the aggregation internally in your model.
+        callbacks: ``List[TrainCallback]``
+            A list of :class:`TrainCallback`.
 
         Returns
         -------
@@ -220,6 +224,7 @@ class TorchTrainStep(Step):
                     val_metric_name,
                     minimize_val_metric,
                     aggregate_val_metric,
+                    callbacks,
                 ),
                 nprocs=num_workers,
             )
@@ -250,6 +255,7 @@ class TorchTrainStep(Step):
                 val_metric_name=val_metric_name,
                 minimize_val_metric=minimize_val_metric,
                 aggregate_val_metric=aggregate_val_metric,
+                callbacks=callbacks,
             )
             assert final_model is not None
             final_model = final_model.cpu()
@@ -291,6 +297,7 @@ def _train(
     val_metric_name: str = "loss",
     minimize_val_metric: bool = True,
     aggregate_val_metric: bool = True,
+    callbacks: t.Optional[t.List[Lazy[TrainCallback]]] = None,
 ) -> t.Optional[Model]:
     if include_package:
         from tango.common.util import import_module_and_submodules
@@ -408,10 +415,34 @@ def _train(
     best_batch_loss: t.Optional[float] = None
     val_metric: t.Optional[float] = None
     best_val_metric: t.Optional[float] = None
+    start_step: int = 0
     if initial_state is not None:
         val_metric = initial_state[f"val_{val_metric_name}"]
         best_val_metric = initial_state[f"best_{val_metric_name}"]
         best_batch_loss = initial_state["best_batch_loss"]
+        start_step = initial_state["training_steps"]
+
+    # Initialize callbacks.
+    callbacks: t.List[TrainCallback] = [
+        callback.construct(
+            work_dir=work_dir,
+            model=model,
+            optimizer=optimizer,
+            train_dataloader=train_dataloader,
+            validation_dataloader=validation_dataloader,
+            lr_scheduler=lr_scheduler,
+            is_local_main_process=is_local_main_process,
+            worker_id=worker_id,
+            world_size=world_size,
+            device=device,
+        )
+        for callback in (callbacks or [])
+    ]
+    if initial_state:
+        for callback, state in zip(callbacks, initial_state["callbacks"]):
+            callback.load_state_dict(state)
+
+    del initial_state
 
     model.train()
     training_batches = enumerate(
@@ -422,26 +453,28 @@ def _train(
     )
 
     # Catch data loader up to where we left off before.
-    if initial_state is not None:
-        training_steps = initial_state["training_steps"]
+    if start_step > 0:
         with Tqdm.tqdm(
             training_batches,
-            desc=f"Catching dataloader up to step {training_steps}",
-            total=training_steps - 1,
+            desc=f"Catching dataloader up to step {start_step}",
+            total=start_step - 1,
             disable=not is_local_main_process,
         ) as batch_iter:
             for step, batch in batch_iter:
                 del batch
-                if step >= training_steps - 1:
+                if step >= start_step - 1:
                     break
 
     if is_distributed:
         dist.barrier()
 
+    for callback in callbacks:
+        callback.pre_train_loop()
+
     with Tqdm.tqdm(
         training_batches,
         desc="Training",
-        initial=0 if initial_state is None else initial_state["training_steps"],
+        initial=start_step,
         total=train_steps,
         disable=not is_local_main_process,
     ) as train_batch_iterator:
@@ -470,22 +503,25 @@ def _train(
                         leave=False,
                         disable=not is_local_main_process,
                     ) as f:
-                        torch.save(
-                            {
-                                "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
-                                "scheduler": None
-                                if lr_scheduler is None
-                                else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
-                                "model": model.module.state_dict()  # type: ignore[attr-defined]
-                                if is_distributed
-                                else model.state_dict(),  # type: ignore[attr-defined]
-                                "training_steps": step + 1,
-                                "best_batch_loss": best_batch_loss,
-                                f"val_{val_metric_name}": val_metric,
-                                f"best_{val_metric_name}": best_val_metric,
-                            },
-                            f,
-                        )
+                        checkpoint_state = {
+                            "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
+                            "scheduler": None
+                            if lr_scheduler is None
+                            else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
+                            "model": model.module.state_dict()  # type: ignore[attr-defined]
+                            if is_distributed
+                            else model.state_dict(),  # type: ignore[attr-defined]
+                            "training_steps": step + 1,
+                            "best_batch_loss": best_batch_loss,
+                            f"val_{val_metric_name}": val_metric,
+                            f"best_{val_metric_name}": best_val_metric,
+                            "callbacks": [
+                                callback.state_dict() for callback in callbacks  # type: ignore[union-attr]
+                            ],
+                        }
+                        for callback in callbacks:  # type: ignore[union-attr]
+                            callback.pre_checkpoint(checkpoint_state)  # type: ignore[union-attr]
+                        torch.save(checkpoint_state, f)
                     temp_state_file.close()
                     os.replace(temp_state_file.name, state_path_for_step)
 
@@ -499,10 +535,15 @@ def _train(
                         if best_state_path.is_symlink():
                             best_state_path.unlink()
                         best_state_path.symlink_to(state_path_for_step)
+
+                    for callback in callbacks:  # type: ignore[union-attr]
+                        callback.post_checkpoint(state_path_for_step)  # type: ignore[union-attr]
                 finally:
                     if os.path.exists(temp_state_file.name):
                         os.remove(temp_state_file.name)
 
+            for callback in callbacks:
+                callback.pre_batch(step, batch)
             optimizer.zero_grad()
             batch_loss = 0.0
             for micro_batch in batch:
@@ -528,6 +569,9 @@ def _train(
                 del micro_batch
                 del outputs
                 del micro_batch_loss
+
+            for callback in callbacks:
+                callback.post_batch(step, batch_loss)
 
             if best_batch_loss is None or batch_loss <= best_batch_loss:
                 best_batch_loss = batch_loss
@@ -568,13 +612,16 @@ def _train(
                 batch_loss = batch_loss_tensor.item() / world_size
 
             # Update progress bar.
-            if is_local_main_process and should_log_this_step:
+            if should_log_this_step:
                 metrics_to_log: t.Dict[str, float] = {"batch_loss": batch_loss}
                 if val_metric is not None:
                     metrics_to_log[f"val_{val_metric_name}"] = val_metric
                 if best_val_metric is not None:
                     metrics_to_log[f"best_val_{val_metric_name}"] = best_val_metric
-                train_batch_iterator.set_postfix(**metrics_to_log)
+                for callback in callbacks:
+                    callback.pre_log_batch(step, metrics_to_log)
+                if is_local_main_process:
+                    train_batch_iterator.set_postfix(**metrics_to_log)
 
             # Validate.
             if should_validate_this_step:
@@ -594,6 +641,8 @@ def _train(
                     disable=not is_local_main_process,
                 ) as val_batch_iterator:
                     for val_step, val_batch in enumerate(val_batch_iterator):
+                        for callback in callbacks:
+                            callback.pre_val_batch(step, val_step, val_batch)
                         # Move tensors to right device.
                         val_batch = move_to_device(val_batch, device)
 
@@ -601,6 +650,8 @@ def _train(
                         with torch.cuda.amp.autocast(enabled=amp):
                             with torch.inference_mode():
                                 outputs = model(**val_batch)
+                        for callback in callbacks:
+                            callback.post_val_batch(step, val_step, outputs)
                         metric = outputs[val_metric_name]
 
                         if aggregate_val_metric:
@@ -628,10 +679,14 @@ def _train(
                         del outputs
                         del metric
 
+                assert val_metric is not None
+
+                for callback in callbacks:
+                    callback.post_val_loop(step, val_metric_name, val_metric)
+
                 # Reset model to train mode.
                 model.train()
 
-                assert val_metric is not None
                 if best_val_metric is None:
                     best_val_metric = val_metric
                 elif minimize_val_metric and val_metric <= best_val_metric:
@@ -640,14 +695,15 @@ def _train(
                     best_val_metric = val_metric
 
                 # Update progress bar again.
+                metrics_to_log = {
+                    "batch_loss": batch_loss,
+                    f"val_{val_metric_name}": val_metric,
+                    f"best_{val_metric_name}": best_val_metric,
+                }
+                for callback in callbacks:
+                    callback.pre_log_batch(step, metrics_to_log)
                 if is_local_main_process:
-                    train_batch_iterator.set_postfix(
-                        **{
-                            "batch_loss": batch_loss,
-                            f"val_{val_metric_name}": val_metric,
-                            f"best_{val_metric_name}": best_val_metric,
-                        }
-                    )
+                    train_batch_iterator.set_postfix(**metrics_to_log)
 
             # Checkpoint.
             if should_checkpoint_this_step:
@@ -655,6 +711,9 @@ def _train(
 
     if is_distributed:
         dist.barrier()
+
+    for callback in callbacks:
+        callback.post_train_loop()
 
     if not is_distributed:
         return model

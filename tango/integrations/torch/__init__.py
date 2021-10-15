@@ -142,6 +142,7 @@ __all__ = [
     "DataCollator",
     "Sampler",
     "ConcatTensorDictsCollator",
+    "TrainCallback",
 ]
 
 from .data import DataLoader, Sampler, DataCollator, ConcatTensorDictsCollator
@@ -149,3 +150,4 @@ from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
 from .train import TorchTrainStep
+from .train_callback import TrainCallback
