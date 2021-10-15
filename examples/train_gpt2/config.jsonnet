@@ -1,7 +1,9 @@
 local pretrained_model = "gpt2";
-local training_steps = 60;
+local training_steps = 200;
+local warmup_steps = 20;
 local batch_size = 8;
-local checkpoint_every = 20;
+local grad_accum = 4;
+local validate_every = 20;
 
 {
     "steps": {
@@ -34,19 +36,20 @@ local checkpoint_every = 20;
             "validation_split": "validation",
             "optimizer": {
                 "type": "transformers_adamw",
-                "lr": 0.0021,
+                "lr": 0.0007,
                 "betas": [0.9, 0.95],
                 "eps": 1e-6,
                 "correct_bias": false,
             },
             "lr_scheduler": {
                 "type": "linear_with_warmup",
-                "num_warmup_steps": 10,
+                "num_warmup_steps": warmup_steps,
                 "num_training_steps": training_steps,
             },
+            "grad_accum": grad_accum,
             "train_steps": training_steps,
-            "validate_every": checkpoint_every,
-            "checkpoint_every": checkpoint_every,
+            "validate_every": validate_every,
+            "checkpoint_every": validate_every,
             "log_every": 1,
         }
     }

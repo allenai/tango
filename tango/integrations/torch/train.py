@@ -33,6 +33,22 @@ class TorchTrainStep(Step):
     .. tip::
 
         Registered as a :class:`~tango.step.Step` under the name "torch::train".
+
+    .. important::
+
+        During validation, the validation metric (specified by the ``val_metric_name`` parameter)
+        is aggregated by simply averaging across validation batches and distributed processes.
+        This behavior is usually correct when your validation metric is "loss" or "accuracy",
+        for example, but may not be correct for other metrics such as F1.
+
+        If this is not correct for your metric you will need to handle the aggregation
+        internally in your model so that the metric returned from :meth:`torch.nn.Module.forward()`
+        is already aggregated correctly. Then set the parameter ``aggregate_val_metric`` to
+        ``False``.
+
+        Note that correctly aggregating your metric during distributed training will
+        involve distributed communication.
+
     """
 
     DETERMINISTIC: bool = True
@@ -61,6 +77,9 @@ class TorchTrainStep(Step):
         max_grad_norm: t.Optional[float] = None,
         devices: t.Optional[t.List[int]] = None,
         distributed_port: str = "54761",
+        val_metric_name: str = "loss",
+        minimize_val_metric: bool = True,
+        aggregate_val_metric: bool = True,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -123,6 +142,18 @@ class TorchTrainStep(Step):
             The IDs of the CUDA devices to train on.
         distributed_port : :class:`str`
             The port of the distributed process group. Default = "54761".
+        val_metric_name : :class:`str`
+            The name of the validation metric, i.e. the key of the metric in the dictionary
+            returned by the forward pass of the model. Default is "loss".
+        minimize_val_metric : :class:`bool`
+            Whether the validation metric is meant to be minimized (such as the loss).
+            Default is ``True``. When using a metric such as accuracy, you should set
+            this to ``False``.
+        aggregate_val_metric : :class:`bool`
+            If ``True`` (the default), the validation metric will be averaged across
+            validation batches and distributed processes. This may not be the correct
+            behavior for some metrics (such as F1), in which you should set this to
+            ``False`` and handle the aggregation internally in your model.
 
         Returns
         -------
@@ -184,6 +215,9 @@ class TorchTrainStep(Step):
                     devices,
                     distributed_port,
                     self.executor.include_package,
+                    val_metric_name,
+                    minimize_val_metric,
+                    aggregate_val_metric,
                 ),
                 nprocs=num_workers,
             )
@@ -215,6 +249,9 @@ class TorchTrainStep(Step):
                 amp=amp,
                 max_grad_norm=max_grad_norm,
                 is_distributed=is_distributed,
+                val_metric_name=val_metric_name,
+                minimize_val_metric=minimize_val_metric,
+                aggregate_val_metric=aggregate_val_metric,
             )
             assert final_model is not None
             return final_model
@@ -244,6 +281,9 @@ def _train(
     devices: t.Optional[t.List[int]] = None,
     distributed_port: str = "54761",
     include_package: t.Optional[t.List[str]] = None,
+    val_metric_name: str = "loss",
+    minimize_val_metric: bool = True,
+    aggregate_val_metric: bool = True,
 ) -> t.Optional[Model]:
     if include_package:
         from tango.common.util import import_module_and_submodules
@@ -354,11 +394,11 @@ def _train(
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-    val_loss: t.Optional[float] = None
-    best_val_loss: t.Optional[float] = None
+    val_metric: t.Optional[float] = None
+    best_val_metric: t.Optional[float] = None
     if initial_state is not None:
-        val_loss = initial_state["val_loss"]
-        best_val_loss = initial_state["best_val_loss"]
+        val_metric = initial_state[val_metric_name]
+        best_val_metric = initial_state[f"best_{val_metric_name}"]
 
     model.train()
     training_batches = enumerate(
@@ -412,8 +452,8 @@ def _train(
                                 if is_distributed
                                 else model.state_dict(),  # type: ignore[attr-defined]
                                 "training_steps": step + 1,
-                                "val_loss": val_loss,
-                                "best_val_loss": best_val_loss,
+                                f"val_{val_metric_name}": val_metric,
+                                f"best_{val_metric_name}": best_val_metric,
                             },
                             f,
                         )
@@ -426,14 +466,13 @@ def _train(
                     state_path.symlink_to(state_path_for_step)
 
                     # Link to best state path.
-                    if (
-                        val_loss is not None
-                        and best_val_loss is not None
-                        and val_loss <= best_val_loss
-                    ):
-                        if best_state_path.is_symlink():
-                            best_state_path.unlink()
-                        best_state_path.symlink_to(state_path_for_step)
+                    if val_metric is not None and best_val_metric is not None:
+                        if (minimize_val_metric and val_metric <= best_val_metric) or (
+                            not minimize_val_metric and val_metric >= best_val_metric
+                        ):
+                            if best_state_path.is_symlink():
+                                best_state_path.unlink()
+                            best_state_path.symlink_to(state_path_for_step)
                 finally:
                     if os.path.exists(temp_state_file.name):
                         os.remove(temp_state_file.name)
@@ -501,13 +540,12 @@ def _train(
 
             # Update progress bar.
             if is_local_main_process and should_log_this_step:
-                if val_loss is not None:
-                    train_batch_iterator.set_postfix(
-                        batch_loss=batch_loss,
-                        val_loss=val_loss,
-                    )
-                else:
-                    train_batch_iterator.set_postfix(batch_loss=batch_loss)
+                metrics_to_log: t.Dict[str, float] = {"batch_loss": batch_loss}
+                if val_metric is not None:
+                    metrics_to_log[f"val_{val_metric_name}"] = val_metric
+                if best_val_metric is not None:
+                    metrics_to_log[f"best_val_{val_metric_name}"] = best_val_metric
+                train_batch_iterator.set_postfix(**metrics_to_log)
 
             # Validate.
             if should_validate_this_step:
@@ -518,7 +556,7 @@ def _train(
                 model.eval()
                 optimizer.zero_grad()  # Not strictly necessary.
 
-                running_loss = 0.0
+                running_metric = 0.0
                 with Tqdm.tqdm(
                     islice(validation_dataloader, validation_steps),
                     desc="Validating",
@@ -530,49 +568,57 @@ def _train(
                         # Move tensors to right device.
                         val_batch = move_to_device(val_batch, device)
 
-                        # Get loss.
+                        # Get metric.
                         with torch.cuda.amp.autocast(enabled=amp):
                             with torch.inference_mode():
                                 outputs = model(**val_batch)
-                        loss = outputs["loss"]
+                        metric = outputs[val_metric_name]
 
-                        running_loss += loss.item()
-                        val_loss = running_loss / (val_step + 1)
+                        if aggregate_val_metric:
+                            running_metric += metric if isinstance(metric, float) else metric.item()
+                            val_metric = running_metric / (val_step + 1)
+                        else:
+                            val_metric = metric if isinstance(metric, float) else metric.item()
 
                         should_log_this_step = (
                             val_step % log_every == 0 or val_step == validation_steps - 1
                         )
 
-                        # Average loss across all workers.
-                        if is_distributed and should_log_this_step:
-                            val_loss_tensor = torch.tensor(val_loss, device=device)
-                            dist.all_reduce(val_loss_tensor)
-                            val_loss = val_loss_tensor.item() / world_size
+                        # Average metric across all workers.
+                        if is_distributed and should_log_this_step and aggregate_val_metric:
+                            val_metric_tensor = torch.tensor(val_metric, device=device)
+                            dist.all_reduce(val_metric_tensor)
+                            val_metric = val_metric_tensor.item() / world_size
 
                         # Update progress bar.
                         if is_local_main_process and should_log_this_step:
-                            val_batch_iterator.set_postfix(loss=val_loss)
+                            val_batch_iterator.set_postfix(**{val_metric_name: val_metric})
 
                         # Clean up.
                         del val_batch
                         del outputs
-                        del loss
+                        del metric
 
                 # Reset model to train mode.
                 model.train()
 
+                assert val_metric is not None
+                if best_val_metric is None:
+                    best_val_metric = val_metric
+                elif minimize_val_metric and val_metric <= best_val_metric:
+                    best_val_metric = val_metric
+                elif not minimize_val_metric and val_metric >= best_val_metric:
+                    best_val_metric = val_metric
+
                 # Update progress bar again.
                 if is_local_main_process:
                     train_batch_iterator.set_postfix(
-                        batch_loss=batch_loss,
-                        val_loss=val_loss,
+                        **{
+                            "batch_loss": batch_loss,
+                            f"val_{val_metric_name}": val_metric,
+                            f"best_{val_metric_name}": best_val_metric,
+                        }
                     )
-
-                assert val_loss is not None
-                if best_val_loss is None:
-                    best_val_loss = val_loss
-                elif val_loss <= best_val_loss:
-                    best_val_loss = val_loss
 
             # Checkpoint.
             if should_checkpoint_this_step:
