@@ -282,6 +282,9 @@ class Step(Registrable, Generic[T]):
         raise NotImplementedError()
 
     def run_with_work_dir(self, work_dir_for_run: Path) -> T:
+        """
+        Run the step with a working directory.
+        """
         if self.work_dir_for_run is not None:
             raise ValueError("You can only run a Step's run() method once at a time.")
 
@@ -301,7 +304,7 @@ class Step(Registrable, Generic[T]):
     @property
     def work_dir(self) -> Path:
         """
-        Returns a work directory that a step can use while its ``run()`` method runs.
+        The working directory that a step can use while its ``run()`` method runs.
 
         This directory stays around across restarts. You cannot assume that it is empty when your
         step runs, but you can use it to store information that helps you restart a step if it

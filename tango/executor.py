@@ -147,6 +147,7 @@ class Executor(Registrable):
                         + click.style(f"{step_link}", bold=True, fg="green")
                     )
         finally:
+            # Release lock on directory.
             directory_lock.release()
 
     @abstractmethod
@@ -157,8 +158,52 @@ class Executor(Registrable):
         The executor can assume that all steps in the group are independent (none of them
         depend on the result of any other step in the group), so they can be ran
         in any order or even in parallel.
+
+        When implementing this method it might make sense to use :meth:`execute_step()`.
         """
         raise NotImplementedError
+
+    def execute_step(self, step: Step, quiet: bool = False) -> Any:
+        """
+        This method is provided for convenience. It is a robust way to run a step
+        that will acquire a lock on the step's run directory and ensure metadata
+        is saved after the run.
+
+        It can be used internally by subclasses in their :meth:`execute_step_group()` method.
+        """
+        if not quiet:
+            click.echo(
+                click.style("● Starting run for ", fg="blue")
+                + click.style(f'"{step.name}"', bold=True, fg="blue")
+            )
+
+        # Initialize metadata.
+        metadata = ExecutorMetadata(step=step.unique_id)
+
+        # Prepare directory and acquire lock.
+        run_dir = self.directory_for_run(step)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir_lock = FileLock(run_dir / ".lock", read_only_ok=True)
+        run_dir_lock.acquire_with_updates(desc="acquiring run dir lock...")
+
+        try:
+            # Run the step.
+            result = step.run_with_work_dir(run_dir / "work")
+
+            # Finalize metadata and save to run directory.
+            metadata.finalize()
+            metadata.to_params().to_file(run_dir / "executor-metadata.json")
+        finally:
+            # Release lock on run dir.
+            run_dir_lock.release()
+
+        if not quiet:
+            click.echo(
+                click.style("✓ Finished run for ", fg="green")
+                + click.style(f'"{step.name}"', bold=True, fg="green")
+            )
+
+        return result
 
     def directory_for_run(self, step: Step) -> Path:
         """
@@ -211,27 +256,7 @@ class SimpleExecutor(Executor):
 
     def execute_step_group(self, step_group: List[Step]) -> Iterable[Tuple[Step, Any]]:
         for step in step_group:
-            click.echo(
-                click.style("● Starting run for ", fg="blue")
-                + click.style(f'"{step.name}"', bold=True, fg="blue")
-            )
-
-            # Initialize metadata.
-            metadata = ExecutorMetadata(step=step.unique_id)
-
-            # Prepare directory and run step.
-            run_dir = self.directory_for_run(step)
-            run_dir.mkdir(parents=True, exist_ok=True)
-            result = step.run_with_work_dir(run_dir / "work")
-
-            # Finalize metadata and save to run directory.
-            metadata.finalize()
-            metadata.to_params().to_file(run_dir / "executor-metadata.json")
-
-            click.echo(
-                click.style("✓ Finished run for ", fg="green")
-                + click.style(f'"{step.name}"', bold=True, fg="green")
-            )
+            result = self.execute_step(step)
             yield step, result
 
 

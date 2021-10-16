@@ -90,9 +90,11 @@ class LocalStepCache(StepCache):
 
     Every cached step gets a directory under ``dir`` with that step's :attr:`~tango.step.Step.unique_id`.
     In that directory we store the results themselves in some format according to the step's
-    :attr:`~tango.step.Step.FORMAT`,
-    and we also write a ``cache-metadata.json`` file that stores some metadata. The presence of
-    ``cache-metadata.json`` signifies that the cache entry is complete and has been written successfully.
+    :attr:`~tango.step.Step.FORMAT`, and we also write a ``cache-metadata.json`` file that
+    stores the :class:`CacheMetadata`.
+
+    The presence of ``cache-metadata.json`` signifies that the cache entry is complete and
+    has been written successfully.
 
     .. tip::
         Registered as :class:`StepCache` under the name "local".
