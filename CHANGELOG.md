@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `convert_to_tango_dataset_dict()` function in the `datasets` integration.
+  It's important for step caching purposes to use this to convert a HF `DatasetDict`
+  to a native Tango `DatasetDict` when that `DatasetDict` is part of the input to another
+  step. Otherwise the HF `DatasetDict` will have to be pickled to determine its hash.
+
 ### Changed
 
 - [internals] Changed the relationship between `Executor`, `StepCache`, and `Step.`

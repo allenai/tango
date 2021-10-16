@@ -1,7 +1,9 @@
-import typing as t
+from typing import Dict, List, Any
 
-from tango.common.dataset_dict import DatasetDict
-from tango.step import Step
+import datasets
+from tango import Step
+from tango.common import DatasetDict
+from tango.integrations.datasets import convert_to_tango_dataset_dict
 from tango.integrations.torch import Model, DataCollator, Optimizer, LRScheduler
 from transformers import (
     GPT2Tokenizer,
@@ -9,7 +11,6 @@ from transformers import (
     default_data_collator,
 )
 from transformers.optimization import AdamW, get_linear_schedule_with_warmup
-import datasets
 
 
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
@@ -32,8 +33,8 @@ class TransformersLambdaLR(LRScheduler):
 # And we also want to use the `default_data_collator()` function from HF as a `DataCollator`,
 # so we create simple wrapper class around that function and register it.
 @DataCollator.register("transformers_default")
-class TransformerDefaultCollator(DataCollator[t.Any]):
-    def __call__(self, items: t.List[t.Any]) -> t.Dict[str, t.Any]:
+class TransformerDefaultCollator(DataCollator[Any]):
+    def __call__(self, items: List[Any]) -> Dict[str, Any]:
         return default_data_collator(items)
 
 
@@ -97,4 +98,6 @@ class TokenizeData(Step):
             },
         )
 
-        return t.cast(DatasetDict, dataset)
+        # It's important for caching any steps that use this dataset as input
+        # to convert it to a native Tango DatasetDict.
+        return convert_to_tango_dataset_dict(dataset)
