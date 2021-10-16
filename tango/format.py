@@ -74,7 +74,7 @@ class Format(Registrable, Generic[T]):
         for file in dir.rglob("*"):
             if file.name.endswith("-metadata.json"):
                 continue
-            if not (file.is_file() or file.is_symlink()):
+            if not file.resolve().is_file():
                 continue
             files.append(file)
         files.sort()
