@@ -1,10 +1,6 @@
 StepCache
 =========
 
-.. code-block::
-
-    from tango import *
-
 Base class
 ----------
 
@@ -12,12 +8,14 @@ Base class
    :members: 
    :special-members:
 
+Metadata
+--------
+
+.. autoclass:: tango.step_cache.CacheMetadata
+   :members:
+
 Implementations
 ---------------
 
 .. autoclass:: tango.step_cache.LocalStepCache
    :members:
-
-.. automodule:: tango.step_cache
-   :members:
-   :exclude-members: StepCache,LocalStepCache

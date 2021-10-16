@@ -166,8 +166,9 @@ class Executor(Registrable):
     def execute_step(self, step: Step, quiet: bool = False) -> Any:
         """
         This method is provided for convenience. It is a robust way to run a step
-        that will acquire a lock on the step's run directory and ensure metadata
-        is saved after the run.
+        that will acquire a lock on the step's run directory and ensure :class:`ExecutorMetadata`
+        is saved after the run to a file named ``executor-metadata.json`` in the step's
+        run directory.
 
         It can be used internally by subclasses in their :meth:`execute_step_group()` method.
         """
@@ -262,19 +263,53 @@ class SimpleExecutor(Executor):
 
 @dataclass
 class PlatformMetadata(FromParams):
-    python: str = platform.python_version()
-    operating_system: str = platform.platform()
-    executable: Path = Path(sys.executable)
-    cpu_count: Optional[int] = os.cpu_count()
-    user: str = getpass.getuser()
-    host: str = socket.gethostname()
-    root: Path = Path(os.getcwd())
+    python: str = field(default_factory=platform.python_version)
+    """
+    The Python version.
+    """
+
+    operating_system: str = field(default_factory=platform.platform)
+    """
+    Full operating system name.
+    """
+
+    executable: Path = field(default_factory=lambda: Path(sys.executable))
+    """
+    Path to the Python executable.
+    """
+
+    cpu_count: Optional[int] = field(default_factory=os.cpu_count)
+    """
+    Numbers of CPUs on the machine.
+    """
+
+    user: str = field(default_factory=getpass.getuser)
+    """
+    The user that ran this step.
+    """
+
+    host: str = field(default_factory=socket.gethostname)
+    """
+    Name of the host machine.
+    """
+
+    root: Path = field(default_factory=lambda: Path(os.getcwd()))
+    """
+    The root directory from where the Python executable was ran.
+    """
 
 
 @dataclass
 class GitMetadata(FromParams):
     commit: Optional[str] = None
+    """
+    The commit SHA of the current repo.
+    """
+
     remote: Optional[str] = None
+    """
+    The URL of the primary remote.
+    """
 
     @classmethod
     def check_for_repo(cls) -> Optional["GitMetadata"]:
@@ -303,12 +338,38 @@ class GitMetadata(FromParams):
 @dataclass
 class ExecutorMetadata(FromParams):
     step: str
-    platform: PlatformMetadata = PlatformMetadata()
-    git: Optional[GitMetadata] = GitMetadata.check_for_repo()
+    """
+    The name of the step.
+    """
+
+    platform: PlatformMetadata = field(default_factory=PlatformMetadata)
+    """
+    The :class:`PlatformMetadata`.
+    """
+
+    git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
+    """
+    The :class:`GitMetadata`.
+    """
+
     started_at: float = field(default_factory=time.time)
+    """
+    The unix timestamp from when the run was started.
+    """
+
     finished_at: Optional[float] = None
+    """
+    The unix timestamp from when the run finished.
+    """
+
     duration: Optional[float] = None
+    """
+    The number of seconds the step ran for.
+    """
 
     def finalize(self):
+        """
+        Should be called after the run has finished.
+        """
         self.finished_at = time.time()
         self.duration = round(self.finished_at - self.started_at, 4)

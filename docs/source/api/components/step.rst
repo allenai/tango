@@ -1,10 +1,6 @@
 Step
 ====
 
-.. code-block::
-
-    from tango import *
-
 Base class
 ----------
 
@@ -14,10 +10,6 @@ Base class
 
 Implementations
 ---------------
-
-.. code-block::
-
-    from tango.steps import *
 
 .. automodule:: tango.steps
    :members:

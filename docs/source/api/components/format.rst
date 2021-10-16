@@ -1,10 +1,6 @@
 Format
 ======
 
-.. code-block::
-
-    from tango import *
-
 Base class
 ----------
 

@@ -192,4 +192,11 @@ class LocalStepCache(StepCache):
 @dataclass
 class CacheMetadata(FromParams):
     step: str
+    """
+    The step name.
+    """
+
     checksum: str
+    """
+    A checksum of the run's artifacts.
+    """
