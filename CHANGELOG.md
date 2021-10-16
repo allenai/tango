@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.0](https://github.com/allenai/tango/releases/tag/v0.2.0) - 2021-10-15
+
 ### Added
 
 - Added a [Weights & Biases](https://wandb.ai) integration with a training callback ("wandb::log")
