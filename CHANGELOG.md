@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a [Weights & Biases](https://wandb.ai) integration with a training callback ("wandb::log")
+  for `TorchTrainStep` ("torch::train") that logs training and validation metrics to W&B.
+
+### Fixed
+
+- Fixed `Format.checksum()` when there is a symlink to a directory in the cache folder.
+
 ## [v0.1.3](https://github.com/allenai/tango/releases/tag/v0.1.3) - 2021-10-15
 
 ### Added

@@ -9,3 +9,4 @@ Integrations
 
    torch
    datasets
+   wandb

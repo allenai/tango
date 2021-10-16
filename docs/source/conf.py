@@ -66,7 +66,7 @@ intersphinx_mapping = {
 #
 html_theme = "furo"
 
-html_title = f"ai2-tango v{VERSION}"
+html_title = "ai2-tango"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

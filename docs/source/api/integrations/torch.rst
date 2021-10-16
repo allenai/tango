@@ -6,28 +6,34 @@ PyTorch
 Reference
 ---------
 
-Steps
-~~~~~
+Train step
+~~~~~~~~~~
 
 .. autoclass:: tango.integrations.torch.TorchTrainStep
    :members:
 
-Formats
-~~~~~~~
+Torch format
+~~~~~~~~~~~~
 
 .. autoclass:: tango.integrations.torch.TorchFormat
 
-Registrable torch classes
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Model
+~~~~~
 
 .. autoclass:: tango.integrations.torch.Model
    :members:
+
+Optim
+~~~~~
 
 .. autoclass:: tango.integrations.torch.Optimizer
    :members:
 
 .. autoclass:: tango.integrations.torch.LRScheduler
    :members:
+
+Data
+~~~~
 
 .. autoclass:: tango.integrations.torch.DataLoader
    :members:
@@ -40,4 +46,10 @@ Registrable torch classes
    :special-members: __call__
 
 .. autoclass:: tango.integrations.torch.ConcatTensorDictsCollator
+   :members:
+
+Callbacks
+~~~~~~~~~
+
+.. autoclass:: tango.integrations.torch.TrainCallback
    :members:

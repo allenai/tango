@@ -48,3 +48,9 @@ __pycache__
 
 docs/build
 site/
+
+# internal experiment configs
+*-internal.jsonnet
+*-internal.json
+*-internal.yaml
+*-internal.yml
