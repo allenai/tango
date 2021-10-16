@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- [internals] Changed the relationship between `Executor`, `StepCache`, and `Step.`
+  `Executor` now owns the `StepCache`, and `Step` never interacts with `StepCache` directly.
+
 ## [v0.2.0](https://github.com/allenai/tango/releases/tag/v0.2.0) - 2021-10-15
 
 ### Added

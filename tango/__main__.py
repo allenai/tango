@@ -113,16 +113,16 @@ def _run(
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     from pathlib import Path
-    from tango.common.file_lock import FileLock
     from tango.common.params import Params
     from tango.common.util import import_module_and_submodules
     from tango.executor import Executor
     from tango.step_cache import StepCache
     from tango.step_graph import StepGraph
 
-    logger = logging.getLogger("tango")
-
     # Import included packages to find registered components.
+    # NOTE: The Executor imports these as well because it's meant to be used
+    # directly, but we also need to import here in case the user is using a
+    # custom Executor or StepCache.
     if include_package is not None:
         for package_name in include_package:
             import_module_and_submodules(package_name)
@@ -141,50 +141,20 @@ def _run(
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
 
-    # Initialize step graph, executor, and cache.
+    # Initialize step graph, cache, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    executor = Executor.from_params(
-        params.pop("executor", default={}), include_package=include_package
-    )
     step_cache = StepCache.from_params(
         params.pop("cache", default={}), dir=directory / "step_cache"
     )
+    executor = Executor.from_params(
+        params.pop("executor", default={}),
+        dir=directory,
+        step_cache=step_cache,
+        include_package=include_package,
+    )
 
-    # Acquire lock on directory.
-    directory_lock = FileLock(directory / ".lock", read_only_ok=True)
-    directory_lock.acquire_with_updates(desc="acquiring directory lock...")
-
-    try:
-        # Remove symlinks to old results.
-        for filename in directory.glob("*"):
-            if filename.is_symlink():
-                relative_target = os.readlink(filename)
-                if not relative_target.startswith("step_cache/"):
-                    continue
-                logger.debug(
-                    f"Removing symlink '{filename.name}' to previous result {relative_target}"
-                )
-                filename.unlink()
-
-        # Produce results and symlink everything that has been computed.
-        for step in executor.execute_step_graph(step_graph, step_cache):
-            name = step.name
-            if step in step_cache:
-                step_link = directory / name
-                if step_link.exists():
-                    step_link.unlink()
-                step_link.symlink_to(
-                    step_cache.path_for_step(step).relative_to(directory),
-                    target_is_directory=True,
-                )
-                click.echo(
-                    click.style("✓ The output for ", fg="green")
-                    + click.style(f'"{name}"', bold=True, fg="green")
-                    + click.style(" is in ", fg="green")
-                    + click.style(f"{step_link}", bold=True, fg="green")
-                )
-    finally:
-        directory_lock.release()
+    # Now executor the step graph.
+    executor.execute_step_graph(step_graph)
 
 
 if __name__ == "__main__":
