@@ -1,3 +1,4 @@
+from .dataset_dict import DatasetDict
 from .params import Params
 from .from_params import FromParams
 from .registrable import Registrable

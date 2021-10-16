@@ -12,12 +12,26 @@ Components for Tango integration with `🤗 Datasets <https://huggingface.co/doc
 from typing import Union
 
 import datasets
-from datasets import DatasetDict, Dataset, IterableDatasetDict, IterableDataset
 
 from tango.step import Step
+from tango.common.dataset_dict import DatasetDict
 
 
-__all__ = ["LoadDataset"]
+__all__ = ["LoadDataset", "convert_to_tango_dataset_dict"]
+
+
+def convert_to_tango_dataset_dict(hf_dataset_dict: datasets.DatasetDict) -> DatasetDict:
+    """
+    A helper function that can be used to convert a HuggingFace :class:`~datasets.DatasetDict`
+    into a native Tango :class:`~tango.common.dataset_dict.DatasetDict`.
+
+    This is important to do when your dataset dict is input to another step for caching
+    reasons.
+    """
+    fingerprint = ""
+    for key, dataset in sorted(hf_dataset_dict.items(), key=lambda x: x[0]):
+        fingerprint += f"{key}-{dataset._fingerprint}-"
+    return DatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
 
 
 @Step.register("datasets::load")
@@ -49,7 +63,14 @@ class LoadDataset(Step):
     VERSION = "001"
     CACHEABLE = False  # These are already cached by huggingface.
 
-    def run(self, path: str, **kwargs) -> Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset]:  # type: ignore
+    def run(  # type: ignore
+        self, path: str, **kwargs
+    ) -> Union[
+        datasets.DatasetDict,
+        datasets.Dataset,
+        datasets.IterableDatasetDict,
+        datasets.IterableDataset,
+    ]:
         """
         Loads a HuggingFace dataset.
 

@@ -72,9 +72,12 @@ class Format(Registrable, Generic[T]):
         dir = Path(dir)
         files = []
         for file in dir.rglob("*"):
-            if file.name.endswith("-metadata.json"):
+            if file.name.endswith("-metadata.json") or file.name == ".lock":
                 continue
             if not file.resolve().is_file():
+                continue
+            if file.stat().st_size == 0:
+                # Can't mmap an empty file.
                 continue
             files.append(file)
         files.sort()

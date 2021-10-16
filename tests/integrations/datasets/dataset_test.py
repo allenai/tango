@@ -1,11 +1,10 @@
 from tango.common.testing import TangoTestCase
-from tango.integrations.datasets import LoadDataset
+from tango.integrations.datasets import LoadDataset, convert_to_tango_dataset_dict
 from tango.step import Step
-from tango.step_cache import LocalStepCache
 
 
-class TestLoadDataset(TangoTestCase):
-    def test_from_params(self):
+class TestDatasets(TangoTestCase):
+    def test_from_params_and_convert_to_tango_dataset_dict(self):
         step: LoadDataset = Step.from_params(  # type: ignore[assignment]
             {
                 "type": "datasets::load",
@@ -13,5 +12,7 @@ class TestLoadDataset(TangoTestCase):
                 "cache_dir": str(self.TEST_DIR / "cache"),
             }
         )
-        dataset = step.result(LocalStepCache(self.TEST_DIR / "step_cache"))
-        assert "train" in dataset
+        hf_dataset_dict = step.run_with_work_dir(self.TEST_DIR / "work")
+        assert "train" in hf_dataset_dict
+        dataset_dict = convert_to_tango_dataset_dict(hf_dataset_dict)
+        assert isinstance(dataset_dict.det_hash_object(), str)

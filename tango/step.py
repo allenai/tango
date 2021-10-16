@@ -12,7 +12,6 @@ from typing import (
     cast,
     TypeVar,
     Generic,
-    Iterator,
     Callable,
     TYPE_CHECKING,
 )
@@ -39,7 +38,6 @@ from tango.common.from_params import (
 )
 from tango.common.logging import TangoLogger
 from tango.format import Format, DillFormat
-from tango.step_cache import StepCache
 
 if TYPE_CHECKING:
     from tango.executor import Executor
@@ -275,10 +273,18 @@ class Step(Registrable, Generic[T]):
 
     @abstractmethod
     def run(self, **kwargs) -> T:
-        """Execute the step's action."""
+        """
+        Execute the step's action.
+
+        This method needs to be implemented when creating a ``Step`` subclass, but
+        it shouldn't be called directly. Instead, call :meth:`run_with_work_dir()`.
+        """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, cache: StepCache) -> T:
+    def run_with_work_dir(self, work_dir_for_run: Path) -> T:
+        """
+        Run the step with a working directory.
+        """
         if self.work_dir_for_run is not None:
             raise ValueError("You can only run a Step's run() method once at a time.")
 
@@ -287,9 +293,8 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
-        step_dir = cache.path_for_step(self)
-        self.work_dir_for_run = step_dir / "work"
         try:
+            self.work_dir_for_run = work_dir_for_run
             self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
             return self.run(**self.kwargs)
         finally:
@@ -299,13 +304,16 @@ class Step(Registrable, Generic[T]):
     @property
     def work_dir(self) -> Path:
         """
-        Returns a work directory that a step can use while its ``run()`` method runs.
+        The working directory that a step can use while its ``run()`` method runs.
 
         This directory stays around across restarts. You cannot assume that it is empty when your
         step runs, but you can use it to store information that helps you restart a step if it
         got killed half-way through the last time it ran."""
         if self.work_dir_for_run is None:
-            raise ValueError("You can only call this method while the step is running.")
+            raise RuntimeError(
+                "You can only call this method while the step is running with a working directory. "
+                "Did you call '.run()' directly? You should only run a step with 'run_with_work_dir()'."
+            )
         return self.work_dir_for_run
 
     @property
@@ -319,22 +327,6 @@ class Step(Registrable, Generic[T]):
             raise ValueError("Step.executor cannot be called outside of step execution!")
         else:
             return self._executor
-
-    def result(self, cache: StepCache) -> T:
-        """Returns the result of this step. If the results are cached, it returns those. Otherwise it
-        runs the step and returns the result from there."""
-        if self in cache:
-            return cache[self]
-
-        result = self._run_with_work_dir(cache)
-        if self.cache_results:
-            cache[self] = result
-            if hasattr(result, "__next__"):
-                assert isinstance(result, Iterator)
-                # Caching the iterator will consume it, so we write it to the cache and then read from the cache
-                # for the return value.
-                return cache[self]
-        return result
 
     def det_hash_object(self) -> Any:
         return self.unique_id

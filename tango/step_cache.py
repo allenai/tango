@@ -10,7 +10,6 @@ from typing import (
     TypeVar,
     MutableMapping,
     OrderedDict,
-    TYPE_CHECKING,
 )
 
 try:
@@ -27,9 +26,7 @@ except ImportError:
 from tango.common.from_params import FromParams
 from tango.common.registrable import Registrable
 from tango.common.util import PathOrStr
-
-if TYPE_CHECKING:
-    from tango.step import Step
+from tango.step import Step
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +76,7 @@ class StepCache(Registrable):
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()
 
-    def path_for_step(self, step: "Step") -> Path:
+    def directory_for_run(self, step: "Step") -> Path:
         """Steps that can be restarted (like a training job that gets interrupted half-way through)
         must save their state somewhere. A :class:`StepCache` can help by providing a suitable location
         in this method."""
@@ -93,9 +90,11 @@ class LocalStepCache(StepCache):
 
     Every cached step gets a directory under ``dir`` with that step's :attr:`~tango.step.Step.unique_id`.
     In that directory we store the results themselves in some format according to the step's
-    :attr:`~tango.step.Step.FORMAT`,
-    and we also write a ``cache-metadata.json`` file that stores some metadata. The presence of
-    ``cache-metadata.json`` signifies that the cache entry is complete and has been written successfully.
+    :attr:`~tango.step.Step.FORMAT`, and we also write a ``cache-metadata.json`` file that
+    stores the :class:`CacheMetadata`.
+
+    The presence of ``cache-metadata.json`` signifies that the cache entry is complete and
+    has been written successfully.
 
     .. tip::
         Registered as :class:`StepCache` under the name "local".
@@ -149,7 +148,7 @@ class LocalStepCache(StepCache):
                 return True
             if key in self.weak_cache:
                 return True
-            metadata_file = self.path_for_step(step) / "cache-metadata.json"
+            metadata_file = self.directory_for_run(step) / "cache-metadata.json"
             return metadata_file.exists()
         else:
             return False
@@ -160,12 +159,12 @@ class LocalStepCache(StepCache):
         if result is None:
             if step not in self:
                 raise KeyError(step)
-            result = step.format.read(self.path_for_step(step))
+            result = step.format.read(self.directory_for_run(step))
             self._add_to_cache(key, result)
         return result
 
     def __setitem__(self, step: "Step", value: Any) -> None:
-        location = self.path_for_step(step)
+        location = self.directory_for_run(step)
         location.mkdir(parents=True, exist_ok=True)
 
         metadata_location = location / "cache-metadata.json"
@@ -193,4 +192,11 @@ class LocalStepCache(StepCache):
 @dataclass
 class CacheMetadata(FromParams):
     step: str
+    """
+    The step name.
+    """
+
     checksum: str
+    """
+    A checksum of the run's artifacts.
+    """

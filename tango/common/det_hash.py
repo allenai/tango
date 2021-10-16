@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import collections
 import hashlib
 import io
@@ -18,6 +19,7 @@ class CustomDetHash:
     the object.
     """
 
+    @abstractmethod
     def det_hash_object(self) -> Any:
         """
         Return an object to use for hashing instead of ``self``.
