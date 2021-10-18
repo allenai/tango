@@ -6,21 +6,59 @@ Components for Tango integration with `🤗 Datasets <https://huggingface.co/doc
     (e.g. ``pip install tango[datasets]``) or just install the ``datasets`` library after the fact
     (e.g. ``pip install datasets``).
 
+Example: loading and combining
+------------------------------
+
+Here's an example config that uses the built-in steps from this integration to load,
+concatenate, and interleave datasets from HuggingFace:
+
+.. literalinclude:: ../../../../test_fixtures/integrations/datasets/config.json
+
+You could run this with:
+
+.. code-block::
+
+    tango run config.json
+
+.. testcode::
+    :hide:
+
+    from tango.common.testing import run_experiment
+
+    with run_experiment("test_fixtures/integrations/datasets/config.json") as run_dir:
+        assert (run_dir / "step_cache").is_dir()
+
+.. testoutput::
+
+    ● Starting run for "dev_data"
+    ✓ Finished run for "dev_data"
+    ● Starting run for "train_data"
+    ✓ Finished run for "train_data"
+    ● Starting run for "all_data"
+    ✓ Finished run for "all_data"
+    ● Starting run for "mixed_data"
+    ✓ Finished run for "mixed_data"
+
 """
 
 
-from typing import Union
+from typing import Union, TypeVar, List, Optional, Any
 
-import datasets
+import datasets as ds
 
 from tango.step import Step
 from tango.common.dataset_dict import DatasetDict
 
 
-__all__ = ["LoadDataset", "convert_to_tango_dataset_dict"]
+__all__ = [
+    "LoadDataset",
+    "convert_to_tango_dataset_dict",
+    "InterleaveDatasets",
+    "ConcatenateDatasets",
+]
 
 
-def convert_to_tango_dataset_dict(hf_dataset_dict: datasets.DatasetDict) -> DatasetDict:
+def convert_to_tango_dataset_dict(hf_dataset_dict: ds.DatasetDict) -> DatasetDict:
     """
     A helper function that can be used to convert a HuggingFace :class:`~datasets.DatasetDict`
     into a native Tango :class:`~tango.common.dataset_dict.DatasetDict`.
@@ -43,20 +81,6 @@ class LoadDataset(Step):
 
         Registered as a :class:`~tango.step.Step` under the name "datasets::load".
 
-    Examples
-    --------
-
-    .. testsetup::
-
-        from tango import Step
-
-    .. testcode::
-
-        load_step = Step.from_params({
-            "type": "datasets::load",
-            "path": "lhoestq/test",
-        })
-
     """
 
     DETERMINISTIC = True
@@ -65,16 +89,70 @@ class LoadDataset(Step):
 
     def run(  # type: ignore
         self, path: str, **kwargs
-    ) -> Union[
-        datasets.DatasetDict,
-        datasets.Dataset,
-        datasets.IterableDatasetDict,
-        datasets.IterableDataset,
-    ]:
+    ) -> Union[ds.DatasetDict, ds.Dataset, ds.IterableDatasetDict, ds.IterableDataset]:
         """
-        Loads a HuggingFace dataset.
+        Load the HuggingFace dataset specified by ``path``.
 
         ``path`` is the canonical name or path to the dataset. Additional key word arguments
         are passed as-is to :func:`datasets.load_dataset()`.
         """
-        return datasets.load_dataset(path, **kwargs)
+        return ds.load_dataset(path, **kwargs)
+
+
+DatasetType = TypeVar("DatasetType", ds.Dataset, ds.IterableDataset)
+
+
+@Step.register("datasets::interleave")
+class InterleaveDatasets(Step):
+    """
+    This steps interleaves multiple datasets using :func:`~datasets.interleave_datasets()`.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name "datasets::interleave".
+
+    """
+
+    DETERMINISTIC = True
+    VERSION = "001"
+    CACHEABLE = False  # Not worth caching
+
+    def run(  # type: ignore[override]
+        self,
+        datasets: List[DatasetType],
+        probabilities: Optional[List[float]] = None,
+        seed: Optional[int] = None,
+        **kwargs,
+    ) -> DatasetType:
+        """
+        Interleave the list of datasets.
+        """
+        return ds.interleave_datasets(datasets, probabilities=probabilities, seed=seed, **kwargs)
+
+
+@Step.register("datasets::concatenate")
+class ConcatenateDatasets(Step):
+    """
+    This step concatenates multiple datasets using :func:`~datasets.concatenate_datasets()`.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name "datasets::concatenate".
+
+    """
+
+    DETERMINISTIC = True
+    VERSION = "001"
+    CACHEABLE = False  # Not worth caching
+
+    def run(  # type: ignore[override]
+        self,
+        datasets: List[ds.Dataset],
+        info: Optional[Any] = None,
+        split: Optional[Any] = None,
+        axis: int = 0,
+    ) -> ds.Dataset:
+        """
+        Concatenate the list of datasets.
+        """
+        return ds.concatenate_datasets(datasets, info=info, split=split, axis=axis)

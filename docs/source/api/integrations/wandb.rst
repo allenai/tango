@@ -5,4 +5,7 @@ Weights & Biases
    :members:
    :exclude-members: WandbTrainCallback
 
+Reference
+---------
+
 .. autoclass:: tango.integrations.wandb.WandbTrainCallback

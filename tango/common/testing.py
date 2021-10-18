@@ -4,8 +4,8 @@ import logging
 import os
 import shutil
 import tempfile
-import typing as t
 from pathlib import Path
+from typing import List, Dict, Any, Optional, cast, Union
 
 from .registrable import Registrable
 from .util import PathOrStr
@@ -70,9 +70,9 @@ class TangoTestCase:
 
     def run(
         self,
-        config: t.Union[PathOrStr, t.Dict[str, t.Any]],
-        overrides: t.Optional[str] = None,
-        include_package: t.Optional[t.List[str]] = None,
+        config: Union[PathOrStr, Dict[str, Any]],
+        overrides: Optional[str] = None,
+        include_package: Optional[List[str]] = None,
     ) -> Path:
         from .params import Params
         from tango.__main__ import _run
@@ -80,7 +80,7 @@ class TangoTestCase:
         if isinstance(config, dict):
             params = Params(config)
             config = self.TEST_DIR / "config.json"
-            params.to_file(t.cast(Path, config))
+            params.to_file(cast(Path, config))
 
         run_dir = self.TEST_DIR / "run"
         _run(
@@ -93,7 +93,7 @@ class TangoTestCase:
 
 
 @contextmanager
-def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]]):
+def run_experiment(config: Union[PathOrStr, Dict[str, Any]], overrides: Optional[str] = None):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the cache directory, a temporary directory that will be
@@ -102,6 +102,6 @@ def run_experiment(config: t.Union[PathOrStr, t.Dict[str, t.Any]]):
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config)
+        yield test_case.run(config, overrides=overrides)
     finally:
         test_case.teardown_method()

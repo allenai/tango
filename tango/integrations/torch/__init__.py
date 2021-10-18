@@ -72,52 +72,19 @@ Lastly, we'll need a step to generate data:
 
 You could then run this experiment with a config that looks like this:
 
-.. testcode::
-
-    config = {
-        "steps": {
-            "data": {
-                "type": "generate_data",
-            },
-            "train": {
-                "type": "torch::train",
-                "model": {
-                    "type": "basic_regression",
-                },
-                "dataset_dict": {
-                    "type": "ref",
-                    "ref": "data",
-                },
-                "train_dataloader": {
-                    "batch_size": 8,
-                    "shuffle": True,
-                },
-                "optimizer": {
-                    "type": "Adam",
-                },
-                "validation_split": "validation",
-                "validation_dataloader": {
-                    "batch_size": 8,
-                    "shuffle": False,
-                },
-                "train_steps": 100,
-                "validate_every": 10,
-                "checkpoint_every": 10,
-                "log_every": 1,
-            }
-        }
-    }
+.. literalinclude:: ../../../../test_fixtures/integrations/torch/train.jsonnet
 
 .. testcode::
     :hide:
 
-    import os
     from tango.common.testing import run_experiment
     from tango.common.registrable import Registrable
 
     # Don't cache results, otherwise we'll have a pickling error.
-    config["steps"]["train"]["cache_results"] = False
-    with run_experiment(config) as run_dir:
+    with run_experiment(
+        "test_fixtures/integrations/torch/train.jsonnet",
+        overrides="{'steps.train.cache_results':false}"
+    ) as run_dir:
         assert (run_dir / "step_cache").is_dir()
     # Restore state of registry.
     del Registrable._registry[Step]["generate_data"]
@@ -127,7 +94,7 @@ For example,
 
 .. code-block::
 
-    tango run config.jsonnet -i my_package -d /tmp/train
+    tango run train.jsonnet -i my_package -d /tmp/train
 
 would produce the following output:
 
