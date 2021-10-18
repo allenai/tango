@@ -958,12 +958,14 @@ class TestFromParams(TangoTestCase):
                 self.a = a
 
         class ClassWithStdGenerics(FromParams):
-            def __init__(self, x: list[Item]) -> None:
+            def __init__(self, x: list[Item], y: dict[str, Item]) -> None:
                 self.x = x
+                self.y = y
 
-        o = ClassWithStdGenerics.from_params({"x": [{"a": 1}]})
+        o = ClassWithStdGenerics.from_params({"x": [{"a": 1}], "y": {"b": {"a": 1}}})
         assert isinstance(o.x, list)
         assert isinstance(o.x[0], Item)
+        assert isinstance(o.y["b"], Item)
 
 
 class MyClass(FromParams):
