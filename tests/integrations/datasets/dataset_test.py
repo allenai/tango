@@ -16,3 +16,12 @@ class TestDatasets(TangoTestCase):
         assert "train" in hf_dataset_dict
         dataset_dict = convert_to_tango_dataset_dict(hf_dataset_dict)
         assert isinstance(dataset_dict.det_hash_object(), str)
+
+    def test_load_concatenate_and_interleave(self):
+        self.run(
+            self.FIXTURES_ROOT / "integrations" / "datasets" / "config.json",
+            overrides={
+                "steps.train_data.cache_dir": str(self.TEST_DIR / "cache"),
+                "steps.dev_data.cache_dir": str(self.TEST_DIR / "cache"),
+            },
+        )

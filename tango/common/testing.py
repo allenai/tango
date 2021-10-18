@@ -71,7 +71,7 @@ class TangoTestCase:
     def run(
         self,
         config: Union[PathOrStr, Dict[str, Any]],
-        overrides: Optional[str] = None,
+        overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
     ) -> Path:
         from .params import Params
@@ -81,6 +81,11 @@ class TangoTestCase:
             params = Params(config)
             config = self.TEST_DIR / "config.json"
             params.to_file(cast(Path, config))
+
+        if isinstance(overrides, dict):
+            import json
+
+            overrides = json.dumps(overrides)
 
         run_dir = self.TEST_DIR / "run"
         _run(
@@ -93,7 +98,9 @@ class TangoTestCase:
 
 
 @contextmanager
-def run_experiment(config: Union[PathOrStr, Dict[str, Any]], overrides: Optional[str] = None):
+def run_experiment(
+    config: Union[PathOrStr, Dict[str, Any]], overrides: Optional[Union[Dict[str, Any], str]] = None
+):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the cache directory, a temporary directory that will be

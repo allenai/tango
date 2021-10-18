@@ -20,29 +20,6 @@ You could run this with:
 
     tango run config.json
 
-.. testcode::
-    :hide:
-
-    import logging
-    from tango.common.testing import run_experiment
-
-    # configure logging so that datasets doesn't print to stdout.
-    logging.basicConfig(level=logging.INFO)
-
-    with run_experiment("test_fixtures/integrations/datasets/config.json") as run_dir:
-        assert (run_dir / "step_cache").is_dir()
-
-.. testoutput::
-
-    ● Starting run for "dev_data"
-    ✓ Finished run for "dev_data"
-    ● Starting run for "train_data"
-    ✓ Finished run for "train_data"
-    ● Starting run for "all_data"
-    ✓ Finished run for "all_data"
-    ● Starting run for "mixed_data"
-    ✓ Finished run for "mixed_data"
-
 """
 
 
