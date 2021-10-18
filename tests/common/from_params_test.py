@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
+import sys
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
 
 import pytest
@@ -949,6 +950,22 @@ class TestFromParams(TangoTestCase):
         foo = Foo.from_params({"x": 1}, bar=Bar(z=True))
         with pytest.raises(NotImplementedError):
             foo.to_params()
+
+    @pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python3.9 or higher")
+    def test_type_hinting_generics_from_std_collections(self):
+        class Item(FromParams):
+            def __init__(self, a: int) -> None:
+                self.a = a
+
+        class ClassWithStdGenerics(FromParams):
+            def __init__(self, x: list[Item], y: dict[str, Item]) -> None:
+                self.x = x
+                self.y = y
+
+        o = ClassWithStdGenerics.from_params({"x": [{"a": 1}], "y": {"b": {"a": 1}}})
+        assert isinstance(o.x, list)
+        assert isinstance(o.x[0], Item)
+        assert isinstance(o.y["b"], Item)
 
 
 class MyClass(FromParams):
