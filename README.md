@@ -83,6 +83,20 @@ pip install -e .[torch]
 
 <!-- end install source -->
 
+### Checking your installation
+
+<!-- start check install -->
+
+Run
+
+```bash
+tango info
+```
+
+to check your installation.
+
+<!-- end check install -->
+
 ## Team
 
 <!-- start team -->

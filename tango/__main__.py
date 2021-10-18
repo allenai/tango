@@ -102,6 +102,32 @@ def run(
     )
 
 
+@main.command(
+    cls=HelpColorsCommand,
+    help_options_color="green",
+    help_headers_color="yellow",
+    context_settings={"max_content_width": 115},
+)
+def info():
+    import platform
+
+    from tango.common.util import find_integrations, import_module_and_submodules
+
+    click.echo(f"Tango version {VERSION} (python {platform.python_version()})\n")
+    click.echo("Integrations:")
+    for integration in find_integrations():
+        name = integration.split(".")[-1]
+        is_installed = True
+        try:
+            import_module_and_submodules(integration)
+        except (ModuleNotFoundError, ImportError):
+            is_installed = False
+        if is_installed:
+            click.secho(f" ✓ {name}", fg="green")
+        else:
+            click.secho(f" ✗ {name}", fg="yellow")
+
+
 def _run(
     experiment: str,
     directory: Optional[Union[str, os.PathLike]] = None,
