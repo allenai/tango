@@ -1,0 +1,41 @@
+{
+    "steps": {
+        "train_data": {
+            "type": "datasets::load",
+            "path": "lhoestq/test",
+            "split": "train"
+        },
+        "dev_data": {
+            "type": "datasets::load",
+            "path": "lhoestq/test",
+            "split": "validation"
+        },
+        "all_data": {
+            "type": "datasets::concatenate",
+            "datasets": [
+                {
+                    "type": "ref",
+                    "ref": "train_data"
+                },
+                {
+                    "type": "ref",
+                    "ref": "dev_data"
+                }
+            ]
+        },
+        "mixed_data": {
+            "type": "datasets::interleave",
+            "datasets": [
+                {
+                    "type": "ref",
+                    "ref": "train_data"
+                },
+                {
+                    "type": "ref",
+                    "ref": "dev_data"
+                }
+            ],
+            "probabilities": [0.9, 0.1]
+        }
+    }
+}

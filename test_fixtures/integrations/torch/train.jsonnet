@@ -10,11 +10,11 @@
             },
             "dataset_dict": {
                 "type": "ref",
-                "ref": "data",
+                "ref": "data"
             },
             "train_dataloader": {
                 "batch_size": 8,
-                "shuffle": true,
+                "shuffle": true
             },
             "optimizer": {
                 "type": "Adam",
@@ -22,12 +22,12 @@
             "validation_split": "validation",
             "validation_dataloader": {
                 "batch_size": 8,
-                "shuffle": false,
+                "shuffle": false
             },
             "train_steps": 100,
             "validate_every": 10,
             "checkpoint_every": 10,
-            "log_every": 1,
+            "log_every": 1
         }
     }
 }

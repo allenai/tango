@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added new steps to `datasets` integration: `ConcatenateDatasets` ("datasets::concatenate") and `InterleaveDatasets` (datasets::interleave).
 - Added `__contains__` and `__iter__` methods on `DatasetDict` so that it is now a `Mapping` class.
 
 ## [v0.2.1](https://github.com/allenai/tango/releases/tag/v0.2.1) - 2021-10-18
