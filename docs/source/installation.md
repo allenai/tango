@@ -19,3 +19,10 @@ Installation
 :start-after: <!-- start install source -->
 :end-before: <!-- end install source -->
 ```
+
+## Checking your installation
+
+```{include} ../../README.md
+:start-after: <!-- start check install -->
+:end-before: <!-- end check install -->
+```
