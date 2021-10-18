@@ -42,7 +42,7 @@ Classes
 ~~~~~~~~~~~~~~~
 .. autoclass:: tango.common.dataset_dict.DatasetDict
    :members:
-   :special-members: __getitem__,__len__
+   :special-members: __getitem__,__contains__,__len__,__iter__
 
 ``ShuffledSequence``
 ~~~~~~~~~~~~~~~~~~~~
