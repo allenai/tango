@@ -62,31 +62,30 @@ class Format(Registrable, Generic[T]):
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
 
+    @abstractmethod
     def checksum(self, dir: PathOrStr) -> str:
         """
-        Produces a checksum of a serialized artifact.
+        Produces a checksum of the serialized artifact.
 
-        The default checksum mechanism computes a checksum of all the files in the
-        directory except for ``*-metadata.json``.
+        Should raise :class:`FileNotFoundError` if the artifact can't be found.
         """
-        dir = Path(dir)
-        files = []
-        for file in dir.rglob("*"):
-            if file.name.endswith("-metadata.json") or file.name == ".lock":
-                continue
-            if not file.resolve().is_file():
-                continue
-            if file.stat().st_size == 0:
-                # Can't mmap an empty file.
-                continue
-            files.append(file)
-        files.sort()
+        raise NotImplementedError()
+
+    @staticmethod
+    def _checksum_artifact(path: PathOrStr) -> str:
+        """
+        A helper method that can be used to compute the checksum of an artifact.
+
+        This can make implementing :meth:`checksum()` easier.
+        """
+        filepath = Path(path)
+        if not filepath.is_file():
+            raise FileNotFoundError(str(filepath))
 
         h = xxhash.xxh128()
-        for file in files:
-            with file.open("rb") as f:
-                with mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ) as m:
-                    h.update(m)
+        with filepath.open("rb") as f:
+            with mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ) as m:
+                h.update(m)
         return h.hexdigest()
 
 
@@ -125,11 +124,16 @@ def _open_compressed(filename: PathOrStr, mode: str) -> IO:
 
 @Format.register("dill")
 class DillFormat(Format[T], Generic[T]):
-    """This format writes the artifact as a single file using dill (a drop-in replacement for pickle).
-    Optionally, it can compress the data. This is very flexible, but not always the fastest.
+    """
+    This format writes the artifact as a single file called "data.dill" using dill
+    (a drop-in replacement for pickle). Optionally, it can compress the data.
 
-    This format has special support for iterables. If you write an iterator, it will consume the
-    iterator. If you read an iterator, it will read the iterator lazily.
+    This is very flexible, but not always the fastest.
+
+    .. tip::
+        This format has special support for iterables. If you write an iterator, it will consume the
+        iterator. If you read an iterator, it will read the iterator lazily.
+
     """
 
     VERSION = 1
@@ -141,7 +145,7 @@ class DillFormat(Format[T], Generic[T]):
             raise ConfigurationError(f"The {compress} compression format does not exist.")
 
     def write(self, artifact: T, dir: PathOrStr):
-        filename = Path(dir) / ("data.dill" + _SUFFIXES[self.open])
+        filename = self._get_artifact_path(dir)
         with self.open(filename, "wb") as f:
             pickler = dill.Pickler(file=f)
             pickler.dump(self.VERSION)
@@ -154,7 +158,7 @@ class DillFormat(Format[T], Generic[T]):
                 pickler.dump(artifact)
 
     def read(self, dir: PathOrStr) -> T:
-        filename = Path(dir) / ("data.dill" + _SUFFIXES[self.open])
+        filename = self._get_artifact_path(dir)
         with self.open(filename, "rb") as f:
             unpickler = dill.Unpickler(file=f)
             version = unpickler.load()
@@ -167,6 +171,13 @@ class DillFormat(Format[T], Generic[T]):
                 return DillFormatIterator(filename)  # type: ignore
             else:
                 return unpickler.load()
+
+    def checksum(self, dir: PathOrStr) -> str:
+        path = self._get_artifact_path(dir)
+        return self._checksum_artifact(path)
+
+    def _get_artifact_path(self, dir: PathOrStr) -> Path:
+        return Path(dir) / ("data.dill" + _SUFFIXES[self.open])
 
 
 class DillFormatIterator(Iterator[T], Generic[T]):
@@ -205,8 +216,10 @@ class JsonFormat(Format[T], Generic[T]):
     """This format writes the artifact as a single file in json format.
     Optionally, it can compress the data. This is very flexible, but not always the fastest.
 
-    This format has special support for iterables. If you write an iterator, it will consume the
-    iterator. If you read an iterator, it will read the iterator lazily.
+    .. tip::
+        This format has special support for iterables. If you write an iterator, it will consume the
+        iterator. If you read an iterator, it will read the iterator lazily.
+
     """
 
     VERSION = 2
@@ -263,20 +276,20 @@ class JsonFormat(Format[T], Generic[T]):
 
     def write(self, artifact: T, dir: PathOrStr):
         if hasattr(artifact, "__next__"):
-            filename = Path(dir) / ("data.jsonl" + _SUFFIXES[self.open])
+            filename = self._get_artifact_path(dir, iterator=True)
             with self.open(filename, "wt") as f:
                 for item in cast(Iterable, artifact):
                     json.dump(item, f, default=self._encoding_fallback)
                     f.write("\n")
         else:
-            filename = Path(dir) / ("data.json" + _SUFFIXES[self.open])
+            filename = self._get_artifact_path(dir, iterator=False)
             with self.open(filename, "wt") as f:
                 json.dump(artifact, f, default=self._encoding_fallback)
 
     def read(self, dir: PathOrStr) -> T:
-        iterator_filename = Path(dir) / ("data.jsonl" + _SUFFIXES[self.open])
+        iterator_filename = self._get_artifact_path(dir, iterator=True)
         iterator_exists = iterator_filename.exists()
-        non_iterator_filename = Path(dir) / ("data.json" + _SUFFIXES[self.open])
+        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
         non_iterator_exists = non_iterator_filename.exists()
 
         if iterator_exists and non_iterator_exists:
@@ -297,6 +310,17 @@ class JsonFormat(Format[T], Generic[T]):
                 return json.load(f, object_hook=self._decoding_fallback)
         else:
             raise RuntimeError("This should be impossible.")
+
+    def checksum(self, dir: PathOrStr) -> str:
+        iterator_filename = self._get_artifact_path(dir, iterator=True)
+        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
+        if iterator_filename.exists():
+            return self._checksum_artifact(iterator_filename)
+        else:
+            return self._checksum_artifact(non_iterator_filename)
+
+    def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
+        return Path(dir) / (("data.jsonl" if iterator else "data.json") + _SUFFIXES[self.open])
 
 
 class JsonFormatIterator(Iterator[T], Generic[T]):

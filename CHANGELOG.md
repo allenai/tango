@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Format.checksum()` is now an abstract method. Subclasses should only compute checksum
+  on the serialized artifact and nothing else in the directory.
 - [internals] Changed the relationship between `Executor`, `StepCache`, and `Step.`
   `Executor` now owns the `StepCache`, and `Step` never interacts with `StepCache` directly.
 

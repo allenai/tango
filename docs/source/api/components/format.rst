@@ -6,11 +6,11 @@ Base class
 
 .. autoclass:: tango.format.Format
    :members: 
-   :special-members:
+   :private-members:
 
 Implementations
 ---------------
 
 .. automodule:: tango.format
    :members:
-   :exclude-members: Format,read,write
+   :exclude-members: Format,read,write,checksum
