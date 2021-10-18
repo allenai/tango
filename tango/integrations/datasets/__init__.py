@@ -23,7 +23,10 @@ You could run this with:
 .. testcode::
     :hide:
 
+    import logging
     from tango.common.testing import run_experiment
+
+    logging.basicConfig(level=logging.WARNING)
 
     with run_experiment("test_fixtures/integrations/datasets/config.json") as run_dir:
         assert (run_dir / "step_cache").is_dir()
