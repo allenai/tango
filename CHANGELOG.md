@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.1](https://github.com/allenai/tango/releases/tag/v0.2.1) - 2021-10-18
+
 ### Added
 
 - Added `convert_to_tango_dataset_dict()` function in the `datasets` integration.
