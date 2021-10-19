@@ -4,9 +4,7 @@
 
 1. Update the version in `tango/version.py`.
 
-2. Update the CHANGELOG.md so that everything under the "Unreleased" section is now under a section corresponding to this release.
-
-3. Run the release script:
+2. Run the release script:
 
     ```bash
     ./scripts/release.sh
