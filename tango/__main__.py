@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Sequence
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
@@ -85,7 +85,7 @@ def run(
     experiment: str,
     directory: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
-    include_package: Optional[List[str]] = None,
+    include_package: Optional[Sequence[str]] = None,
     file_friendly_logging: bool = False,
 ):
     """
@@ -132,7 +132,7 @@ def _run(
     experiment: str,
     directory: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
-    include_package: Optional[List[str]] = None,
+    include_package: Optional[Sequence[str]] = None,
     file_friendly_logging: bool = False,
 ):
     if file_friendly_logging:
@@ -145,16 +145,17 @@ def _run(
     from tango.step_cache import StepCache
     from tango.step_graph import StepGraph
 
+    # Read params.
+    params = Params.from_file(experiment, params_overrides=overrides or "")
+
     # Import included packages to find registered components.
     # NOTE: The Executor imports these as well because it's meant to be used
     # directly, but we also need to import here in case the user is using a
     # custom Executor or StepCache.
-    if include_package is not None:
-        for package_name in include_package:
-            import_module_and_submodules(package_name)
-
-    # Read params.
-    params = Params.from_file(experiment, params_overrides=overrides or "")
+    include_package: List[str] = list(include_package or [])
+    include_package += params.pop("include_package", [])
+    for package_name in include_package:
+        import_module_and_submodules(package_name)
 
     # Prepare directory.
     if directory is None:
