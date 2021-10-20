@@ -21,6 +21,7 @@ CHANGELOG
 :hidden:
 :caption: API Reference
 
+api/commands
 api/components/index
 api/integrations/index
 api/exceptions

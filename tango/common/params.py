@@ -11,7 +11,6 @@ from collections.abc import MutableMapping
 from typing import Any, Dict, List, Union, Optional, TypeVar, Iterable, Set
 
 from overrides import overrides
-from cached_path import cached_path
 
 # _jsonnet doesn't work on Windows, so we have to use fakes.
 try:
@@ -509,6 +508,8 @@ class Params(MutableMapping):
             ext_vars = {}
 
         # redirect to cache, if necessary
+        from cached_path import cached_path
+
         params_file: Path = Path(cached_path(params_file))
 
         file_dict: Dict[str, Any]
