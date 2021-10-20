@@ -75,7 +75,7 @@ class TangoTestCase:
         include_package: Optional[List[str]] = None,
     ) -> Path:
         from .params import Params
-        from tango.__main__ import _run
+        from tango.__main__ import _run, TangoGlobalSettings
 
         if isinstance(config, dict):
             params = Params(config)
@@ -89,6 +89,7 @@ class TangoTestCase:
 
         run_dir = self.TEST_DIR / "run"
         _run(
+            TangoGlobalSettings(),
             str(config),
             directory=str(run_dir),
             overrides=overrides,
