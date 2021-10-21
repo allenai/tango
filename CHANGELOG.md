@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for global settings file, `tango.yml`.
 - Added 'include_package' (array of string) param to config spec.
+- Added a custom error `StopEarly` that a `TrainCallback` can raise within the `TorchTrainStep`
+  to stop training early without crashing.
 
 ### Fixed
 

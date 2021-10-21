@@ -106,6 +106,24 @@ would produce the following output:
     Loading best weights from state_worker0_step100.pt
     ✓ Finished run for "train"
 
+Tips
+----
+
+Debugging
+~~~~~~~~~
+
+When debugging a training loop that's causing errors on a GPU, you should set the environment variable
+``CUDA_LAUNCH_BLOCKING=1``. This will ensure that the stack traces shows where the error actually happened.
+
+You could also use a custom :class:`TrainCallback` to log each batch before they are passed into the model
+so that you can see the exact inputs that are causing the issue.
+
+Stopping early
+~~~~~~~~~~~~~~
+
+You can stop the "torch::train" step early using a custom :class:`TrainCallback`. Your callback just
+needs to raise the :class:`StopEarly` exception.
+
 """
 
 __all__ = [
@@ -119,6 +137,7 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "StopEarly",
 ]
 
 from .data import DataLoader, Sampler, DataCollator, ConcatTensorDictsCollator
@@ -126,4 +145,4 @@ from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
 from .train import TorchTrainStep
-from .train_callback import TrainCallback
+from .train_callback import TrainCallback, StopEarly

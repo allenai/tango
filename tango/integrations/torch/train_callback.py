@@ -6,6 +6,7 @@ import torch
 from .data import DataLoader
 from .model import Model
 from .optim import Optimizer, LRScheduler
+from tango.common.exceptions import TangoError
 from tango.common.registrable import Registrable
 
 
@@ -142,3 +143,13 @@ class TrainCallback(Registrable):
         Called right after the validation loop finishes.
         """
         pass
+
+
+class StopEarly(TangoError):
+    """
+    Callbacks can raise this exception to stop training early without crashing.
+
+    .. important::
+        During distributed training all workers must raise this exception at the same point
+        in the training loop, otherwise there will be a deadlock.
+    """
