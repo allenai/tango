@@ -17,7 +17,7 @@ from .data import DataLoader
 from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
-from .train_callback import TrainCallback
+from .train_callback import TrainCallback, StopEarly
 from tango.common.dataset_dict import DatasetDict
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
@@ -471,13 +471,14 @@ def _train(
     for callback in callbacks:
         callback.pre_train_loop()
 
-    with Tqdm.tqdm(
+    train_batch_iterator = Tqdm.tqdm(
         training_batches,
         desc="Training",
         initial=start_step,
         total=train_steps,
         disable=not is_local_main_process,
-    ) as train_batch_iterator:
+    )
+    try:
         for step, batch in train_batch_iterator:
 
             def is_best_checkpoint() -> bool:
@@ -708,6 +709,11 @@ def _train(
             # Checkpoint.
             if should_checkpoint_this_step:
                 save_state()
+    except StopEarly:
+        if is_local_main_process:
+            print("Stopping earlyy!")
+    finally:
+        train_batch_iterator.close()
 
     if is_distributed:
         dist.barrier()

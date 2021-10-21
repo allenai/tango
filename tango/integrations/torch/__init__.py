@@ -106,6 +106,9 @@ would produce the following output:
     Loading best weights from state_worker0_step100.pt
     ✓ Finished run for "train"
 
+Tips
+----
+
 """
 
 __all__ = [
@@ -119,6 +122,7 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "StopEarly",
 ]
 
 from .data import DataLoader, Sampler, DataCollator, ConcatTensorDictsCollator
@@ -126,4 +130,4 @@ from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
 from .train import TorchTrainStep
-from .train_callback import TrainCallback
+from .train_callback import TrainCallback, StopEarly
