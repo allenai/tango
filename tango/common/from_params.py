@@ -220,9 +220,10 @@ def create_kwargs(
             kwargs[param_name] = constructed_arg
 
     if accepts_kwargs:
+        for key in list(params):
+            kwargs[key] = params.pop(key, keep_as_dict=True)
         kwargs.update(params)
-    else:
-        params.assert_empty(cls.__name__)
+    params.assert_empty(cls.__name__)
     return kwargs
 
 

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for global settings file, `tango.yml`.
 - Added 'include_package' (array of string) param to config spec.
 
+### Fixed
+
+- Ensured `**kwargs` arguments are logged in `FromParams`.
+
 ## [v0.2.2](https://github.com/allenai/tango/releases/tag/v0.2.2) - 2021-10-19
 
 ### Added
