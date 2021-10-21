@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.2.3](https://github.com/allenai/tango/releases/tag/v0.2.3) - 2021-10-21
+
 ### Added
 
 - Added support for global settings file, `tango.yml`.
