@@ -1,5 +1,4 @@
 import os
-import json
 import subprocess
 
 from tango.version import VERSION
