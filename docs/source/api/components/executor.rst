@@ -13,6 +13,9 @@ Metadata
 .. autoclass:: tango.executor.ExecutorMetadata
    :members:
 
+.. autoclass:: tango.executor.TangoMetadata
+   :members:
+
 .. autoclass:: tango.executor.PlatformMetadata
    :members:
 
