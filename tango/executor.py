@@ -20,6 +20,7 @@ from tango.common.util import PathOrStr, import_module_and_submodules
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph, StepStub
+from tango.version import VERSION
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,9 @@ class Executor(Registrable):
                 # Materialize the next step.
                 next_up = remaining.pop(0)
                 config = self._replace_refs_with_results(next_up.config, executed, self.step_cache)
-                step = Step.from_params(Params(config), step_name=next_up.name)
+                step = Step.from_params(
+                    Params(config), step_name=next_up.name, step_config=next_up.config
+                )
                 step._executor = self
                 group.append(step)
 
@@ -179,7 +182,7 @@ class Executor(Registrable):
             )
 
         # Initialize metadata.
-        metadata = ExecutorMetadata(step=step.unique_id)
+        metadata = ExecutorMetadata(step=step.unique_id, config=step.config)
 
         # Prepare directory and acquire lock.
         run_dir = self.directory_for_run(step)
@@ -192,8 +195,7 @@ class Executor(Registrable):
             result = step.run_with_work_dir(run_dir / "work")
 
             # Finalize metadata and save to run directory.
-            metadata.finalize()
-            metadata.to_params().to_file(run_dir / "executor-metadata.json")
+            metadata.save(run_dir)
         finally:
             # Release lock on run dir.
             run_dir_lock.release()
@@ -336,10 +338,28 @@ class GitMetadata(FromParams):
 
 
 @dataclass
+class TangoMetadata(FromParams):
+    version: str = VERSION
+    """
+    The tango release version.
+    """
+
+    command: str = field(default_factory=lambda: " ".join(sys.argv))
+    """
+    The exact command used.
+    """
+
+
+@dataclass
 class ExecutorMetadata(FromParams):
     step: str
     """
-    The name of the step.
+    The unique ID of the step.
+    """
+
+    config: Optional[Dict[str, Any]] = None
+    """
+    The raw config of the step.
     """
 
     platform: PlatformMetadata = field(default_factory=PlatformMetadata)
@@ -350,6 +370,11 @@ class ExecutorMetadata(FromParams):
     git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
     """
     The :class:`GitMetadata`.
+    """
+
+    tango: Optional[TangoMetadata] = field(default_factory=TangoMetadata)
+    """
+    The :class:`TangoMetadata`.
     """
 
     started_at: float = field(default_factory=time.time)
@@ -367,9 +392,50 @@ class ExecutorMetadata(FromParams):
     The number of seconds the step ran for.
     """
 
-    def finalize(self):
+    def _save_pip(self, run_dir: Path):
         """
-        Should be called after the run has finished.
+        Saves the current working set of pip packages to ``run_dir``.
+        """
+        # Adapted from the Weights & Biases client library:
+        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L56-L72
+        try:
+            import pkg_resources
+
+            installed_packages = [d for d in iter(pkg_resources.working_set)]
+            installed_packages_list = sorted(
+                ["%s==%s" % (i.key, i.version) for i in installed_packages]
+            )
+            with (run_dir / "requirements.txt").open("w") as f:
+                f.write("\n".join(installed_packages_list))
+        except Exception as exc:
+            logger.exception("Error saving pip packages: %s", exc)
+
+    def _save_conda(self, run_dir: Path):
+        """
+        Saves the current conda environment to ``run_dir``.
+        """
+        # Adapted from the Weights & Biases client library:
+        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L74-L87
+        current_shell_is_conda = os.path.exists(os.path.join(sys.prefix, "conda-meta"))
+        if current_shell_is_conda:
+            import subprocess
+
+            try:
+                with (run_dir / "conda-environment.yaml").open("w") as f:
+                    subprocess.call(["conda", "env", "export"], stdout=f)
+            except Exception as exc:
+                logger.exception("Error saving conda packages: %s", exc)
+
+    def save(self, run_dir: Path):
+        """
+        Should be called after the run has finished to save to file.
         """
         self.finished_at = time.time()
         self.duration = round(self.finished_at - self.started_at, 4)
+
+        # Save pip dependencies and conda environment files.
+        self._save_pip(run_dir)
+        self._save_conda(run_dir)
+
+        # Serialize self.
+        self.to_params().to_file(run_dir / "executor-metadata.json")

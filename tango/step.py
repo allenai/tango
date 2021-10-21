@@ -63,10 +63,10 @@ class Step(Registrable, Generic[T]):
       error messages and the like, and has no consequence on the actual computation.
     * ``cache_results`` specifies whether the results of this step should be cached. If this is
       ``False``, the step is recomputed every time it is needed. If this is not set at all,
-      we cache if the step is marked as :attr:`DETERMINISTIC`, and we don't cache otherwise.
+      and :attr:`CACHEABLE` is ``True``, we cache if the step is marked as :attr:`DETERMINISTIC`,
+      and we don't cache otherwise.
     * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
-    * ``only_if_needed`` specifies whether we can skip this step if no other step depends on it. The
-      default for this setting is to set it for all steps that don't have an explicit name.
+    * ``step_config`` is the original raw part of the experiment config corresponding to this step.
     """
 
     DETERMINISTIC: bool = False
@@ -95,10 +95,12 @@ class Step(Registrable, Generic[T]):
         step_name: Optional[str] = None,
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
-        only_if_needed: Optional[bool] = None,
+        step_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+
+        self.config = step_config
 
         if self.VERSION is not None:
             assert _version_re.match(
@@ -154,13 +156,6 @@ class Step(Registrable, Generic[T]):
             raise ConfigurationError(
                 f"Step {self.name}'s cache_results parameter is set to an invalid value."
             )
-
-        if step_name is None:
-            self.only_if_needed = True
-        else:
-            self.only_if_needed = not self.cache_results
-        if only_if_needed is not None:
-            self.only_if_needed = only_if_needed
 
         self.work_dir_for_run: Optional[
             Path
