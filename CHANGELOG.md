@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 'include_package' (array of string) param to config spec.
 - Added a custom error `StopEarly` that a `TrainCallback` can raise within the `TorchTrainStep`
   to stop training early without crashing.
+- Added step config, tango command, and tango version to executor metadata.
+- Executor now also saves pip dependencies and conda environment files to the run directory
+  for each step.
 
 ### Fixed
 
