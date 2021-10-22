@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 
 from .util import _parse_bool
 
@@ -51,3 +52,40 @@ down tqdm's output to only once every 10 seconds.
 
 By default, it is set to ``False``.
 """
+
+TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
+"""
+The log level.
+"""
+
+
+def initialize_logging(
+    log_level: Optional[str] = None,
+    file_friendly_logging: Optional[bool] = None,
+    prefix: Optional[str] = None,
+):
+    global FILE_FRIENDLY_LOGGING
+    global TANGO_LOG_LEVEL
+
+    if log_level is None:
+        log_level = TANGO_LOG_LEVEL
+    if file_friendly_logging is None:
+        file_friendly_logging = FILE_FRIENDLY_LOGGING
+
+    if log_level is not None:
+        level = logging._nameToLevel[log_level.upper()]
+        log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
+        if prefix is not None:
+            log_format = prefix + " " + log_format
+        logging.basicConfig(
+            format=log_format,
+            level=level,
+        )
+        # filelock emits too many messages, so tell it to be quiet unless it has something
+        # important to say.
+        logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+        os.environ["TANGO_LOG_LEVEL"] = log_level
+
+    if file_friendly_logging:
+        FILE_FRIENDLY_LOGGING = True
+        os.environ["FILE_FRIENDLY_LOGGING"] = "true"

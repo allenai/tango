@@ -308,6 +308,11 @@ def _train(
     is_local_main_process = worker_id == 0
     world_size = len(devices) if devices else 1
 
+    if is_distributed:
+        import tango.common.logging as common_logging
+
+        common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
+
     # Resolve and set device.
     device: torch.device = torch.device("cpu")
     if devices:

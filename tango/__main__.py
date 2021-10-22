@@ -26,6 +26,7 @@ You can see the the list of all available commands by running:
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --no-logging                    Disable logging altogether.
+      --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
       --help                          Show this message and exit.
 
     Commands:
@@ -61,7 +62,6 @@ such as which integrations are available.
 
 from dataclasses import dataclass
 from pathlib import Path
-import logging
 import os
 from typing import Optional, Union, List, Sequence
 
@@ -70,6 +70,7 @@ from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
 from tango.version import VERSION
 from tango.common.from_params import FromParams
+import tango.common.logging as common_logging
 from tango.common.params import Params
 from tango.common.util import PathOrStr, install_sigterm_handler
 
@@ -90,7 +91,7 @@ class TangoGlobalSettings(FromParams):
     If ``True``, logging is disabled.
     """
 
-    log_level: str = "info"
+    log_level: Optional[str] = "info"
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
     """
@@ -153,29 +154,33 @@ class TangoGlobalSettings(FromParams):
     is_flag=True,
     help="Disable logging altogether.",
 )
+@click.option(
+    "--file-friendly-logging",
+    is_flag=True,
+    help="Outputs progress bar status on separate lines and slows refresh rate.",
+)
 @click.pass_context
-def main(ctx, config: Optional[str], log_level: Optional[str], no_logging: bool):
+def main(
+    ctx,
+    config: Optional[str],
+    log_level: Optional[str],
+    no_logging: bool,
+    file_friendly_logging: bool = False,
+):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    if log_level is None:
-        log_level = config.log_level
-    else:
+    if no_logging or config.no_logging:
+        config.no_logging = True
+        log_level = None
+        config.log_level = None
+    elif log_level is not None:
         config.log_level = log_level
-
-    if not no_logging:
-        no_logging = config.no_logging
     else:
-        config.no_logging = no_logging
+        log_level = config.log_level
 
-    if not no_logging:
-        level = logging._nameToLevel[log_level.upper()]
-        logging.basicConfig(
-            format="[%(asctime)s %(levelname)s %(name)s] %(message)s",
-            level=level,
-        )
-        # filelock emits too many messages, so tell it to be quiet unless it has something
-        # important to say.
-        logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+    common_logging.initialize_logging(
+        log_level=log_level, file_friendly_logging=file_friendly_logging
+    )
 
     # We want to be able to catch SIGTERM signals in addition to SIGINT (keyboard interrupt).
     install_sigterm_handler()
@@ -215,11 +220,6 @@ def main(ctx, config: Optional[str], log_level: Optional[str], no_logging: bool)
     help="Python packages or modules to import for tango components.",
     multiple=True,
 )
-@click.option(
-    "--file-friendly-logging",
-    is_flag=True,
-    help="Outputs progress bar status on separate lines and slows refresh rate",
-)
 @click.pass_obj
 def run(
     config: TangoGlobalSettings,
@@ -227,7 +227,6 @@ def run(
     directory: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-    file_friendly_logging: bool = False,
 ):
     """
     Run a tango experiment.
@@ -240,7 +239,6 @@ def run(
         directory=directory,
         overrides=overrides,
         include_package=include_package,
-        file_friendly_logging=file_friendly_logging,
     )
 
 
@@ -299,11 +297,7 @@ def _run(
     directory: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-    file_friendly_logging: bool = False,
 ):
-    if file_friendly_logging:
-        os.environ["FILE_FRIENDLY_LOGGING"] = "true"
-
     from tango.common.util import import_module_and_submodules
     from tango.executor import Executor
     from tango.step_cache import StepCache

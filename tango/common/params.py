@@ -274,8 +274,8 @@ class Params(MutableMapping):
         else:
             value = self.params.pop(key, default)
 
+        logger.info(f"{self.history}{key} = {value}")
         if keep_as_dict or _is_dict_free(value):
-            logger.info(f"{self.history}{key} = {value}")
             return value
         else:
             return self._check_is_dict(key, value)

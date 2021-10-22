@@ -222,7 +222,6 @@ def create_kwargs(
     if accepts_kwargs:
         for key in list(params):
             kwargs[key] = params.pop(key, keep_as_dict=True)
-        kwargs.update(params)
     params.assert_empty(cls.__name__)
     return kwargs
 

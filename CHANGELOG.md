@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `--file-friendly-logging` flag is now an option to the main `tango` command, so needs
+  to be passed before `run`, e.g. `tango --file-friendly-logging run ...`.
+
+### Fixed
+
+- Fixed bug with `Step.from_params`.
+- Ensure logging is initialized is spawn processes during distributed training with `TorchTrainStep`.
+
 ## [v0.2.3](https://github.com/allenai/tango/releases/tag/v0.2.3) - 2021-10-21
 
 ### Added

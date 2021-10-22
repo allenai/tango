@@ -122,9 +122,11 @@ class Executor(Registrable):
                 next_up = remaining.pop(0)
                 config = self._replace_refs_with_results(next_up.config, executed, self.step_cache)
                 step = Step.from_params(
-                    Params(config), step_name=next_up.name, step_config=next_up.config
+                    Params(config),
+                    step_name=next_up.name,
+                    step_config=next_up.config,
+                    step_executor=self,
                 )
-                step._executor = self
                 group.append(step)
 
             # Finish up last group.
