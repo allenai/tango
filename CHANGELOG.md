@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added support for [torch 1.10.0](https://github.com/pytorch/pytorch/releases).
+
 ### Changed
 
 - `--file-friendly-logging` flag is now an option to the main `tango` command, so needs
