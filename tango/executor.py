@@ -89,7 +89,7 @@ class Executor(Registrable):
                     else:
                         executed[step.name] = (step, None)
                         click.echo(
-                            click.style("✓ Found output for ", fg="green")
+                            click.style("Found output for ", fg="green")
                             + click.style(f'"{step.name}"', bold=True, fg="green")
                             + click.style(" in cache", fg="green")
                         )
@@ -146,7 +146,7 @@ class Executor(Registrable):
                         target_is_directory=True,
                     )
                     click.echo(
-                        click.style("✓ The output for ", fg="green")
+                        click.style("> The output for ", fg="green")
                         + click.style(f'"{name}"', bold=True, fg="green")
                         + click.style(" is in ", fg="green")
                         + click.style(f"{step_link}", bold=True, fg="green")
@@ -179,8 +179,8 @@ class Executor(Registrable):
         """
         if not quiet:
             click.echo(
-                click.style("● Starting run for ", fg="blue")
-                + click.style(f'"{step.name}"', bold=True, fg="blue")
+                click.style("Starting run for ", fg="blue")
+                + click.style(f'"{step.name}"...', bold=True, fg="blue")
             )
 
         # Initialize metadata.
@@ -204,8 +204,8 @@ class Executor(Registrable):
 
         if not quiet:
             click.echo(
-                click.style("✓ Finished run for ", fg="green")
-                + click.style(f'"{step.name}"', bold=True, fg="green")
+                click.style("Finished run for ", fg="green")
+                + click.style(f'"{step.name}"\n', bold=True, fg="green")
             )
 
         return result

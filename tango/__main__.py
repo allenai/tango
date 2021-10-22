@@ -262,7 +262,7 @@ def info(config: TangoGlobalSettings):
     # Show info about config.
     if config.path is not None:
         click.echo("\nConfig:")
-        click.secho(f" ✓ Loaded from {str(config.path)}", fg="green")
+        click.secho(f" > Loaded from {str(config.path)}", fg="green")
         if config.include_package:
             click.echo("\n   Included packages:")
             for package in config.include_package:
@@ -272,9 +272,9 @@ def info(config: TangoGlobalSettings):
                 except (ModuleNotFoundError, ImportError):
                     is_found = False
                 if is_found:
-                    click.secho(f"   ✓ {package}", fg="green")
+                    click.secho(f"   > {package}", fg="green")
                 else:
-                    click.secho(f"   ✗ {package}", fg="red")
+                    click.secho(f"   ~ {package} (not found)", fg="red")
 
     # Show info about integrations.
     click.echo("\nIntegrations:")
@@ -286,9 +286,9 @@ def info(config: TangoGlobalSettings):
         except (ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
-            click.secho(f" ✓ {name}", fg="green")
+            click.secho(f" > {name}", fg="green")
         else:
-            click.secho(f" ✗ {name}", fg="yellow")
+            click.secho(f" ~ {name} (not installed)", fg="yellow")
 
 
 def _run(
