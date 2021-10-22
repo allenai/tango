@@ -26,6 +26,7 @@ You can see the the list of all available commands by running:
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --no-logging                    Disable logging altogether.
+      --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
       --help                          Show this message and exit.
 
     Commands:
@@ -156,7 +157,7 @@ class TangoGlobalSettings(FromParams):
 @click.option(
     "--file-friendly-logging",
     is_flag=True,
-    help="Outputs progress bar status on separate lines and slows refresh rate",
+    help="Outputs progress bar status on separate lines and slows refresh rate.",
 )
 @click.pass_context
 def main(
