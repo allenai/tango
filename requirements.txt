@@ -20,7 +20,7 @@ more-itertools>=8.0,<9.0
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
-torch>=1.9.0,<1.10.0  # needed by: torch
+torch>=1.9.0,<1.11.0  # needed by: torch
 numpy                 # needed by: torch
 datasets>=1.12,<1.15  # needed by: datasets
 wandb>=0.12,<0.13     # needed by: wandb
