@@ -61,7 +61,6 @@ such as which integrations are available.
 
 from dataclasses import dataclass
 from pathlib import Path
-import logging
 import os
 from typing import Optional, Union, List, Sequence
 
@@ -91,7 +90,7 @@ class TangoGlobalSettings(FromParams):
     If ``True``, logging is disabled.
     """
 
-    log_level: str = "info"
+    log_level: Optional[str] = "info"
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
     """
@@ -169,29 +168,18 @@ def main(
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    if log_level is None:
-        log_level = config.log_level
-    else:
+    if no_logging or config.no_logging:
+        config.no_logging = True
+        log_level = None
+        config.log_level = None
+    elif log_level is not None:
         config.log_level = log_level
-
-    if not no_logging:
-        no_logging = config.no_logging
     else:
-        config.no_logging = no_logging
+        log_level = config.log_level
 
-    if file_friendly_logging:
-        common_logging.FILE_FRIENDLY_LOGGING = True
-        os.environ["FILE_FRIENDLY_LOGGING"] = "true"
-
-    if not no_logging:
-        level = logging._nameToLevel[log_level.upper()]
-        logging.basicConfig(
-            format="[%(asctime)s %(levelname)s %(name)s] %(message)s",
-            level=level,
-        )
-        # filelock emits too many messages, so tell it to be quiet unless it has something
-        # important to say.
-        logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+    common_logging.initialize_logging(
+        log_level=log_level, file_friendly_logging=file_friendly_logging
+    )
 
     # We want to be able to catch SIGTERM signals in addition to SIGINT (keyboard interrupt).
     install_sigterm_handler()

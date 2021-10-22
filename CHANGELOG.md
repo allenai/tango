@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug with `Step.from_params`.
+- Ensure logging is initialized is spawn processes during distributed training with `TorchTrainStep`.
 
 ## [v0.2.3](https://github.com/allenai/tango/releases/tag/v0.2.3) - 2021-10-21
 
