@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `--file-friendly-logging` flag is now an option to the main `tango` command, so needs
+  to be passed before `run`, e.g. `tango --file-friendly-logging run ...`.
+
 ### Fixed
 
 - Fixed bug with `Step.from_params`.
