@@ -67,6 +67,9 @@ class Step(Registrable, Generic[T]):
       and we don't cache otherwise.
     * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
     * ``step_config`` is the original raw part of the experiment config corresponding to this step.
+      This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
+    * ``step_executor`` is the :class:`~tango.executor.Executor` being used to run the step.
+      This can be accessed via the :attr:`executor` property within each step's :meth:`run()` method.
     """
 
     DETERMINISTIC: bool = False
@@ -96,11 +99,10 @@ class Step(Registrable, Generic[T]):
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
         step_config: Optional[Dict[str, Any]] = None,
+        step_executor: Optional["Executor"] = None,
         **kwargs,
     ):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-
-        self.config = step_config
 
         if self.VERSION is not None:
             assert _version_re.match(
@@ -161,7 +163,8 @@ class Step(Registrable, Generic[T]):
             Path
         ] = None  # This is set only while the run() method runs.
 
-        self._executor: Optional["Executor"] = None
+        self._config = step_config
+        self._executor = step_executor
 
     @classmethod
     def from_params(  # type: ignore[override]
@@ -169,8 +172,9 @@ class Step(Registrable, Generic[T]):
         params: Union[Params, dict, str],
         constructor_to_call: Callable[..., "Step"] = None,
         constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
-        existing_steps: Optional[Dict[str, "Step"]] = None,
         step_name: Optional[str] = None,
+        step_config: Optional[Dict[str, Any]] = None,
+        step_executor: Optional["Executor"] = None,
         **extras,
     ) -> "Step":
         # Why do we need a custom from_params? Step classes have a run() method that takes all the
@@ -187,9 +191,6 @@ class Step(Registrable, Generic[T]):
             raise ConfigurationError(
                 f"{cls.__name__}.from_params cannot be called with a constructor_to_inspect."
             )
-
-        if existing_steps is None:
-            existing_steps = {}
 
         if isinstance(params, str):
             params = Params({"type": params})
@@ -264,7 +265,9 @@ class Step(Registrable, Generic[T]):
         else:
             params.assert_empty(subclass.__name__)
 
-        return subclass(step_name=step_name, **kwargs)
+        return subclass(
+            step_name=step_name, step_config=step_config, step_executor=step_executor, **kwargs
+        )
 
     @abstractmethod
     def run(self, **kwargs) -> T:
@@ -314,14 +317,22 @@ class Step(Registrable, Generic[T]):
     @property
     def executor(self) -> "Executor":
         """
-        The executor being used to run this step.
-
-        This should only be called during the step's ``run()`` method.
+        The :class:`~tango.executor.Executor` being used to run this step.
         """
         if self._executor is None:
-            raise ValueError("Step.executor cannot be called outside of step execution!")
+            raise ValueError(f"No Executor has been assigned to this step! ('{self.name}')")
         else:
             return self._executor
+
+    @property
+    def config(self) -> Dict[str, Any]:
+        """
+        The raw configuration parameters for this step.
+        """
+        if self._config is None:
+            raise ValueError(f"No config has been assigned to this step! ('{self.name}')")
+        else:
+            return self._config
 
     def det_hash_object(self) -> Any:
         return self.unique_id
