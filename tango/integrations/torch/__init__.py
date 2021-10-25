@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 """
 .. important::
     To use this integration you should install ``tango`` with the "torch" extra
@@ -100,12 +101,11 @@ would produce the following output:
 
 .. testoutput::
 
-    Starting run for "data"...
-    Finished run for "data"
-
-    Starting run for "train"...
+    ● Starting run for "data"...
+    ✓ Finished run for "data"
+    ● Starting run for "train"...
     Loading best weights from state_worker0_step100.pt
-    Finished run for "train"
+    ✓ Finished run for "train"
 
 Tips
 ----
