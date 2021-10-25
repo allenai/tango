@@ -9,18 +9,12 @@ A step can do anything, really, such as [prepare a dataset](tango.integrations.d
 Concretely, each step is just a subclass of {class}`~tango.step.Step`, where the {meth}`~tango.step.Step.run` method in particular defines what the step actually does.
 So anything that can be implemented in Python can be run as a step.
 
-Steps can also depend on other steps in that the output of one step can be (part of) the input to another step.
+Steps can also depend on other steps in that the output of one step can be part of the input to another step.
 Therefore, the steps that make up an experiment form a [directed graph](tango.step_graph.StepGraph).
 
 The concept of the {class}`~tango.step.Step` is the bread and butter that makes Tango so general and powerful.
 *So* powerful, in fact, that you might be wondering if Tango is [Turing-complete](https://en.wikipedia.org/wiki/Turing_completeness)?
 Well, we don't know yet, but we can say at least that Tango is **Tango-complete** 😉
-
-```{note}
-Definition: **Tango-complete** | adj.
-
-*A system is **Tango-complete** if it can simulate Tango.*
-```
 
 ## Configuration files
 
@@ -58,7 +52,7 @@ For example, let's create a config file called `config.jsonnet` with following c
 *Can you guess what this experiment does?*
 
 There are three steps in this experiment graph: "random_name" is the name of one step, "say_hello" is the name of another, and "print" is the name of the last.
-The "type" parameter within the config of each *step* tells Tango which {class}`~tango.step.Step` class implementation to use for that step.
+The "type" parameter within the config of each step tells Tango which {class}`~tango.step.Step` class implementation to use for that step.
 
 So, within the "random_name" step config
 
@@ -138,8 +132,12 @@ $ tango --no-logging run config.jsonnet -i components
 ```
 
 ```{tip}
-The `--no-logging` flag just suppresses logging, which is convenient for this example so we
+- The `--no-logging` flag just suppresses logging, which is convenient for this example so we
 can clearly see everything printed to stdout.
+- The `-i` option is short for `--include-package`, which takes the name of a Python package which Tango will try to import.
+In this case our custom steps are in `components.py`, so we need Tango to import this module to find those steps.
+As long as `components.py` is in the current directory or somewhere else on the `PYTHONPATH`, Tango will be able to find and import
+this module when you pass `-i components` (note the lack of the `.py` at the end).
 ```
 
 You should see something like this in the output:
@@ -282,13 +280,9 @@ This means that if we ran the experiment again with the original inputs, Tango w
 So far the inputs to all of the steps in our examples have been built-in Python types that can be deserialized from JSON (e.g. {class}`int`, {class}`str`, etc.),
 but sometimes you need the input to a step to be an instance of an arbitrary Python class.
 
-Tango allows this as well as long the class is a subclass of {class}`~tango.common.from_params.FromParams`, in which case Tango will infer how to deserialize the instance from the config
-by inspecting the type hints of the class constructor.
-
-```{tip}
-If you've used [AllenNLP](https://github.com/allenai/allennlp) before, this will look familiar!
-In fact, it's the same system under the hood.
-```
+Tango allows this as well as it can infer from type hints what the class is and how to instantiate it.
+When writing your own classes, it's recommended that you have your class inherit from the {class}`~tango.common.from_params.FromParams` class, which will gaurantee that
+Tango can instantiate it from a config file.
 
 For example, suppose we had a step like this:
 
@@ -306,6 +300,11 @@ class Bar(FromParams):
 class FooStep(Step):
     def run(self, bar: Bar) -> int:
         return bar.x
+```
+
+```{tip}
+If you've used [AllenNLP](https://github.com/allenai/allennlp) before, this will look familiar!
+In fact, it's the same system under the hood.
 ```
 
 Then we could create a config like this:
@@ -352,13 +351,13 @@ class FooStep(Step):
 ### `Registrable`
 
 The {class}`~tango.common.registrable.Registrable` class is special kind of {class}`~tango.common.from_params.FromParams` class that allows you to deserialize
-any subclass of the expected class from JSON.
+any subclass of the expected class from a config.
 
-We've already come across this, actually, because {class}`~tango.step.Step` inherits from `Registrable`, which is why Tango is able to instantiate arbitrary `Step` subclasses from a config.
+We've already come across this, actually, because {class}`~tango.step.Step` inherits from `Registrable`, which is why Tango is able to instantiate specific `Step` subclasses from a config.
 
 This is very useful when you're writing a step that requires a certain type as input, but you want to be able to change the exact subclass of the type from your configuration file.
-For example, the {class}`~tango.integrations.torch.TorchTrainStep` step takes several `Registrable` base classes as input, including {class}`~tango.integrations.torch.Model` and
-{class}`~tango.integrations.torch.Optimizer`.
+For example, the {class}`~tango.integrations.torch.TorchTrainStep` step takes several `Registrable` base classes as input such as {class}`~tango.integrations.torch.Model` and
+{class}`~tango.integrations.torch.Optimizer`, so that the user can decide which exact `Model` and `Optimizer` implementation to use.
 
 In order to specify which subclass to deserialize to, you just need to add the `"type": "..."` field to the corresponding section of the JSON/Jsonnet/YAML config.
 The value for "type" can either be the name that the class is registered under (e.g. "torch::train" for `TorchTrainStep`), or the fully qualified class name (e.g. `tango.integrations.torch.TorchTrainStep`).
