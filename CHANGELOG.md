@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added support for [torch 1.10.0](https://github.com/pytorch/pytorch/releases).
+- Added a [PyTorch Lightning](https://www.pytorchlightning.ai) integration with `LightningTrainStep`.
 
 ### Changed
 
