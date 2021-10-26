@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a [PyTorch Lightning](https://www.pytorchlightning.ai) integration with `LightningTrainStep`.
+
 ## [v0.2.4](https://github.com/allenai/tango/releases/tag/v0.2.4) - 2021-10-22
 
 ### Added
 
 - Added support for [torch 1.10.0](https://github.com/pytorch/pytorch/releases).
-- Added a [PyTorch Lightning](https://www.pytorchlightning.ai) integration with `LightningTrainStep`.
 
 ### Changed
 
