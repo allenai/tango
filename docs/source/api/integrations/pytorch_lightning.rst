@@ -1,4 +1,4 @@
-PyTorch Lightning
+⚡️ PyTorch Lightning
 =================
 
 .. automodule:: tango.integrations.pytorch_lightning
