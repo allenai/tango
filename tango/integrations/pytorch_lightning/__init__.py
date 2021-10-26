@@ -103,14 +103,14 @@ For example,
 
     tango run train.jsonnet -i my_package -d /tmp/train
 
-would produce the following output:
+.. testoutput::
+    :options: +ELLIPSIS
 
-    Starting run for "data"...
-    Finished run for "data"
-
-    Starting run for "train"...
-    <Epochs log>
-    Finished run for "train"
+    ● Starting run for "data"...
+    ✓ Finished run for "data"
+    ● Starting run for "train"...
+    ...
+    ✓ Finished run for "train"
 
 Tips
 ----
