@@ -1,10 +1,10 @@
 """
-Components for Tango integration with `🤗 Datasets <https://huggingface.co/docs/datasets/>`_.
-
 .. important::
     To use this integration you should install ``tango`` with the "datasets" extra
     (e.g. ``pip install tango[datasets]``) or just install the ``datasets`` library after the fact
     (e.g. ``pip install datasets``).
+
+Components for Tango integration with `🤗 Datasets <https://huggingface.co/docs/datasets/>`_.
 
 Example: loading and combining
 ------------------------------

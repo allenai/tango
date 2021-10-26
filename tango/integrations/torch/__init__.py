@@ -1,6 +1,5 @@
+# -*- coding: UTF-8 -*-
 """
-Components for Tango integration with `PyTorch <https://pytorch.org/>`_.
-
 .. important::
     To use this integration you should install ``tango`` with the "torch" extra
     (e.g. ``pip install tango[torch]``) or just install PyTorch after the fact.
@@ -9,6 +8,8 @@ Components for Tango integration with `PyTorch <https://pytorch.org/>`_.
     and supported CUDA version. Check
     `pytorch.org/get-started/locally/ <https://pytorch.org/get-started/locally/>`_
     for more details.
+
+Components for Tango integration with `PyTorch <https://pytorch.org/>`_.
 
 These include a basic training loop :class:`~tango.step.Step` and registrable versions
 of many ``torch`` classes, such :class:`torch.optim.Optimizer` and :class:`torch.utils.data.DataLoader`.
@@ -100,12 +101,11 @@ would produce the following output:
 
 .. testoutput::
 
-    Starting run for "data"...
-    Finished run for "data"
-
-    Starting run for "train"...
+    ● Starting run for "data"...
+    ✓ Finished run for "data"
+    ● Starting run for "train"...
     Loading best weights from state_worker0_step100.pt
-    Finished run for "train"
+    ✓ Finished run for "train"
 
 Tips
 ----

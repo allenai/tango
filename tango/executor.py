@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class Executor(Registrable):
     """
     An ``Executor`` is a :class:`~tango.common.registrable.Registrable` class that is
-    responsible for running steps and returning them with their result.
+    responsible for running steps and caching their results.
 
     Subclasses should implement :meth:`execute_step_group()`.
     """
@@ -89,7 +89,7 @@ class Executor(Registrable):
                     else:
                         executed[step.name] = (step, None)
                         click.echo(
-                            click.style("Found output for ", fg="green")
+                            click.style("\N{check mark} Found output for ", fg="green")
                             + click.style(f'"{step.name}"', bold=True, fg="green")
                             + click.style(" in cache", fg="green")
                         )
@@ -146,7 +146,7 @@ class Executor(Registrable):
                         target_is_directory=True,
                     )
                     click.echo(
-                        click.style("> The output for ", fg="green")
+                        click.style("\N{check mark} The output for ", fg="green")
                         + click.style(f'"{name}"', bold=True, fg="green")
                         + click.style(" is in ", fg="green")
                         + click.style(f"{step_link}", bold=True, fg="green")
@@ -179,7 +179,7 @@ class Executor(Registrable):
         """
         if not quiet:
             click.echo(
-                click.style("Starting run for ", fg="blue")
+                click.style("\N{black circle} Starting run for ", fg="blue")
                 + click.style(f'"{step.name}"...', bold=True, fg="blue")
             )
 
@@ -204,8 +204,8 @@ class Executor(Registrable):
 
         if not quiet:
             click.echo(
-                click.style("Finished run for ", fg="green")
-                + click.style(f'"{step.name}"\n', bold=True, fg="green")
+                click.style("\N{check mark} Finished run for ", fg="green")
+                + click.style(f'"{step.name}"', bold=True, fg="green")
             )
 
         return result
