@@ -2,7 +2,7 @@
 .. important::
     To use this integration you should install ``tango`` with the "pytorch_lightning" extra
     (e.g. ``pip install tango[pytorch_lightning]``) or just install PyTorch Lightning after the fact.
-    
+
 Components for Tango integration with `PyTorch Lightning <https://www.pytorchlightning.ai/>`_.
 
 These include a basic training loop :class:`~tango.step.Step` and registrable versions
@@ -104,8 +104,6 @@ For example,
     tango run train.jsonnet -i my_package -d /tmp/train
 
 would produce the following output:
-
-.. testoutput::
 
     Starting run for "data"...
     Finished run for "data"

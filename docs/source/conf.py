@@ -56,6 +56,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "datasets": ("https://huggingface.co/docs/datasets", None),
     "torch": ("https://pytorch.org/docs/stable", None),
+    "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
 }
 
 
