@@ -17,7 +17,7 @@
                 "shuffle": true
             },
             "optimizer": {
-                "type": "Adam",
+                "type": "torch::Adam",
             },
             "validation_split": "validation",
             "validation_dataloader": {
