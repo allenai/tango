@@ -10,3 +10,4 @@ Integrations
    torch
    datasets
    wandb
+   pytorch_lightning

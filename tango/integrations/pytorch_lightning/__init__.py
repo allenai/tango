@@ -118,7 +118,7 @@ Tips
 ----
 
 PyTorch Lightning functionality
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can use existing Pytorch Lightning callbacks, loggers, and profilers, which are registered as
 "pytorch_lightning::<callback, logger, or profiler name>".
