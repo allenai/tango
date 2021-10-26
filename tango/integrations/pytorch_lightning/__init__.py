@@ -1,9 +1,9 @@
 """
-Components for Tango integration with `PyTorch Lightning <https://www.pytorchlightning.ai/>`_.
-
 .. important::
     To use this integration you should install ``tango`` with the "pytorch_lightning" extra
     (e.g. ``pip install tango[pytorch_lightning]``) or just install PyTorch Lightning after the fact.
+    
+Components for Tango integration with `PyTorch Lightning <https://www.pytorchlightning.ai/>`_.
 
 These include a basic training loop :class:`~tango.step.Step` and registrable versions
 of ``pytorch_lightning`` classes, such as :class:`pytorch_lightning.LightningModule`, :class:`pytorch_lightning.Callback`, etc.
