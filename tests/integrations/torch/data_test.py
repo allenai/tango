@@ -14,7 +14,7 @@ def test_dataloader_from_params():
 
 
 def test_samplers_registered():
-    assert "SequentialSampler" in Sampler.list_available()
+    assert "torch::SequentialSampler" in Sampler.list_available()
 
 
 def test_dataloader_from_params_with_sampler():
@@ -22,7 +22,7 @@ def test_dataloader_from_params_with_sampler():
         {
             "dataset": list(range(10)),
             "sampler": {
-                "type": "RandomSampler",
+                "type": "torch::RandomSampler",
                 "replacement": True,
             },
         }
@@ -38,7 +38,7 @@ def test_dataloader_from_params_with_batch_sampler():
             "sampler": {
                 "type": "BatchSampler",
                 "sampler": {
-                    "type": "RandomSampler",
+                    "type": "torch::RandomSampler",
                 },
                 "batch_size": 2,
                 "drop_last": True,

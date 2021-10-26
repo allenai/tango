@@ -32,7 +32,7 @@ for name, cls in torch.optim.__dict__.items():
         and issubclass(cls, torch.optim.Optimizer)
         and not cls == torch.optim.Optimizer
     ):
-        Optimizer.register(name)(cls)
+        Optimizer.register("torch::" + name)(cls)
 
 # Register all learning rate schedulers.
 for name, cls in torch.optim.lr_scheduler.__dict__.items():
@@ -41,4 +41,4 @@ for name, cls in torch.optim.lr_scheduler.__dict__.items():
         and issubclass(cls, torch.optim.lr_scheduler._LRScheduler)
         and not cls == torch.optim.lr_scheduler._LRScheduler
     ):
-        LRScheduler.register(name)(cls)
+        LRScheduler.register("torch::" + name)(cls)

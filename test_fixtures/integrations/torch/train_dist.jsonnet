@@ -15,19 +15,19 @@
             "train_dataloader": {
                 "batch_size": 8,
                 "sampler": {
-                    "type": "DistributedSampler",
+                    "type": "torch::DistributedSampler",
                     "shuffle": true,
                     "drop_last": true,
                 }
             },
             "optimizer": {
-                "type": "Adam",
+                "type": "torch::Adam",
             },
             "validation_split": "validation",
             "validation_dataloader": {
                 "batch_size": 8,
                 "sampler": {
-                    "type": "DistributedSampler",
+                    "type": "torch::DistributedSampler",
                     "shuffle": true,
                     "drop_last": true,
                 }

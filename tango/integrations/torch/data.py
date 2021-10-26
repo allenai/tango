@@ -75,7 +75,7 @@ for name, cls in torch.utils.data.__dict__.items():
         and not cls == torch.utils.data.Sampler
         and name not in Sampler.list_available()
     ):
-        Sampler.register(name)(cls)
+        Sampler.register("torch::" + name)(cls)
 
 
 class DataLoader(torch.utils.data.DataLoader, Registrable):
