@@ -38,11 +38,19 @@ Classes
 .. autoclass:: tango.common.registrable.Registrable
    :members:
 
+``DatasetDictBase``
+~~~~~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.dataset_dict.DatasetDictBase
+   :members: keys,det_hash_object
+   :special-members: __getitem__,__contains__,__len__,__iter__
+
 ``DatasetDict``
 ~~~~~~~~~~~~~~~
 .. autoclass:: tango.common.dataset_dict.DatasetDict
-   :members:
-   :special-members: __getitem__,__contains__,__len__,__iter__
+
+``IterableDatasetDict``
+~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: tango.common.dataset_dict.IterableDatasetDict
 
 ``ShuffledSequence``
 ~~~~~~~~~~~~~~~~~~~~
