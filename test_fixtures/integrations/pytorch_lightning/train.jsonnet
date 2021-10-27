@@ -4,9 +4,19 @@
             "type": "generate_data",
         },
         "train": {
-            "type": "torch::train",
+            "type": "pytorch_lightning::train",
             "model": {
                 "type": "basic_regression",
+            },
+            "trainer": {
+                "type": "default",
+                "max_epochs": 5,
+                "log_every_n_steps": 3
+            },
+            "loggers": ["pytorch_lightning::TensorBoardLogger", "pytorch_lightning::CSVLogger"],
+            "accelerator": "cpu",
+            "profiler": {
+                "type": "pytorch_lightning::SimpleProfiler",
             },
             "dataset_dict": {
                 "type": "ref",
@@ -16,18 +26,11 @@
                 "batch_size": 8,
                 "shuffle": true
             },
-            "optimizer": {
-                "type": "torch::Adam",
-            },
             "validation_split": "validation",
             "validation_dataloader": {
                 "batch_size": 8,
                 "shuffle": false
             },
-            "train_steps": 100,
-            "validate_every": 10,
-            "checkpoint_every": 10,
-            "log_every": 1
         }
     }
 }
