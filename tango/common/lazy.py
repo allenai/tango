@@ -10,7 +10,7 @@ T = TypeVar("T")
 
 class Lazy(Generic[T]):
     """
-    This class is for use when constructing objects using :class:`~tango.common.from_params.FromParams`,
+    This class is for use when constructing objects using :class:`~tango.common.FromParams`,
     when an argument to a constructor has a `sequential dependency` with another argument to the same
     constructor.
 

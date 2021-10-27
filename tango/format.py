@@ -27,10 +27,10 @@ from typing import (
 import dill
 import xxhash
 
+from tango.common.aliases import PathOrStr
 from tango.common.registrable import Registrable
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
-from tango.common.util import PathOrStr
 
 T = TypeVar("T")
 

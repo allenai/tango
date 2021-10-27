@@ -5,7 +5,7 @@ from tango.common.registrable import Registrable
 
 class Optimizer(torch.optim.Optimizer, Registrable):
     """
-    A :class:`~tango.common.registrable.Registrable` version of a PyTorch
+    A :class:`~tango.common.Registrable` version of a PyTorch
     :class:`torch.optim.Optimizer`.
 
     All `built-in PyTorch optimizers
@@ -16,7 +16,7 @@ class Optimizer(torch.optim.Optimizer, Registrable):
 
 class LRScheduler(torch.optim.lr_scheduler._LRScheduler, Registrable):
     """
-    A :class:`~tango.common.registrable.Registrable` version of a PyTorch learning
+    A :class:`~tango.common.Registrable` version of a PyTorch learning
     rate scheduler.
 
     All `built-in PyTorch learning rate schedulers

@@ -1,16 +1,16 @@
-import typing as t
 import torch
+from typing import Optional, Any, Dict, List, TypeVar, Generic
 
 from tango.common.lazy import Lazy
 from tango.common.registrable import Registrable
 
 
-T = t.TypeVar("T")
+T = TypeVar("T")
 
 
-class DataCollator(t.Generic[T], Registrable):
+class DataCollator(Generic[T], Registrable):
     """
-    A :class:`~tango.common.registrable.Registrable` version of a ``collate_fn``
+    A :class:`~tango.common.Registrable` version of a ``collate_fn``
     for a ``DataLoader``.
 
     Subclasses just need to implement :meth:`__call__()`.
@@ -21,7 +21,7 @@ class DataCollator(t.Generic[T], Registrable):
     The default implementation is :class:`ConcatTensorDictsCollator`.
     """
 
-    def __call__(self, items: t.List[T]) -> t.Dict[str, t.Any]:
+    def __call__(self, items: List[T]) -> Dict[str, Any]:
         """
         Takes a list of items from a dataset and combines them into a batch.
         """
@@ -29,7 +29,7 @@ class DataCollator(t.Generic[T], Registrable):
 
 
 @DataCollator.register("concat_tensor_dicts")
-class ConcatTensorDictsCollator(DataCollator[t.Dict[str, torch.Tensor]]):
+class ConcatTensorDictsCollator(DataCollator[Dict[str, Any]]):
     """
     A simple ``collate_fn`` that expects items to be dictionaries of tensors.
     The tensors are just concatenated together.
@@ -39,20 +39,20 @@ class ConcatTensorDictsCollator(DataCollator[t.Dict[str, torch.Tensor]]):
         Registered as a :class:`DataCollator` under the name "concat_tensor_dicts".
     """
 
-    def __call__(self, items: t.List[t.Dict[str, torch.Tensor]]) -> t.Dict[str, t.Any]:
+    def __call__(self, items: List[Dict[str, Any]]) -> Dict[str, Any]:
         out = {}
         keys = items[0].keys()
         for key in keys:
             if isinstance(items[0][key], torch.Tensor):
                 out[key] = torch.cat([item[key].unsqueeze(0) for item in items])
             else:
-                out[key] = [item[key] for item in items]
+                out[key] = [item[key] for item in items]  # type: ignore[assignment]
         return out
 
 
 class Sampler(torch.utils.data.Sampler, Registrable):
     """
-    A :class:`~tango.common.registrable.Registrable` version of a PyTorch
+    A :class:`~tango.common.Registrable` version of a PyTorch
     :class:`~torch.utils.data.Sampler`.
 
     All `built-in PyTorch samplers
@@ -80,7 +80,7 @@ for name, cls in torch.utils.data.__dict__.items():
 
 class DataLoader(torch.utils.data.DataLoader, Registrable):
     """
-    A :class:`~tango.common.registrable.Registrable` version of a PyTorch
+    A :class:`~tango.common.Registrable` version of a PyTorch
     :class:`~torch.utils.data.DataLoader`.
     """
 
@@ -89,13 +89,18 @@ class DataLoader(torch.utils.data.DataLoader, Registrable):
     def __init__(
         self,
         dataset: torch.utils.data.Dataset,
-        collate_fn: t.Optional[DataCollator] = ConcatTensorDictsCollator(),
-        sampler: t.Optional[Lazy[Sampler]] = None,
+        collate_fn: Optional[DataCollator] = ConcatTensorDictsCollator(),
+        sampler: Optional[Lazy[Sampler]] = None,
         **kwargs
     ):
-        if sampler is not None:
-            sampler = sampler.construct(data_source=dataset, dataset=dataset)
-        super().__init__(dataset, collate_fn=collate_fn, sampler=sampler, **kwargs)
+        super().__init__(
+            dataset,
+            collate_fn=collate_fn,
+            sampler=None
+            if sampler is None
+            else sampler.construct(data_source=dataset, dataset=dataset),
+            **kwargs
+        )
 
 
 DataLoader.register("default")(DataLoader)

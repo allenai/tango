@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Mapping, Any, Sequence, TypeVar, Generic, Optional, Iterator, Iterable
 
-from .det_hash import CustomDetHash
+from ._det_hash import CustomDetHash
 
 
 T = TypeVar("T")
@@ -38,7 +38,8 @@ class DatasetDictBase(CustomDetHash, Generic[S], Mapping[str, S]):
     def det_hash_object(self) -> Any:
         """
         Overrides :meth:`~tango.common.det_hash.CustomDetHash.det_hash_object` to return
-        :attr:`fingerprint`  when specified instead of ``self``.
+        :attr:`fingerprint`  when specified instead of ``self`` to avoid costly serialization
+        of ``self``.
         """
         if self.fingerprint is not None:
             return self.fingerprint

@@ -23,9 +23,9 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
+from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
 from tango.common.registrable import Registrable
-from tango.common.util import PathOrStr
 from tango.step import Step
 
 logger = logging.getLogger(__name__)

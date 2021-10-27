@@ -7,8 +7,8 @@ import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional, cast, Union
 
+from .aliases import PathOrStr
 from .registrable import Registrable
-from .util import PathOrStr
 
 
 class TangoTestCase:

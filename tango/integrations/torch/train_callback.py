@@ -12,7 +12,7 @@ from tango.common.registrable import Registrable
 
 class TrainCallback(Registrable):
     """
-    A ``TrainCallback`` is a :class:`~tango.common.registrable.Registrable` class
+    A ``TrainCallback`` is a :class:`~tango.common.Registrable` class
     that can be used within :class:`TorchTrainStep` to customize behavior in the training
     loop.
 

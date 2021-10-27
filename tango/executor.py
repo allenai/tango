@@ -12,11 +12,12 @@ import sys
 
 import click
 
+from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.from_params import FromParams
 from tango.common.params import Params
 from tango.common.registrable import Registrable
-from tango.common.util import PathOrStr, import_module_and_submodules
+from tango.common.util import import_module_and_submodules
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph, StepStub
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class Executor(Registrable):
     """
-    An ``Executor`` is a :class:`~tango.common.registrable.Registrable` class that is
+    An ``Executor`` is a :class:`~tango.common.Registrable` class that is
     responsible for running steps and caching their results.
 
     Subclasses should implement :meth:`execute_step_group()`.

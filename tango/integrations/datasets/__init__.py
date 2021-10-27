@@ -23,12 +23,12 @@ You could run this with:
 """
 
 
-from typing import Union, TypeVar, List, Optional, Any
+from typing import Union, TypeVar, List, Optional, Any, overload
 
 import datasets as ds
 
 from tango.step import Step
-from tango.common.dataset_dict import DatasetDict
+from tango.common.dataset_dict import DatasetDictBase, DatasetDict, IterableDatasetDict
 
 
 __all__ = [
@@ -39,10 +39,21 @@ __all__ = [
 ]
 
 
+@overload
 def convert_to_tango_dataset_dict(hf_dataset_dict: ds.DatasetDict) -> DatasetDict:
+    ...
+
+
+@overload
+def convert_to_tango_dataset_dict(hf_dataset_dict: ds.IterableDatasetDict) -> IterableDatasetDict:
+    ...
+
+
+def convert_to_tango_dataset_dict(hf_dataset_dict):
     """
     A helper function that can be used to convert a HuggingFace :class:`~datasets.DatasetDict`
-    into a native Tango :class:`~tango.common.dataset_dict.DatasetDict`.
+    or :class:`~datasets.IterableDatasetDict` into a native Tango
+    :class:`~tango.common.dataset_dict.DatasetDict` or :class:`~tango.common.dataset_dict.IterableDatasetDict`.
 
     This is important to do when your dataset dict is input to another step for caching
     reasons.
@@ -50,7 +61,10 @@ def convert_to_tango_dataset_dict(hf_dataset_dict: ds.DatasetDict) -> DatasetDic
     fingerprint = ""
     for key, dataset in sorted(hf_dataset_dict.items(), key=lambda x: x[0]):
         fingerprint += f"{key}-{dataset._fingerprint}-"
-    return DatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
+    if isinstance(hf_dataset_dict, ds.IterableDatasetDict):
+        return IterableDatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
+    else:
+        return DatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
 
 
 @Step.register("datasets::load")
@@ -103,12 +117,11 @@ class InterleaveDatasets(Step):
         datasets: List[DatasetType],
         probabilities: Optional[List[float]] = None,
         seed: Optional[int] = None,
-        **kwargs,
     ) -> DatasetType:
         """
         Interleave the list of datasets.
         """
-        return ds.interleave_datasets(datasets, probabilities=probabilities, seed=seed, **kwargs)
+        return ds.interleave_datasets(datasets, probabilities=probabilities, seed=seed)
 
 
 @Step.register("datasets::concatenate")

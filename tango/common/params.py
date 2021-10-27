@@ -31,8 +31,8 @@ except ImportError:
         return expr
 
 
+from .aliases import PathOrStr
 from .exceptions import ConfigurationError
-from .util import PathOrStr
 
 logger = logging.getLogger(__name__)
 
