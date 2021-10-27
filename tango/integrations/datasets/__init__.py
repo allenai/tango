@@ -53,17 +53,22 @@ def convert_to_tango_dataset_dict(hf_dataset_dict):
     """
     A helper function that can be used to convert a HuggingFace :class:`~datasets.DatasetDict`
     or :class:`~datasets.IterableDatasetDict` into a native Tango
-    :class:`~tango.common.dataset_dict.DatasetDict` or :class:`~tango.common.dataset_dict.IterableDatasetDict`.
+    :class:`~tango.common.DatasetDict` or :class:`~tango.common.IterableDatasetDict`.
 
     This is important to do when your dataset dict is input to another step for caching
     reasons.
     """
-    fingerprint = ""
-    for key, dataset in sorted(hf_dataset_dict.items(), key=lambda x: x[0]):
-        fingerprint += f"{key}-{dataset._fingerprint}-"
     if isinstance(hf_dataset_dict, ds.IterableDatasetDict):
+        # There is no way to know when an iterable dataset will yeild different elements,
+        # so we generate a random fingerprint to use.
+        from uuid import uuid4
+
+        fingerprint = str(uuid4())
         return IterableDatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
     else:
+        fingerprint = ""
+        for key, dataset in sorted(hf_dataset_dict.items(), key=lambda x: x[0]):
+            fingerprint += f"{key}-{dataset._fingerprint}-"
         return DatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
 
 
