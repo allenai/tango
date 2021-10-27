@@ -6,7 +6,7 @@ from tango.common.registrable import Registrable
 class LightningLogger(pl.loggers.LightningLoggerBase, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.loggers.LightningLoggerBase`.
+    version of the PyTorch Lightning :class:`~pytorch_lightning.loggers.base.LightningLoggerBase`.
     """
 
 

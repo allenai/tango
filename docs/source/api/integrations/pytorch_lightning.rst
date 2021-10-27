@@ -12,6 +12,12 @@ Train step
 .. autoclass:: tango.integrations.pytorch_lightning.LightningTrainStep
    :members:
 
+Trainer
+~~~~~~~
+
+.. autoclass:: tango.integrations.pytorch_lightning.LightningTrainer
+   :members:
+
 Model
 ~~~~~
 

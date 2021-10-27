@@ -6,7 +6,7 @@ from tango.common.registrable import Registrable
 class LightningProfiler(pl.profiler.base.BaseProfiler, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.profiler.base.BaseProfiler`.
+    version of the PyTorch Lightning :class:`~pytorch_lightning.profiler.base.BaseProfiler`.
     """
 
 

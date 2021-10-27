@@ -6,7 +6,8 @@
 Components for Tango integration with `PyTorch Lightning <https://www.pytorchlightning.ai/>`_.
 
 These include a basic training loop :class:`~tango.step.Step` and registrable versions
-of ``pytorch_lightning`` classes, such as :class:`pytorch_lightning.LightningModule`, :class:`pytorch_lightning.Callback`, etc.
+of ``pytorch_lightning`` classes, such as :class:`~pytorch_lightning.core.lightning.LightningModule`,
+:class:`~pytorch_lightning.callbacks.base.Callback`, etc.
 
 Example: training a model
 -------------------------
@@ -120,6 +121,8 @@ PyTorch Lightning functionality
 
 You can use existing Pytorch Lightning callbacks, loggers, and profilers, which are registered as
 "pytorch_lightning::name of callback logger or profiler".
+For example, the :class:`~pytorch_lightning.callbacks.early_stopping.EarlyStopping` callback
+is registered as "pytorch_lightning::EarlyStopping".
 
 """
 
@@ -130,6 +133,7 @@ __all__ = [
     "LightningModule",
     "LightningProfiler",
     "LightningTrainStep",
+    "LightningTrainer",
 ]
 
 from .accelerators import LightningAccelerator
@@ -137,4 +141,4 @@ from .callbacks import LightningCallback
 from .loggers import LightningLogger
 from .model import LightningModule
 from .profilers import LightningProfiler
-from .train import LightningTrainStep
+from .train import LightningTrainStep, LightningTrainer
