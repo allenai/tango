@@ -141,4 +141,4 @@ from .callbacks import LightningCallback
 from .loggers import LightningLogger
 from .model import LightningModule
 from .profilers import LightningProfiler
-from .train import LightningTrainStep, LightningTrainer
+from .train import LightningTrainer, LightningTrainStep

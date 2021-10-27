@@ -1,10 +1,10 @@
-from contextlib import contextmanager
 import importlib
-from pathlib import Path
 import pkgutil
 import signal
 import sys
-from typing import Union, Optional, Set, Iterable
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Iterable, Optional, Set, Union
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived

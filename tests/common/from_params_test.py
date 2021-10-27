@@ -1,16 +1,21 @@
+import sys
 from copy import deepcopy
 from dataclasses import dataclass
-import sys
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
 
 import pytest
 
+from tango.common.exceptions import ConfigurationError
+from tango.common.from_params import (
+    FromParams,
+    create_kwargs,
+    remove_optional,
+    takes_arg,
+)
 from tango.common.lazy import Lazy
 from tango.common.params import Params
-from tango.common.from_params import FromParams, takes_arg, remove_optional, create_kwargs
-from tango.common.testing import TangoTestCase
-from tango.common.exceptions import ConfigurationError
 from tango.common.registrable import Registrable
+from tango.common.testing import TangoTestCase
 
 
 class TestFromParams(TangoTestCase):

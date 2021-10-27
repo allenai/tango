@@ -1,4 +1,4 @@
-from tango.integrations.torch.optim import Optimizer, LRScheduler
+from tango.integrations.torch.optim import LRScheduler, Optimizer
 
 
 def test_all_optimizers_registered():

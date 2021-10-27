@@ -1,14 +1,14 @@
-from abc import abstractmethod
-from dataclasses import dataclass, field
 import getpass
 import logging
 import os
-from pathlib import Path
 import platform
-import time
-from typing import List, Tuple, Iterable, Any, Dict, Optional
 import socket
 import sys
+import time
+from abc import abstractmethod
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import click
 
@@ -22,7 +22,6 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph, StepStub
 from tango.version import VERSION
-
 
 logger = logging.getLogger(__name__)
 

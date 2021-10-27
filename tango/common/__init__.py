@@ -1,10 +1,10 @@
-from .aliases import PathOrStr
-from .dataset_dict import DatasetDictBase, DatasetDict, IterableDatasetDict
 from ._det_hash import CustomDetHash, det_hash
-from .params import Params
+from .aliases import PathOrStr
+from .dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
 from .from_params import FromParams
-from .registrable import Registrable
 from .lazy import Lazy
+from .params import Params
+from .registrable import Registrable
 from .tqdm import Tqdm
 
 __all__ = [

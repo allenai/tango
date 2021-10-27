@@ -1,5 +1,5 @@
-import torch.distributed as dist
 import pytest
+import torch.distributed as dist
 
 from tango.common.testing import TangoTestCase
 

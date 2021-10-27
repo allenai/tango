@@ -1,11 +1,11 @@
-from contextlib import contextmanager
-from copy import deepcopy
 import logging
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
-from typing import List, Dict, Any, Optional, cast, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from .aliases import PathOrStr
 from .registrable import Registrable
@@ -74,8 +74,9 @@ class TangoTestCase:
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
     ) -> Path:
+        from tango.__main__ import TangoGlobalSettings, _run
+
         from .params import Params
-        from tango.__main__ import _run, TangoGlobalSettings
 
         if isinstance(config, dict):
             params = Params(config)

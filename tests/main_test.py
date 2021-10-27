@@ -1,10 +1,10 @@
 import os
 import subprocess
 
-from tango.version import VERSION
 from tango.common import Params
 from tango.common.testing import TangoTestCase
 from tango.executor import ExecutorMetadata
+from tango.version import VERSION
 
 
 class TestMain(TangoTestCase):

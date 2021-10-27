@@ -50,6 +50,7 @@ jobs:
           - name: Style
             extras: dev
             run: |
+              isort --check .
               black --check .
 
           - name: Docs

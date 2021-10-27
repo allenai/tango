@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 
 from tango.common.dataset_dict import DatasetDict
-from tango.step import Step
 from tango.integrations.torch import Model
+from tango.step import Step
 
 
 @Model.register("basic_regression")

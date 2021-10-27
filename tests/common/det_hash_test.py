@@ -1,4 +1,4 @@
-from tango.common._det_hash import det_hash, DetHashWithVersion
+from tango.common._det_hash import DetHashWithVersion, det_hash
 
 
 def test_normal_det_hash():

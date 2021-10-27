@@ -1,30 +1,31 @@
-from itertools import islice
 import os
-from pathlib import Path
 import random
 import tempfile
-from typing import Optional, List, cast, Dict, TypeVar, Any
 import warnings
+from itertools import islice
+from pathlib import Path
+from typing import Any, Dict, List, Optional, TypeVar, cast
 
-from more_itertools import chunked
 import numpy as np
 import torch
-from torch import Tensor
 import torch.distributed as dist
 import torch.nn as nn
+from more_itertools import chunked
+from torch import Tensor
 from torch.utils.data import DistributedSampler, IterableDataset
 
-from .data import DataLoader
-from .format import TorchFormat
-from .model import Model
-from .optim import Optimizer, LRScheduler
-from .train_callback import TrainCallback, StopEarly
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.tqdm import Tqdm
 from tango.format import Format
 from tango.step import Step
+
+from .data import DataLoader
+from .format import TorchFormat
+from .model import Model
+from .optim import LRScheduler, Optimizer
+from .train_callback import StopEarly, TrainCallback
 
 
 @Step.register("torch::train")

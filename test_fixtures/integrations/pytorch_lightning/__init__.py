@@ -1,10 +1,10 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
 
 from tango.common.dataset_dict import DatasetDict
-from tango.step import Step
 from tango.integrations.pytorch_lightning import LightningModule
+from tango.step import Step
 
 
 @LightningModule.register("basic_regression")

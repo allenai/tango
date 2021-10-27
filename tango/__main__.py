@@ -60,20 +60,20 @@ such as which integrations are available.
 
 """
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-import os
-from typing import Optional, Union, List, Sequence
+from typing import List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-from tango.version import VERSION
+import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
-import tango.common.logging as common_logging
 from tango.common.params import Params
 from tango.common.util import install_sigterm_handler
+from tango.version import VERSION
 
 
 @dataclass

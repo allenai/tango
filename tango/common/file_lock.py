@@ -1,7 +1,9 @@
 import os
 import warnings
 
-from filelock import FileLock as _FileLock, Timeout, AcquireReturnProxy
+from filelock import AcquireReturnProxy
+from filelock import FileLock as _FileLock
+from filelock import Timeout
 from overrides import overrides
 
 from .aliases import PathOrStr

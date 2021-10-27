@@ -1,8 +1,8 @@
 import pytest
 
-from tango.step import Step
-from tango.common.testing import TangoTestCase
 from tango.common.from_params import FromParams
+from tango.common.testing import TangoTestCase
+from tango.step import Step
 
 
 class TestStep(TangoTestCase):

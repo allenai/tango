@@ -23,13 +23,12 @@ You could run this with:
 """
 
 
-from typing import Union, TypeVar, List, Optional, Any, overload
+from typing import Any, List, Optional, TypeVar, Union, overload
 
 import datasets as ds
 
+from tango.common.dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
 from tango.step import Step
-from tango.common.dataset_dict import DatasetDictBase, DatasetDict, IterableDatasetDict
-
 
 __all__ = [
     "LoadDataset",

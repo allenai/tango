@@ -1,26 +1,26 @@
 import collections.abc
+import inspect
+import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import (
     Any,
     Callable,
-    cast,
     Dict,
     Iterable,
     List,
     Mapping,
+    Optional,
     Set,
     Tuple,
     Type,
     TypeVar,
     Union,
-    Optional,
+    cast,
 )
-import inspect
-import logging
 
-from .exceptions import ConfigurationError
 from ._det_hash import CustomDetHash
+from .exceptions import ConfigurationError
 from .lazy import Lazy
 from .params import Params
 
@@ -88,7 +88,9 @@ def is_base_registrable(cls) -> bool:
     Checks whether this is a class that directly inherits from Registrable, or is a subclass of such
     a class.
     """
-    from tango.common.registrable import Registrable  # import here to avoid circular imports
+    from tango.common.registrable import (
+        Registrable,  # import here to avoid circular imports
+    )
 
     if not issubclass(cls, Registrable):
         return False
@@ -563,7 +565,9 @@ class FromParams(CustomDetHash):
         constructor (because you inspect ``__init__``, but call ``cls()``).
         """
 
-        from tango.common.registrable import Registrable  # import here to avoid circular imports
+        from tango.common.registrable import (
+            Registrable,  # import here to avoid circular imports
+        )
 
         params = params_
 

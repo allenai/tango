@@ -1,9 +1,8 @@
 import copy
 import inspect
-from typing import Callable, Generic, TypeVar, Type, Union, Optional, Dict, Any
+from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union
 
 from .params import Params
-
 
 T = TypeVar("T")
 

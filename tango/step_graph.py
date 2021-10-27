@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, Any, Set, Union, List
+from typing import Any, Dict, List, Set, Union
 
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params

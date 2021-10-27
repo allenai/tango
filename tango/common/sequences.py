@@ -1,7 +1,7 @@
 import bisect
 import random
 from collections import abc
-from typing import Sequence, Optional, Union
+from typing import Optional, Sequence, Union
 
 
 class ShuffledSequence(abc.Sequence):

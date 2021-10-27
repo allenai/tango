@@ -1,15 +1,15 @@
 import copy
-from itertools import chain
 import json
 import logging
 import os
-from pathlib import Path
-import yaml
 import zlib
 from collections import OrderedDict
 from collections.abc import MutableMapping
-from typing import Any, Dict, List, Union, Optional, TypeVar, Iterable, Set
+from itertools import chain
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Set, TypeVar, Union
 
+import yaml
 from overrides import overrides
 
 # _jsonnet doesn't work on Windows, so we have to use fakes.

@@ -1,7 +1,7 @@
 import pytest
 
-from tango.step_graph import StepGraph
 from tango.common.exceptions import ConfigurationError
+from tango.step_graph import StepGraph
 
 
 @pytest.fixture

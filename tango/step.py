@@ -4,20 +4,20 @@ import re
 from abc import abstractmethod
 from pathlib import Path
 from typing import (
-    Optional,
+    TYPE_CHECKING,
     Any,
+    Callable,
     Dict,
+    Generic,
+    Optional,
     Type,
+    TypeVar,
     Union,
     cast,
-    TypeVar,
-    Generic,
-    Callable,
-    TYPE_CHECKING,
 )
 
 try:
-    from typing import get_origin, get_args  # type: ignore
+    from typing import get_args, get_origin  # type: ignore
 except ImportError:
 
     def get_origin(tp):  # type: ignore
@@ -28,16 +28,16 @@ except ImportError:
 
 
 from tango.common._det_hash import det_hash
-from tango.common.registrable import Registrable
-from tango.common.params import Params
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
-    pop_and_construct_arg,
-    infer_method_params,
     infer_constructor_params,
+    infer_method_params,
+    pop_and_construct_arg,
 )
 from tango.common.logging import TangoLogger
-from tango.format import Format, DillFormat
+from tango.common.params import Params
+from tango.common.registrable import Registrable
+from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
     from tango.executor import Executor
