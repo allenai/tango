@@ -7,6 +7,8 @@ flake8
 
 # Static type checking
 mypy==0.910
+types-PyYAML
+types-setuptools
 
 # Automatic code formatting
 black==21.9b0

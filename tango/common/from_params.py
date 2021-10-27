@@ -20,7 +20,7 @@ import inspect
 import logging
 
 from .exceptions import ConfigurationError
-from .det_hash import CustomDetHash
+from ._det_hash import CustomDetHash
 from .lazy import Lazy
 from .params import Params
 
@@ -528,7 +528,7 @@ def construct_arg(
 class FromParams(CustomDetHash):
     """
     Mixin to give a :meth:`from_params` method to classes. We create a distinct base class for this
-    because sometimes we want non :class:`~tango.common.registrable.Registrable`
+    because sometimes we want non :class:`~tango.common.Registrable`
     classes to be instantiatable ``from_params``.
     """
 
@@ -542,7 +542,7 @@ class FromParams(CustomDetHash):
     ) -> T:
         """
         This is the automatic implementation of ``from_params``. Any class that subclasses
-        from ``FromParams`` (or :class:`~tango.common.registrable.Registrable`,
+        from ``FromParams`` (or :class:`~tango.common.Registrable`,
         which itself subclasses ``FromParams``) gets this
         implementation for free.  If you want your class to be instantiated from params in the
         "obvious" way -- pop off parameters and hand them to your constructor with the same names --

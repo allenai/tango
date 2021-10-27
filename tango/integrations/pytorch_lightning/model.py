@@ -6,8 +6,8 @@ from tango.common.registrable import Registrable
 class LightningModule(pl.LightningModule, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.LightningModule`. It includes the following
-    methods:
+    version of the PyTorch Lightning :class:`~pytorch_lightning.core.lightning.LightningModule`.
+    It includes the following methods:
 
     * :meth:`~pytorch_lightning.core.lightning.LightningModule.forward()`
     * :meth:`~pytorch_lightning.core.lightning.LightningModule.training_step()`

@@ -69,10 +69,11 @@ import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
 from tango.version import VERSION
+from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
 import tango.common.logging as common_logging
 from tango.common.params import Params
-from tango.common.util import PathOrStr, install_sigterm_handler
+from tango.common.util import install_sigterm_handler
 
 
 @dataclass

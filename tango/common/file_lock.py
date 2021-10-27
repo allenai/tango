@@ -4,10 +4,10 @@ import warnings
 from filelock import FileLock as _FileLock, Timeout, AcquireReturnProxy
 from overrides import overrides
 
-from .util import PathOrStr
+from .aliases import PathOrStr
 
 
-class FileLock(_FileLock):
+class FileLock(_FileLock):  # type: ignore[valid-type,misc]
     """
     This is just a subclass of the `FileLock` class from the `filelock` library, except that
     it adds an additional argument to the `__init__` method: `read_only_ok`.
@@ -41,6 +41,7 @@ class FileLock(_FileLock):
                     "Race conditions are possible if other processes are writing to the same resource.",
                     UserWarning,
                 )
+                return None  # type: ignore[return-value]
             else:
                 raise
 

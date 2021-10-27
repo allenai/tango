@@ -4,8 +4,8 @@ from typing import Generic, TypeVar
 import dill
 import torch
 
+from tango.common.aliases import PathOrStr
 from tango.format import Format
-from tango.common.util import PathOrStr
 
 
 T = TypeVar("T")

@@ -1,6 +1,6 @@
-import typing as t
 import torch
 import pytorch_lightning as pl
+from typing import Optional, List, Union
 
 from tango.common.dataset_dict import DatasetDict
 from tango.common.lazy import Lazy
@@ -18,10 +18,10 @@ from .profilers import LightningProfiler
 from .accelerators import LightningAccelerator
 
 
-class LightningTrainer(pl.Trainer, Registrable):
+class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
     """
-    This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.Trainer`.
+    This is simply a :class:`~tango.common.Registrable` version of
+    the PyTorch Lightning :class:`~pytorch_lightning.trainer.trainer.Trainer`.
     """
 
     def _to_params(self):
@@ -34,7 +34,7 @@ LightningTrainer.register("default")(LightningTrainer)
 @Step.register("pytorch_lightning::train")
 class LightningTrainStep(Step):
     """
-    A basic PyTorch Lightning Trainer.
+    A step for training a model using PyTorch Lightning.
 
     .. tip::
 
@@ -55,10 +55,10 @@ class LightningTrainStep(Step):
         *,
         validation_dataloader: Lazy[DataLoader] = None,
         validation_split: str = "validation",
-        loggers: t.Optional[t.List[Lazy[LightningLogger]]] = None,
-        callbacks: t.Optional[t.List[Lazy[LightningCallback]]] = None,
-        profiler: t.Optional[t.Union[str, Lazy[LightningProfiler]]] = None,
-        accelerator: t.Optional[t.Union[str, Lazy[LightningAccelerator]]] = None,
+        loggers: Optional[List[Lazy[LightningLogger]]] = None,
+        callbacks: Optional[List[Lazy[LightningCallback]]] = None,
+        profiler: Optional[Union[str, Lazy[LightningProfiler]]] = None,
+        accelerator: Optional[Union[str, Lazy[LightningAccelerator]]] = None,
     ) -> torch.nn.Module:
 
         """
@@ -91,9 +91,9 @@ class LightningTrainStep(Step):
             A list of :class:`LightningLogger`.
         callbacks: List[:class:`LightningCallback`]
             A list of :class:`LightningCallback`.
-        profiler: Union[:class:`LightningProfiler`, `str`], optional
+        profiler: Union[:class:`LightningProfiler`, :class:`str`], optional
             :class:`LightningProfiler` object.
-        accelerator: Union[:class:`LightningAccelerator`, `str`], optional
+        accelerator: Union[:class:`LightningAccelerator`, :class:`str`], optional
             :class:`LightningAccelerator` object.
 
         Returns
@@ -102,19 +102,21 @@ class LightningTrainStep(Step):
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """
-        loggers: t.List[LightningLogger] = [
+        loggers: List[LightningLogger] = [
             logger.construct(save_dir=self.work_dir) for logger in (loggers or [])
         ]
 
-        callbacks: t.List[LightningCallback] = [
+        callbacks: List[LightningCallback] = [
             callback.construct() for callback in (callbacks or [])
         ]
 
-        if isinstance(profiler, Lazy):
-            profiler = profiler.construct(dirpath=self.work_dir)
+        profiler: Optional[Union[str, LightningProfiler]] = (
+            profiler.construct(dirpath=self.work_dir) if isinstance(profiler, Lazy) else profiler
+        )
 
-        if isinstance(accelerator, Lazy):
-            accelerator = accelerator.construct()
+        accelerator: Optional[Union[str, LightningAccelerator]] = (
+            accelerator.construct() if isinstance(accelerator, Lazy) else accelerator
+        )
 
         trainer: LightningTrainer = trainer.construct(
             logger=loggers, callbacks=callbacks, profiler=profiler, accelerator=accelerator
@@ -128,20 +130,17 @@ class LightningTrainStep(Step):
                 checkpoint_callback = callback
 
         # Construct data loaders.
+        validation_dataloader_: Optional[DataLoader] = None
         if validation_split is not None:
             if validation_dataloader is not None:
-                validation_dataloader = validation_dataloader.construct(
+                validation_dataloader_ = validation_dataloader.construct(
                     dataset=dataset_dict[validation_split]
                 )
             else:
-                validation_dataloader = train_dataloader.construct(
+                validation_dataloader_ = train_dataloader.construct(
                     dataset=dataset_dict[validation_split]
                 )
-        else:
-            validation_dataloader = None
-        validation_dataloader: t.Optional[DataLoader] = t.cast(
-            t.Optional[DataLoader], validation_dataloader
-        )
+        validation_dataloader: Optional[DataLoader] = validation_dataloader_
 
         try:
             train_dataset = dataset_dict[train_split]

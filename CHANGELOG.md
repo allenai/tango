@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `IterableDatasetDict`, a version of `DatasetDict` for streaming-like datasets.
 - Added a [PyTorch Lightning](https://www.pytorchlightning.ai) integration with `LightningTrainStep`.
 
 ## [v0.2.4](https://github.com/allenai/tango/releases/tag/v0.2.4) - 2021-10-22

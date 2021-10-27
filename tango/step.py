@@ -27,7 +27,7 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common.det_hash import det_hash
+from tango.common._det_hash import det_hash
 from tango.common.registrable import Registrable
 from tango.common.params import Params
 from tango.common.exceptions import ConfigurationError

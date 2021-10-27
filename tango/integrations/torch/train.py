@@ -3,7 +3,8 @@ import os
 from pathlib import Path
 import random
 import tempfile
-import typing as t
+from typing import Optional, List, cast, Dict, TypeVar, Any
+import warnings
 
 from more_itertools import chunked
 import numpy as np
@@ -11,14 +12,14 @@ import torch
 from torch import Tensor
 import torch.distributed as dist
 import torch.nn as nn
-from torch.utils.data import DistributedSampler
+from torch.utils.data import DistributedSampler, IterableDataset
 
 from .data import DataLoader
 from .format import TorchFormat
 from .model import Model
 from .optim import Optimizer, LRScheduler
 from .train_callback import TrainCallback, StopEarly
-from tango.common.dataset_dict import DatasetDict
+from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.tqdm import Tqdm
@@ -60,29 +61,29 @@ class TorchTrainStep(Step):
     def run(  # type: ignore[override]
         self,
         model: Lazy[Model],
-        dataset_dict: DatasetDict,
+        dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
         optimizer: Lazy[Optimizer],
         *,
         train_split: str = "train",
-        validation_split: t.Optional[str] = None,
-        lr_scheduler: t.Optional[Lazy[LRScheduler]] = None,
-        validation_dataloader: t.Optional[Lazy[DataLoader]] = None,
+        validation_split: Optional[str] = None,
+        lr_scheduler: Optional[Lazy[LRScheduler]] = None,
+        validation_dataloader: Optional[Lazy[DataLoader]] = None,
         seed: int = 42,
-        train_steps: t.Optional[int] = None,
-        validation_steps: t.Optional[int] = None,
+        train_steps: Optional[int] = None,
+        validation_steps: Optional[int] = None,
         grad_accum: int = 1,
         log_every: int = 10,
         checkpoint_every: int = 100,
         validate_every: int = 100,
         amp: bool = False,
-        max_grad_norm: t.Optional[float] = None,
-        devices: t.Optional[t.List[int]] = None,
+        max_grad_norm: Optional[float] = None,
+        devices: Optional[List[int]] = None,
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
         aggregate_val_metric: bool = True,
-        callbacks: t.Optional[t.List[Lazy[TrainCallback]]] = None,
+        callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -93,7 +94,7 @@ class TorchTrainStep(Step):
         model : :class:`Model`
             The model to train. It should return a ``dict`` that includes the ``loss``
             during training and validation.
-        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDict`
+        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
             The train and optional validation data.
         train_dataloader : :class:`DataLoader`
             The data loader that generates training batches. The batches should be :class:`dict`
@@ -274,31 +275,31 @@ def _train(
     worker_id: int,
     work_dir: Path,
     model: Lazy[Model],
-    dataset_dict: DatasetDict,
+    dataset_dict: DatasetDictBase,
     train_dataloader: Lazy[DataLoader],
     optimizer: Lazy[Optimizer],
     train_split: str = "train",
-    validation_split: t.Optional[str] = None,
-    lr_scheduler: t.Optional[Lazy[LRScheduler]] = None,
-    validation_dataloader: t.Optional[Lazy[DataLoader]] = None,
+    validation_split: Optional[str] = None,
+    lr_scheduler: Optional[Lazy[LRScheduler]] = None,
+    validation_dataloader: Optional[Lazy[DataLoader]] = None,
     seed: int = 42,
-    train_steps: t.Optional[int] = None,
-    validation_steps: t.Optional[int] = None,
+    train_steps: Optional[int] = None,
+    validation_steps: Optional[int] = None,
     grad_accum: int = 1,
     log_every: int = 10,
     checkpoint_every: int = 100,
     validate_every: int = 100,
     amp: bool = False,
-    max_grad_norm: t.Optional[float] = None,
+    max_grad_norm: Optional[float] = None,
     is_distributed: bool = False,
-    devices: t.Optional[t.List[int]] = None,
+    devices: Optional[List[int]] = None,
     distributed_port: str = "54761",
-    include_package: t.Optional[t.List[str]] = None,
+    include_package: Optional[List[str]] = None,
     val_metric_name: str = "loss",
     minimize_val_metric: bool = True,
     aggregate_val_metric: bool = True,
-    callbacks: t.Optional[t.List[Lazy[TrainCallback]]] = None,
-) -> t.Optional[Model]:
+    callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+) -> Optional[Model]:
     if include_package:
         from tango.common.util import import_module_and_submodules
 
@@ -334,7 +335,7 @@ def _train(
             rank=worker_id,
         )
 
-    grad_scaler: t.Optional[torch.cuda.amp.GradScaler] = None
+    grad_scaler: Optional[torch.cuda.amp.GradScaler] = None
     if amp:
         grad_scaler = torch.cuda.amp.GradScaler()
 
@@ -342,50 +343,42 @@ def _train(
     best_state_path = work_dir / f"state_worker{worker_id}_best.pt"
 
     # Construct data loaders.
+    validation_dataloader_: Optional[DataLoader] = None
     if validation_split is not None:
+        validation_dataset = dataset_dict[validation_split]
+        _check_dataset(validation_dataset, validation_split)
         if validation_dataloader is not None:
-            validation_dataloader = validation_dataloader.construct(
-                dataset=dataset_dict[validation_split]
-            )
+            validation_dataloader_ = validation_dataloader.construct(dataset=validation_dataset)
         else:
-            validation_dataloader = train_dataloader.construct(
-                dataset=dataset_dict[validation_split]
-            )
-    else:
-        validation_dataloader = None
-    validation_dataloader: t.Optional[DataLoader] = t.cast(
-        t.Optional[DataLoader], validation_dataloader
-    )
-    try:
-        train_dataset = dataset_dict[train_split]
-    except KeyError:
-        raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
+            validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
+    validation_dataloader: Optional[DataLoader] = validation_dataloader_
+    train_dataset = dataset_dict[train_split]
+    _check_dataset(train_dataset, train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
     if train_steps is None:
-        train_steps = len(train_dataloader)
-    train_steps: int = t.cast(int, train_steps)  # type: ignore[no-redef]
+        try:
+            train_steps = len(train_dataloader)
+        except TypeError:
+            raise ConfigurationError("You must sest 'train_steps' for streaming/iterable datasets")
+    train_steps: int = cast(int, train_steps)  # type: ignore[no-redef]
     if validation_dataloader is not None:
         if validation_steps is None:
-            validation_steps = len(validation_dataloader)
+            try:
+                validation_steps = len(validation_dataloader)
+            except TypeError:
+                raise ConfigurationError(
+                    "You must sest 'validation_steps' for streaming/iterable datasets"
+                )
 
     # Make sure we're using a DistributedSampler during distributed training.
     if is_distributed:
-        if not isinstance(train_dataloader.sampler, DistributedSampler):
-            raise ConfigurationError(
-                "DistributedSampler is required for dataloader during distributed training, "
-                f"found {type(train_dataloader.sampler)} instead."
-            )
-        if validation_dataloader is not None and not isinstance(
-            validation_dataloader.sampler, DistributedSampler
-        ):
-            raise ConfigurationError(
-                "DistributedSampler is required for dataloader during distributed training, "
-                f"found {type(validation_dataloader.sampler)} instead."
-            )
+        _check_dataloader(train_dataloader)
+        if validation_dataloader is not None:
+            _check_dataloader(validation_dataloader)
 
     # Check working directory to see if we should recover from a previous run.
-    initial_state: t.Optional[t.Dict[str, t.Any]] = None
+    initial_state: Optional[Dict[str, Any]] = None
     if state_path.is_file():
         if is_local_main_process:
             print(f"Recovering from previous run at {str(state_path.name)}")
@@ -397,17 +390,18 @@ def _train(
         model.load_state_dict(initial_state["model"])
     model = model.to(device)
     if is_distributed:
-        model = nn.parallel.DistributedDataParallel(model)
+        model = cast(Model, nn.parallel.DistributedDataParallel(model))
 
     # Prepare optimizer and lr scheduler.
     optimizer: Optimizer = optimizer.construct(params=model.parameters())
     if initial_state is not None:
         optimizer.load_state_dict(initial_state["optimizer"])
+    lr_scheduler_: Optional[LRScheduler] = None
     if lr_scheduler is not None:
-        lr_scheduler = lr_scheduler.construct(optimizer=optimizer)
+        lr_scheduler_ = lr_scheduler.construct(optimizer=optimizer)
         if initial_state is not None:
-            lr_scheduler.load_state_dict(initial_state["scheduler"])
-    lr_scheduler: t.Optional[LRScheduler] = t.cast(t.Optional[LRScheduler], lr_scheduler)
+            lr_scheduler_.load_state_dict(initial_state["scheduler"])
+    lr_scheduler: Optional[LRScheduler] = lr_scheduler_
 
     # Set random seeds.
     random.seed(seed)
@@ -417,9 +411,9 @@ def _train(
         torch.cuda.manual_seed_all(seed)
 
     batch_loss: float = 0.0
-    best_batch_loss: t.Optional[float] = None
-    val_metric: t.Optional[float] = None
-    best_val_metric: t.Optional[float] = None
+    best_batch_loss: Optional[float] = None
+    val_metric: Optional[float] = None
+    best_val_metric: Optional[float] = None
     start_step: int = 0
     if initial_state is not None:
         val_metric = initial_state[f"val_{val_metric_name}"]
@@ -428,7 +422,7 @@ def _train(
         start_step = initial_state["training_steps"]
 
     # Initialize callbacks.
-    callbacks: t.List[TrainCallback] = [
+    callbacks: List[TrainCallback] = [
         callback.construct(
             work_dir=work_dir,
             model=model,
@@ -619,7 +613,7 @@ def _train(
 
             # Update progress bar.
             if should_log_this_step:
-                metrics_to_log: t.Dict[str, float] = {"batch_loss": batch_loss}
+                metrics_to_log: Dict[str, float] = {"batch_loss": batch_loss}
                 if val_metric is not None:
                     metrics_to_log[f"val_{val_metric_name}"] = val_metric
                 if best_val_metric is not None:
@@ -742,12 +736,12 @@ def cycle_through_epochs(dataloader: DataLoader, is_distributed: bool):
         epoch += 1
 
 
-T = t.TypeVar("T")
+T = TypeVar("T")
 
 
 def move_to_device(o: T, device: torch.device) -> T:
     if isinstance(o, Tensor):
-        return o.to(device)
+        return o.to(device)  # type: ignore[return-value]
     elif isinstance(o, dict):
         return {k: move_to_device(v, device) for k, v in o.items()}  # type: ignore[return-value]
     elif isinstance(o, list):
@@ -756,3 +750,29 @@ def move_to_device(o: T, device: torch.device) -> T:
         return tuple((move_to_device(x, device) for x in o))  # type: ignore[return-value]
     else:
         return o
+
+
+def _check_dataset(dataset, split: str):
+    try:
+        len(dataset)
+    except TypeError:
+        if not isinstance(dataset, IterableDataset):
+            warnings.warn(
+                f"Dataset for {split} split appears to be a streaming/iterable dataset, "
+                "but is not an instance of 'torch.utils.data.IterableDataset'. This could cause issues "
+                "within the DataLoader.",
+                UserWarning,
+            )
+
+
+def _check_dataloader(dataloader: DataLoader):
+    # If using a regular dataset and not streaming/iterable dataset, we
+    # should probably be using a `DistributedSampler`.
+    if not isinstance(dataloader.dataset, IterableDataset) and not isinstance(
+        dataloader.sampler, DistributedSampler
+    ):
+        warnings.warn(
+            "DistributedSampler is required for dataloader during distributed training, "
+            f"found {type(dataloader.sampler)} instead.",
+            UserWarning,
+        )

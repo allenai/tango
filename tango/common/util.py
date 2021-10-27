@@ -1,15 +1,13 @@
 from contextlib import contextmanager
 import importlib
 from pathlib import Path
-from os import PathLike
 import pkgutil
 import signal
 import sys
 from typing import Union, Optional, Set, Iterable
 
+from .aliases import PathOrStr
 from .exceptions import SigTermReceived
-
-PathOrStr = Union[str, PathLike]
 
 
 def _handle_sigterm(sig, frame):

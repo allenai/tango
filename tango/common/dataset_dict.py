@@ -1,22 +1,22 @@
 from dataclasses import dataclass, field
-from typing import Mapping, Any, Sequence, TypeVar, Generic, Optional, Iterator
+from typing import Mapping, Any, Sequence, TypeVar, Generic, Optional, Iterator, Iterable
 
-from .det_hash import CustomDetHash
+from ._det_hash import CustomDetHash
 
 
 T = TypeVar("T")
+S = TypeVar("S")
 
 
 @dataclass
-class DatasetDict(CustomDetHash, Generic[T], Mapping[str, Sequence[T]]):
+class DatasetDictBase(CustomDetHash, Generic[S], Mapping[str, S]):
     """
-    A generic :class:`~collections.abc.Mapping` class of split names (:class:`str`) to datasets
-    (``Sequence[T]``).
+    The base class for :class:`DatasetDict` and :class:`IterableDatasetDict`.
     """
 
-    splits: Mapping[str, Sequence[T]]
+    splits: Mapping[str, S]
     """
-    Maps the name of the split to a sequence of instances of type ``T``.
+    A mapping of dataset split names to splits.
     """
 
     metadata: Mapping[str, Any] = field(default_factory=dict)
@@ -38,14 +38,15 @@ class DatasetDict(CustomDetHash, Generic[T], Mapping[str, Sequence[T]]):
     def det_hash_object(self) -> Any:
         """
         Overrides :meth:`~tango.common.det_hash.CustomDetHash.det_hash_object` to return
-        :attr:`fingerprint`  when specified instead of ``self``.
+        :attr:`fingerprint`  when specified instead of ``self`` to avoid costly serialization
+        of ``self``.
         """
         if self.fingerprint is not None:
             return self.fingerprint
         else:
             return self
 
-    def __getitem__(self, split: str) -> Sequence[T]:
+    def __getitem__(self, split: str) -> S:
         """
         Get a split in :attr:`splits`.
         """
@@ -74,3 +75,19 @@ class DatasetDict(CustomDetHash, Generic[T], Mapping[str, Sequence[T]]):
         Returns the split names in :attr:`splits`.
         """
         return self.splits.keys()
+
+
+@dataclass
+class DatasetDict(DatasetDictBase[Sequence[T]], Generic[T]):
+    """
+    A generic :class:`~collections.abc.Mapping` class of split names (:class:`str`) to datasets
+    (``Sequence[T]``).
+    """
+
+
+@dataclass
+class IterableDatasetDict(DatasetDictBase[Iterable[T]], Generic[T]):
+    """
+    An "iterable" version of :class:`DatasetDict`, where the dataset splits have
+    type ``Iterable[T]`` instead of ``Sequence[T]``. This is useful for streaming datasets.
+    """

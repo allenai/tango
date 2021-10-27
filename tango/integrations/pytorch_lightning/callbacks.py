@@ -6,7 +6,7 @@ from tango.common.registrable import Registrable
 class LightningCallback(pl.callbacks.base.Callback, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.callbacks.base.Callback`.
+    version of the PyTorch Lightning :class:`~pytorch_lightning.callbacks.base.Callback`.
     """
 
 

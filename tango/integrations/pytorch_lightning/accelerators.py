@@ -6,7 +6,7 @@ from tango.common.registrable import Registrable
 class LightningAccelerator(pl.accelerators.Accelerator, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
-    :class:`pytorch_lightning.accelerators.Accelerator`.
+    version of the PyTorch Lightning :class:`~pytorch_lightning.accelerators.Accelerator`.
     """
 
 
