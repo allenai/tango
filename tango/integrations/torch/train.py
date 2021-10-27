@@ -4,6 +4,7 @@ from pathlib import Path
 import random
 import tempfile
 from typing import Optional, List, cast, Dict, TypeVar, Any
+import warnings
 
 from more_itertools import chunked
 import numpy as np
@@ -11,7 +12,7 @@ import torch
 from torch import Tensor
 import torch.distributed as dist
 import torch.nn as nn
-from torch.utils.data import DistributedSampler
+from torch.utils.data import DistributedSampler, IterableDataset
 
 from .data import DataLoader
 from .format import TorchFormat
@@ -344,19 +345,15 @@ def _train(
     # Construct data loaders.
     validation_dataloader_: Optional[DataLoader] = None
     if validation_split is not None:
+        validation_dataset = dataset_dict[validation_split]
+        _check_dataset(validation_dataset, validation_split)
         if validation_dataloader is not None:
-            validation_dataloader_ = validation_dataloader.construct(
-                dataset=dataset_dict[validation_split]
-            )
+            validation_dataloader_ = validation_dataloader.construct(dataset=validation_dataset)
         else:
-            validation_dataloader_ = train_dataloader.construct(
-                dataset=dataset_dict[validation_split]
-            )
+            validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
     validation_dataloader: Optional[DataLoader] = validation_dataloader_
-    try:
-        train_dataset = dataset_dict[train_split]
-    except KeyError:
-        raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
+    train_dataset = dataset_dict[train_split]
+    _check_dataset(train_dataset, train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
     if train_steps is None:
@@ -376,18 +373,9 @@ def _train(
 
     # Make sure we're using a DistributedSampler during distributed training.
     if is_distributed:
-        if not isinstance(train_dataloader.sampler, DistributedSampler):
-            raise ConfigurationError(
-                "DistributedSampler is required for dataloader during distributed training, "
-                f"found {type(train_dataloader.sampler)} instead."
-            )
-        if validation_dataloader is not None and not isinstance(
-            validation_dataloader.sampler, DistributedSampler
-        ):
-            raise ConfigurationError(
-                "DistributedSampler is required for dataloader during distributed training, "
-                f"found {type(validation_dataloader.sampler)} instead."
-            )
+        _check_dataloader(train_dataloader)
+        if validation_dataloader is not None:
+            _check_dataloader(validation_dataloader)
 
     # Check working directory to see if we should recover from a previous run.
     initial_state: Optional[Dict[str, Any]] = None
@@ -762,3 +750,29 @@ def move_to_device(o: T, device: torch.device) -> T:
         return tuple((move_to_device(x, device) for x in o))  # type: ignore[return-value]
     else:
         return o
+
+
+def _check_dataset(dataset, split: str):
+    try:
+        len(dataset)
+    except TypeError:
+        if not isinstance(dataset, IterableDataset):
+            warnings.warn(
+                f"Dataset for {split} split appears to be a streaming/iterable dataset, "
+                "but is not an instance of 'torch.utils.data.IterableDataset'. This could cause issues "
+                "within the DataLoader.",
+                UserWarning,
+            )
+
+
+def _check_dataloader(dataloader: DataLoader):
+    # If using a regular dataset and not streaming/iterable dataset, we
+    # should probably be using a `DistributedSampler`.
+    if not isinstance(dataloader.dataset, IterableDataset) and not isinstance(
+        dataloader.sampler, DistributedSampler
+    ):
+        warnings.warn(
+            "DistributedSampler is required for dataloader during distributed training, "
+            f"found {type(dataloader.sampler)} instead.",
+            UserWarning,
+        )
