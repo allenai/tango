@@ -1,8 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Mapping, Any, Sequence, TypeVar, Generic, Optional, Iterator, Iterable
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Sequence,
+    TypeVar,
+)
 
 from ._det_hash import CustomDetHash
-
 
 T = TypeVar("T")
 S = TypeVar("S")

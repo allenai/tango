@@ -1,9 +1,9 @@
+from typing import Any, Dict, Generic, List, Optional, TypeVar
+
 import torch
-from typing import Optional, Any, Dict, List, TypeVar, Generic
 
 from tango.common.lazy import Lazy
 from tango.common.registrable import Registrable
-
 
 T = TypeVar("T")
 

@@ -7,8 +7,8 @@ import pytest
 
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import (
-    infer_and_cast,
     Params,
+    infer_and_cast,
     remove_keys_from_params,
     with_overrides,
 )

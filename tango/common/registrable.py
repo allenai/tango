@@ -22,7 +22,7 @@ from typing import (
 
 from .exceptions import ConfigurationError, RegistryKeyError
 from .from_params import FromParams
-from .util import import_module_and_submodules, find_integrations, find_submodules
+from .util import find_integrations, find_submodules, import_module_and_submodules
 
 logger = logging.getLogger(__name__)
 

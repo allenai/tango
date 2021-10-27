@@ -12,6 +12,7 @@ types-setuptools
 
 # Automatic code formatting
 black==21.9b0
+isort==5.9.3
 
 # Running tests
 pytest

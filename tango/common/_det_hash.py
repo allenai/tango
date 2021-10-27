@@ -1,7 +1,7 @@
-from abc import abstractmethod
 import collections
 import hashlib
 import io
+from abc import abstractmethod
 from typing import Any, MutableMapping
 
 import base58

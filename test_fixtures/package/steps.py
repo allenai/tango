@@ -1,5 +1,5 @@
-from string import ascii_letters
 import random
+from string import ascii_letters
 
 from tango import Step
 

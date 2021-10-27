@@ -7,7 +7,6 @@ import torch
 from tango.common.aliases import PathOrStr
 from tango.format import Format
 
-
 T = TypeVar("T")
 
 

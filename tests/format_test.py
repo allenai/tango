@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Dict
+from typing import Dict, Iterable, Optional
 
 import pytest
 

@@ -1,6 +1,6 @@
 import os
-from typing import Optional, Dict, Any, List
 import sys
+from typing import Any, Dict, List, Optional
 
 from overrides import overrides
 

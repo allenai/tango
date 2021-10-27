@@ -1,19 +1,13 @@
 import collections
-from dataclasses import dataclass
 import logging
 import weakref
 from abc import abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
-from typing import (
-    Optional,
-    Any,
-    TypeVar,
-    MutableMapping,
-    OrderedDict,
-)
+from typing import Any, MutableMapping, Optional, OrderedDict, TypeVar
 
 try:
-    from typing import get_origin, get_args  # type: ignore
+    from typing import get_args, get_origin  # type: ignore
 except ImportError:
 
     def get_origin(tp):  # type: ignore

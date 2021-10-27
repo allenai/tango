@@ -1,21 +1,21 @@
-import torch
+from typing import List, Optional, Union
+
 import pytorch_lightning as pl
-from typing import Optional, List, Union
+import torch
 
 from tango.common.dataset_dict import DatasetDict
 from tango.common.lazy import Lazy
 from tango.common.registrable import Registrable
 from tango.format import Format
-from tango.step import Step
-
 from tango.integrations.torch.data import DataLoader
 from tango.integrations.torch.format import TorchFormat
+from tango.step import Step
 
-from .model import LightningModule
-from .loggers import LightningLogger
-from .callbacks import LightningCallback
-from .profilers import LightningProfiler
 from .accelerators import LightningAccelerator
+from .callbacks import LightningCallback
+from .loggers import LightningLogger
+from .model import LightningModule
+from .profilers import LightningProfiler
 
 
 class LightningTrainer(pl.Trainer, Registrable):  # type: ignore

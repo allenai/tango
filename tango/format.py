@@ -6,31 +6,31 @@ import json
 import logging
 import lzma
 import mmap
-from pathlib import Path
 from abc import abstractmethod
 from os import PathLike
+from pathlib import Path
 from typing import (
-    TypeVar,
-    Generic,
-    Union,
-    Optional,
+    IO,
+    Any,
     Callable,
     Dict,
+    Generic,
     Iterable,
-    cast,
     Iterator,
-    Any,
     List,
-    IO,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
 )
 
 import dill
 import xxhash
 
 from tango.common.aliases import PathOrStr
-from tango.common.registrable import Registrable
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
+from tango.common.registrable import Registrable
 
 T = TypeVar("T")
 

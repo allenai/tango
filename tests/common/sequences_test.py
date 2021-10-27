@@ -1,6 +1,10 @@
 import pytest
 
-from tango.common.sequences import ShuffledSequence, SlicedSequence, ConcatenatedSequence
+from tango.common.sequences import (
+    ConcatenatedSequence,
+    ShuffledSequence,
+    SlicedSequence,
+)
 
 
 def assert_equal_including_exceptions(expected_fn, actual_fn):

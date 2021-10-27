@@ -1,13 +1,14 @@
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 import torch
 
-from .data import DataLoader
-from .model import Model
-from .optim import Optimizer, LRScheduler
 from tango.common.exceptions import TangoError
 from tango.common.registrable import Registrable
+
+from .data import DataLoader
+from .model import Model
+from .optim import LRScheduler, Optimizer
 
 
 class TrainCallback(Registrable):

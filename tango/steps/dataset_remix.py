@@ -1,10 +1,14 @@
 import random
 import re
-from typing import Mapping, Any, Sequence, Dict
+from typing import Any, Dict, Mapping, Sequence
 
-from tango.step import Step
 from tango.common.dataset_dict import DatasetDict
-from tango.common.sequences import ShuffledSequence, SlicedSequence, ConcatenatedSequence
+from tango.common.sequences import (
+    ConcatenatedSequence,
+    ShuffledSequence,
+    SlicedSequence,
+)
+from tango.step import Step
 
 
 @Step.register("dataset_remix")

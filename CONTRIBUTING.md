@@ -109,9 +109,13 @@ When you're ready to contribute code to address an open issue, please follow the
     <details><summary>Expand details 👇</summary><br/>
 
     Our continuous integration (CI) testing runs [a number of checks](https://github.com/allenai/tango/actions) for each pull request on [GitHub Actions](https://github.com/features/actions). You can run most of these tests locally, which is something you should do *before* opening a PR to help speed up the review process and make it easier for us.
+
+    First, you should run [`isort`](https://github.com/PyCQA/isort) and [`black`](https://github.com/psf/black) to make sure you code is formatted consistently.
+    Many IDEs support code formatters as plugins, so you may be able to setup isort and black to run automatically everytime you save.
+    For example, [`black.vim`](https://github.com/psf/black/tree/master/plugin) will give you this functionality in Vim. But both `isort` and `black` are also easy to run directly from the command line.
+    Just run this from the root of your clone:
     
-    First, you should run [`black`](https://github.com/psf/black) to make sure you code is formatted consistently. Many IDEs support code formatters as plugins, so you may be able to setup black to run automatically everytime you save. [`black.vim`](https://github.com/psf/black/tree/master/plugin) will give you this functionality in Vim, for example. But `black` is also easy to run directly from the command line. Just run this from the root of your clone:
-    
+        isort .
         black .
 
     Our CI also uses [`flake8`](https://github.com/allenai/tango/tree/main/tests) to lint the code base and [`mypy`](http://mypy-lang.org/) for type-checking. You should run both of these next with
@@ -125,11 +129,11 @@ When you're ready to contribute code to address an open issue, please follow the
     We also strive to maintain high test coverage, so most contributions should include additions to [the unit tests](https://github.com/allenai/tango/tree/main/tests). These tests are run with [`pytest`](https://docs.pytest.org/en/latest/), which you can use to locally run any test modules that you've added or changed.
 
     For example, if you've fixed a bug in `tango/a/b.py`, you can run the tests specific to that module with
-    
+
         pytest -v tests/a/b_test.py
-    
+
     Our CI will automatically check that test coverage stays above a certain threshold (around 90%). To check the coverage locally in this example, you could run
-    
+
         pytest -v --cov tango.a.b tests/a/b_test.py
 
     If your contribution involves additions to any public part of the API, we require that you write docstrings

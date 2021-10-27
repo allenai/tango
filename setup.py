@@ -1,6 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 
 def parse_requirements_file(path, allowed_extras: set = None, include_all_extra: bool = True):
