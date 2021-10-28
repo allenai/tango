@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.0](https://github.com/allenai/tango/releases/tag/v0.3.0) - 2021-10-28
+
 ### Added
 
 - Added `IterableDatasetDict`, a version of `DatasetDict` for streaming-like datasets.
