@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 import torch
 
@@ -90,15 +90,15 @@ class DataLoader(torch.utils.data.DataLoader, Registrable):
         self,
         dataset: torch.utils.data.Dataset,
         collate_fn: Optional[DataCollator] = ConcatTensorDictsCollator(),
-        sampler: Optional[Lazy[Sampler]] = None,
+        sampler: Optional[Union[Lazy[Sampler], Sampler]] = None,
         **kwargs
     ):
         super().__init__(
             dataset,
             collate_fn=collate_fn,
-            sampler=None
-            if sampler is None
-            else sampler.construct(data_source=dataset, dataset=dataset),
+            sampler=sampler.construct(data_source=dataset, dataset=dataset)
+            if isinstance(sampler, Lazy)
+            else sampler,
             **kwargs
         )
 
