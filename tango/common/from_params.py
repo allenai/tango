@@ -492,7 +492,6 @@ def construct_arg(
             return default
 
         value_cls = args[0]
-        #  subextras = create_extras(value_cls, extras)
         return Lazy(value_cls, params=deepcopy(popped_params))  # type: ignore
 
     # For any other kind of iterable, we will just assume that a list is good enough, and treat
