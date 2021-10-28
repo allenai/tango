@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, Optional, Union
 
 import pytorch_lightning as pl
@@ -15,6 +16,7 @@ from .accelerators import LightningAccelerator
 from .callbacks import LightningCallback
 from .loggers import LightningLogger
 from .model import LightningModule
+from .plugins import LightningPlugin
 from .profilers import LightningProfiler
 
 
@@ -23,6 +25,38 @@ class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
     This is simply a :class:`~tango.common.Registrable` version of
     the PyTorch Lightning :class:`~pytorch_lightning.trainer.trainer.Trainer`.
     """
+
+    def __init__(
+        self,
+        work_dir: Path,
+        logger: Optional[Union[List[Lazy[LightningLogger]], Lazy[LightningLogger]]] = None,
+        callbacks: Optional[List[LightningCallback]] = None,
+        profiler: Optional[Union[str, Lazy[LightningProfiler]]] = None,
+        accelerator: Optional[Union[str, LightningAccelerator]] = None,
+        plugins: Optional[List[LightningPlugin]] = None,
+        **kwargs,
+    ):
+        loggers: List[LightningLogger] = (
+            []
+            if not logger
+            else [
+                logger_.construct(save_dir=work_dir)
+                for logger_ in (logger if isinstance(logger, list) else [logger])
+            ]
+        )
+
+        profiler: Optional[Union[str, LightningProfiler]] = (
+            profiler.construct(dirpath=work_dir) if isinstance(profiler, Lazy) else profiler
+        )
+
+        super().__init__(
+            logger=loggers,
+            callbacks=callbacks,
+            profiler=profiler,
+            accelerator=accelerator,
+            plugins=plugins,
+            **kwargs,
+        )
 
     def _to_params(self):
         return {}
@@ -55,10 +89,6 @@ class LightningTrainStep(Step):
         *,
         validation_dataloader: Lazy[DataLoader] = None,
         validation_split: str = "validation",
-        loggers: Optional[List[Lazy[LightningLogger]]] = None,
-        callbacks: Optional[List[Lazy[LightningCallback]]] = None,
-        profiler: Optional[Union[str, Lazy[LightningProfiler]]] = None,
-        accelerator: Optional[Union[str, Lazy[LightningAccelerator]]] = None,
     ) -> torch.nn.Module:
 
         """
@@ -87,14 +117,6 @@ class LightningTrainStep(Step):
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
             as the train ``DataLoader``.
-        loggers: List[:class:`LightningLogger`]
-            A list of :class:`LightningLogger`.
-        callbacks: List[:class:`LightningCallback`]
-            A list of :class:`LightningCallback`.
-        profiler: Union[:class:`LightningProfiler`, :class:`str`], optional
-            :class:`LightningProfiler` object.
-        accelerator: Union[:class:`LightningAccelerator`, :class:`str`], optional
-            :class:`LightningAccelerator` object.
 
         Returns
         -------
@@ -102,28 +124,10 @@ class LightningTrainStep(Step):
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """
-        loggers: List[LightningLogger] = [
-            logger.construct(save_dir=self.work_dir) for logger in (loggers or [])
-        ]
+        trainer: LightningTrainer = trainer.construct(work_dir=self.work_dir)
 
-        callbacks: List[LightningCallback] = [
-            callback.construct() for callback in (callbacks or [])
-        ]
-
-        profiler: Optional[Union[str, LightningProfiler]] = (
-            profiler.construct(dirpath=self.work_dir) if isinstance(profiler, Lazy) else profiler
-        )
-
-        accelerator: Optional[Union[str, LightningAccelerator]] = (
-            accelerator.construct() if isinstance(accelerator, Lazy) else accelerator
-        )
-
-        trainer: LightningTrainer = trainer.construct(
-            logger=loggers, callbacks=callbacks, profiler=profiler, accelerator=accelerator
-        )
-
+        # Find the checkpoint callback and make sure it uses the right directory.
         checkpoint_callback: pl.callbacks.model_checkpoint.ModelCheckpoint
-
         for callback in trainer.callbacks:
             if isinstance(callback, pl.callbacks.model_checkpoint.ModelCheckpoint):
                 callback.dirpath = self.work_dir

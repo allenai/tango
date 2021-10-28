@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `IterableDatasetDict`, a version of `DatasetDict` for streaming-like datasets.
 - Added a [PyTorch Lightning](https://www.pytorchlightning.ai) integration with `LightningTrainStep`.
 
+### Fixed
+
+- Fixed bug with `FromParams` and `Lazy` where extra arguments would sometimes be passed down through
+  to a `Lazy` class when they shouldn't.
+
 ## [v0.2.4](https://github.com/allenai/tango/releases/tag/v0.2.4) - 2021-10-22
 
 ### Added

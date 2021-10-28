@@ -11,12 +11,15 @@
             "trainer": {
                 "type": "default",
                 "max_epochs": 5,
-                "log_every_n_steps": 3
-            },
-            "loggers": ["pytorch_lightning::TensorBoardLogger", "pytorch_lightning::CSVLogger"],
-            "accelerator": "cpu",
-            "profiler": {
-                "type": "pytorch_lightning::SimpleProfiler",
+                "log_every_n_steps": 3,
+                "logger": [
+                    {"type": "pytorch_lightning::TensorBoardLogger"},
+                    {"type": "pytorch_lightning::CSVLogger"},
+                ],
+                "accelerator": "cpu",
+                "profiler": {
+                    "type": "pytorch_lightning::SimpleProfiler",
+                },
             },
             "dataset_dict": {
                 "type": "ref",
