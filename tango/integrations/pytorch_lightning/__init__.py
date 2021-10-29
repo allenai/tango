@@ -129,6 +129,7 @@ is registered as "pytorch_lightning::EarlyStopping".
 __all__ = [
     "LightningAccelerator",
     "LightningCallback",
+    "LightningDataModule",
     "LightningLogger",
     "LightningModule",
     "LightningProfiler",
@@ -139,6 +140,7 @@ __all__ = [
 
 from .accelerators import LightningAccelerator
 from .callbacks import LightningCallback
+from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
 from .plugins import LightningPlugin
