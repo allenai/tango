@@ -711,7 +711,7 @@ def _train(
                 save_state()
     except StopEarly:
         if is_local_main_process:
-            print("Stopping earlyy!")
+            print("Stopping early!")
     finally:
         train_batch_iterator.close()
 
