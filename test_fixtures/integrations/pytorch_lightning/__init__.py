@@ -1,10 +1,11 @@
 from typing import Optional
+
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
 from tango.common.dataset_dict import DatasetDict
-from tango.integrations.pytorch_lightning import LightningModule, LightningDataModule
+from tango.integrations.pytorch_lightning import LightningDataModule, LightningModule
 from tango.integrations.torch.data import DataLoader
 from tango.step import Step
 
