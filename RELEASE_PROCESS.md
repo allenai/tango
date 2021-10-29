@@ -10,8 +10,8 @@
     ./scripts/release.sh
     ```
 
-    This will commit the changes to the CHANGELOG and `version.py` files and then create a new tag in git
-    which will trigger a workflow on GitHub Actions that handles the rest.
+    This will automatically update the CHANGELOG, commit the changes to the CHANGELOG and `version.py` (and any other files you might have changed),
+    and then create a new tag in git which will trigger a workflow on GitHub Actions that handles the rest.
 
 ## Fixing a failed release
 
