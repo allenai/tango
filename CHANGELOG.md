@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+- Updated the `LightningTrainStep` to optionally take in a `LightningDataModule` as input.
+
 ## [v0.3.0](https://github.com/allenai/tango/releases/tag/v0.3.0) - 2021-10-28
 
 ### Added
