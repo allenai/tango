@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -14,10 +15,13 @@ from tango.step import Step
 
 from .accelerators import LightningAccelerator
 from .callbacks import LightningCallback
+from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
 from .plugins import LightningPlugin
 from .profilers import LightningProfiler
+
+logger = logging.getLogger(__name__)
 
 
 class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
@@ -83,12 +87,13 @@ class LightningTrainStep(Step):
         self,
         trainer: Lazy[LightningTrainer],
         model: LightningModule,
-        dataset_dict: DatasetDict,
-        train_dataloader: Lazy[DataLoader],
-        train_split: str = "train",
         *,
-        validation_dataloader: Lazy[DataLoader] = None,
+        dataset_dict: Optional[DatasetDict] = None,
+        train_dataloader: Optional[Lazy[DataLoader]] = None,
+        train_split: str = "train",
+        validation_dataloader: Optional[Lazy[DataLoader]] = None,
         validation_split: str = "validation",
+        datamodule: Optional[LightningDataModule] = None,
     ) -> torch.nn.Module:
 
         """
@@ -101,22 +106,27 @@ class LightningTrainStep(Step):
             The lightning trainer object.
         model : :class:`LightningModule`
             The lightning module to train.
-        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDict`
-            The train and optional validation data.
-        train_dataloader : :class:`DataLoader`
+        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDict`, optional
+            The train and optional validation data. This is ignored if the `datamodule` argument
+            is provided.
+        train_dataloader : :class:`DataLoader`, optional
             The data loader that generates training batches. The batches should be :class:`dict`
-            objects.
+            objects. This is ignored if the `datamodule` argument is provided.
         train_split : :class:`str`, optional
             The name of the data split used for training in the ``dataset_dict``.
-            Default is "train".
+            Default is "train". This is ignored if the `datamodule` argument is provided.
         validation_split : :class:`str`, optional
             Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
-            which means no validation.
+            which means no validation. This is ignored if the `datamodule` argument is provided.
         validation_dataloader : :class:`DataLoader`, optional
             An optional data loader for generating validation batches. The batches should be
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
-            as the train ``DataLoader``.
+            as the train ``DataLoader``. This is ignored if the `datamodule` argument
+            is provided.
+        datamodule : :class:`LightningDataModule`, optional
+            If a :class:`LightningDataModule` object is given, the other data loading arguments
+            are ignored.
 
         Returns
         -------
@@ -133,28 +143,36 @@ class LightningTrainStep(Step):
                 callback.dirpath = self.work_dir
                 checkpoint_callback = callback
 
-        # Construct data loaders.
-        validation_dataloader_: Optional[DataLoader] = None
-        if validation_split is not None:
-            if validation_dataloader is not None:
-                validation_dataloader_ = validation_dataloader.construct(
-                    dataset=dataset_dict[validation_split]
-                )
-            else:
-                validation_dataloader_ = train_dataloader.construct(
-                    dataset=dataset_dict[validation_split]
-                )
-        validation_dataloader: Optional[DataLoader] = validation_dataloader_
-
-        try:
-            train_dataset = dataset_dict[train_split]
-        except KeyError:
-            raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
-
-        train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
-
-        trainer.fit(model, train_dataloader, validation_dataloader)
+        if datamodule:
+            logger.info(
+                "A datamodule object has been given. Other data loading arguments "
+                "will be ignored!"
+            )
+            trainer.fit(model, datamodule=datamodule)
+        elif dataset_dict and train_dataloader:
+            # Construct data loaders.
+            validation_dataloader_: Optional[DataLoader] = None
+            if validation_split is not None:
+                if validation_dataloader is not None:
+                    validation_dataloader_ = validation_dataloader.construct(
+                        dataset=dataset_dict[validation_split]
+                    )
+                else:
+                    validation_dataloader_ = train_dataloader.construct(
+                        dataset=dataset_dict[validation_split]
+                    )
+            validation_dataloader: Optional[DataLoader] = validation_dataloader_  # type: ignore
+            try:
+                train_dataset = dataset_dict[train_split]
+            except KeyError:
+                raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
+            train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)  # type: ignore
+            trainer.fit(model, train_dataloader, validation_dataloader)  # type: ignore
+        else:
+            raise AssertionError(
+                "You need to provide either the `datamodule` argument, "
+                "or `dataset_dict` and `train_dataloader` (and other data loading arguments)."
+            )
 
         best_model = torch.load(checkpoint_callback.best_model_path)
-
         return best_model
