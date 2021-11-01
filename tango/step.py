@@ -242,8 +242,6 @@ class Step(Registrable, Generic[T]):
                 continue
 
             explicitly_set = param_name in params
-            if param_name == "config":
-                print("Yea!", params)
             constructed_arg = pop_and_construct_arg(
                 subclass.__name__,
                 param_name,
