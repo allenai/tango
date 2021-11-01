@@ -292,6 +292,10 @@ class TestFromParams(TangoTestCase):
         assert b.b[0].a == 3
         assert b.b[1].a == [4, 5]
 
+    def test_non_params_object_with_params(self):
+        bar = Bar.from_params({"foo": Foo(a=1)})
+        assert bar.foo.a == 1
+
     def test_crazy_nested_union(self):
         class A(FromParams):
             def __init__(self, a: Union[int, List[int]]) -> None:
