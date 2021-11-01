@@ -318,9 +318,11 @@ def construct_arg(
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
 
-    if hasattr(annotation, "from_params"):
+    if inspect.isclass(annotation) and issubclass(annotation, FromParams):
         if popped_params is default:
             return default
+        elif isinstance(popped_params, annotation):
+            return popped_params
         elif popped_params is not None:
             # Our params have an entry for this, so we use that.
 
@@ -337,6 +339,12 @@ def construct_arg(
                     popped_params = Params({"type": popped_params})
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
+            elif not isinstance(popped_params, Params):
+                raise TypeError(
+                    f"Expected a `Params` object, found `{popped_params}` instead while constructing "
+                    f"parameter '{argument_name}' for `{class_name}`"
+                )
+
             result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
