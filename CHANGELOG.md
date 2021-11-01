@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug with `FromParams` that caused `.from_params()` to fail when the params contained
   an object that was already instantiated.
+- tango command no longer installs a SIGTERM handler, which fixes some bugs with integrations that use multiprocessing.
 
 ## [v0.3.1](https://github.com/allenai/tango/releases/tag/v0.3.1) - 2021-10-29
 
