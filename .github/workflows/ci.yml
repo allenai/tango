@@ -85,12 +85,27 @@ jobs:
               pytest -v --color=yes test.py
 
         include:
+          # Run the core tests on other Python versions as well.
           - task:
               name: Test
               extras: dev
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: 3.8
+
+          - task:
+              name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+            python: 3.9
+
+          - task:
+              name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+            python: 3.10
 
     steps:
       - uses: actions/checkout@v2
@@ -127,7 +142,7 @@ jobs:
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
 
       - name: Pre-install torch
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'torch')
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all'))
         run: |
           . .venv/bin/activate
           pip install torch==1.10.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
