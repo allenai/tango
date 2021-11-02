@@ -16,7 +16,7 @@ on:
 
 env:
   # Change this to invalidate existing cache.
-  CACHE_PREFIX: v1
+  CACHE_PREFIX: v2
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.7
 
@@ -84,6 +84,11 @@ jobs:
               cd examples/train_gpt2
               pytest -v --color=yes test.py
 
+        include:
+          - task:
+              name: Test
+            python: 3.8
+
     steps:
       - uses: actions/checkout@v2
 
@@ -112,8 +117,6 @@ jobs:
         with:
           path: .venv
           key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-${{ hashFiles('*requirements.txt') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -124,7 +127,7 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'torch')
         run: |
           . .venv/bin/activate
-          pip install torch==1.9.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.10.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
