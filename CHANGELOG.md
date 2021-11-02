@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
+- [internals] Core tests now run on all officially supported Python versions.
+
 ### Fixed
 
+- Fixed a bug in `FromParams` where non-`FromParams` class parameters were not instantiated
+  properly (or at all).
 - Fixed small bug where some errors from git would be printed when executor metadata is created
   outside of a git repository.
 

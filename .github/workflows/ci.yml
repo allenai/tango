@@ -16,7 +16,7 @@ on:
 
 env:
   # Change this to invalidate existing cache.
-  CACHE_PREFIX: v1
+  CACHE_PREFIX: v3
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.7
 
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: [3.7]
+        python: ['3.7']
         task:
           - name: Lint
             extras: dev,all
@@ -84,6 +84,29 @@ jobs:
               cd examples/train_gpt2
               pytest -v --color=yes test.py
 
+        include:
+          # Run the core tests on other Python versions as well.
+          - task:
+              name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+            python: '3.8'
+
+          - task:
+              name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+            python: '3.9'
+
+          - task:
+              name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+            python: '3.10'
+
     steps:
       - uses: actions/checkout@v2
 
@@ -112,8 +135,6 @@ jobs:
         with:
           path: .venv
           key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-${{ hashFiles('*requirements.txt') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -121,10 +142,10 @@ jobs:
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
 
       - name: Pre-install torch
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'torch')
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all'))
         run: |
           . .venv/bin/activate
-          pip install torch==1.9.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.10.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
