@@ -9,6 +9,7 @@ class TestMetadata(TangoTestCase):
         metadata.save(self.TEST_DIR)
 
         assert metadata.git is not None
+        assert metadata.git.commit is not None
         assert metadata.git.remote is not None
         assert "allenai/tango" in metadata.git.remote
 
