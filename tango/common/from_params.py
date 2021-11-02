@@ -24,7 +24,7 @@ try:
     from types import UnionType  # type: ignore[attr-defined]
 except ImportError:
 
-    class UnionType:
+    class UnionType:  # type: ignore
         pass
 
 
