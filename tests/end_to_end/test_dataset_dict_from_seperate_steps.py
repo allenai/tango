@@ -1,6 +1,6 @@
-from typing import Any, Dict, Sequence
+from typing import Any, Sequence
 
-from tango import JsonFormat, Step
+from tango import Format, JsonFormat, Step
 from tango.common import DatasetDict
 from tango.common.testing import run_experiment
 
@@ -10,7 +10,7 @@ class TrainData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run(self) -> Sequence[int]:
+    def run(self) -> Sequence[int]:  # type: ignore
         return list(range(10))
 
 
@@ -19,7 +19,7 @@ class ValData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run(self) -> Sequence[int]:
+    def run(self) -> Sequence[int]:  # type: ignore
         return list(range(10, 20))
 
 
@@ -27,9 +27,9 @@ class ValData(Step):
 class SaveData(Step):
     DETERMINISTIC = True
     CACHEABLE = True
-    FORMAT = JsonFormat()
+    FORMAT: Format = JsonFormat()
 
-    def run(self, dataset_dict: DatasetDict) -> Dict[str, Any]:
+    def run(self, dataset_dict: DatasetDict) -> Any:  # type: ignore
         return dataset_dict.splits
 
 
