@@ -16,7 +16,7 @@ on:
 
 env:
   # Change this to invalidate existing cache.
-  CACHE_PREFIX: v2
+  CACHE_PREFIX: v3
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.7
 
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: [3.7]
+        python: ['3.7']
         task:
           - name: Lint
             extras: dev,all
@@ -91,21 +91,21 @@ jobs:
               extras: dev
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: 3.8
+            python: '3.8'
 
           - task:
               name: Test
               extras: dev
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: 3.9
+            python: '3.9'
 
           - task:
               name: Test
               extras: dev
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: 3.10
+            python: '3.10'
 
     steps:
       - uses: actions/checkout@v2
