@@ -960,7 +960,7 @@ class TestFromParams(TangoTestCase):
         with pytest.raises(NotImplementedError):
             foo.to_params()
 
-    @pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python3.9 or higher")
+    @pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python 3.9 or higher")
     def test_type_hinting_generics_from_std_collections(self):
         class Item(FromParams):
             def __init__(self, a: int) -> None:
@@ -975,6 +975,19 @@ class TestFromParams(TangoTestCase):
         assert isinstance(o.x, list)
         assert isinstance(o.x[0], Item)
         assert isinstance(o.y["b"], Item)
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+    def test_with_union_pipe(self):
+        class Item(FromParams):
+            def __init__(self, a: int) -> None:
+                self.a = a
+
+        class ClassWithUnionType(FromParams):
+            def __init__(self, x: Item | str):
+                self.x = x
+
+        o = ClassWithUnionType.from_params({"x": {"a": 1}})
+        assert isinstance(o.x, Item)
 
 
 class MyClass(FromParams):
