@@ -321,11 +321,9 @@ def construct_arg(
     if inspect.isclass(annotation) and issubclass(annotation, FromParams):
         if popped_params is default:
             return default
-        elif isinstance(popped_params, annotation):
+        elif origin is None and isinstance(popped_params, annotation):
             return popped_params
         elif popped_params is not None:
-            # Our params have an entry for this, so we use that.
-
             subextras = create_extras(annotation, extras)
 
             # In some cases we allow a string instead of a param dict, so
@@ -526,6 +524,13 @@ def construct_arg(
             value_list.append(value)
 
         return value_list
+
+    elif inspect.isclass(annotation) and isinstance(popped_params, Params):
+        subextras = create_extras(annotation, extras)
+        constructor_to_inspect = annotation.__init__
+        constructor_to_call = annotation
+        kwargs = create_kwargs(constructor_to_inspect, annotation, popped_params, **subextras)
+        return constructor_to_call(**kwargs)  # type: ignore
 
     else:
         # Pass it on as is and hope for the best.   ¯\_(ツ)_/¯
