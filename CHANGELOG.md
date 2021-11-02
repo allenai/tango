@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
+
+### Fixed
+
+- Fixed a bug in `FromParams` where non-`FromParams` class parameters were not instantiated
+  properly (or at all).
+
 ## [v0.3.2](https://github.com/allenai/tango/releases/tag/v0.3.2) - 2021-11-01
 
 ### Fixed
