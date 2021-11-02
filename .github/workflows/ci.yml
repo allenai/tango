@@ -87,6 +87,9 @@ jobs:
         include:
           - task:
               name: Test
+              extras: dev
+              run: |
+                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: 3.8
 
     steps:
