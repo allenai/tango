@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug in `FromParams` where non-`FromParams` class parameters were not instantiated
   properly (or at all).
+- Fixed small bug where some errors from git would be printed when executor metadata is created
+  outside of a git repository.
 
 ## [v0.3.2](https://github.com/allenai/tango/releases/tag/v0.3.2) - 2021-11-01
 

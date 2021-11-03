@@ -321,7 +321,9 @@ class GitMetadata(FromParams):
 
         try:
             commit = (
-                subprocess.check_output("git rev-parse HEAD".split(" ")).decode("ascii").strip()
+                subprocess.check_output("git rev-parse HEAD".split(" "), stderr=subprocess.DEVNULL)
+                .decode("ascii")
+                .strip()
             )
             remote: Optional[str] = None
             for line in (
