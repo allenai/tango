@@ -201,7 +201,7 @@ class TorchTrainStep(Step):
             mp.spawn(
                 _train,
                 args=(
-                    self.work_dir,
+                    self.step_dir,
                     model,
                     dataset_dict,
                     train_dataloader,
@@ -235,7 +235,7 @@ class TorchTrainStep(Step):
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
-                self.work_dir,
+                self.step_dir,
                 model,
                 dataset_dict,
                 train_dataloader,
@@ -263,7 +263,7 @@ class TorchTrainStep(Step):
             final_model = final_model.cpu()
 
         # Load best checkpoint before returning model.
-        best_state_path = self.work_dir / "state_worker0_best.pt"
+        best_state_path = self.step_dir / "state_worker0_best.pt"
         if best_state_path.is_file():
             print(f"Loading best weights from {best_state_path.resolve().name}")
             state = torch.load(best_state_path, map_location="cpu")

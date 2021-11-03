@@ -24,4 +24,4 @@ from tango.format import (
 )
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
-from tango.step_graph import StepGraph, StepStub
+from tango.step_graph import StepGraph

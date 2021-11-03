@@ -15,12 +15,11 @@ import click
 from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.from_params import FromParams
-from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.common.util import import_module_and_submodules
 from tango.step import Step
 from tango.step_cache import StepCache
-from tango.step_graph import StepGraph, StepStub
+from tango.step_graph import StepGraph
 from tango.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -73,69 +72,12 @@ class Executor(Registrable):
                     )
                     filename.unlink()
 
-            # Keeps track of all steps that we've ran so far by name, and stores the results
-            # for ones that can't be cached.
-            executed: Dict[str, Tuple[Step, Any]] = {}
-            remaining: List[StepStub] = list(step_graph)
-            group: List[Step] = []
-            all_steps: List[Step] = []
-
-            def run_group():
-                # Gather all steps that need to be ran (no cache hit).
-                needed: List[Step] = []
-                for step in group:
-                    if step not in self.step_cache:
-                        needed.append(step)
-                    else:
-                        executed[step.name] = (step, None)
-                        click.echo(
-                            click.style("\N{check mark} Found output for ", fg="green")
-                            + click.style(f'"{step.name}"', bold=True, fg="green")
-                            + click.style(" in cache", fg="green")
-                        )
-                if needed:
-                    # Run the needed ones.
-                    for step, result in self.execute_step_group(needed):
-                        # Add to cache or keep result in `executed`.
-                        if step.cache_results and step not in self.step_cache:
-                            self.step_cache[step] = result
-                            executed[step.name] = (step, None)
-                        else:
-                            executed[step.name] = (step, result)
-
-            while remaining:
-                next_step_ready = True
-                for ref in remaining[0].dependencies:
-                    if ref not in executed:
-                        # Still has dependencies that need to be ran first.
-                        next_step_ready = False
-                        break
-
-                if not next_step_ready:
-                    # Run the current group.
-                    assert group
-                    run_group()
-                    all_steps.extend(group)
-                    group = []
-
-                # Materialize the next step.
-                next_up = remaining.pop(0)
-                config = self._replace_refs_with_results(next_up.config, executed, self.step_cache)
-                step = Step.from_params(
-                    Params(config),
-                    step_name=next_up.name,
-                    step_config=next_up.config,
-                    step_executor=self,
-                )
-                group.append(step)
-
-            # Finish up last group.
-            if group:
-                run_group()
-                all_steps.extend(group)
+            for step in step_graph.values():
+                if step.cache_results:
+                    step.ensure_result(self.step_cache)
 
             # Symlink everything that has been computed.
-            for step in all_steps:
+            for step in step_graph.values():
                 name = step.name
                 if step in self.step_cache:
                     step_link = self.dir / name
