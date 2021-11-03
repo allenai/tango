@@ -14,7 +14,7 @@ class TestDatasets(TangoTestCase):
                 "cache_dir": str(self.TEST_DIR / "cache"),
             }
         )
-        hf_dataset_dict = step.run_with_work_dir(self.TEST_DIR / "work")
+        hf_dataset_dict = step.result()
         assert "train" in hf_dataset_dict
         dataset_dict = convert_to_tango_dataset_dict(hf_dataset_dict)
         assert isinstance(dataset_dict.det_hash_object(), str)

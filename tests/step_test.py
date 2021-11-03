@@ -17,7 +17,7 @@ class TestStep(TangoTestCase):
 
     def test_from_params(self):
         step = Step.from_params({"type": "float", "result": 3})
-        result = step.run_with_work_dir(self.TEST_DIR / "work")
+        result = step.result()
         assert result == 3
 
     def test_from_params_wrong_type(self):
@@ -35,4 +35,4 @@ class TestStep(TangoTestCase):
                 return bar
 
         step = Step.from_params({"type": "foo", "bar": {"x": 1}})
-        assert step.run_with_work_dir(self.TEST_DIR / "work").x == 1
+        assert step.result().x == 1
