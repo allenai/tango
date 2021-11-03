@@ -598,12 +598,14 @@ def _train(
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            should_log_this_step = step % log_every == 0 or step == train_steps - 1
+            should_log_this_step = (
+                step == 0 or (step + 1) % log_every == 0 or step == train_steps - 1
+            )
             should_checkpoint_this_step = (
-                step > 0 and step % checkpoint_every == 0
+                (step + 1) % checkpoint_every == 0
             ) or step == train_steps - 1
             should_validate_this_step = validation_dataloader is not None and (
-                (step > 0 and step % validate_every == 0) or step == train_steps - 1
+                ((step + 1) % validate_every == 0) or step == train_steps - 1
             )
 
             # Gather average loss across all workers.
