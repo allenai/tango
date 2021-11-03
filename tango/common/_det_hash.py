@@ -50,7 +50,7 @@ class DetHashFromInitParams(CustomDetHash):
 
 class DetHashWithVersion(CustomDetHash):
     """
-    Add this class as a mixing base class to make sure your class's det_hash can be modified
+    Add this class as a mixin base class to make sure your class's det_hash can be modified
     by altering a static ``VERSION`` member of your class.
     """
 
