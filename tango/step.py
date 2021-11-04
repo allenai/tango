@@ -3,6 +3,7 @@ import logging
 import random
 import re
 from abc import abstractmethod
+from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
@@ -167,7 +168,6 @@ class Step(Registrable, Generic[T]):
         constructor_to_call: Callable[..., "Step"] = None,
         constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
         step_name: Optional[str] = None,
-        step_config: Optional[Dict[str, Any]] = None,
         **extras,
     ) -> "Step":
         # Why do we need a custom from_params? Step classes have a run() method that takes all the
@@ -198,6 +198,8 @@ class Step(Registrable, Generic[T]):
                     "should have been a dictionary was actually a list, or something else. "
                     f"This happened when constructing an object of type {cls}."
                 )
+
+        raw_step_config = deepcopy(params.as_dict(quiet=True))
 
         as_registrable = cast(Type[Registrable], cls)
         if "type" in params and params["type"] not in as_registrable.list_available():
@@ -257,7 +259,7 @@ class Step(Registrable, Generic[T]):
         else:
             params.assert_empty(subclass.__name__)
 
-        return subclass(step_name=step_name, step_config=step_config, **kwargs)
+        return subclass(step_name=step_name, step_config=raw_step_config, **kwargs)
 
     @abstractmethod
     def run(self, **kwargs) -> T:

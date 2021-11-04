@@ -333,8 +333,7 @@ def _run(
     step_cache = StepCache.from_params(
         params.pop("cache", default={}), dir=directory / "step_cache"
     )
-    executor = Executor.from_params(
-        params.pop("executor", default={}),
+    executor = Executor(
         dir=directory,
         step_cache=step_cache,
         include_package=include_package,

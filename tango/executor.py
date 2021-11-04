@@ -5,17 +5,15 @@ import platform
 import socket
 import sys
 import time
-from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import click
 
 from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.from_params import FromParams
-from tango.common.registrable import Registrable
 from tango.common.util import import_module_and_submodules
 from tango.step import Step
 from tango.step_cache import StepCache
@@ -25,17 +23,10 @@ from tango.version import VERSION
 logger = logging.getLogger(__name__)
 
 
-class Executor(Registrable):
+class Executor:
     """
     An ``Executor`` is a :class:`~tango.common.Registrable` class that is
     responsible for running steps and caching their results.
-
-    Subclasses should implement :meth:`execute_step_group()`.
-    """
-
-    default_implementation = "simple"
-    """
-    The default implementation is :class:`SimpleExecutor`.
     """
 
     def __init__(
@@ -74,7 +65,7 @@ class Executor(Registrable):
 
             for step in step_graph.values():
                 if step.cache_results:
-                    step.ensure_result(self.step_cache)
+                    self.execute_step(step)
 
             # Symlink everything that has been computed.
             for step in step_graph.values():
@@ -84,7 +75,7 @@ class Executor(Registrable):
                     if step_link.exists():
                         step_link.unlink()
                     step_link.symlink_to(
-                        self.directory_for_run(step).relative_to(self.dir),
+                        self.step_dir(step).relative_to(self.dir),
                         target_is_directory=True,
                     )
                     click.echo(
@@ -97,20 +88,7 @@ class Executor(Registrable):
             # Release lock on directory.
             directory_lock.release()
 
-    @abstractmethod
-    def execute_step_group(self, step_group: List[Step]) -> Iterable[Tuple[Step, Any]]:
-        """
-        Execute all steps in the group, returning them with their results.
-
-        The executor can assume that all steps in the group are independent (none of them
-        depend on the result of any other step in the group), so they can be ran
-        in any order or even in parallel.
-
-        When implementing this method it might make sense to use :meth:`execute_step()`.
-        """
-        raise NotImplementedError
-
-    def execute_step(self, step: Step, quiet: bool = False) -> Any:
+    def execute_step(self, step: Step, quiet: bool = False) -> None:
         """
         This method is provided for convenience. It is a robust way to run a step
         that will acquire a lock on the step's run directory and ensure :class:`ExecutorMetadata`
@@ -126,17 +104,26 @@ class Executor(Registrable):
             )
 
         # Initialize metadata.
-        metadata = ExecutorMetadata(step=step.unique_id, config=step.config)
+        def replace_steps_with_unique_id(o: Any):
+            if isinstance(o, Step):
+                return {"type": "ref", "ref": o.unique_id}
+            if isinstance(o, (list, tuple, set)):
+                return o.__class__(replace_steps_with_unique_id(i) for i in o)
+            elif isinstance(o, dict):
+                return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+            else:
+                return o
+        metadata = ExecutorMetadata(step=step.unique_id, config=replace_steps_with_unique_id(step.config))
 
         # Prepare directory and acquire lock.
-        run_dir = self.directory_for_run(step)
+        run_dir = self.step_dir(step)
         run_dir.mkdir(parents=True, exist_ok=True)
         run_dir_lock = FileLock(run_dir / ".lock", read_only_ok=True)
         run_dir_lock.acquire_with_updates(desc="acquiring run dir lock...")
 
         try:
             # Run the step.
-            result = step.run_with_work_dir(run_dir / "work")
+            step.ensure_result(self.step_cache)
 
             # Finalize metadata and save to run directory.
             metadata.save(run_dir)
@@ -150,61 +137,13 @@ class Executor(Registrable):
                 + click.style(f'"{step.name}"', bold=True, fg="green")
             )
 
-        return result
-
-    def directory_for_run(self, step: Step) -> Path:
+    def step_dir(self, step: Step) -> Path:
         """
         Returns a unique directory to use for the run of the given step.
 
         This is the :class:`~pathlib.Path` returned by :meth:`~tango.step_cache.directory_for_run()`.
         """
-        return self.step_cache.directory_for_run(step)
-
-    @staticmethod
-    def _replace_refs_with_results(
-        o: Any, executed: Dict[str, Tuple[Step, Any]], step_cache: StepCache
-    ) -> Any:
-        if isinstance(o, list):
-            return [Executor._replace_refs_with_results(x, executed, step_cache) for x in o]
-        elif isinstance(o, tuple):
-            return tuple(Executor._replace_refs_with_results(list(o), executed, step_cache))
-        elif isinstance(o, set):
-            return set(Executor._replace_refs_with_results(list(o), executed, step_cache))
-        elif isinstance(o, dict):
-            if set(o.keys()) == {"type", "ref"}:
-                if o["ref"] in executed:
-                    step, result = executed[o["ref"]]
-                    if result is not None:
-                        return result
-                    else:
-                        return step_cache[step]
-                else:
-                    raise ValueError(f"result for step '{o['ref']}' could not be found!")
-            else:
-                return {
-                    k: Executor._replace_refs_with_results(v, executed, step_cache)
-                    for k, v in o.items()
-                }
-        elif o is None or isinstance(o, (str, bool, int, float)):
-            return o
-        else:
-            raise ValueError(o)
-
-
-@Executor.register("simple")
-class SimpleExecutor(Executor):
-    """
-    A simple :class:`Executor` that just runs all steps locally one at a time.
-
-    .. tip::
-        Registered as an :class:`Executor` under the name "simple".
-
-    """
-
-    def execute_step_group(self, step_group: List[Step]) -> Iterable[Tuple[Step, Any]]:
-        for step in step_group:
-            result = self.execute_step(step)
-            yield step, result
+        return self.step_cache.step_dir(step)
 
 
 @dataclass

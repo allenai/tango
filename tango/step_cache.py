@@ -182,12 +182,12 @@ class LocalStepCache(StepCache):
         if result is None:
             if step not in self:
                 raise KeyError(step)
-            result = step.format.read(self.directory_for_run(step))
+            result = step.format.read(self.step_dir(step))
             self._add_to_cache(key, result)
         return result
 
     def __setitem__(self, step: Step, value: Any) -> None:
-        location = self.directory_for_run(step)
+        location = self.step_dir(step)
         location.mkdir(parents=True, exist_ok=True)
 
         metadata_location = location / "cache-metadata.json"
