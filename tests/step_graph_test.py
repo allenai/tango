@@ -77,7 +77,7 @@ def test_find_direct_dependencies(basic_steps):
     }
 
 
-def test_step_graph(basic_steps):
+def test_parse_step_graph(basic_steps):
     step_graph = StepGraph(basic_steps)
     assert len(step_graph) == 5
     assert step_graph["combined"].dependencies == {step_graph["model_a"], step_graph["model_b"]}
