@@ -16,24 +16,29 @@ class DownloadStep(Step[str]):
 @Step.register("preprocess")
 class PreprocessStep(Step[str]):
     def run(self, raw_data: str) -> str:
+        assert isinstance(raw_data, str)
         return raw_data + raw_data
 
 
 @Step.register("train_a")
 class TrainAStep(Step[float]):
     def run(self, data: str) -> float:
+        assert isinstance(data, str)
         return 1 / len(data)
 
 
 @Step.register("train_b")
 class TrainBStep(Step[float]):
     def run(self, data: str) -> float:
+        assert isinstance(data, str)
         return len(data)
 
 
 @Step.register("combine")
 class CombineStep(Step[Tuple[float]]):
     def run(self, models: List[float]) -> Tuple[float]:
+        for model in models:
+            assert isinstance(model, float)
         return tuple(1 / x for x in models)
 
 
