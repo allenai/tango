@@ -24,14 +24,14 @@ class PreprocessStep(Step[str]):
 class TrainAStep(Step[float]):
     def run(self, data: str) -> float:
         assert isinstance(data, str)
-        return 1 / len(data)
+        return float(1 / len(data))
 
 
 @Step.register("train_b")
 class TrainBStep(Step[float]):
     def run(self, data: str) -> float:
         assert isinstance(data, str)
-        return len(data)
+        return float(len(data))
 
 
 @Step.register("combine")
