@@ -19,10 +19,10 @@ from typing import (
     cast,
 )
 
-from ._det_hash import CustomDetHash
-from .exceptions import ConfigurationError
-from .lazy import Lazy
-from .params import Params
+from tango.common._det_hash import CustomDetHash
+from tango.common.exceptions import ConfigurationError
+from tango.common.lazy import Lazy
+from tango.common.params import Params
 
 logger = logging.getLogger(__name__)
 
