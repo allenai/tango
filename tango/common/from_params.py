@@ -32,6 +32,7 @@ except ImportError:
     class UnionType:  # type: ignore
         pass
 
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound="FromParams")
@@ -373,7 +374,7 @@ def construct_arg(
 
             from tango.step import WithUnresolvedSteps
 
-            result: Union[Params, Step, WithUnresolvedSteps]
+            result: Union[FromParams, WithUnresolvedSteps]
             if isinstance(popped_params, Step):
                 result = popped_params
             else:
