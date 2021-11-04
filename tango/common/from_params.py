@@ -19,6 +19,15 @@ from typing import (
     cast,
 )
 
+try:
+    # For PEP 604 support (python >= 3.10)
+    from types import UnionType  # type: ignore[attr-defined]
+except ImportError:
+
+    class UnionType:  # type: ignore
+        pass
+
+
 from ._det_hash import CustomDetHash
 from .exceptions import ConfigurationError
 from .lazy import Lazy
@@ -462,7 +471,7 @@ def construct_arg(
 
         return value_set
 
-    elif origin == Union:
+    elif origin == Union or isinstance(annotation, UnionType):
         # Storing this so we can recover it later if we need to.
         backup_params = deepcopy(popped_params)
 
