@@ -91,7 +91,7 @@ def test_run_step_graph(basic_steps):
 
 def test_bad_step_graph():
     with pytest.raises(ConfigurationError):
-        StepGraph({"a": {"type": "a", "b": {"type": "ref", "ref": "c"}}})
+        StepGraph({"a": {"type": "train_a", "b": {"type": "ref", "ref": "c"}}})
 
 
 def test_circular_reference():
