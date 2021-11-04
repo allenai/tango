@@ -359,7 +359,23 @@ def construct_arg(
             if isinstance(popped_params, Step):
                 result = popped_params
             else:
-                result = annotation.from_params(popped_params, **subextras)
+                def params_contain_step(o: Any) -> bool:
+                    if isinstance(o, Step):
+                        return True
+                    elif isinstance(o, str):
+                        return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
+                    elif isinstance(o, dict) or isinstance(o, Params):
+                        return params_contain_step(o.values())
+                    elif isinstance(o, Iterable):
+                        return any(params_contain_step(p) for p in o)
+                    else:
+                        return False
+
+                if origin != Step and params_contain_step(popped_params):
+                    from tango.step import WithUnresolvedSteps
+                    result = WithUnresolvedSteps(annotation.from_params, popped_params)
+                else:
+                    result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]

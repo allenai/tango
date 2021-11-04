@@ -1,5 +1,3 @@
-import copy
-import inspect
 import itertools
 import logging
 import random
@@ -8,7 +6,6 @@ from abc import abstractmethod
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -31,7 +28,7 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common._det_hash import det_hash
+from tango.common._det_hash import det_hash, CustomDetHash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,
@@ -366,12 +363,10 @@ class Step(Registrable, Generic[T]):
     def _replace_steps_with_results(cls, o: Any, cache: "StepCache"):
         if isinstance(o, Step):
             return o.result(cache)
-        elif isinstance(o, list):
-            return [cls._replace_steps_with_results(i, cache) for i in o]
-        elif isinstance(o, tuple):
-            return tuple(cls._replace_steps_with_results(list(o), cache))
-        elif isinstance(o, set):
-            return {cls._replace_steps_with_results(i, cache) for i in o}
+        if isinstance(o, WithUnresolvedSteps):
+            return o.construct(cache)
+        if isinstance(o, (list, tuple, set)):
+            return o.__class__(cls._replace_steps_with_results(i, cache) for i in o)
         elif isinstance(o, dict):
             return {key: cls._replace_steps_with_results(value, cache) for key, value in o.items()}
         else:
@@ -452,6 +447,34 @@ class Step(Registrable, Generic[T]):
             seen.add(step)
             steps.extend(step.dependencies)
         return seen
+
+
+class WithUnresolvedSteps(CustomDetHash):
+    def __init__(self, constructor, *args, **kwargs):
+        self.constructor = constructor
+        self.args = args
+        self.kwargs = kwargs
+
+    @classmethod
+    def with_resolved_steps(cls, o: Any, step_cache: "StepCache"):
+        if isinstance(o, Step):
+            return o.result(step_cache)
+        elif isinstance(o, str):
+            return o  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
+        elif isinstance(o, dict) or isinstance(o, Params):
+            return o.__class__({key: cls.with_resolved_steps(value, step_cache) for key, value in o.items()})
+        if isinstance(o, (list, tuple, set)):
+            return o.__class__(cls.with_resolved_steps(item, step_cache) for item in o)
+        else:
+            return o
+
+    def construct(self, step_cache: "StepCache"):
+        resolved_args = self.with_resolved_steps(self.args, step_cache)
+        resolved_kwargs = self.with_resolved_steps(self.kwargs, step_cache)
+        return self.constructor(*resolved_args, **resolved_kwargs)
+
+    def det_hash_object(self) -> Any:
+        return self.constructor.__qualname__, self.args, self.kwargs
 
 
 def tango_dry_run(
