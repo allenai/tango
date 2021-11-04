@@ -83,6 +83,11 @@ def test_parse_step_graph(basic_steps):
     assert step_graph["combined"].dependencies == {step_graph["model_a"], step_graph["model_b"]}
 
 
+def test_run_step_graph(basic_steps):
+    step_graph = StepGraph(basic_steps)
+    assert step_graph["combined"].result() == (8, 1/8)
+
+
 def test_bad_step_graph():
     with pytest.raises(ConfigurationError):
         StepGraph({"a": {"type": "a", "b": {"type": "ref", "ref": "c"}}})
