@@ -63,7 +63,8 @@ class StepGraph(Mapping[str, Step]):
 
         # Parse the steps
         self.parsed_steps: Dict[str, Step] = {}
-        for step_name, step_params in params.items():
+        for step_name in ordered_steps:
+            step_params = params.pop(step_name)
             if step_name in self.parsed_steps:
                 raise ConfigurationError(f"Duplicate step name {step_name}")
 
