@@ -75,9 +75,7 @@ def test_find_direct_dependencies(basic_steps):
 def test_step_graph(basic_steps):
     step_graph = StepGraph(basic_steps)
     assert len(step_graph) == 5
-    assert step_graph[0].name == "raw_data"
-    assert step_graph[-1].name == "combined"
-    assert step_graph["combined"].dependencies == {"model_a", "model_b"}
+    assert step_graph["combined"].dependencies == {step_graph["model_a"], step_graph["model_b"]}
 
 
 def test_bad_step_graph():
