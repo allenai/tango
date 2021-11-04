@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import torch
+from overrides import overrides
 
 from tango.common.dataset_dict import DatasetDictBase
-from tango.common.exceptions import TangoError
 from tango.common.registrable import Registrable
 
 from .data import DataLoader
@@ -156,3 +156,27 @@ class TrainCallback(Registrable):
         Called right after the validation loop finishes.
         """
         pass
+
+
+@TrainCallback.register("torch::stop_early")
+class StopEarlyCallback(TrainCallback):
+    """
+    A :class:`TrainCallback` for early stopping. Training is stopped early after
+    ``patience`` steps without an improvement to the validation metric.
+
+    .. tip::
+
+        Registered as a :class:`TrainCallback` under the name "torch::stop_early".
+    """
+
+    def __init__(self, *args, patience: int = 10000, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.patience = patience
+        self.best_step = 0
+
+    @overrides
+    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+        if val_metric == best_val_metric:
+            self.best_step = step
+        elif step > self.best_step + self.patience:
+            raise StopEarly
