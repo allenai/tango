@@ -201,7 +201,7 @@ class TorchTrainStep(Step):
             mp.spawn(
                 _train,
                 args=(
-                    self.step_dir,
+                    self.work_dir,
                     model,
                     dataset_dict,
                     train_dataloader,
@@ -222,7 +222,6 @@ class TorchTrainStep(Step):
                     is_distributed,
                     devices,
                     distributed_port,
-                    self.executor.include_package,
                     val_metric_name,
                     minimize_val_metric,
                     aggregate_val_metric,
@@ -235,7 +234,7 @@ class TorchTrainStep(Step):
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
-                self.step_dir,
+                self.work_dir,
                 model,
                 dataset_dict,
                 train_dataloader,
@@ -263,7 +262,7 @@ class TorchTrainStep(Step):
             final_model = final_model.cpu()
 
         # Load best checkpoint before returning model.
-        best_state_path = self.step_dir / "state_worker0_best.pt"
+        best_state_path = self.work_dir / "state_worker0_best.pt"
         if best_state_path.is_file():
             print(f"Loading best weights from {best_state_path.resolve().name}")
             state = torch.load(best_state_path, map_location="cpu")
@@ -295,18 +294,11 @@ def _train(
     is_distributed: bool = False,
     devices: Optional[List[int]] = None,
     distributed_port: str = "54761",
-    include_package: Optional[List[str]] = None,
     val_metric_name: str = "loss",
     minimize_val_metric: bool = True,
     aggregate_val_metric: bool = True,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
 ) -> Optional[Model]:
-    if include_package:
-        from tango.common.util import import_module_and_submodules
-
-        for package_name in include_package:
-            import_module_and_submodules(package_name)
-
     is_local_main_process = worker_id == 0
     world_size = len(devices) if devices else 1
 

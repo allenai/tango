@@ -356,6 +356,9 @@ def construct_arg(
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
 
+            from tango.step import WithUnresolvedSteps
+
+            result: Union[Params, Step, WithUnresolvedSteps]
             if isinstance(popped_params, Step):
                 result = popped_params
             else:
@@ -373,8 +376,6 @@ def construct_arg(
                         return False
 
                 if origin != Step and params_contain_step(popped_params):
-                    from tango.step import WithUnresolvedSteps
-
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
                     result = annotation.from_params(popped_params, **subextras)

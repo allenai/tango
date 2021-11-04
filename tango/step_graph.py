@@ -47,17 +47,17 @@ class StepGraph(Mapping[str, Step]):
                     f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}"
                 )
 
-        done = set()
+        done: Set[str] = set()
         todo = list(params.keys())
         ordered_steps = list()
         while len(todo) > 0:
             new_todo = []
-            for step in todo:
-                if len(dependencies[step] & done) == len(dependencies[step]):
-                    done.add(step)
-                    ordered_steps.append(step)
+            for step_name in todo:
+                if len(dependencies[step_name] & done) == len(dependencies[step_name]):
+                    done.add(step_name)
+                    ordered_steps.append(step_name)
                 else:
-                    new_todo.append(step)
+                    new_todo.append(step_name)
             if len(todo) == len(new_todo):
                 raise ConfigurationError(
                     "Could not make progress parsing the steps. "
@@ -150,8 +150,8 @@ class StepGraph(Mapping[str, Step]):
         This does not take into account which steps may be cached. It simply returns an executable
         order of steps.
         """
-        result = []
-        steps_run = set()
+        result: List[Step] = []
+        steps_run: Set[Step] = set()
         steps_not_run = list(self.parsed_steps.values())
         while len(steps_not_run) > 0:
             step = steps_not_run.pop(0)

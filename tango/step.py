@@ -5,7 +5,6 @@ import re
 from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import (
     Any,
     Callable,
@@ -287,22 +286,13 @@ class Step(Registrable, Generic[T]):
             random.seed(784507111)
 
         step_dir = cache.step_dir(self)
-        if step_dir is None:
-            work_dir = TemporaryDirectory(prefix=self.unique_id + "-", suffix=".work")
-            self.work_dir_for_run = Path(work_dir.name)
-            try:
-                return self.run(**kwargs)
-            finally:
-                self.work_dir_for_run = None
-                work_dir.cleanup()
-        else:
-            self.work_dir_for_run = step_dir / "work"
-            try:
-                self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
-                return self.run(**kwargs)
-            finally:
-                # No cleanup, as we want to keep the directory for restarts or serialization.
-                self.work_dir_for_run = None
+        self.work_dir_for_run = step_dir / "work"
+        try:
+            self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
+            return self.run(**kwargs)
+        finally:
+            # No cleanup, as we want to keep the directory for restarts or serialization.
+            self.work_dir_for_run = None
 
     @property
     def work_dir(self) -> Path:

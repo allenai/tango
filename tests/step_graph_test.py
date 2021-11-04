@@ -10,37 +10,37 @@ from tango.step_graph import StepGraph
 
 @Step.register("download")
 class DownloadStep(Step[str]):
-    def run(self) -> str:
+    def run(self) -> str:  # type: ignore
         return "data"
 
 
 @Step.register("preprocess")
 class PreprocessStep(Step[str]):
-    def run(self, raw_data: str) -> str:
+    def run(self, raw_data: str) -> str:  # type: ignore
         assert isinstance(raw_data, str)
         return raw_data + raw_data
 
 
 @Step.register("train_a")
 class TrainAStep(Step[float]):
-    def run(self, data: str) -> float:
+    def run(self, data: str) -> float:  # type: ignore
         assert isinstance(data, str)
         return float(1 / len(data))
 
 
 @Step.register("train_b")
 class TrainBStep(Step[float]):
-    def run(self, data: str) -> float:
+    def run(self, data: str) -> float:  # type: ignore
         assert isinstance(data, str)
         return float(len(data))
 
 
 @Step.register("combine")
 class CombineStep(Step[Tuple[float]]):
-    def run(self, models: List[float]) -> Tuple[float]:
+    def run(self, models: List[float]) -> Tuple[float, ...]:  # type: ignore
         for model in models:
             assert isinstance(model, float)
-        return tuple(1 / x for x in models)
+        return tuple(float(1 / x) for x in models)
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ def test_circular_reference():
 def test_complex_object_with_step_dependency():
     @Step.register("make_float")
     class FloatStep(Step[float]):
-        def run(self, f: float) -> float:
+        def run(self, f: float) -> float:  # type: ignore
             return f
 
     class ComplexObject(FromParams):
@@ -115,7 +115,7 @@ def test_complex_object_with_step_dependency():
 
     @Step.register("consume_complex_object")
     class ComplexObjectConsumerStep(Step[float]):
-        def run(self, co: ComplexObject) -> float:
+        def run(self, co: ComplexObject) -> float:  # type: ignore
             assert isinstance(co, ComplexObject)
             return co.x
 

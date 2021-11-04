@@ -4,6 +4,7 @@ import weakref
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, MutableMapping, Optional, OrderedDict, TypeVar, Dict
 
 try:
@@ -38,7 +39,7 @@ class StepCache(Registrable):
     The default implementation is :class:`LocalStepCache`.
     """
 
-    def __contains__(self, step: object) -> bool:
+    def __contains__(self, step: Any) -> bool:
         """This is a generic implementation of ``__contains__``. If you are writing your own
         ``StepCache``, you might want to write a faster one yourself."""
         if not isinstance(step, Step):
@@ -64,14 +65,16 @@ class StepCache(Registrable):
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()
 
-    def step_dir(self, step: Step) -> Optional[Path]:
+    def step_dir(self, step: Step) -> Path:
         """Steps that can be restarted (like a training job that gets interrupted half-way through)
         must save their state somewhere. A :class:`StepCache` can help by providing a suitable location
         in this method.
 
         By default, the step dir is a temporary directory that gets cleaned up after every run.
         This effectively disables restartability of steps."""
-        return None
+
+        # TemporaryDirectory cleans up the directory automatically when the process exits. Neat!
+        return Path(TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir").name)
 
 
 @StepCache.register("memory")
@@ -209,7 +212,7 @@ class LocalStepCache(StepCache):
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))
 
-    def step_dir(self, step: Step) -> Optional[Path]:
+    def step_dir(self, step: Step) -> Path:
         return self.dir / step.unique_id
 
 
