@@ -43,9 +43,6 @@ from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
 
-if TYPE_CHECKING:
-    from tango.executor import Executor
-
 logger = logging.getLogger(__name__)
 
 _version_re = re.compile("""^[a-zA-Z0-9]+$""")
@@ -455,80 +452,6 @@ class Step(Registrable, Generic[T]):
             seen.add(step)
             steps.extend(step.dependencies)
         return seen
-
-
-@Step.register("ref")
-class _RefStep(Step[T], Generic[T]):
-    def run(self, *, ref: str) -> T:  # type: ignore
-        raise ConfigurationError(
-            f"Step {self.name} is a RefStep (referring to {ref}). RefSteps cannot be executed. "
-            "They are only useful while parsing an experiment."
-        )
-
-    def ref(self) -> str:
-        return self.kwargs["ref"]
-
-    def det_hash_object(self) -> Any:
-        # If we're using a RefStep to compute a unique ID, something has gone wrong. The unique ID would
-        # change once the RefStep is replaced with the actual step. Unique IDs are never supposed to
-        # change.
-        raise RuntimeError("Cannot compute hash of a _RefStep object.")
-
-    class MissingStepError(Exception):
-        def __init__(self, ref: str):
-            self.ref = ref
-
-
-def step_graph_from_params(params: Dict[str, Params]) -> Dict[str, Step]:
-    """Given a mapping from strings to `Params` objects, this parses each `Params` object
-    into a `Step`, and resolves dependencies between the steps. Returns a dictionary
-    mapping step names to instances of `Step`."""
-
-    # This algorithm for resolving step dependencies is O(n^2). Since we're
-    # anticipating the number of steps in a single config to be in the dozens at most (#famouslastwords),
-    # we choose simplicity over cleverness.
-    unparsed_steps: Dict[str, Params] = params
-    next_unparsed_steps: Dict[str, Params] = {}
-    parsed_steps: Dict[str, Step] = {}
-    steps_parsed = 0
-    while len(unparsed_steps) > 0 or len(next_unparsed_steps) > 0:
-        if len(unparsed_steps) <= 0:
-            if steps_parsed <= 0:
-                raise ConfigurationError(
-                    f"Cannot parse steps {','.join(next_unparsed_steps.keys())}. Do you have a "
-                    f"circle in your steps, or are you referring to a step that doesn't exist?"
-                )
-            unparsed_steps = next_unparsed_steps
-            next_unparsed_steps = {}
-            steps_parsed = 0
-        step_name, step_params = unparsed_steps.popitem()
-        if step_name in parsed_steps:
-            raise ConfigurationError(f"Duplicate step name {step_name}")
-        step_params_backup = copy.deepcopy(step_params)
-        try:
-            parsed_steps[step_name] = Step.from_params(
-                step_params, existing_steps=parsed_steps, step_name=step_name
-            )
-            steps_parsed += 1
-        except _RefStep.MissingStepError:
-            next_unparsed_steps[step_name] = step_params_backup
-
-    # Sanity-check the graph
-    for step in parsed_steps.values():
-        if step.cache_results:
-            nondeterministic_dependencies = [
-                s for s in step.recursive_dependencies() if not s.DETERMINISTIC
-            ]
-            if len(nondeterministic_dependencies) > 0:
-                nd_step = nondeterministic_dependencies[0]
-                logger.warning(
-                    f"Task {step.name} is set to cache results, but depends on non-deterministic "
-                    f"step {nd_step.name}. This will produce confusing results."
-                )
-                # We show this warning only once.
-                break
-
-    return parsed_steps
 
 
 def tango_dry_run(

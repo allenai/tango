@@ -1,8 +1,7 @@
-import copy
 import logging
 from typing import Dict, Mapping, Iterator, List, Any, Set
 
-from tango.step import Step, _RefStep
+from tango.step import Step
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
 
