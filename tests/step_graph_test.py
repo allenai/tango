@@ -2,6 +2,7 @@ from typing import Tuple, List
 
 import pytest
 
+from common import FromParams
 from tango import Step
 from tango.common.exceptions import ConfigurationError
 from tango.step_graph import StepGraph
@@ -95,3 +96,33 @@ def test_bad_step_graph():
 
 def test_circular_reference():
     raise NotImplementedError()  # TODO
+
+
+def test_complex_object_with_step_dependency():
+    @Step.register("make_float")
+    class FloatStep(Step[float]):
+        def run(self, f: float) -> float:
+            return f
+
+    class ComplexObject(FromParams):
+        def __init__(self, x: float) -> None:
+            assert isinstance(x, float)
+            self.x = x
+
+    @Step.register("consume_complex_object")
+    class ComplexObjectConsumerStep(Step[float]):
+        def run(self, co: ComplexObject) -> float:
+            assert isinstance(co, ComplexObject)
+            return co.x
+
+    step_graph = StepGraph({
+        "make_float": {"type": "make_float", "f": 1.4},
+        "consume_complex": {
+            "type": "consume_complex_object",
+            "co": {
+                "x": {"type": "ref", "ref": "make_float"}
+            }
+        }
+    })
+
+    assert step_graph["consume_complex"].result() == 1.4
