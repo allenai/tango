@@ -95,7 +95,11 @@ def test_bad_step_graph():
 
 
 def test_circular_reference():
-    raise NotImplementedError()  # TODO
+    with pytest.raises(ConfigurationError):
+        step_graph = StepGraph({
+            "a": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "b"}},
+            "b": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "a"}}
+        })
 
 
 def test_complex_object_with_step_dependency():
