@@ -22,10 +22,11 @@ from tango.format import Format
 from tango.step import Step
 
 from .data import DataLoader
+from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
-from .train_callback import StopEarly, TrainCallback
+from .train_callback import TrainCallback
 
 
 @Step.register("torch::train")
