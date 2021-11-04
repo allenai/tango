@@ -18,9 +18,6 @@ from typing import (
     Iterator,
     Iterable,
     Set,
-    List,
-    Tuple,
-    MutableSet,
     TYPE_CHECKING,
 )
 
@@ -477,48 +474,3 @@ class WithUnresolvedSteps(CustomDetHash):
 
     def det_hash_object(self) -> Any:
         return self.constructor.__qualname__, self.args, self.kwargs
-
-
-def tango_dry_run(
-    step_or_steps: Union[Step, Iterable[Step]], step_cache: Optional["StepCache"]
-) -> List[Tuple[Step, bool]]:
-    """
-    Returns the list of steps that will be run, or read from cache, if you call
-    a step's `result()` method.
-
-    Steps come out as tuples `(step, read_from_cache)`, so you can see which
-    steps will be read from cache, and which have to be run.
-    """
-    if isinstance(step_or_steps, Step):
-        steps = [step_or_steps]
-    else:
-        steps = list(step_or_steps)
-
-    cached_steps: MutableSet[Step]
-    if step_cache is None:
-        cached_steps = set()
-    else:
-
-        class SetWithFallback(set):
-            def __contains__(self, item):
-                return item in step_cache or super().__contains__(item)
-
-        cached_steps = SetWithFallback()
-
-    result = []
-    seen_steps = set()
-    steps.reverse()
-    while len(steps) > 0:
-        step = steps.pop()
-        if step in seen_steps:
-            continue
-        dependencies = [s for s in step._ordered_dependencies() if s not in seen_steps]
-        if len(dependencies) <= 0:
-            result.append((step, step in cached_steps))
-            cached_steps.add(step)
-            seen_steps.add(step)
-        else:
-            steps.append(step)
-            steps.extend(dependencies)
-
-    return result
