@@ -305,12 +305,30 @@ def construct_arg(
     popped_params: Params,
     annotation: Type,
     default: Any,
+    could_be_step: bool = True,
     **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
     """
     from tango.step import Step
+
+    if could_be_step:
+        # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
+        # it will fall back to returning a dict. So we can't try parsing as a non-step first.
+        backup_params = deepcopy(popped_params)
+        try:
+            return construct_arg(
+                class_name,
+                argument_name,
+                popped_params,
+                Step[annotation],  # type: ignore
+                default,
+                could_be_step=False,
+                **extras,
+            )
+        except (ValueError, TypeError, ConfigurationError, AttributeError):
+            popped_params = backup_params
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
@@ -337,7 +355,11 @@ def construct_arg(
                     popped_params = Params({"type": popped_params})
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
-            result = annotation.from_params(popped_params, **subextras)
+
+            if isinstance(popped_params, Step):
+                result = popped_params
+            else:
+                result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
