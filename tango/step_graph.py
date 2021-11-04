@@ -47,13 +47,16 @@ class StepGraph(Mapping[str, Step]):
         todo = list(params.keys())
         ordered_steps = list()
         while len(todo) > 0:
-            step = todo.pop(0)
-            if len(dependencies[step] & done) == len(dependencies[step]):
-                done.add(step)
-                ordered_steps.append(step)
-            else:
-                todo.append(step)
-            del step
+            new_todo = []
+            for step in todo:
+                if len(dependencies[step] & done) == len(dependencies[step]):
+                    done.add(step)
+                    ordered_steps.append(step)
+                else:
+                    new_todo.append(step)
+            if len(todo) == len(new_todo):
+                raise ConfigurationError("Could not make progress parsing the steps. You probably have a circular reference between the steps.")
+            todo = new_todo
         del dependencies
         del done
         del todo
