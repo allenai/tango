@@ -7,20 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [v0.3.3](https://github.com/allenai/tango/releases/tag/v0.3.3) - 2021-11-04
-
 ### Added
 
 - Added `StopEarlyCallback`, a `TorchTrainCallback` for early stopping.
-- Added support for PEP 604 in `FromParams`, i.e. writing union types as "X | Y" instead of "Union[X, Y]".
 - Added parameter `remove_stale_checkpoints` to `TorchTrainStep`.
-- [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
-- [internals] Core tests now run on all officially supported Python versions.
 
 ### Changed
 
 - Minor changes to `TorchTrainCallback` interface.
 - Weights & Biases `TorchTrainCallback` now logs best validation metric score.
+
+## [v0.3.3](https://github.com/allenai/tango/releases/tag/v0.3.3) - 2021-11-04
+
+### Added
+
+- Added support for PEP 604 in `FromParams`, i.e. writing union types as "X | Y" instead of "Union[X, Y]".
+- [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
+- [internals] Core tests now run on all officially supported Python versions.
 
 ### Fixed
 
