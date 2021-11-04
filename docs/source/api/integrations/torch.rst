@@ -55,7 +55,6 @@ Callbacks
    :members:
 
 .. autoclass:: tango.integrations.torch.StopEarlyCallback
-   :members:
 
 .. autoclass:: tango.integrations.torch.StopEarly
    :members:
