@@ -16,7 +16,8 @@ class StepGraph(Mapping[str, Step]):
     to :class:`Step`.
     """
 
-    def __init__(self, params: Dict[str, Params]):      # TODO: What input type do we really need here?
+    def __init__(self, params: Dict[str, Params]):
+        # TODO: What input type do we really need here?
         # TODO: What happens with anonymous steps in here?
 
         # Determine the order in which to create steps so that all dependent steps are available when we need them.
@@ -37,6 +38,7 @@ class StepGraph(Mapping[str, Step]):
                 ordered_steps.append(step)
             else:
                 todo.append(step)
+            del step
         del dependencies
         del done
         del todo
