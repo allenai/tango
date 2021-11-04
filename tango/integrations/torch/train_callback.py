@@ -39,6 +39,8 @@ class TrainCallback(Registrable):
         world_size: int = 1,
         worker_id: int = 0,
         device: torch.device = torch.device("cpu"),
+        val_metric_name: str = "loss",
+        minimize_val_metric: bool = True,
     ) -> None:
         self.work_dir = work_dir
         self.model = model
@@ -50,6 +52,8 @@ class TrainCallback(Registrable):
         self.worker_id = worker_id
         self.world_size = world_size
         self.device = device
+        self.val_metric_name = val_metric_name
+        self.minimize_val_metric = minimize_val_metric
 
     def state_dict(self) -> Dict[str, Any]:
         """
@@ -139,7 +143,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_val_loop(self, step: int, val_metric_name: str, val_metric: float) -> None:
+    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
         """
         Called right after the validation loop finishes.
         """

@@ -435,6 +435,8 @@ def _train(
             worker_id=worker_id,
             world_size=world_size,
             device=device,
+            val_metric_name=val_metric_name,
+            minimize_val_metric=minimize_val_metric,
         )
         for callback in (callbacks or [])
     ]
@@ -684,9 +686,6 @@ def _train(
 
                 assert val_metric is not None
 
-                for callback in callbacks:
-                    callback.post_val_loop(step, val_metric_name, val_metric)
-
                 # Reset model to train mode.
                 model.train()
 
@@ -696,6 +695,9 @@ def _train(
                     best_val_metric = val_metric
                 elif not minimize_val_metric and val_metric >= best_val_metric:
                     best_val_metric = val_metric
+
+                for callback in callbacks:
+                    callback.post_val_loop(step, val_metric, best_val_metric)
 
                 # Update progress bar again.
                 metrics_to_log = {

@@ -131,6 +131,7 @@ class WandbTrainCallback(TrainCallback):
             )
 
     @overrides
-    def post_val_loop(self, step: int, val_metric_name: str, val_metric: float) -> None:
+    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
         if self.is_local_main_process:
-            self.wandb.log({f"val/{val_metric_name}": val_metric}, step=step)
+            self.wandb.log({f"val/{self.val_metric_name}": val_metric}, step=step)
+            self.wandb.summary[f"best_{self.val_metric_name}"] = best_val_metric
