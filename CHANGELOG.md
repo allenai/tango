@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Minor changes to `TorchTrainCallback` interface.
-- Weights & Biases `TorchTrainCallback` now updates the best validation metric score as a summary statistic.
+- Weights & Biases `TorchTrainCallback` now logs best validation metric score.
 
 ### Fixed
 
