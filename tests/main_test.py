@@ -38,7 +38,7 @@ class TestMain(TangoTestCase):
         metadata = ExecutorMetadata.from_params(metadata_params)
         assert metadata.config == {
             "type": "concat_strings",
-            "string1": {"type": "ref", "ref": "hello"},
+            "string1": {"type": "ref", "ref": "StringStep-4cHbmoHigd3rvNn3w7shc1d45WA1ijSp"},
             "string2": "World!",
             "join_with": ", ",
         }
