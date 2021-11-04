@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import torch
 
+from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import TangoError
 from tango.common.registrable import Registrable
 
@@ -32,7 +33,10 @@ class TrainCallback(Registrable):
         work_dir: Path,
         model: Model,
         optimizer: Optimizer,
+        dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
+        train_steps: int,
+        validation_steps: Optional[int] = None,
         validation_dataloader: Optional[DataLoader] = None,
         lr_scheduler: Optional[LRScheduler] = None,
         is_local_main_process: bool = True,
@@ -45,7 +49,10 @@ class TrainCallback(Registrable):
         self.work_dir = work_dir
         self.model = model
         self.optimizer = optimizer
+        self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
+        self.train_steps = train_steps
+        self.validation_steps = validation_steps
         self.validation_dataloader = validation_dataloader
         self.lr_scheduler = lr_scheduler
         self.is_local_main_process = is_local_main_process
