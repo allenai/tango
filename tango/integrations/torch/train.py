@@ -86,6 +86,7 @@ class TorchTrainStep(Step):
         minimize_val_metric: bool = True,
         aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+        remove_state_checkpoints: bool = True,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -160,8 +161,11 @@ class TorchTrainStep(Step):
             validation batches and distributed processes. This may not be the correct
             behavior for some metrics (such as F1), in which you should set this to
             ``False`` and handle the aggregation internally in your model.
-        callbacks: ``List[TrainCallback]``
+        callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
+        remove_stale_checkpoints : :class:`bool`
+            If ``True`` (the default), stale checkpoints will be removed throughout training so that
+            only the latest and best checkpoints are kept.
 
         Returns
         -------
@@ -228,6 +232,7 @@ class TorchTrainStep(Step):
                     minimize_val_metric,
                     aggregate_val_metric,
                     callbacks,
+                    remove_state_checkpoints,
                 ),
                 nprocs=num_workers,
             )
@@ -259,6 +264,7 @@ class TorchTrainStep(Step):
                 minimize_val_metric=minimize_val_metric,
                 aggregate_val_metric=aggregate_val_metric,
                 callbacks=callbacks,
+                remove_state_checkpoints=remove_state_checkpoints,
             )
             assert final_model is not None
             final_model = final_model.cpu()
@@ -301,6 +307,7 @@ def _train(
     minimize_val_metric: bool = True,
     aggregate_val_metric: bool = True,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+    remove_state_checkpoints: bool = True,
 ) -> Optional[Model]:
     if include_package:
         from tango.common.util import import_module_and_submodules
@@ -542,6 +549,14 @@ def _train(
                         if best_state_path.is_symlink():
                             best_state_path.unlink()
                         best_state_path.symlink_to(state_path_for_step)
+
+                    # Clean up stale checkpoints.
+                    if remove_state_checkpoints:
+                        checkpoints_to_keep = {best_state_path.resolve(), state_path.resolve()}
+                        for path in work_dir.glob(f"state_worker{worker_id}_*.pt"):
+                            path = path.resolve()
+                            if path not in checkpoints_to_keep:
+                                path.unlink()
 
                     for callback in callbacks:  # type: ignore[union-attr]
                         callback.post_checkpoint(state_path_for_step)  # type: ignore[union-attr]

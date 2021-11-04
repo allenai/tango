@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `StopEarlyCallback`, a `TorchTrainCallback` for early stopping.
 - Added support for PEP 604 in `FromParams`, i.e. writing union types as "X | Y" instead of "Union[X, Y]".
+- Added parameter `remove_stale_checkpoints` to `TorchTrainStep`.
 - [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
 - [internals] Core tests now run on all officially supported Python versions.
 
