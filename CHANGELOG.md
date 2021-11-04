@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.4](https://github.com/allenai/tango/releases/tag/v0.3.4) - 2021-11-04
+
+### Added
+
+- Added `StopEarlyCallback`, a `TorchTrainCallback` for early stopping.
+- Added parameter `remove_stale_checkpoints` to `TorchTrainStep`.
+
+### Changed
+
+- Minor changes to `TorchTrainCallback` interface.
+- Weights & Biases `TorchTrainCallback` now logs best validation metric score.
+
+## [v0.3.3](https://github.com/allenai/tango/releases/tag/v0.3.3) - 2021-11-04
+
+### Added
+
+- Added support for PEP 604 in `FromParams`, i.e. writing union types as "X | Y" instead of "Union[X, Y]".
+- [internals] Added a spot for miscellaneous end-to-end integration tests (not to be confused with "tests of integrations") in `tests/end_to_end/`.
+- [internals] Core tests now run on all officially supported Python versions.
+
+### Fixed
+
+- Fixed a bug in `FromParams` where non-`FromParams` class parameters were not instantiated
+  properly (or at all).
+- Fixed a bug in `FromParams` where kwargs were not passed on from a wrapper class to the wrapped class.
+- Fixed small bug where some errors from git would be printed when executor metadata is created
+  outside of a git repository.
+
+## [v0.3.2](https://github.com/allenai/tango/releases/tag/v0.3.2) - 2021-11-01
+
+### Fixed
+
+- Fixed a bug with `FromParams` that caused `.from_params()` to fail when the params contained
+  an object that was already instantiated.
+- tango command no longer installs a SIGTERM handler, which fixes some bugs with integrations that use multiprocessing.
+
 ## [v0.3.1](https://github.com/allenai/tango/releases/tag/v0.3.1) - 2021-10-29
 
 ### Changed

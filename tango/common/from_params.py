@@ -24,6 +24,14 @@ from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.params import Params
 
+try:
+    # For PEP 604 support (python >= 3.10)
+    from types import UnionType  # type: ignore[attr-defined]
+except ImportError:
+
+    class UnionType:  # type: ignore
+        pass
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound="FromParams")
@@ -224,6 +232,8 @@ def create_kwargs(
     if accepts_kwargs:
         for key in list(params):
             kwargs[key] = params.pop(key, keep_as_dict=True)
+        for key, value in extras.items():
+            kwargs[key] = value
     params.assert_empty(cls.__name__)
     return kwargs
 
@@ -336,12 +346,12 @@ def construct_arg(
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
 
-    if hasattr(annotation, "from_params"):
+    if inspect.isclass(annotation) and issubclass(annotation, FromParams):
         if popped_params is default:
             return default
+        elif origin is None and isinstance(popped_params, annotation):
+            return popped_params
         elif popped_params is not None:
-            # Our params have an entry for this, so we use that.
-
             subextras = create_extras(annotation, extras)
 
             # In some cases we allow a string instead of a param dict, so
@@ -355,6 +365,11 @@ def construct_arg(
                     popped_params = Params({"type": popped_params})
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
+            elif not isinstance(popped_params, (Params, Step)):
+                raise TypeError(
+                    f"Expected a `Params` object, found `{popped_params}` instead while constructing "
+                    f"parameter '{argument_name}' for `{class_name}`"
+                )
 
             from tango.step import WithUnresolvedSteps
 
@@ -497,7 +512,7 @@ def construct_arg(
 
         return value_set
 
-    elif origin == Union:
+    elif origin == Union or isinstance(annotation, UnionType):
         # Storing this so we can recover it later if we need to.
         backup_params = deepcopy(popped_params)
 
@@ -559,6 +574,13 @@ def construct_arg(
             value_list.append(value)
 
         return value_list
+
+    elif inspect.isclass(annotation) and isinstance(popped_params, Params):
+        subextras = create_extras(annotation, extras)
+        constructor_to_inspect = annotation.__init__
+        constructor_to_call = annotation
+        kwargs = create_kwargs(constructor_to_inspect, annotation, popped_params, **subextras)
+        return constructor_to_call(**kwargs)  # type: ignore
 
     else:
         # Pass it on as is and hope for the best.   ¯\_(ツ)_/¯

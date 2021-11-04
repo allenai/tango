@@ -11,7 +11,7 @@ local dataloader = if distributed then {
     "batch_size": batch_size,
     "collate_fn": {"type": "transformers_default"},
     "sampler": {
-        "type": "DistributedSampler",
+        "type": "torch::DistributedSampler",
         "shuffle": true,
         "drop_last": true,
     }

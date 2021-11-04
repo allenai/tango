@@ -72,7 +72,6 @@ import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
 from tango.common.params import Params
-from tango.common.util import install_sigterm_handler
 from tango.version import VERSION
 
 
@@ -182,9 +181,6 @@ def main(
     common_logging.initialize_logging(
         log_level=log_level, file_friendly_logging=file_friendly_logging
     )
-
-    # We want to be able to catch SIGTERM signals in addition to SIGINT (keyboard interrupt).
-    install_sigterm_handler()
 
     ctx.obj = config
 

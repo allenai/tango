@@ -138,12 +138,14 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "StopEarlyCallback",
     "StopEarly",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
+from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
-from .train_callback import StopEarly, TrainCallback
+from .train_callback import StopEarlyCallback, TrainCallback

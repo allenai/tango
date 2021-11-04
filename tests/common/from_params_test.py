@@ -292,6 +292,10 @@ class TestFromParams(TangoTestCase):
         assert b.b[0].a == 3
         assert b.b[1].a == [4, 5]
 
+    def test_non_params_object_with_params(self):
+        bar = Bar.from_params({"foo": Foo(a=1)})
+        assert bar.foo.a == 1
+
     def test_crazy_nested_union(self):
         class A(FromParams):
             def __init__(self, a: Union[int, List[int]]) -> None:
@@ -654,6 +658,19 @@ class TestFromParams(TangoTestCase):
         with pytest.raises(ConfigurationError, match='key "lazy1" is required'):
             Testing.from_params(Params({}))
 
+    def test_wrapper_kwargs_passed_down(self):
+        class BaseObject:
+            def __init__(self, x: int = 1):
+                self.x = x
+
+        class BaseWrapper(BaseObject, FromParams):
+            def __init__(self, y: int = 2, **kwargs):
+                super().__init__(**kwargs)
+                self.y = y
+
+        o = BaseWrapper.from_params(Params({"y": 3}), x=2)
+        assert o.x == 2
+
     def test_iterable(self):
         class A(Registrable):
             pass
@@ -956,7 +973,7 @@ class TestFromParams(TangoTestCase):
         with pytest.raises(NotImplementedError):
             foo.to_params()
 
-    @pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python3.9 or higher")
+    @pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python 3.9 or higher")
     def test_type_hinting_generics_from_std_collections(self):
         class Item(FromParams):
             def __init__(self, a: int) -> None:
@@ -971,6 +988,19 @@ class TestFromParams(TangoTestCase):
         assert isinstance(o.x, list)
         assert isinstance(o.x[0], Item)
         assert isinstance(o.y["b"], Item)
+
+    @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
+    def test_with_union_pipe(self):
+        class Item(FromParams):
+            def __init__(self, a: int) -> None:
+                self.a = a
+
+        class ClassWithUnionType(FromParams):
+            def __init__(self, x: Item | str):
+                self.x = x
+
+        o = ClassWithUnionType.from_params({"x": {"a": 1}})
+        assert isinstance(o.x, Item)
 
 
 class MyClass(FromParams):
