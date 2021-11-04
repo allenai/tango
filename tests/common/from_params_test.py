@@ -658,6 +658,19 @@ class TestFromParams(TangoTestCase):
         with pytest.raises(ConfigurationError, match='key "lazy1" is required'):
             Testing.from_params(Params({}))
 
+    def test_wrapper_kwargs_passed_down(self):
+        class BaseObject:
+            def __init__(self, x: int = 1):
+                self.x = x
+
+        class BaseWrapper(BaseObject, FromParams):
+            def __init__(self, y: int = 2, **kwargs):
+                super().__init__(**kwargs)
+                self.y = y
+
+        o = BaseWrapper.from_params(Params({"y": 3}), x=2)
+        assert o.x == 2
+
     def test_iterable(self):
         class A(Registrable):
             pass

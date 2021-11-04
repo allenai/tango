@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.3](https://github.com/allenai/tango/releases/tag/v0.3.3) - 2021-11-04
+
 ### Added
 
 - Added `StopEarlyCallback`, a `TorchTrainCallback` for early stopping.
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug in `FromParams` where non-`FromParams` class parameters were not instantiated
   properly (or at all).
+- Fixed a bug in `FromParams` where kwargs were not passed on from a wrapper class to the wrapped class.
 - Fixed small bug where some errors from git would be printed when executor metadata is created
   outside of a git repository.
 
