@@ -359,6 +359,7 @@ def construct_arg(
             if isinstance(popped_params, Step):
                 result = popped_params
             else:
+
                 def params_contain_step(o: Any) -> bool:
                     if isinstance(o, Step):
                         return True
@@ -373,6 +374,7 @@ def construct_arg(
 
                 if origin != Step and params_contain_step(popped_params):
                     from tango.step import WithUnresolvedSteps
+
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
                     result = annotation.from_params(popped_params, **subextras)

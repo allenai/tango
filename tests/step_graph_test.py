@@ -69,9 +69,7 @@ def basic_steps():
 
 
 def test_find_direct_dependencies(basic_steps):
-    assert StepGraph._find_step_dependencies(basic_steps["model_a"]) == {
-        "preprocessed_data"
-    }
+    assert StepGraph._find_step_dependencies(basic_steps["model_a"]) == {"preprocessed_data"}
     assert StepGraph._find_step_dependencies(basic_steps["combined"]) == {
         "model_a",
         "model_b",
@@ -86,7 +84,7 @@ def test_parse_step_graph(basic_steps):
 
 def test_run_step_graph(basic_steps):
     step_graph = StepGraph(basic_steps)
-    assert step_graph["combined"].result() == (8, 1/8)
+    assert step_graph["combined"].result() == (8, 1 / 8)
 
 
 def test_bad_step_graph():
@@ -96,10 +94,12 @@ def test_bad_step_graph():
 
 def test_circular_reference():
     with pytest.raises(ConfigurationError):
-        step_graph = StepGraph({
-            "a": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "b"}},
-            "b": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "a"}}
-        })
+        StepGraph(
+            {
+                "a": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "b"}},
+                "b": {"type": "preprocessed_data", "raw_data": {"type": "ref", "ref": "a"}},
+            }
+        )
 
 
 def test_complex_object_with_step_dependency():
@@ -119,14 +119,14 @@ def test_complex_object_with_step_dependency():
             assert isinstance(co, ComplexObject)
             return co.x
 
-    step_graph = StepGraph({
-        "make_float": {"type": "make_float", "f": 1.4},
-        "consume_complex": {
-            "type": "consume_complex_object",
-            "co": {
-                "x": {"type": "ref", "ref": "make_float"}
-            }
+    step_graph = StepGraph(
+        {
+            "make_float": {"type": "make_float", "f": 1.4},
+            "consume_complex": {
+                "type": "consume_complex_object",
+                "co": {"x": {"type": "ref", "ref": "make_float"}},
+            },
         }
-    })
+    )
 
     assert step_graph["consume_complex"].result() == 1.4

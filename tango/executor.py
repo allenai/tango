@@ -113,7 +113,10 @@ class Executor:
                 return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
             else:
                 return o
-        metadata = ExecutorMetadata(step=step.unique_id, config=replace_steps_with_unique_id(step.config))
+
+        metadata = ExecutorMetadata(
+            step=step.unique_id, config=replace_steps_with_unique_id(step.config)
+        )
 
         # Prepare directory and acquire lock.
         run_dir = self.step_dir(step)

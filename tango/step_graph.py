@@ -39,9 +39,13 @@ class StepGraph(Mapping[str, Step]):
         if len(unsatisfiable_dependencies) > 0:
             if len(unsatisfiable_dependencies) == 1:
                 dep = next(iter(unsatisfiable_dependencies))
-                raise ConfigurationError(f"Specified dependency '{dep}' can't be found in the config.")
+                raise ConfigurationError(
+                    f"Specified dependency '{dep}' can't be found in the config."
+                )
             else:
-                raise ConfigurationError(f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}")
+                raise ConfigurationError(
+                    f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}"
+                )
 
         done = set()
         todo = list(params.keys())
@@ -55,7 +59,10 @@ class StepGraph(Mapping[str, Step]):
                 else:
                     new_todo.append(step)
             if len(todo) == len(new_todo):
-                raise ConfigurationError("Could not make progress parsing the steps. You probably have a circular reference between the steps.")
+                raise ConfigurationError(
+                    "Could not make progress parsing the steps. "
+                    "You probably have a circular reference between the steps."
+                )
             todo = new_todo
         del dependencies
         del done
@@ -105,10 +112,7 @@ class StepGraph(Mapping[str, Step]):
     @classmethod
     def _replace_step_dependencies(cls, o: Any, existing_steps: Mapping[str, Step]) -> Any:
         if isinstance(o, (list, tuple, set)):
-            return o.__class__(
-                cls._replace_step_dependencies(i, existing_steps)
-                for i in o
-            )
+            return o.__class__(cls._replace_step_dependencies(i, existing_steps) for i in o)
         elif isinstance(o, dict):
             if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
                 return existing_steps[o["ref"]]

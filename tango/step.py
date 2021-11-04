@@ -15,7 +15,14 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast, Iterator, Iterable, Set, List, Tuple, MutableSet,
+    cast,
+    Iterator,
+    Iterable,
+    Set,
+    List,
+    Tuple,
+    MutableSet,
+    TYPE_CHECKING,
 )
 
 try:
@@ -34,12 +41,15 @@ from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,
     infer_method_params,
-    pop_and_construct_arg, construct_arg,
+    pop_and_construct_arg,
 )
 from tango.common.logging import TangoLogger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
+
+if TYPE_CHECKING:
+    from tango.step_cache import StepCache
 
 logger = logging.getLogger(__name__)
 
@@ -238,12 +248,8 @@ class Step(Registrable, Generic[T]):
 
             explicitly_set = param_name in params
             constructed_arg = pop_and_construct_arg(
-                subclass.__name__,
-                param_name,
-                param.annotation,
-                param.default,
-                params,
-                **extras)
+                subclass.__name__, param_name, param.annotation, param.default, params, **extras
+            )
 
             # If the param wasn't explicitly set in `params` and we just ended up constructing
             # the default value for the parameter, we can just omit it.
@@ -379,6 +385,7 @@ class Step(Registrable, Generic[T]):
         runs the step and returns the result from there."""
         if cache is None:
             from tango.step_cache import default_step_cache
+
             cache = default_step_cache
         if self in cache:
             return cache[self]
@@ -404,6 +411,7 @@ class Step(Registrable, Generic[T]):
 
         if cache is None:
             from tango.step_cache import default_step_cache
+
             cache = default_step_cache
         if self in cache:
             return
@@ -464,7 +472,9 @@ class WithUnresolvedSteps(CustomDetHash):
         elif isinstance(o, str):
             return o  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
         elif isinstance(o, dict) or isinstance(o, Params):
-            return o.__class__({key: cls.with_resolved_steps(value, step_cache) for key, value in o.items()})
+            return o.__class__(
+                {key: cls.with_resolved_steps(value, step_cache) for key, value in o.items()}
+            )
         if isinstance(o, (list, tuple, set)):
             return o.__class__(cls.with_resolved_steps(item, step_cache) for item in o)
         else:
@@ -480,7 +490,7 @@ class WithUnresolvedSteps(CustomDetHash):
 
 
 def tango_dry_run(
-        step_or_steps: Union[Step, Iterable[Step]], step_cache: Optional["StepCache"]
+    step_or_steps: Union[Step, Iterable[Step]], step_cache: Optional["StepCache"]
 ) -> List[Tuple[Step, bool]]:
     """
     Returns the list of steps that will be run, or read from cache, if you call
