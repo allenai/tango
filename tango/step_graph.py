@@ -28,6 +28,21 @@ class StepGraph(Mapping[str, Step]):
             step_name: self._find_step_dependencies(step_params)
             for step_name, step_params in params.items()
         }
+
+        # Check whether some of those dependencies can never be satisfied.
+        unsatisfiable_dependencies = {
+            dep
+            for step_deps in dependencies.values()
+            for dep in step_deps
+            if dep not in dependencies.keys()
+        }
+        if len(unsatisfiable_dependencies) > 0:
+            if len(unsatisfiable_dependencies) == 1:
+                dep = next(iter(unsatisfiable_dependencies))
+                raise ConfigurationError(f"Specified dependency '{dep}' can't be found in the config.")
+            else:
+                raise ConfigurationError(f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}")
+
         done = set()
         todo = list(params.keys())
         ordered_steps = list()
