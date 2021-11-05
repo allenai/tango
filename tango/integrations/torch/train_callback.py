@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import torch
 from overrides import overrides
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -11,6 +10,7 @@ from .data import DataLoader
 from .exceptions import StopEarly
 from .model import Model
 from .optim import LRScheduler, Optimizer
+from .train_config import TrainConfig
 
 
 class TrainCallback(Registrable):
@@ -27,41 +27,49 @@ class TrainCallback(Registrable):
         See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
         implementation.
 
+    Attributes
+    ----------
+    train_config : :class:`TrainConfig`
+    model : :class:`Model`
+    optimizer : :class:`Optimizer`
+    dataset_dict : :class:`tango.common.DatasetDictBase`
+    train_dataloader : :class:`DataLoader`
+    validation_dataloader : :class:`DataLoader`, optional
+    lr_scheduler : :class:`LRScheduler`, optional
+
     """
 
     def __init__(
         self,
-        work_dir: Path,
+        train_config: TrainConfig,
         model: Model,
         optimizer: Optimizer,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
-        train_steps: int,
-        validation_steps: Optional[int] = None,
         validation_dataloader: Optional[DataLoader] = None,
         lr_scheduler: Optional[LRScheduler] = None,
-        is_local_main_process: bool = True,
-        world_size: int = 1,
-        worker_id: int = 0,
-        device: torch.device = torch.device("cpu"),
-        val_metric_name: str = "loss",
-        minimize_val_metric: bool = True,
     ) -> None:
-        self.work_dir = work_dir
+        self.train_config = train_config
         self.model = model
         self.optimizer = optimizer
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
-        self.train_steps = train_steps
-        self.validation_steps = validation_steps
         self.validation_dataloader = validation_dataloader
         self.lr_scheduler = lr_scheduler
-        self.is_local_main_process = is_local_main_process
-        self.worker_id = worker_id
-        self.world_size = world_size
-        self.device = device
-        self.val_metric_name = val_metric_name
-        self.minimize_val_metric = minimize_val_metric
+
+    @property
+    def work_dir(self) -> Path:
+        """
+        The working directory of the current train step.
+        """
+        return self.train_config.work_dir
+
+    @property
+    def is_local_main_process(self) -> bool:
+        """
+        If the current worker is the main distributed worker of the current node.
+        """
+        return self.train_config.is_local_main_process
 
     def state_dict(self) -> Dict[str, Any]:
         """

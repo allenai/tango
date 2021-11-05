@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed typo in parameter name `remove_stale_checkpoints` in `TorchTrainStep` (previously was `remove_state_checkpoints`).
+
 ## [v0.3.5](https://github.com/allenai/tango/releases/tag/v0.3.5) - 2021-11-05
 
 ### Fixed
