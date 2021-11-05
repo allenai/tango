@@ -294,7 +294,7 @@ def _train(
 
     # Resolve and set device.
     device = config.worker_local_default_device
-    if device != torch.device("cpu"):
+    if config.is_distributed and device != torch.device("cpu"):
         torch.cuda.set_device(device)
 
     # Init distributed process group.
