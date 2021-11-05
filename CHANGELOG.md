@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.5](https://github.com/allenai/tango/releases/tag/v0.3.5) - 2021-11-05
+
 ### Fixed
 
 - Fixed a bug in `FromParams` where the "type" parameter was ignored in some cases
