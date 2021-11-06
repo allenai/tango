@@ -1,6 +1,7 @@
 import sys
 from copy import deepcopy
 from dataclasses import dataclass
+from numbers import Number
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
 
 import pytest
@@ -9,6 +10,7 @@ from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     FromParams,
     create_kwargs,
+    is_base_registrable,
     remove_optional,
     takes_arg,
 )
@@ -507,8 +509,6 @@ class TestFromParams(TangoTestCase):
             def __init__(self, a: int):
                 self.a = a
 
-        from numbers import Number
-
         @A.register("b1")  # type: ignore
         class B1(A, Number):
             def __init__(self, b: float, **kwargs):
@@ -528,6 +528,33 @@ class TestFromParams(TangoTestCase):
         b2 = B2.from_params(Params({"a": 4, "b": 5}))
         assert b2.b == 5
         assert b2.a == 4
+
+    def test_instantiating_with_multiple_inheritance(self):
+        class A(Registrable):
+            def __init__(self, a: int):
+                self.a = a
+
+        @A.register("b")  # type: ignore
+        class B(A, Number):
+            def __init__(self, b: float, **kwargs):
+                super().__init__(**kwargs)
+                self.b = b
+
+        assert not is_base_registrable(B)
+
+        @B.register("c")
+        class C(B):
+            def __init__(self, c: float, **kwargs):
+                super().__init__(**kwargs)
+                self.c = c
+
+        # make sure we can instantiate B directly.
+        b = B.from_params({"b": 1.0, "a": 1})
+        assert isinstance(b, B)
+
+        # and also make sure we can instantiate subclasses of B.
+        c = B.from_params({"type": "c", "c": 2.0, "b": 1.0, "a": 1})
+        assert isinstance(c, C)
 
     def test_only_infer_superclass_params_if_unknown(self):
         class BaseClass(Registrable):
