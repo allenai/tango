@@ -233,6 +233,8 @@ def create_kwargs(
     if accepts_kwargs:
         for key in list(params):
             kwargs[key] = params.pop(key, keep_as_dict=True)
+        for key, value in extras.items():
+            kwargs[key] = value
     params.assert_empty(cls.__name__)
     return kwargs
 
@@ -614,19 +616,26 @@ class FromParams(CustomDetHash):
                     f"This happened when constructing an object of type {cls}."
                 )
 
-        if is_base_registrable(cls) and not constructor_to_call:
+        if issubclass(cls, Registrable) and not constructor_to_call:
             # We know `cls` inherits from Registrable, so we'll use a cast to make mypy happy.
-
             as_registrable = cast(Type[Registrable], cls)
-            default_to_first_choice = as_registrable.default_implementation is not None
+
             if "type" in params and params["type"] not in as_registrable.list_available():
                 as_registrable.search_modules(params["type"])
-            choice = params.pop_choice(
-                "type",
-                choices=as_registrable.list_available(),
-                default_to_first_choice=default_to_first_choice,
-            )
-            subclass, constructor_name = as_registrable.resolve_class_name(choice)
+
+            if is_base_registrable(cls) or "type" in params:
+                default_to_first_choice = as_registrable.default_implementation is not None
+                choice = params.pop_choice(
+                    "type",
+                    choices=as_registrable.list_available(),
+                    default_to_first_choice=default_to_first_choice,
+                )
+                subclass, constructor_name = as_registrable.resolve_class_name(choice)
+            else:
+                # Must be trying to instantiate the given class directly.
+                subclass = cls
+                constructor_name = None
+
             # See the docstring for an explanation of what's going on here.
             if not constructor_name:
                 constructor_to_inspect = subclass.__init__
