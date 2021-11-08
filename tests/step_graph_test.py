@@ -2,7 +2,7 @@ from typing import Tuple, List
 
 import pytest
 
-from common import FromParams
+from tango.common import FromParams
 from tango import Step
 from tango.common.exceptions import ConfigurationError
 from tango.step_graph import StepGraph
