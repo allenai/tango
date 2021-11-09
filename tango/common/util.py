@@ -4,7 +4,7 @@ import signal
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterable, Optional, Set, Union
+from typing import Iterable, Optional, Set, Union, FrozenSet, List
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived
@@ -35,6 +35,19 @@ def push_python_path(path: PathOrStr):
     finally:
         # Better to remove by value, in case `sys.path` was manipulated in between.
         sys.path.remove(path)
+
+
+_extra_imported_modules: Set[str] = set()
+
+
+def get_extra_imported_modules() -> Set[str]:
+    return _extra_imported_modules
+
+
+def import_extra_module(package_name: str) -> None:
+    global _extra_imported_modules
+    import_module_and_submodules(package_name)
+    _extra_imported_modules.add(package_name)
 
 
 def import_module_and_submodules(package_name: str, exclude: Optional[Set[str]] = None) -> None:

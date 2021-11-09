@@ -4,7 +4,7 @@ import tempfile
 import warnings
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeVar, cast
+from typing import Any, Dict, List, Optional, TypeVar, cast, Set
 
 import numpy as np
 import torch
@@ -27,6 +27,7 @@ from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
+from ...common.util import get_extra_imported_modules, import_extra_module
 
 
 @Step.register("torch::train")
@@ -227,6 +228,7 @@ class TorchTrainStep(Step):
                     is_distributed,
                     devices,
                     distributed_port,
+                    get_extra_imported_modules(),
                     val_metric_name,
                     minimize_val_metric,
                     aggregate_val_metric,
@@ -301,12 +303,17 @@ def _train(
     is_distributed: bool = False,
     devices: Optional[List[int]] = None,
     distributed_port: str = "54761",
+    include_package: Optional[Set[str]] = None,
     val_metric_name: str = "loss",
     minimize_val_metric: bool = True,
     aggregate_val_metric: bool = True,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     remove_state_checkpoints: bool = True,
 ) -> Optional[Model]:
+    if include_package:
+        for package_name in include_package:
+            import_extra_module(package_name)
+
     is_local_main_process = worker_id == 0
     world_size = len(devices) if devices else 1
 

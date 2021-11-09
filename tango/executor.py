@@ -14,7 +14,7 @@ import click
 from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.from_params import FromParams
-from tango.common.util import import_module_and_submodules
+from tango.common.util import import_module_and_submodules, import_extra_module
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph
@@ -44,7 +44,7 @@ class Executor:
         # Import included packages to find registered components.
         if self.include_package is not None:
             for package_name in self.include_package:
-                import_module_and_submodules(package_name)
+                import_extra_module(package_name)
 
         # Acquire lock on directory to make sure no other Executors are writing
         # to it at the same time.

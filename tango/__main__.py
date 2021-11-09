@@ -72,6 +72,7 @@ import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
 from tango.common.params import Params
+from tango.common.util import import_extra_module
 from tango.version import VERSION
 
 
@@ -295,7 +296,6 @@ def _run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
 ):
-    from tango.common.util import import_module_and_submodules
     from tango.executor import Executor
     from tango.step_cache import StepCache
     from tango.step_graph import StepGraph
@@ -311,7 +311,7 @@ def _run(
     include_package += params.pop("include_package", [])
     include_package += config.include_package or []
     for package_name in include_package:
-        import_module_and_submodules(package_name)
+        import_extra_module(package_name)
 
     # Prepare directory.
     if directory is None:
