@@ -310,6 +310,21 @@ def pop_and_construct_arg(
     return construct_arg(class_name, name, popped_params, annotation, default, **extras)
 
 
+def _params_contain_step(o: Any) -> bool:
+    from tango.step import Step
+
+    if isinstance(o, Step):
+        return True
+    elif isinstance(o, str):
+        return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
+    elif isinstance(o, dict) or isinstance(o, Params):
+        return _params_contain_step(o.values())
+    elif isinstance(o, Iterable):
+        return any(_params_contain_step(p) for p in o)
+    else:
+        return False
+
+
 def construct_arg(
     class_name: str,
     argument_name: str,
@@ -347,7 +362,9 @@ def construct_arg(
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
 
-    if inspect.isclass(annotation) and issubclass(annotation, FromParams):
+    if (inspect.isclass(annotation) and issubclass(annotation, FromParams)) or (
+        inspect.isclass(origin) and issubclass(origin, FromParams)
+    ):
         if popped_params is default:
             return default
         elif origin is None and isinstance(popped_params, annotation):
@@ -378,20 +395,7 @@ def construct_arg(
             if isinstance(popped_params, Step):
                 result = popped_params
             else:
-
-                def params_contain_step(o: Any) -> bool:
-                    if isinstance(o, Step):
-                        return True
-                    elif isinstance(o, str):
-                        return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-                    elif isinstance(o, dict) or isinstance(o, Params):
-                        return params_contain_step(o.values())
-                    elif isinstance(o, Iterable):
-                        return any(params_contain_step(p) for p in o)
-                    else:
-                        return False
-
-                if origin != Step and params_contain_step(popped_params):
+                if origin != Step and _params_contain_step(popped_params):
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
                     result = annotation.from_params(popped_params, **subextras)
@@ -577,11 +581,19 @@ def construct_arg(
         return value_list
 
     elif inspect.isclass(annotation) and isinstance(popped_params, Params):
-        subextras = create_extras(annotation, extras)
-        constructor_to_inspect = annotation.__init__
-        constructor_to_call = annotation
-        kwargs = create_kwargs(constructor_to_inspect, annotation, popped_params, **subextras)
-        return constructor_to_call(**kwargs)  # type: ignore
+        # Constructing arbitrary classes from params
+        arbitrary_class = origin or annotation
+        subextras = create_extras(arbitrary_class, extras)
+        constructor_to_inspect = arbitrary_class.__init__
+        constructor_to_call = arbitrary_class
+        params_contain_step = _params_contain_step(popped_params)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, **subextras)
+        from tango.step import WithUnresolvedSteps
+
+        if origin != Step and params_contain_step:
+            return WithUnresolvedSteps(constructor_to_call, [], kwargs)
+        else:
+            return constructor_to_call(**kwargs)  # type: ignore
 
     else:
         # Pass it on as is and hope for the best.   ¯\_(ツ)_/¯
