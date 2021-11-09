@@ -123,7 +123,7 @@ class WandbTrainCallback(TrainCallback):
             self.wandb.finish()
 
     @overrides
-    def post_batch(self, step: int, batch_loss: float) -> None:
+    def log_batch(self, step: int, batch_loss: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
                 {"train/loss": batch_loss, "train/lr": self.optimizer.param_groups[0]["lr"]},

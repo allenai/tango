@@ -120,7 +120,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, batch_loss: float) -> None:
+    def post_batch(self, step: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
@@ -129,20 +129,20 @@ class TrainCallback(Registrable):
             The ``batch_loss`` here is the loss local to the current worker, not the
             overall (average) batch loss across distributed workers.
 
+            If you need the average loss, use :meth:`log_batch()`.
+
         """
         pass
 
-    def pre_log_batch(self, step: int, metrics_to_log: Dict[str, float]) -> None:
+    def log_batch(self, step: int, batch_loss: float) -> None:
         """
-        Called right before ``metrics_to_log`` are logged to the progress bar.
+        Called after the optimizer step. Here ``batch_loss`` is the average loss across
+        all distributed workers.
 
-        .. warning::
-            This may be called twice for a given ``step``: once before the validation
-            loop and once right after the validation loop with the updated validation metric.
-
-            Therefore if you're using your callback to log metrics externally,
-            it may be better to use the :meth:`post_batch()` and :meth:`post_val_loop()`
-            methods instead.
+        .. note::
+            This callback method is not necessarily called on every step.
+            The frequency depends on the value of the ``log_every`` parameter of
+            :class:`TorchTrainStep`.
 
         """
         pass

@@ -531,6 +531,7 @@ def _train(
                 callback.pre_batch(step, batch)
             optimizer.zero_grad()
             batch_loss = 0.0
+            batch_outputs: List[Dict[str, Any]] = []
             for micro_batch in batch:
                 # Move tensors to right device.
                 micro_batch = _move_to_device(micro_batch, device)
@@ -539,6 +540,7 @@ def _train(
                 with torch.cuda.amp.autocast(enabled=config.amp):
                     outputs = model(**micro_batch)
                     micro_batch_loss = outputs["loss"] / len(batch)
+                batch_outputs.append(outputs)
 
                 if torch.isnan(micro_batch_loss):
                     raise ValueError("nan loss encountered")
@@ -556,7 +558,8 @@ def _train(
                 del micro_batch_loss
 
             for callback in callbacks:
-                callback.post_batch(step, batch_loss)
+                callback.post_batch(step, batch_loss, batch_outputs)
+            del batch_outputs
 
             if best_batch_loss is None or batch_loss <= best_batch_loss:
                 best_batch_loss = batch_loss
@@ -590,15 +593,17 @@ def _train(
                 dist.all_reduce(batch_loss_tensor)
                 batch_loss = batch_loss_tensor.item() / config.world_size
 
-            # Update progress bar.
             if config.should_log_this_step(step):
+                # Callbacks.
+                for callback in callbacks:
+                    callback.log_batch(step, batch_loss)
+
+                # Update progress bar.
                 metrics_to_log: Dict[str, float] = {"batch_loss": batch_loss}
                 if val_metric is not None:
                     metrics_to_log[f"val_{config.val_metric_name}"] = val_metric
                 if best_val_metric is not None:
                     metrics_to_log[f"best_val_{config.val_metric_name}"] = best_val_metric
-                for callback in callbacks:
-                    callback.pre_log_batch(step, metrics_to_log)
                 if config.is_local_main_process:
                     train_batch_iterator.set_postfix(**metrics_to_log)
 
@@ -681,8 +686,6 @@ def _train(
                     f"val_{config.val_metric_name}": val_metric,
                     f"best_{config.val_metric_name}": best_val_metric,
                 }
-                for callback in callbacks:
-                    callback.pre_log_batch(step, metrics_to_log)
                 if config.is_local_main_process:
                     train_batch_iterator.set_postfix(**metrics_to_log)
 

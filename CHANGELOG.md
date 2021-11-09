@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
+  distributed workers, but only called every `log_every` steps.
+
+### Changed
+
+- Method `.post_batch()` on `torch::TrainCallback` also takes the raw outputs from the batch now.
+
+### Removed
+
+- Removed `.pre_log_batch()` method on `torch::TrainCallback`.
+
 ### Fixed
 
 - Fixed typo in parameter name `remove_stale_checkpoints` in `TorchTrainStep` (previously was `remove_state_checkpoints`).
@@ -22,13 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `StopEarlyCallback`, a `TorchTrainCallback` for early stopping.
+- Added `StopEarlyCallback`, a `torch::TrainCallback` for early stopping.
 - Added parameter `remove_stale_checkpoints` to `TorchTrainStep`.
 
 ### Changed
 
-- Minor changes to `TorchTrainCallback` interface.
-- Weights & Biases `TorchTrainCallback` now logs best validation metric score.
+- Minor changes to `torch::TrainCallback` interface.
+- Weights & Biases `torch::TrainCallback` now logs best validation metric score.
 
 ## [v0.3.3](https://github.com/allenai/tango/releases/tag/v0.3.3) - 2021-11-04
 
