@@ -120,7 +120,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]) -> None:
+    def post_batch(self, step: int, batch_loss: float) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.

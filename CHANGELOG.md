@@ -12,10 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
   distributed workers, but only called every `log_every` steps.
 
-### Changed
-
-- Method `.post_batch()` on `torch::TrainCallback` also takes the raw outputs from the batch now.
-
 ### Removed
 
 - Removed `.pre_log_batch()` method on `torch::TrainCallback`.

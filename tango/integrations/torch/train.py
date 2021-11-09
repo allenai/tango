@@ -531,7 +531,6 @@ def _train(
                 callback.pre_batch(step, batch)
             optimizer.zero_grad()
             batch_loss = 0.0
-            batch_outputs: List[Dict[str, Any]] = []
             for micro_batch in batch:
                 # Move tensors to right device.
                 micro_batch = _move_to_device(micro_batch, device)
@@ -540,7 +539,6 @@ def _train(
                 with torch.cuda.amp.autocast(enabled=config.amp):
                     outputs = model(**micro_batch)
                     micro_batch_loss = outputs["loss"] / len(batch)
-                batch_outputs.append(outputs)
 
                 if torch.isnan(micro_batch_loss):
                     raise ValueError("nan loss encountered")
@@ -558,8 +556,7 @@ def _train(
                 del micro_batch_loss
 
             for callback in callbacks:
-                callback.post_batch(step, batch_loss, batch_outputs)
-            del batch_outputs
+                callback.post_batch(step, batch_loss)
 
             if best_batch_loss is None or batch_loss <= best_batch_loss:
                 best_batch_loss = batch_loss
