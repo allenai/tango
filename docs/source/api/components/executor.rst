@@ -25,6 +25,5 @@ Metadata
 Implementations
 ---------------
 
-.. autoclass:: tango.executor.SimpleExecutor
+.. autoclass:: tango.executor.Executor
    :members:
-   :exclude-members: execute_step_group
