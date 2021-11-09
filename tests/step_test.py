@@ -8,8 +8,6 @@ from tango.step import Step
 class TestStep(TangoTestCase):
     @classmethod
     def setup_class(cls):
-        super().setup_class()
-
         @Step.register("float")
         class FloatStep(Step):
             def run(self, result: float) -> float:  # type: ignore

@@ -54,19 +54,8 @@ class TangoTestCase:
         self.TEST_DIR = Path(tempfile.mkdtemp(prefix="tango_tests"))
         os.makedirs(self.TEST_DIR, exist_ok=True)
 
-    @classmethod
-    def setup_class(cls):
-        # During teardown we'll restore the state of `Registrable`'s internal registry
-        # to make sure any registered mock test classes are removed so they don't conflict
-        # with other tests.
-        cls._original_registry = deepcopy(Registrable._registry)
-
     def teardown_method(self):
         shutil.rmtree(self.TEST_DIR)
-
-    @classmethod
-    def teardown_class(cls):
-        Registrable._registry = cls._original_registry
 
     def run(
         self,
