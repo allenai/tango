@@ -14,7 +14,10 @@ class TestTrainStep(TangoTestCase):
     def test_basic_train(self, with_validation):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/pytorch_lightning/train.jsonnet",
-            include_package=["test_fixtures.integrations.pytorch_lightning"],
+            include_package=[
+                "test_fixtures.integrations.common",
+                "test_fixtures.integrations.pytorch_lightning",
+            ],
             overrides="" if with_validation else "{'steps.train.validation_split':null}",
         )
 
@@ -25,7 +28,10 @@ class TestTrainStep(TangoTestCase):
     def test_train_with_data_module(self, with_validation):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/pytorch_lightning/train_with_data_module.jsonnet",
-            include_package=["test_fixtures.integrations.pytorch_lightning"],
+            include_package=[
+                "test_fixtures.integrations.common",
+                "test_fixtures.integrations.pytorch_lightning",
+            ],
             overrides="" if with_validation else "{'steps.train.validation_split':null}",
         )
 
