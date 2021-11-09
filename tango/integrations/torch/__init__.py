@@ -104,7 +104,7 @@ would produce the following output:
     ● Starting run for "data"...
     ✓ Finished run for "data"
     ● Starting run for "train"...
-    Loading best weights from state_worker0_step100.pt
+    Loading best weights from state_worker0_best.pt
     ✓ Finished run for "train"
 
 Tips
