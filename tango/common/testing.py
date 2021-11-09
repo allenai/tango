@@ -3,12 +3,10 @@ import os
 import shutil
 import tempfile
 from contextlib import contextmanager
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 from .aliases import PathOrStr
-from .registrable import Registrable
 
 
 class TangoTestCase:

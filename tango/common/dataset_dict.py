@@ -5,12 +5,9 @@ from typing import (
     Iterable,
     Iterator,
     Mapping,
-    Optional,
     Sequence,
     TypeVar,
 )
-
-from ._det_hash import CustomDetHash
 
 T = TypeVar("T")
 S = TypeVar("S")

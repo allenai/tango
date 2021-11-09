@@ -4,7 +4,7 @@ import signal
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterable, Optional, Set, Union, FrozenSet, List
+from typing import Iterable, Optional, Set, Union
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived

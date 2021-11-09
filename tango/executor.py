@@ -14,7 +14,7 @@ import click
 from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.from_params import FromParams
-from tango.common.util import import_module_and_submodules, import_extra_module
+from tango.common.util import import_extra_module
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph
