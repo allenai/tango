@@ -421,7 +421,7 @@ def _train(
 
     def is_best_checkpoint() -> bool:
         """
-        A closure that we'll call when saving checkpoints to check if we should symlink
+        A closure that we'll call when saving checkpoints to check if we should hardlink
         the best checkpoint path to the current checkpoint file.
         """
         if val_metric is not None and best_val_metric is not None:
@@ -472,15 +472,15 @@ def _train(
             os.replace(temp_state_file.name, config.state_path_for_step(step))
 
             # Link to most recent state path.
-            if config.state_path.is_symlink():
+            if config.state_path.is_file():
                 config.state_path.unlink()
-            config.state_path.symlink_to(config.state_path_for_step(step))
+            os.link(config.state_path_for_step(step), config.state_path)
 
             # Link to best state path.
             if is_best_checkpoint():
-                if config.best_state_path.is_symlink():
+                if config.best_state_path.is_file():
                     config.best_state_path.unlink()
-                config.best_state_path.symlink_to(config.state_path_for_step(step))
+                os.link(config.state_path_for_step(step), config.best_state_path)
 
             # Clean up stale checkpoints.
             if config.remove_stale_checkpoints:
