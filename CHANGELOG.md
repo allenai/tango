@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Made it possible to construct a step graph out of `Step` objects, instead of constructing it out of `StepStub` objects.
+
 ## [v0.3.5](https://github.com/allenai/tango/releases/tag/v0.3.5) - 2021-11-05
 
 ### Fixed
