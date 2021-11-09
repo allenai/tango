@@ -1,13 +1,5 @@
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Sequence,
-    TypeVar,
-)
+from typing import Any, Generic, Iterable, Iterator, Mapping, Sequence, TypeVar
 
 T = TypeVar("T")
 S = TypeVar("S")

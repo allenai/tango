@@ -6,19 +6,19 @@ from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Generic,
+    Iterable,
+    Iterator,
     Optional,
+    Set,
     Type,
     TypeVar,
     Union,
     cast,
-    Iterator,
-    Iterable,
-    Set,
-    TYPE_CHECKING,
 )
 
 try:
@@ -32,7 +32,7 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common._det_hash import det_hash, CustomDetHash
+from tango.common._det_hash import CustomDetHash, det_hash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,

@@ -4,7 +4,7 @@ import tempfile
 import warnings
 from itertools import islice
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeVar, cast, Set
+from typing import Any, Dict, List, Optional, Set, TypeVar, cast
 
 import numpy as np
 import torch
@@ -21,13 +21,13 @@ from tango.common.tqdm import Tqdm
 from tango.format import Format
 from tango.step import Step
 
+from ...common.util import get_extra_imported_modules, import_extra_module
 from .data import DataLoader
 from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
-from ...common.util import get_extra_imported_modules, import_extra_module
 
 
 @Step.register("torch::train")

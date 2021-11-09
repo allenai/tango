@@ -1,9 +1,9 @@
 import logging
-from typing import Dict, Mapping, Iterator, List, Any, Set
+from typing import Any, Dict, Iterator, List, Mapping, Set
 
-from tango.step import Step
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
+from tango.step import Step
 
 logger = logging.getLogger(__name__)
 
