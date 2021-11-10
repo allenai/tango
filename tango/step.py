@@ -516,9 +516,9 @@ class WithUnresolvedSteps(CustomDetHash):
             input_data = WithUnresolvedSteps(
                 DataWithTimestamp, (produce, time.now()))
 
-    :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until the :meth:`run()`
-    method runs. Tango will make sure that the results from the ``produce`` step are available at
-    that time, and replaces the step in the arguments with the step's results.
+    :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
+    the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step
+    are available at that time, and replaces the step in the arguments with the step's results.
     """
 
     def __init__(self, constructor, *args, **kwargs):
