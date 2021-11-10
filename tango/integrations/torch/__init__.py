@@ -107,7 +107,7 @@ would produce the following output:
     :options: +ELLIPSIS
 
     ● Starting run for "train"...
-    Loading best weights from state_worker0_step100.pt
+    Loading best weights from state_worker0_best.pt
     ✓ Finished run for "train"
     ✓ The output for "train" is in ...
 
@@ -142,6 +142,7 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "TrainConfig",
     "StopEarlyCallback",
     "StopEarly",
 ]
@@ -153,3 +154,4 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
 from .train_callback import StopEarlyCallback, TrainCallback
+from .train_config import TrainConfig
