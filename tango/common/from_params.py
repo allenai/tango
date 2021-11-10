@@ -580,7 +580,9 @@ def construct_arg(
 
         return value_list
 
-    elif inspect.isclass(annotation) and isinstance(popped_params, Params):
+    elif (inspect.isclass(annotation) or inspect.isclass(origin)) and isinstance(
+        popped_params, Params
+    ):
         # Constructing arbitrary classes from params
         arbitrary_class = origin or annotation
         subextras = create_extras(arbitrary_class, extras)

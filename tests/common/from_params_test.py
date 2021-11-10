@@ -2,7 +2,18 @@ import sys
 from copy import deepcopy
 from dataclasses import dataclass
 from numbers import Number
-from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
+from typing import (
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import pytest
 
@@ -759,6 +770,30 @@ class TestFromParams(TangoTestCase):
         assert d.items["first"].size == 1  # type: ignore
         assert d.items["second"].size == 2  # type: ignore
 
+    def test_custom_abc_mapping(self):
+        from collections import abc
+
+        class CustomMapping(abc.Mapping):
+            def __init__(self, data: Dict[str, int]):
+                self.data = data
+
+            def __getitem__(self, key):
+                return self.data[key]
+
+            def __iter__(self):
+                return iter(self.data)
+
+            def __len__(self):
+                return len(self.data)
+
+        class ClassWithCustomMapping(FromParams):
+            def __init__(self, mapping: CustomMapping):
+                self.mapping = mapping
+
+        o = ClassWithCustomMapping.from_params({"mapping": {"data": {"a": 1}}})
+        assert isinstance(o.mapping, CustomMapping)
+        assert o.mapping["a"] == 1
+
     def test_extra_parameters_are_not_allowed_when_there_is_no_constructor(self):
         class A(FromParams):
             pass
@@ -1015,6 +1050,20 @@ class TestFromParams(TangoTestCase):
         assert isinstance(o.x, list)
         assert isinstance(o.x[0], Item)
         assert isinstance(o.y["b"], Item)
+
+    def test_with_non_from_params_generics(self):
+        T = TypeVar("T")
+
+        class Item(Generic[T]):
+            def __init__(self, x: T):
+                self.x = x
+
+        class ClassWithGenerics(FromParams):
+            def __init__(self, item: Item[T]):
+                self.item = item
+
+        o = ClassWithGenerics.from_params({"item": {"x": 1}})
+        assert isinstance(o.item, Item)
 
     @pytest.mark.skipif(sys.version_info < (3, 10), reason="requires python 3.10 or higher")
     def test_with_union_pipe(self):
