@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- We no longer support Python 3.7
+- We no longer support Python 3.7.
 
 ### Added
 
