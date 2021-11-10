@@ -88,7 +88,6 @@ You could then run this experiment with a config that looks like this:
     from tango.common.testing import run_experiment
     from tango.common.registrable import Registrable
 
-    # Don't cache results, otherwise we'll have a pickling error.
     with run_experiment(
         "test_fixtures/integrations/pytorch_lightning/train.jsonnet"
     ) as run_dir:
