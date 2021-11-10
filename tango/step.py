@@ -465,11 +465,7 @@ class WithUnresolvedSteps(CustomDetHash):
 
     For example, this works without any help:
 
-    .. testsetup::
-
-        from tango.steps import Step
-
-    .. testcode::
+    .. code-block:: Python
 
         class ProduceDataStep(Step[MyDataClass]):
             def run(self, ...) -> MyDataClass
@@ -485,11 +481,8 @@ class WithUnresolvedSteps(CustomDetHash):
 
     This scenario needs help:
 
-    .. testsetup::
+    .. code-block:: Python
 
-        from tango.steps import Step
-
-    .. testcode::
         @dataclass
         class DataWithTimestamp:
             data: MyDataClass
@@ -503,6 +496,7 @@ class WithUnresolvedSteps(CustomDetHash):
         class ConsumeDataStep(Step):
             def run(self, input_data: DataWithTimestamp):
                 ...
+
         produce = ProduceDataStep()
         consume = ConsumeDataStep(
             input_data = DataWithTimestamp(produce, time.now()))
@@ -510,7 +504,7 @@ class WithUnresolvedSteps(CustomDetHash):
     That does not work, because :class:`DataWithTimestamp` needs an object of type :class:`MyDataClass`, but we're
     giving it an object of type :class:`Step[MyDataClass]`. Instead, we change the last line to this:
 
-    .. testcode::
+    .. code-block:: Python
 
         consume = ConsumeDataStep(
             input_data = WithUnresolvedSteps(
