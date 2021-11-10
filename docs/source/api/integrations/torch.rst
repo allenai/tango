@@ -12,6 +12,9 @@ Train step
 .. autoclass:: tango.integrations.torch.TorchTrainStep
    :members:
 
+.. autoclass:: tango.integrations.torch.TrainConfig
+   :members:
+
 Torch format
 ~~~~~~~~~~~~
 
