@@ -18,7 +18,7 @@ env:
   # Change this to invalidate existing cache.
   CACHE_PREFIX: v3
   PYTHON_PATH: ./
-  DEFAULT_PYTHON: 3.7
+  DEFAULT_PYTHON: 3.8
 
 jobs:
   checks:
@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.7']
+        python: ['3.8']
         task:
           - name: Lint
             extras: dev,all
@@ -86,13 +86,6 @@ jobs:
 
         include:
           # Run the core tests on other Python versions as well.
-          - task:
-              name: Test
-              extras: dev
-              run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.8'
-
           - task:
               name: Test
               extras: dev
