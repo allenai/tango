@@ -21,9 +21,3 @@ Metadata
 
 .. autoclass:: tango.executor.GitMetadata
    :members:
-
-Implementations
----------------
-
-.. autoclass:: tango.executor.Executor
-   :members:

@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 
 class Executor:
     """
-    An ``Executor`` is a :class:`~tango.common.Registrable` class that is
-    responsible for running steps and caching their results.
+    An ``Executor`` is a class that is responsible for running steps and caching their results.
     """
 
     def __init__(
@@ -144,7 +143,7 @@ class Executor:
         """
         Returns a unique directory to use for the run of the given step.
 
-        This is the :class:`~pathlib.Path` returned by :meth:`~tango.step_cache.directory_for_run()`.
+        This is the :class:`~pathlib.Path` returned by :meth:`~tango.step_cache.work_dir()`.
         """
         return self.step_cache.step_dir(step)
 

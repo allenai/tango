@@ -8,6 +8,9 @@ Base class
    :members: 
    :special-members:
 
+.. autoclass:: tango.step.WithUnresolvedSteps
+   :members:
+
 Implementations
 ---------------
 

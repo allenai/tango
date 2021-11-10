@@ -294,7 +294,9 @@ class Step(Registrable, Generic[T]):
     @property
     def work_dir(self) -> Path:
         """
-        The working directory that a step can use while its ``run()`` method runs.
+        The working directory that a step can use while its ``:meth:run()`` method runs.
+
+        This is a convenience property for you to call inside your :meth:`run()` method.
 
         This directory stays around across restarts. You cannot assume that it is empty when your
         step runs, but you can use it to store information that helps you restart a step if it
@@ -309,7 +311,8 @@ class Step(Registrable, Generic[T]):
     @property
     def config(self) -> Dict[str, Any]:
         """
-        The raw configuration parameters for this step.
+        The configuration parameters that were used to construct the step. This can be empty
+        if the step was not constructed from a configuration file.
         """
         if self._config is None:
             raise ValueError(f"No config has been assigned to this step! ('{self.name}')")
@@ -369,7 +372,9 @@ class Step(Registrable, Generic[T]):
 
     def result(self, cache: Optional["StepCache"] = None) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
-        runs the step and returns the result from there."""
+        runs the step and returns the result from there.
+
+        If necessary, this method will first produce the results of all steps it depends on."""
         if cache is None:
             from tango.step_cache import default_step_cache
 
@@ -426,7 +431,7 @@ class Step(Registrable, Generic[T]):
     def dependencies(self) -> Set["Step"]:
         """Returns a set of steps that this step depends on.
 
-        Does not return recursive dependencies."""
+        This does not return recursive dependencies."""
         return set(self._ordered_dependencies())
 
     @property
@@ -447,6 +452,75 @@ class Step(Registrable, Generic[T]):
 
 
 class WithUnresolvedSteps(CustomDetHash):
+    """
+    This is a helper class for scenarios where steps depend on other steps.
+
+    Let's say we have two steps, :class:`ConsumeDataStep` and :class:`ProduceDataStep`. The easiest way to make
+    :class:`ConsumeDataStep` depend on :class:`ProduceDataStep` is to specify ``Produce`` as one of the arguments
+    to the step. This works when ``Consume`` takes the output of ``Produce`` directly, or if it takes
+    it inside standard Python container, like a list, set, or dictionary.
+
+    But what if the output of :class:`ConsumeDataStep` needs to be added to a complex, custom data
+    structure? :class:`WithUnresolvedSteps` takes care of this scenario.
+
+    For example, this works without any help:
+
+    .. testsetup::
+
+        from tango.steps import Step
+
+    .. testcode::
+
+        class ProduceDataStep(Step[MyDataClass]):
+            def run(self, ...) -> MyDataClass
+                ...
+                return MyDataClass(...)
+
+        class ConsumeDataStep(Step):
+            def run(self, input_data: MyDataClass):
+                ...
+
+        produce = ProduceDataStep()
+        consume = ConsumeDataStep(input_data = produce)
+
+    This scenario needs help:
+
+    .. testsetup::
+
+        from tango.steps import Step
+
+    .. testcode::
+        @dataclass
+        class DataWithTimestamp:
+            data: MyDataClass
+            timestamp: float
+
+        class ProduceDataStep(Step[MyDataClass]):
+            def run(self, ...) -> MyDataClass
+                ...
+                return MyDataClass(...)
+
+        class ConsumeDataStep(Step):
+            def run(self, input_data: DataWithTimestamp):
+                ...
+        produce = ProduceDataStep()
+        consume = ConsumeDataStep(
+            input_data = DataWithTimestamp(produce, time.now()))
+
+    That does not work, because :class:`DataWithTimestamp` needs an object of type :class:`MyDataClass`, but we're
+    giving it an object of type :class:`Step[MyDataClass]`. Instead, we change the last line to this:
+
+    .. testcode::
+
+        consume = ConsumeDataStep(
+            input_data = WithUnresolvedSteps(
+                DataWithTimestamp, (produce, time.now()))
+
+    :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until the :meth:`run()`
+    method runs. Tango will make sure that the results from the ``produce`` step are available at
+    that time, and replaces the step in the arguments with the step's results.
+    """
+
     def __init__(self, constructor, *args, **kwargs):
         self.constructor = constructor
         self.args = args
