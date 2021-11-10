@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- We no longer support Python 3.7
+
 ### Added
 
 - Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
