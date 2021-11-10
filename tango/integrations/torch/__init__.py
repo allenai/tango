@@ -81,10 +81,14 @@ You could then run this experiment with a config that looks like this:
     from tango.common.testing import run_experiment
     from tango.common.registrable import Registrable
 
-    # Don't cache results, otherwise we'll have a pickling error.
+    # Pickling the model fails because the class is defined ad hoc, not in a module.
+    # So we put in this hack to pickle a 0 instead of the Model.
+    def _return_zero(self):
+        return (int, (0,))
+    BasicRegression.__reduce__ = _return_zero
+
     with run_experiment(
-        "test_fixtures/integrations/torch/train.jsonnet",
-        overrides="{'steps.train.cache_results':false}"
+        "test_fixtures/integrations/torch/train.jsonnet"
     ) as run_dir:
         assert (run_dir / "step_cache").is_dir()
     # Restore state of registry.
@@ -100,12 +104,12 @@ For example,
 would produce the following output:
 
 .. testoutput::
+    :options: +ELLIPSIS
 
-    ● Starting run for "data"...
-    ✓ Finished run for "data"
     ● Starting run for "train"...
     Loading best weights from state_worker0_step100.pt
     ✓ Finished run for "train"
+    ✓ The output for "train" is in ...
 
 Tips
 ----
