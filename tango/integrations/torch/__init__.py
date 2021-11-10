@@ -106,6 +106,8 @@ would produce the following output:
 .. testoutput::
     :options: +ELLIPSIS
 
+    ● Starting run for "data"...
+    ✓ Finished run for "data"
     ● Starting run for "train"...
     Loading best weights from state_worker0_best.pt
     ✓ Finished run for "train"
