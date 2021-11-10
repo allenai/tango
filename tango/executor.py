@@ -7,7 +7,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import click
 
@@ -35,6 +35,7 @@ class Executor:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.step_cache = step_cache
         self.include_package = include_package
+        self._non_cacheable_results: Dict[Step, Any] = {}
 
     def execute_step_graph(self, step_graph: StepGraph) -> None:
         """
@@ -62,9 +63,31 @@ class Executor:
                     )
                     filename.unlink()
 
-            for step in step_graph.values():
-                if step.cache_results:
+            ordered_steps = step_graph.serialized()
+
+            # Determine which steps we actually need to run, i.e. steps that fall into one of the
+            # following two categories:
+            #  1. step should be cached but is not in cache
+            #  2. step is a dependency (direct or recursively) to another step that should be cached
+            #     but is not in the cache.
+            needed: Set[Step] = set()
+            for step in reversed(ordered_steps):
+                if (step.cache_results and step not in self.step_cache) or step in needed:
+                    needed.add(step)
+                    for dependency in step.dependencies:
+                        if dependency not in self.step_cache:
+                            needed.add(dependency)
+
+            # Now execute the needed steps.
+            for step in ordered_steps:
+                if step.cache_results or step in needed:
                     self.execute_step(step)
+                else:
+                    click.echo(
+                        click.style("! Skipping run for ", fg="yellow")
+                        + click.style(f'"{step.name}"', bold=True, fg="yellow")
+                        + click.style(" since it's not needed", fg="yellow")
+                    )
 
             # Symlink everything that has been computed.
             for step in step_graph.values():
@@ -86,6 +109,7 @@ class Executor:
         finally:
             # Release lock on directory.
             directory_lock.release()
+            self._non_cacheable_results.clear()
 
     def execute_step(self, step: Step, quiet: bool = False) -> None:
         """
@@ -96,6 +120,26 @@ class Executor:
 
         It can be used internally by subclasses in their :meth:`execute_step_group()` method.
         """
+        # Prepare directory and acquire lock.
+        run_dir = self.step_dir(step)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir_lock = FileLock(run_dir / ".lock", read_only_ok=True)
+        run_dir_lock.acquire_with_updates(desc="acquiring run dir lock...")
+
+        if step in self.step_cache:
+            if not quiet:
+                click.echo(
+                    click.style("\N{check mark} Found output for ", fg="green")
+                    + click.style(f'"{step.name}"', bold=True, fg="green")
+                    + click.style(" in cache", fg="green")
+                )
+            run_dir_lock.release()
+            return None
+
+        if step in self._non_cacheable_results:
+            run_dir_lock.release()
+            return None
+
         if not quiet:
             click.echo(
                 click.style("\N{black circle} Starting run for ", fg="blue")
@@ -117,15 +161,17 @@ class Executor:
             step=step.unique_id, config=replace_steps_with_unique_id(step.config)
         )
 
-        # Prepare directory and acquire lock.
-        run_dir = self.step_dir(step)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        run_dir_lock = FileLock(run_dir / ".lock", read_only_ok=True)
-        run_dir_lock.acquire_with_updates(desc="acquiring run dir lock...")
-
         try:
             # Run the step.
-            step.ensure_result(self.step_cache)
+            if step.cache_results:
+                step.ensure_result(
+                    self.step_cache, non_cacheable_results=self._non_cacheable_results
+                )
+            else:
+                result = step.result(
+                    self.step_cache, non_cacheable_results=self._non_cacheable_results
+                )
+                self._non_cacheable_results[step] = result
 
             # Finalize metadata and save to run directory.
             metadata.save(run_dir)
