@@ -65,7 +65,7 @@ class DetHashWithVersion(CustomDetHash):
 
 class _DetHashPickler(dill.Pickler):
     def __init__(self, buffer: io.BytesIO):
-        super().__init__(buffer)
+        super().__init__(buffer, protocol=5)
 
         # We keep track of how deeply we are nesting the pickling of an object.
         # If a class returns `self` as part of `det_hash_object()`, it causes an
