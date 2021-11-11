@@ -1,8 +1,12 @@
+import logging
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 from typing import Tuple
 
 from tango.workspace import Workspace
+
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceRequestHandler(BaseHTTPRequestHandler):
@@ -16,6 +20,10 @@ class WorkspaceServer(ThreadingHTTPServer):
     def __init__(self, address: Tuple[str, int], workspace: Workspace):
         super().__init__(address, WorkspaceRequestHandler)
         self.workspace = workspace
+
+    def serve_forever(self, poll_interval: float = 0.5) -> None:
+        logger.info("Server started at %s:%d" % self.server_address)
+        super().serve_forever(poll_interval)
 
     def serve_in_background(self):
         thread = Thread(target=self.serve_forever, name="WebServer", daemon=True)

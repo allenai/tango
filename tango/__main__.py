@@ -59,7 +59,6 @@ The ``info`` command just prints out some useful information about the current t
 such as which integrations are available.
 
 """
-import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -246,6 +245,28 @@ def run(
     help_headers_color="yellow",
     context_settings={"max_content_width": 115},
 )
+@click.option(
+    "-d",
+    "--workspace-dir",
+    type=click.Path(file_okay=False),
+    help="""The directory of the workspace to monitor.""",
+)
+def server(workspace_dir: Union[str, os.PathLike]):
+    from tango.local_workspace import LocalWorkspace
+    from tango.workspace_server import WorkspaceServer
+
+    workspace_dir = Path(workspace_dir)
+    workspace = LocalWorkspace(workspace_dir)
+    server = WorkspaceServer.on_free_port(workspace)
+    server.serve_forever()
+
+
+@main.command(
+    cls=HelpColorsCommand,
+    help_options_color="green",
+    help_headers_color="yellow",
+    context_settings={"max_content_width": 115},
+)
 @click.pass_obj
 def info(config: TangoGlobalSettings):
     """
@@ -330,7 +351,6 @@ def _run(
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
     server = WorkspaceServer.on_free_port(workspace)
     server.serve_in_background()
-    logging.info("Server started at %s:%d" % server.server_address)
 
     executor = Executor(
         workspace=workspace,
