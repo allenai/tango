@@ -67,7 +67,7 @@ class Executor:
 
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
-            # Determine which steps we actually need to run, i.e. steps that fall into one of the
+            # Execute all steps that need to run, i.e. steps that fall into one of the
             # following two categories:
             #  1. step should be cached but is not in cache
             #  2. step is a dependency (direct or recursively) to another step that should be cached
