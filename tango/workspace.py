@@ -7,7 +7,7 @@ from typing import Optional, Dict, Set, TypeVar, Iterator, Iterable
 
 import petname
 
-import step_cache
+from tango import step_cache
 from tango.step_cache import StepCache
 from tango.step import Step
 from tango.common import Registrable
@@ -56,8 +56,8 @@ class Workspace(Registrable):
     # do that.
     #
 
-    @abstractmethod
     @property
+    @abstractmethod
     def step_cache(self) -> StepCache:
         raise NotImplementedError()
 
@@ -80,7 +80,7 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def step_started(self, step: Step) -> None:
+    def step_starting(self, step: Step) -> None:
         raise NotImplementedError()
 
     @abstractmethod
@@ -134,7 +134,7 @@ class MemoryWorkspace(Workspace):
         else:
             return (info for info in self.steps_to_info.values() if info.end_time is None)
 
-    def step_started(self, step: Step) -> None:
+    def step_starting(self, step: Step) -> None:
         self.steps_to_info[step] = StepInfo(
             step.unique_id,
             step.name if step.name != step.unique_id else None,

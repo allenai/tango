@@ -272,7 +272,7 @@ class Step(Registrable, Generic[T]):
         """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, workspace: Workspace, **kwargs) -> T:
+    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
@@ -283,7 +283,14 @@ class Step(Registrable, Generic[T]):
 
         self.work_dir_for_run = workspace.work_dir(self)
         try:
-            return self.run(**kwargs)
+            workspace.step_starting(self)
+            try:
+                result = self.run(**kwargs)
+                result = workspace.step_finished(self, result)
+                return result
+            except Exception as e:
+                workspace.step_failed(self, e)
+                raise
         finally:
             # No cleanup, as we want to keep the directory for restarts or serialization.
             self.work_dir_for_run = None
@@ -355,7 +362,7 @@ class Step(Registrable, Generic[T]):
             return False
 
     @classmethod
-    def _replace_steps_with_results(cls, o: Any, workspace: Workspace):
+    def _replace_steps_with_results(cls, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
             return o.result(workspace)
         if isinstance(o, WithUnresolvedSteps):
@@ -369,7 +376,7 @@ class Step(Registrable, Generic[T]):
         else:
             return o
 
-    def result(self, workspace: Optional[Workspace] = None) -> T:
+    def result(self, workspace: Optional["Workspace"] = None) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there.
 
@@ -382,17 +389,9 @@ class Step(Registrable, Generic[T]):
             return workspace.step_cache[self]
 
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-        workspace.step_started(self)
-        try:
-            result = self._run_with_work_dir(workspace, **kwargs)
-            result = workspace.step_finished(self, result)
-        except Exception as e:
-            workspace.step_failed(self, e)
-            raise
+        return self._run_with_work_dir(workspace, **kwargs)
 
-        return result
-
-    def ensure_result(self, workspace: Optional[Workspace] = None) -> None:
+    def ensure_result(self, workspace: Optional["Workspace"] = None) -> None:
         """This makes sure that the result of this step is in the cache. It does
         not return the result."""
         if not self.cache_results:
@@ -400,21 +399,7 @@ class Step(Registrable, Generic[T]):
                 "It does not make sense to call ensure_result() on a step that's not cacheable."
             )
 
-        if workspace is None:
-            from tango.workspace import default_workspace
-
-            workspace = default_workspace
-        if self in workspace.step_cache:
-            return
-
-        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-        workspace.step_started(self)
-        try:
-            result = self._run_with_work_dir(workspace, **kwargs)
-            workspace.step_finished(self, result)
-        except Exception as e:
-            workspace.step_failed(self, e)
-            raise
+        self.result(workspace)
 
     def _ordered_dependencies(self) -> Iterable["Step"]:
         def dependencies_internal(o: Any) -> Iterable[Step]:
@@ -525,7 +510,7 @@ class WithUnresolvedSteps(CustomDetHash):
         self.kwargs = kwargs
 
     @classmethod
-    def with_resolved_steps(cls, o: Any, workspace: Workspace):
+    def with_resolved_steps(cls, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
             return o.result(workspace)
         elif isinstance(o, str):
@@ -539,7 +524,7 @@ class WithUnresolvedSteps(CustomDetHash):
         else:
             return o
 
-    def construct(self, workspace: Workspace):
+    def construct(self, workspace: "Workspace"):
         resolved_args = self.with_resolved_steps(self.args, workspace)
         resolved_kwargs = self.with_resolved_steps(self.kwargs, workspace)
         return self.constructor(*resolved_args, **resolved_kwargs)

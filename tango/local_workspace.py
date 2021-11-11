@@ -248,9 +248,11 @@ class LocalWorkspace(Workspace):
             return dill.dump(step_info, f)
 
     def _step_lock_file(self, step: Step) -> Path:
-        return self.step_dir(step) / "lock"
+        step_dir = self.step_dir(step)
+        step_dir.mkdir(parents=True, exist_ok=True)
+        return step_dir / "lock"
 
-    def step_started(self, step: Step) -> None:
+    def step_starting(self, step: Step) -> None:
         lock = FileLock(self._step_lock_file(step), read_only_ok=True)
         lock.acquire_with_updates(desc=f"acquiring lock for {step.name}")
         self.locks[step] = lock
@@ -357,3 +359,6 @@ class LocalWorkspace(Workspace):
             assert isinstance(step_info, StepInfo)
             steps_for_run[step_name] = step_info
         return steps_for_run
+
+    def run_dir(self, name: str) -> Path:
+        return self.runs_dir / name

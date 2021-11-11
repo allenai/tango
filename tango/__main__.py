@@ -295,7 +295,7 @@ def _run(
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-):
+) -> Path:
     from tango.executor import Executor
     from tango.step_graph import StepGraph
     from tango.local_workspace import LocalWorkspace
@@ -337,8 +337,9 @@ def _run(
         include_package=include_package,
     )
 
-    # Now executor the step graph.
-    executor.execute_step_graph(step_graph)
+    # Now execute the step graph.
+    run_name = executor.execute_step_graph(step_graph)
+    return workspace.run_dir(run_name)
 
 
 if __name__ == "__main__":

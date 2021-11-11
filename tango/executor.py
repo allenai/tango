@@ -20,7 +20,7 @@ class Executor:
         self.workspace = workspace
         self.include_package = include_package
 
-    def execute_step_graph(self, step_graph: StepGraph) -> None:
+    def execute_step_graph(self, step_graph: StepGraph) -> str:
         """
         Execute an entire :class:`tango.step_graph.StepGraph`.
         """
@@ -29,7 +29,7 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        self.workspace.register_run(step_graph.values())
+        run_name = self.workspace.register_run(step_graph.values())
 
         for step in step_graph.values():
             if step.cache_results:
@@ -45,6 +45,8 @@ class Executor:
                     + click.style(" is in ", fg="green")
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
+
+        return run_name
 
     def execute_step(self, step: Step, quiet: bool = False) -> None:
         if not quiet:
