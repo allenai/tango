@@ -89,8 +89,6 @@ class StepGraph(Mapping[str, Step]):
                         f"Task {step.name} is set to cache results, but depends on non-deterministic "
                         f"step {nd_step.name}. This will produce confusing results."
                     )
-                    # We show this warning only once.
-                    break
 
     @classmethod
     def _find_step_dependencies(cls, o: Any) -> Set[str]:

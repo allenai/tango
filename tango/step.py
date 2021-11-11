@@ -279,9 +279,6 @@ class Step(Registrable, Generic[T]):
 
         logger.info("Starting run for step %s of type %s", self.name, self.__class__.__name__)
 
-        if self.DETERMINISTIC:
-            random.seed(784507111)
-
         step_dir = cache.step_dir(self)
         self.work_dir_for_run = step_dir / "work"
         try:
