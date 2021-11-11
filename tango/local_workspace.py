@@ -334,7 +334,7 @@ class LocalWorkspace(Workspace):
 
         # write targets
         for target in targets:
-            (run_dir / target.name).symlink_to(self.step_dir(target))
+            (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
 
         return name
 
