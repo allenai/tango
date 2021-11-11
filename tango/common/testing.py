@@ -75,11 +75,11 @@ class TangoTestCase:
 
             overrides = json.dumps(overrides)
 
-        run_dir = self.TEST_DIR / "run"
+        run_dir = self.TEST_DIR / "workspace"
         _run(
             TangoGlobalSettings(),
             str(config),
-            directory=str(run_dir),
+            workspace_dir=str(run_dir),
             overrides=overrides,
             include_package=include_package,
         )

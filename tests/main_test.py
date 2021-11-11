@@ -3,7 +3,7 @@ import subprocess
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
-from tango.executor import ExecutorMetadata
+from tango.local_workspace import ExecutorMetadata
 from tango.version import VERSION
 
 

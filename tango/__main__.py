@@ -59,7 +59,7 @@ The ``info`` command just prints out some useful information about the current t
 such as which integrations are available.
 
 """
-
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -198,9 +198,9 @@ def main(
 )
 @click.option(
     "-d",
-    "--directory",
+    "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""The directory in which to save the results of each step. If not specified,
+    help="""The directory of the workspace in which to work. If not specified,
     a named temporary directory will be created.""",
     default=None,
 )
@@ -222,7 +222,7 @@ def main(
 def run(
     config: TangoGlobalSettings,
     experiment: str,
-    directory: Optional[Union[str, os.PathLike]] = None,
+    workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
 ):
@@ -234,7 +234,7 @@ def run(
     _run(
         config,
         experiment,
-        directory=directory,
+        workspace_dir=workspace_dir,
         overrides=overrides,
         include_package=include_package,
     )
@@ -292,13 +292,14 @@ def info(config: TangoGlobalSettings):
 def _run(
     config: TangoGlobalSettings,
     experiment: str,
-    directory: Optional[Union[str, os.PathLike]] = None,
+    workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
 ):
     from tango.executor import Executor
-    from tango.step_cache import StepCache
     from tango.step_graph import StepGraph
+    from tango.local_workspace import LocalWorkspace
+    from tango.workspace_server import WorkspaceServer
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -314,24 +315,25 @@ def _run(
         import_extra_module(package_name)
 
     # Prepare directory.
-    if directory is None:
+    if workspace_dir is None:
         from tempfile import mkdtemp
 
-        directory = mkdtemp(prefix="tango-")
+        workspace_dir = mkdtemp(prefix="tango-")
         click.echo(
-            "Creating temporary directory for run: " + click.style(f"{directory}", fg="yellow")
+            "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
+    workspace_dir = Path(workspace_dir)
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+    workspace = LocalWorkspace(workspace_dir)  # TODO: make this configurable
 
-    # Initialize step graph, cache, and executor.
+    # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    step_cache = StepCache.from_params(
-        params.pop("cache", default={}), dir=directory / "step_cache"
-    )
+    server = WorkspaceServer.on_free_port(workspace)
+    server.serve_in_background()
+    logging.info("Server started at %s:%d" % server.server_address)
+
     executor = Executor(
-        dir=directory,
-        step_cache=step_cache,
+        workspace=workspace,
         include_package=include_package,
     )
 
