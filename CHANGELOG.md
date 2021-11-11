@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
   distributed workers, but only called every `log_every` steps.
 
+### Changed
+
+- W&B `torch::TrainCallback` logs with `step=step+1` now so that training curves in the W&B dashboard
+  match up with checkpoints saved locally and are easier to read (e.g. step 10000 instead of 9999).
+
 ### Removed
 
 - Removed `.pre_log_batch()` method on `torch::TrainCallback`.
