@@ -74,9 +74,14 @@ jobs:
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
           - name: PyTorch Lightning integration
-            extras: dev,pytorch_lightning
+            extras: dev,torch,pytorch_lightning
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
+
+          - name: DeepSpeed integration
+            extras: dev,torch,deepspeed
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/deepspeed tests/integrations/deepspeed
 
           - name: GPT2 example
             extras: dev,examples,datasets,torch

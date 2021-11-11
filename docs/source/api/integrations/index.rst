@@ -9,5 +9,6 @@ Integrations
 
    torch
    datasets
+   deepspeed
    wandb
    pytorch_lightning
