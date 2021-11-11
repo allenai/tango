@@ -7,7 +7,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, TypeVar
 
 import click
 
@@ -23,6 +23,9 @@ from tango.version import VERSION
 logger = logging.getLogger(__name__)
 
 
+T = TypeVar("T")
+
+
 class Executor:
     """
     An ``Executor`` is a class that is responsible for running steps and caching their results.
@@ -35,11 +38,10 @@ class Executor:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.step_cache = step_cache
         self.include_package = include_package
-        self._non_cacheable_results: Dict[Step, Any] = {}
 
     def execute_step_graph(self, step_graph: StepGraph) -> None:
         """
-        Execute an entire :class:`tango.step_graph.StepGraph`.
+        Execute a :class:`tango.step_graph.StepGraph`.
         """
         # Import included packages to find registered components.
         if self.include_package is not None:
@@ -63,34 +65,19 @@ class Executor:
                     )
                     filename.unlink()
 
-            ordered_steps = step_graph.serialized()
+            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
             # Determine which steps we actually need to run, i.e. steps that fall into one of the
             # following two categories:
             #  1. step should be cached but is not in cache
             #  2. step is a dependency (direct or recursively) to another step that should be cached
             #     but is not in the cache.
-            needed: Set[Step] = set()
-            for step in reversed(ordered_steps):
-                if (step.cache_results and step not in self.step_cache) or step in needed:
-                    needed.add(step)
-                    for dependency in step.dependencies:
-                        if dependency not in self.step_cache:
-                            needed.add(dependency)
-
-            # Now execute the needed steps.
             for step in ordered_steps:
-                if step.cache_results or step in needed:
-                    self.execute_step(step)
-                else:
-                    click.echo(
-                        click.style("! Skipping run for ", fg="yellow")
-                        + click.style(f'"{step.name}"', bold=True, fg="yellow")
-                        + click.style(" since it's not needed", fg="yellow")
-                    )
+                if step.cache_results:
+                    self.execute_step_with_dependencies(step)
 
             # Symlink everything that has been computed.
-            for step in step_graph.values():
+            for step in ordered_steps:
                 name = step.name
                 if step in self.step_cache:
                     step_link = self.dir / name
@@ -109,16 +96,32 @@ class Executor:
         finally:
             # Release lock on directory.
             directory_lock.release()
-            self._non_cacheable_results.clear()
 
-    def execute_step(self, step: Step, quiet: bool = False) -> None:
+    def execute_step_with_dependencies(
+        self, step: Step[T], needed_by: Optional[Step] = None
+    ) -> Optional[T]:
         """
-        This method is provided for convenience. It is a robust way to run a step
-        that will acquire a lock on the step's run directory and ensure :class:`ExecutorMetadata`
-        is saved after the run to a file named ``executor-metadata.json`` in the step's
-        run directory.
+        Runs a step and all of it's dependencies.
+        """
+        if step not in self.step_cache:
+            # We'll keep track of the results for dependencies that can't be
+            # added to the step cache in this dictionary (kind of like a temporary
+            # in-memory step cache) and then inject them into the step's kwargs
+            # before running.
+            non_cacheable_dependencies: Dict[Step, Any] = {}
+            for dependency in step.dependencies:
+                maybe_result = self.execute_step_with_dependencies(dependency, needed_by=step)
+                if not dependency.cache_results:
+                    non_cacheable_dependencies[dependency] = maybe_result
+            step._inject_dependencies(non_cacheable_dependencies)
+        return self.execute_step(step, needed_by=needed_by)
 
-        It can be used internally by subclasses in their :meth:`execute_step_group()` method.
+    def execute_step(
+        self, step: Step[T], quiet: bool = False, needed_by: Optional[Step] = None
+    ) -> Optional[T]:
+        """
+        Execute a step. Assumes all step dependencies have already been resolved.
+        If the step is not cacheable, this will return the result of the step.
         """
         # Prepare directory and acquire lock.
         run_dir = self.step_dir(step)
@@ -131,19 +134,23 @@ class Executor:
                 click.echo(
                     click.style("\N{check mark} Found output for ", fg="green")
                     + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(" in cache", fg="green")
+                    + click.style(
+                        " in cache" + ""
+                        if needed_by is None
+                        else f' (needed by "{needed_by.name}")',
+                        fg="green",
+                    )
                 )
-            run_dir_lock.release()
-            return None
-
-        if step in self._non_cacheable_results:
             run_dir_lock.release()
             return None
 
         if not quiet:
             click.echo(
                 click.style("\N{black circle} Starting run for ", fg="blue")
-                + click.style(f'"{step.name}"...', bold=True, fg="blue")
+                + click.style(f'"{step.name}"', bold=True, fg="blue")
+                + click.style(
+                    "..." if needed_by is None else f' (needed by "{needed_by.name}")...', fg="blue"
+                )
             )
 
         # Initialize metadata.
@@ -161,17 +168,13 @@ class Executor:
             step=step.unique_id, config=replace_steps_with_unique_id(step.config)
         )
 
+        maybe_result: Optional[T] = None
         try:
             # Run the step.
             if step.cache_results:
-                step.ensure_result(
-                    self.step_cache, non_cacheable_results=self._non_cacheable_results
-                )
+                step.ensure_result(self.step_cache)
             else:
-                result = step.result(
-                    self.step_cache, non_cacheable_results=self._non_cacheable_results
-                )
-                self._non_cacheable_results[step] = result
+                maybe_result = step.result(self.step_cache)
 
             # Finalize metadata and save to run directory.
             metadata.save(run_dir)
@@ -184,6 +187,8 @@ class Executor:
                 click.style("\N{check mark} Finished run for ", fg="green")
                 + click.style(f'"{step.name}"', bold=True, fg="green")
             )
+
+        return maybe_result
 
     def step_dir(self, step: Step) -> Path:
         """

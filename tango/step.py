@@ -358,37 +358,45 @@ class Step(Registrable, Generic[T]):
             return False
 
     @classmethod
-    def _replace_steps_with_results(
-        cls, o: Any, cache: "StepCache", non_cacheable_results: Optional[Dict["Step", Any]] = None
-    ):
+    def _replace_steps_with_results(cls, o: Any, cache: "StepCache"):
         if isinstance(o, Step):
-            return o.result(cache, non_cacheable_results)
-        if isinstance(o, WithUnresolvedSteps):
-            return o.construct(cache, non_cacheable_results)
-        if isinstance(o, (list, tuple, set)):
-            return o.__class__(
-                cls._replace_steps_with_results(i, cache, non_cacheable_results) for i in o
-            )
+            return o.result(cache)
+        elif isinstance(o, WithUnresolvedSteps):
+            return o.construct(cache)
+        elif isinstance(o, (list, tuple, set)):
+            return o.__class__(cls._replace_steps_with_results(i, cache) for i in o)
         elif isinstance(o, dict):
-            return {
-                key: cls._replace_steps_with_results(value, cache, non_cacheable_results)
-                for key, value in o.items()
-            }
+            return {key: cls._replace_steps_with_results(value, cache) for key, value in o.items()}
         else:
             return o
+
+    def _inject_dependencies(self, dependencies: Dict["Step", Any]):
+        def inject_dependencies(o: Any, dependencies: Dict[Step, Any]):
+            if isinstance(o, Step) and o in dependencies:
+                return dependencies[o]
+            elif isinstance(o, WithUnresolvedSteps):
+                o.args = inject_dependencies(o.args, dependencies)
+                o.kwargs = inject_dependencies(o.kwargs, dependencies)
+                return o
+            elif isinstance(o, (dict, Params)):
+                return o.__class__(
+                    {key: inject_dependencies(value, dependencies) for key, value in o.items()}
+                )
+            elif isinstance(o, (list, tuple, set)):
+                return o.__class__(inject_dependencies(i, dependencies) for i in o)
+            else:
+                return o
+
+        self.kwargs = inject_dependencies(self.kwargs, dependencies)
 
     def result(
         self,
         cache: Optional["StepCache"] = None,
-        non_cacheable_results: Optional[Dict["Step", Any]] = None,
     ) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there.
 
         If necessary, this method will first produce the results of all steps it depends on."""
-        if non_cacheable_results and self in non_cacheable_results:
-            return non_cacheable_results[self]
-
         if cache is None:
             from tango.step_cache import default_step_cache
 
@@ -396,7 +404,7 @@ class Step(Registrable, Generic[T]):
         if self in cache:
             return cache[self]
 
-        kwargs = self._replace_steps_with_results(self.kwargs, cache, non_cacheable_results)
+        kwargs = self._replace_steps_with_results(self.kwargs, cache)
         result = self._run_with_work_dir(cache, **kwargs)
         if self.cache_results:
             cache[self] = result
@@ -410,7 +418,6 @@ class Step(Registrable, Generic[T]):
     def ensure_result(
         self,
         cache: Optional["StepCache"] = None,
-        non_cacheable_results: Optional[Dict["Step", Any]] = None,
     ) -> None:
         """This makes sure that the result of this step is in the cache. It does
         not return the result."""
@@ -426,7 +433,7 @@ class Step(Registrable, Generic[T]):
         if self in cache:
             return
 
-        kwargs = self._replace_steps_with_results(self.kwargs, cache, non_cacheable_results)
+        kwargs = self._replace_steps_with_results(self.kwargs, cache)
         result = self._run_with_work_dir(cache, **kwargs)
         cache[self] = result
 
@@ -547,33 +554,23 @@ class WithUnresolvedSteps(CustomDetHash):
         cls,
         o: Any,
         step_cache: "StepCache",
-        non_cacheable_results: Optional[Dict[Step, Any]] = None,
     ):
         if isinstance(o, Step):
-            return o.result(step_cache, non_cacheable_results)
+            return o.result(step_cache)
         elif isinstance(o, cls):
-            return o.construct(step_cache, non_cacheable_results)
-        elif isinstance(o, str):
-            return o  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-        elif isinstance(o, dict) or isinstance(o, Params):
+            return o.construct(step_cache)
+        elif isinstance(o, (dict, Params)):
             return o.__class__(
-                {
-                    key: cls.with_resolved_steps(value, step_cache, non_cacheable_results)
-                    for key, value in o.items()
-                }
+                {key: cls.with_resolved_steps(value, step_cache) for key, value in o.items()}
             )
         elif isinstance(o, (list, tuple, set)):
-            return o.__class__(
-                cls.with_resolved_steps(item, step_cache, non_cacheable_results) for item in o
-            )
+            return o.__class__(cls.with_resolved_steps(item, step_cache) for item in o)
         else:
             return o
 
-    def construct(
-        self, step_cache: "StepCache", non_cacheable_results: Optional[Dict[Step, Any]] = None
-    ):
-        resolved_args = self.with_resolved_steps(self.args, step_cache, non_cacheable_results)
-        resolved_kwargs = self.with_resolved_steps(self.kwargs, step_cache, non_cacheable_results)
+    def construct(self, step_cache: "StepCache"):
+        resolved_args = self.with_resolved_steps(self.args, step_cache)
+        resolved_kwargs = self.with_resolved_steps(self.kwargs, step_cache)
         return self.constructor(*resolved_args, **resolved_kwargs)
 
     def det_hash_object(self) -> Any:
