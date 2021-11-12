@@ -2,8 +2,8 @@
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
 
-let data;
-let graphviz;
+// keep track of open nodes across iterations
+const state = { data: {}, graphviz: undefined, openMap: {} };
 
 const states = {
   COMPLETED: "completed",
@@ -205,8 +205,10 @@ startApp = () => {
     event.stopPropagation();
     if (event.which == 1) {
       var id = d3.select(this).attr("id").split(";")[1];
-      data[id].open = !data[id].open;
-      render(data);
+      state.data[id].open = !state.data[id].open;
+      // keep track of open nodes across iterations
+      state.openMap[id] = !state.openMap[id];
+      render(state.data);
     }
   });
 
@@ -234,35 +236,43 @@ const render = (d) => {
           concentrate=True;
           rankdir=TB;
 
-          ${convert(d || data)}
+          ${convert(d || state.data)}
         }
         `;
 
-  graphviz
+  state.graphviz
     .zoomScaleExtent([0.2, 1])
     .addImage("/report/open.svg", "32px", "32px")
     .addImage("/report/close.svg", "32px", "32px")
     .renderDot(digraph, startApp);
 };
 
-// TODO: we need to reload every few seconds (and keep local open node state)
-fetch("/api/steps", {
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-})
-  .then((res) => res.json())
-  .then((out) => {
-    data = out[Object.keys(out)[0]];
-    graphviz = d3
-      .select("#chart")
-      .graphviz()
-      .on("initEnd", render)
-      .transition(() => {
-        return d3.transition().duration(750);
-      });
+// reload every second (and keep local open node state)
+setInterval(function () {
+  fetch("/api/steps", {
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
   })
-  .catch((err) => {
-    throw err;
+    .then((res) => res.json())
+    .then((out) => {
+      state.data = out[Object.keys(out)[0]];
+      // reopen nodes that were open from last iteration
+      Object.values(state.data).forEach(
+        (d) => (d.open = state.openMap[d.unique_id])
+      );
+      render(state.data);
+    })
+    .catch((err) => {
+      throw err;
+    });
+}, 1000);
+
+state.graphviz = d3
+  .select("#chart")
+  .graphviz()
+  .on("initEnd", render)
+  .transition(() => {
+    return d3.transition().duration(750);
   });
