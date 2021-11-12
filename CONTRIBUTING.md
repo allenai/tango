@@ -67,7 +67,18 @@ When you're ready to contribute code to address an open issue, please follow the
         upstream https://github.com/allenai/tango.git (fetch)
         upstream https://github.com/allenai/tango.git (push)
 
-    Finally, you'll need to create a Python 3 virtual environment suitable for working on this project. There a number of tools out there that making working with virtual environments easier, but the most direct way is with the [`venv` module](https://docs.python.org/3.7/library/venv.html) in the standard library.
+    Finally, you'll need to create a Python 3 virtual environment suitable for working on this project. There a number of tools out there that making working with virtual environments easier.
+    The most direct way is with the [`venv` module](https://docs.python.org/3.7/library/venv.html) in the standard library, but if you're new to Python or you don't already have a recent Python 3 version installed on your machine,
+    we recommend [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+    On Mac, for example, you can install Miniconda with [Homebrew](https://brew.sh/):
+
+        brew install miniconda
+
+    Then you can create and activate a new Python environment by running:
+
+        conda create -n tango python=3.9
+        conda activate tango
 
     Once your virtual environment is activated, you can install your local clone in "editable mode" with
 
@@ -76,21 +87,11 @@ When you're ready to contribute code to address an open issue, please follow the
 
     The "editable mode" comes from the `-e` argument to `pip`, and essential just creates a symbolic link from the site-packages directory of your virtual environment to the source code in your local clone. That way any changes you make will be immediately reflected in your virtual environment.
 
+    To test your installation, just run
+
+        tango info
+
     </details>
-
-    **Steps for setting up a conda env for tango:**
-
-    ```bash
-    brew install miniconda
-    conda create -n tango python=3.9
-    conda activate tango
-    conda install pytorch torchvision torchaudio -c pytorch
-    pip install -r requirements.txt
-    # Then you can run a sample tango
-    tango run -d runs test_fixtures/experiment/hello_world.jsonnet --include-package test_fixtures.package.steps
-    # A HTML report is serves while the tango runs, but you can also explicitly run the report via
-    tango server -d runs
-    ```
 
 2. **Ensure your fork is up-to-date**
 
