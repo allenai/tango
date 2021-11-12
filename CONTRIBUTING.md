@@ -38,36 +38,47 @@ When you're ready to contribute code to address an open issue, please follow the
     <details><summary>Expand details 👇</summary><br/>
 
     If you haven't already done so, please [fork](https://help.github.com/en/enterprise/2.13/user/articles/fork-a-repo) this repository on GitHub.
-    
+
     Then clone your fork locally with
-    
+
         git clone https://github.com/USERNAME/tango.git
-    
+
     or 
-    
+
         git clone git@github.com:USERNAME/tango.git
-    
+
     At this point the local clone of your fork only knows that it came from *your* repo, github.com/USERNAME/tango.git, but doesn't know anything the *main* repo, [https://github.com/allenai/tango.git](https://github.com/allenai/tango). You can see this by running
-    
+
         git remote -v
-    
+
     which will output something like this:
-    
+
         origin https://github.com/USERNAME/tango.git (fetch)
         origin https://github.com/USERNAME/tango.git (push)
-    
+
     This means that your local clone can only track changes from your fork, but not from the main repo, and so you won't be able to keep your fork up-to-date with the main repo over time. Therefore you'll need to add another "remote" to your clone that points to [https://github.com/allenai/tango.git](https://github.com/allenai/tango). To do this, run the following:
-    
+
         git remote add upstream https://github.com/allenai/tango.git
-    
+
     Now if you do `git remote -v` again, you'll see
-    
+
         origin https://github.com/USERNAME/tango.git (fetch)
         origin https://github.com/USERNAME/tango.git (push)
         upstream https://github.com/allenai/tango.git (fetch)
         upstream https://github.com/allenai/tango.git (push)
 
-    Finally, you'll need to create a Python 3 virtual environment suitable for working on this project. There a number of tools out there that making working with virtual environments easier, but the most direct way is with the [`venv` module](https://docs.python.org/3.7/library/venv.html) in the standard library.
+    Finally, you'll need to create a Python 3 virtual environment suitable for working on this project. There a number of tools out there that making working with virtual environments easier.
+    The most direct way is with the [`venv` module](https://docs.python.org/3.7/library/venv.html) in the standard library, but if you're new to Python or you don't already have a recent Python 3 version installed on your machine,
+    the easiest method is to use [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+    On Mac, for example, you can install Miniconda with [Homebrew](https://brew.sh/):
+
+        brew install miniconda
+
+    Then you can create and activate a new Python virtual environment by running:
+
+        conda create -n tango python=3.9
+        conda activate tango
 
     Once your virtual environment is activated, you can install your local clone in "editable mode" with
 
@@ -76,6 +87,10 @@ When you're ready to contribute code to address an open issue, please follow the
 
     The "editable mode" comes from the `-e` argument to `pip`, and essential just creates a symbolic link from the site-packages directory of your virtual environment to the source code in your local clone. That way any changes you make will be immediately reflected in your virtual environment.
 
+    To test your installation, just run
+
+        tango info
+
     </details>
 
 2. **Ensure your fork is up-to-date**
@@ -83,7 +98,7 @@ When you're ready to contribute code to address an open issue, please follow the
     <details><summary>Expand details 👇</summary><br/>
 
     Once you've added an "upstream" remote pointing to [https://github.com/allenai/tango.git](https://github.com/allenai/tango), keeping your fork up-to-date is easy:
-    
+
         git checkout main  # if not already on main
         git pull --rebase upstream main
         git push
@@ -95,9 +110,9 @@ When you're ready to contribute code to address an open issue, please follow the
     <details><summary>Expand details 👇</summary><br/>
 
     Commiting directly to the main branch of your fork is not recommended. It will be easier to keep your fork clean if you work on a seperate branch for each contribution you intend to make.
-    
+
     You can create a new branch with
-    
+
         # replace BRANCH with whatever name you want to give it
         git checkout -b BRANCH
         git push -u origin BRANCH
@@ -114,7 +129,7 @@ When you're ready to contribute code to address an open issue, please follow the
     Many IDEs support code formatters as plugins, so you may be able to setup isort and black to run automatically everytime you save.
     For example, [`black.vim`](https://github.com/psf/black/tree/master/plugin) will give you this functionality in Vim. But both `isort` and `black` are also easy to run directly from the command line.
     Just run this from the root of your clone:
-    
+
         isort .
         black .
 
