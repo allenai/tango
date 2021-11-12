@@ -8,6 +8,8 @@ an svg, so not all css makes sense.
   height: calc(100vh - 114px);
   margin: 0 auto;
   background: var(--palette-background-info);
+  background-image: url(/report/only_tango_trans.svg);
+  background-size: cover;
 }
 #chart svg {
   height: 100%;
@@ -22,4 +24,10 @@ image:hover {
 }
 .node:hover {
   filter: drop-shadow(5px 9px 4px rgba(0, 0, 0, 0.6));
+}
+.header-columns {
+  grid-template-columns: auto auto 1fr;
+}
+.logo {
+  height: 49px;
 }
