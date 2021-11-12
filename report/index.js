@@ -157,12 +157,16 @@ const getTable = (data) => {
           <tr>
             <td align="left" bgcolor="${colors.B10}" id="expando;${
     data.unique_id
-  }" href=" "><img src="${data.open ? "close.svg" : "open.svg"}" /></td>
+  }" href=" "><img src="${
+    data.open ? "/report/close.svg" : "/report/open.svg"
+  }" /></td>
             <td bgcolor="${colors.B10}" ><font point-size="16" color="${
     colors.N2
   }">${data.step_name}</font></td>
-        <td bgcolor="${colors.B10}"></td>
+        <td bgcolor="${colors.B10}">${"   "}</td>
           </tr>
+          <!-- Some extra space at the top -->
+          ${data.open ? `<tr><td>${" "}</td></tr>` : null}
           ${data.open ? formatStatus(data, true) : formatStatus(data)}
           ${data.open ? formatKey(data.unique_id) : null}
           ${data.open ? formatText("Type", data.step_class_name) : null}
@@ -170,8 +174,8 @@ const getTable = (data) => {
           ${data.open ? formatDateRange(data.start_time, data.end_time) : null}
           ${data.open ? formatLink("Results", data.result_location) : null}
           ${data.open ? formatText("Error", data.error) : null}
-          <!-- Some extra space at bottom -->
-          ${data.open ? `<tr><td> </td></tr>` : null}
+          <!-- Some extra space at the bottom -->
+          ${data.open ? `<tr><td>${" "}</td></tr>` : null}
         </table>
       >`;
   return ret;
@@ -236,8 +240,8 @@ const render = (d) => {
 
   graphviz
     .zoomScaleExtent([0.2, 1])
-    .addImage("open.svg", "32px", "32px")
-    .addImage("close.svg", "32px", "32px")
+    .addImage("/report/open.svg", "32px", "32px")
+    .addImage("/report/close.svg", "32px", "32px")
     .renderDot(digraph, startApp);
 };
 

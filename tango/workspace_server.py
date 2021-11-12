@@ -42,8 +42,6 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             output_json = json.dumps(output_data)
             self.wfile.write(output_json.encode('utf-8'))
             return;
-        else:
-            self.path = 'report' + self.path
         return SimpleHTTPRequestHandler.do_GET(self)
 
 class WorkspaceServer(ThreadingHTTPServer):
