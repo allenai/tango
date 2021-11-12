@@ -10,6 +10,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@allenai/varnish@3.0.5/shellac/shellac.min.css"
     />
+    <link rel="stylesheet" href="index.css" />
   </head>
 
   <body>
@@ -34,30 +35,6 @@
       </header>
       <div id="chart"></div>
     </div>
-
-    <!-- styling is not great, here we do some global css, but keep in mind that the actual viz is
-      an svg, so not all css makes sense -->
-    <style>
-      #chart {
-        max-width: var(--breakpoints-lg);
-        margin: 0 auto;
-        background: var(--palette-background-info);
-      }
-      #chart svg {
-        height: 100%;
-        width: 100%;
-      }
-      image:hover {
-        height: 44px;
-        transform: translate(0, -12px);
-      }
-      .node {
-        filter: drop-shadow(4px 8px 3px rgba(0, 0, 0, 0.5));
-      }
-      .node:hover {
-        filter: drop-shadow(5px 9px 4px rgba(0, 0, 0, 0.6));
-      }
-    </style>
 
     <!-- include any libs you need here -->
     <script src="https://unpkg.com/dayjs@1.10.7/dayjs.min.js"></script>
@@ -90,15 +67,14 @@
         B2: "#D5EAFE",
         B6: "#265ED4",
         B10: "#223367",
-
         G6: "#1EC28E",
-
+        G8: "#0A8F6B",
         N2: "#F8F9FA",
         N9: "#47515C",
-
         O8: "#FF9100",
-
         R6: "#F7605F",
+        R8: "#D63F3F",
+        white: "#FFFFFF",
       };
 
       // return the status in correct color and the duration if we have space
@@ -110,13 +86,13 @@
         let sep = " - after ";
         switch (data.status) {
           case states.COMPLETED:
-            color = colors.G6;
+            color = colors.G8;
             break;
           case states.FAILED:
-            color = colors.R6;
+            color = colors.R8;
             break;
           case states.RUNNING:
-          case states.RUNNING:
+          case states.INCOMPLETE:
             color = colors.O8;
             sep = " - so far ";
             break;
@@ -232,7 +208,7 @@
         let ret = `label=<
         <table cellspacing="0" cellpadding="2" border="0" color="${
           colors.B10
-        }" cellborder="0" bgcolor="${colors.B2}">
+        }" cellborder="0" bgcolor="${colors.white}">
           <tr>
             <td align="left" bgcolor="${colors.B10}" id="expando;${
           data.unique_id
@@ -249,6 +225,8 @@
           ${data.open ? formatDateRange(data.start_time, data.end_time) : null}
           ${data.open ? formatLink("Results", data.result_location) : null}
           ${data.open ? formatText("Error", data.error) : null}
+          <!-- Some extra space at bottom -->
+          ${data.open ? `<tr><td> </td></tr>` : null}
         </table>
       >`;
         return ret;

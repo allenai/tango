@@ -1,0 +1,24 @@
+/*
+styling is not great, here we do some global css, but keep in mind that the actual viz is
+an svg, so not all css makes sense.
+*/
+
+#chart {
+  max-width: var(--breakpoints-lg);
+  margin: 0 auto;
+  background: var(--palette-background-info);
+}
+#chart svg {
+  height: 100%;
+  width: 100%;
+}
+image:hover {
+  height: 44px;
+  transform: translate(0, -12px);
+}
+.node {
+  filter: drop-shadow(4px 8px 3px rgba(0, 0, 0, 0.5));
+}
+.node:hover {
+  filter: drop-shadow(5px 9px 4px rgba(0, 0, 0, 0.6));
+}
