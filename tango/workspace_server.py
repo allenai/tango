@@ -32,9 +32,7 @@ def serialize_step(step):
 
 class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        print(self.path)
-        referer = self.headers.get('Referer')
-        if referer is None:
+        if self.path == '/':
             self.path = 'report/index.html'
         elif self.path == '/api/steps':
             self.send_response(200)

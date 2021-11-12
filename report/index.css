@@ -5,6 +5,7 @@ an svg, so not all css makes sense.
 
 #chart {
   max-width: var(--breakpoints-lg);
+  height: calc(100vh - 114px);
   margin: 0 auto;
   background: var(--palette-background-info);
 }
