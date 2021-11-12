@@ -69,13 +69,13 @@ When you're ready to contribute code to address an open issue, please follow the
 
     Finally, you'll need to create a Python 3 virtual environment suitable for working on this project. There a number of tools out there that making working with virtual environments easier.
     The most direct way is with the [`venv` module](https://docs.python.org/3.7/library/venv.html) in the standard library, but if you're new to Python or you don't already have a recent Python 3 version installed on your machine,
-    the easiest method is to use [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+    we recommend [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
     On Mac, for example, you can install Miniconda with [Homebrew](https://brew.sh/):
 
         brew install miniconda
 
-    Then you can create and activate a new Python virtual environment by running:
+    Then you can create and activate a new Python environment by running:
 
         conda create -n tango python=3.9
         conda activate tango
