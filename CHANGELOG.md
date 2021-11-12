@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
+
 ### Added
 
 - Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
