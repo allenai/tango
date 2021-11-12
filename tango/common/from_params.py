@@ -17,6 +17,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_type_hints,
 )
 
 try:
@@ -144,11 +145,18 @@ def infer_method_params(
 
     has_kwargs = False
     var_positional_key = None
-    for param in parameters.values():
+    for param_name in parameters.keys():
+        param = parameters[param_name]
         if param.kind == param.VAR_KEYWORD:
             has_kwargs = True
         elif param.kind == param.VAR_POSITIONAL:
             var_positional_key = param.name
+        if isinstance(param.annotation, str):
+            # For Python < 3.10, if the module where this class was defined used
+            # `from __future__ import annotation`, the annotation will be a str,
+            # so we need to resolve it using `get_type_hints` from the typing module.
+            # See https://www.python.org/dev/peps/pep-0563/ for more info.
+            parameters[param_name] = param.replace(annotation=get_type_hints(method)[param_name])
 
     if var_positional_key:
         del parameters[var_positional_key]
