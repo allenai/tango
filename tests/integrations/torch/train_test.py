@@ -18,8 +18,16 @@ class TestTrainStep(TangoTestCase):
             overrides="" if with_validation else "{'steps.train.validation_split':null}",
         )
         assert (result_dir / "train" / "data.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker0.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker0_best.pt").is_file()
+        assert (result_dir / "train" / "work" / "weights.pt").is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_latest" / "worker0_model.pt"
+        ).is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_best" / "worker0_optimizer.pt"
+        ).is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_best" / "worker0_trainer.pt"
+        ).is_file()
 
     def test_train_distributed(self):
         result_dir = self.run(
@@ -27,7 +35,16 @@ class TestTrainStep(TangoTestCase):
             include_package=["test_fixtures.integrations.torch"],
         )
         assert (result_dir / "train" / "data.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker0.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker0_best.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker1.pt").is_file()
-        assert (result_dir / "train" / "work" / "state_worker1_best.pt").is_file()
+        assert (result_dir / "train" / "work" / "weights.pt").is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_latest" / "worker0_model.pt"
+        ).is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_best" / "worker0_model.pt"
+        ).is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_latest" / "worker1_model.pt"
+        ).is_file()
+        assert (
+            result_dir / "train" / "work" / "checkpoint_state_best" / "worker1_model.pt"
+        ).is_file()

@@ -100,11 +100,12 @@ For example,
 would produce the following output:
 
 .. testoutput::
+    :options: +ELLIPSIS
 
     ● Starting run for "data"...
     ✓ Finished run for "data"
     ● Starting run for "train"...
-    Loading best weights from state_worker0_best.pt
+    Loading best weights...
     ✓ Finished run for "train"
 
 Tips
@@ -128,6 +129,8 @@ needs to raise the :class:`StopEarly` exception.
 """
 
 __all__ = [
+    "Accelerator",
+    "DefaultAccelerator",
     "TorchFormat",
     "TorchTrainStep",
     "Optimizer",
@@ -143,6 +146,7 @@ __all__ = [
     "StopEarly",
 ]
 
+from .accelerator import Accelerator
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
 from .exceptions import StopEarly
 from .format import TorchFormat

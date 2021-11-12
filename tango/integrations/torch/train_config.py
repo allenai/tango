@@ -66,16 +66,6 @@ class TrainConfig:
     Controls the frequency of the validation loop.
     """
 
-    amp: bool = False
-    """
-    Whether automatic mixed precision is enabled.
-    """
-
-    max_grad_norm: Optional[float] = None
-    """
-    Max gradient norm. If set, gradients are clipped.
-    """
-
     is_distributed: bool = False
     """
     Whether or not the training job is distributed.
@@ -151,7 +141,7 @@ class TrainConfig:
         """
         The path to the latest state checkpoint file.
         """
-        return self.work_dir / f"state_worker{self.worker_id}.pt"
+        return self.work_dir / "checkpoint_state_latest"
 
     @property
     def best_state_path(self) -> Path:
@@ -159,10 +149,14 @@ class TrainConfig:
         The path to the best state checkpoint file according to the validation metric or training
         loss (if no validation split is given).
         """
-        return self.work_dir / f"state_worker{self.worker_id}_best.pt"
+        return self.work_dir / "checkpoint_state_best"
 
     def state_path_for_step(self, step: int) -> Path:
-        return self.work_dir / f"state_worker{self.worker_id}_step{step + 1}.pt"
+        return self.work_dir / f"checkpoint_state_step{step + 1}"
+
+    @property
+    def final_weights_path(self) -> Path:
+        return self.work_dir / "weights.pt"
 
     def should_log_this_step(self, step: int) -> bool:
         assert self.train_steps is not None

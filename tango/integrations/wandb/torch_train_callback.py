@@ -115,7 +115,7 @@ class WandbTrainCallback(TrainCallback):
             self.wandb.init(id=self._run_id, **self._wandb_kwargs)
 
             if self._watch_model:
-                self.wandb.watch(self.model)
+                self.wandb.watch(self.accelerator.model)
 
     @overrides
     def post_train_loop(self) -> None:
@@ -126,7 +126,10 @@ class WandbTrainCallback(TrainCallback):
     def log_batch(self, step: int, batch_loss: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
-                {"train/loss": batch_loss, "train/lr": self.optimizer.param_groups[0]["lr"]},
+                {
+                    "train/loss": batch_loss,
+                    "train/lr": self.accelerator.optimizer.param_groups[0]["lr"],
+                },
                 step=step + 1,
             )
 

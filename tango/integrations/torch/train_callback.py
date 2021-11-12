@@ -6,10 +6,9 @@ from overrides import overrides
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
+from .accelerator import Accelerator
 from .data import DataLoader
 from .exceptions import StopEarly
-from .model import Model
-from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
 
 
@@ -42,20 +41,16 @@ class TrainCallback(Registrable):
     def __init__(
         self,
         train_config: TrainConfig,
-        model: Model,
-        optimizer: Optimizer,
+        accelerator: Accelerator,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
-        lr_scheduler: Optional[LRScheduler] = None,
     ) -> None:
         self.train_config = train_config
-        self.model = model
-        self.optimizer = optimizer
+        self.accelerator = accelerator
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader
-        self.lr_scheduler = lr_scheduler
 
     @property
     def work_dir(self) -> Path:
@@ -94,18 +89,6 @@ class TrainCallback(Registrable):
         Called after the training loop completes.
 
         This is the last method that is called, so any cleanup can be done in this method.
-        """
-        pass
-
-    def pre_checkpoint(self, checkpoint_state: Dict[str, Any]) -> None:
-        """
-        Called directly before the checkpoint is saved.
-        """
-        pass
-
-    def post_checkpoint(self, checkpoint_path: Path) -> None:
-        """
-        Called directly after a checkpoint is saved.
         """
         pass
 

@@ -1,16 +1,12 @@
-import os
 import random
-import tempfile
 import warnings
 from itertools import islice
-from typing import Any, Dict, List, Optional, TypeVar, cast
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import torch
 import torch.distributed as dist
-import torch.nn as nn
 from more_itertools import chunked
-from torch import Tensor
 from torch.utils.data import DistributedSampler, IterableDataset
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -20,6 +16,7 @@ from tango.common.tqdm import Tqdm
 from tango.format import Format
 from tango.step import Step
 
+from .accelerator import Accelerator, DefaultAccelerator
 from .data import DataLoader
 from .exceptions import StopEarly
 from .format import TorchFormat
@@ -86,6 +83,7 @@ class TorchTrainStep(Step):
         minimize_val_metric: bool = True,
         aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+        accelerator: Lazy[Accelerator] = Lazy(DefaultAccelerator),
         remove_stale_checkpoints: bool = True,
     ) -> Model:
         """
@@ -141,10 +139,6 @@ class TorchTrainStep(Step):
             Save a checkpoint every this many steps.
         validate_every : :class:`int`, optional
             Run the validation loop every this many steps.
-        amp : :class:`bool`, optional
-            Use automatic mixed precision. Default is ``False``.
-        max_grad_norm : :class:`float`, optional
-            If set, gradients will be clipped to have this max norm. Default is ``None``.
         devices : ``List[int]``, optional
             The IDs of the CUDA devices to train on.
         distributed_port : :class:`str`
@@ -163,6 +157,8 @@ class TorchTrainStep(Step):
             ``False`` and handle the aggregation internally in your model.
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
+        accelerator : :class:`Accelerator`
+            An :class:`Accelerator` to use. By default :class:`DefaultAccelerator` is used.
         remove_stale_checkpoints : :class:`bool`
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
@@ -209,8 +205,6 @@ class TorchTrainStep(Step):
             log_every=log_every,
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
-            amp=amp,
-            max_grad_norm=max_grad_norm,
             is_distributed=is_distributed,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
@@ -234,6 +228,7 @@ class TorchTrainStep(Step):
                     lr_scheduler,
                     validation_dataloader,
                     callbacks,
+                    accelerator,
                     self.executor.include_package,
                 ),
                 nprocs=num_workers,
@@ -251,16 +246,16 @@ class TorchTrainStep(Step):
                 lr_scheduler=lr_scheduler,
                 validation_dataloader=validation_dataloader,
                 callbacks=callbacks,
+                accelerator=accelerator,
             )
             assert final_model is not None
             final_model = final_model.cpu()
 
         # Load best checkpoint before returning model.
-        best_state_path = self.work_dir / "state_worker0_best.pt"
-        if best_state_path.is_file():
-            print(f"Loading best weights from {best_state_path.resolve().name}")
-            state = torch.load(best_state_path, map_location="cpu")
-            final_model.load_state_dict(state["model"])
+        if config.final_weights_path.is_file():
+            print(f"Loading best weights from {config.final_weights_path.resolve().name}")
+            state = torch.load(config.final_weights_path, map_location="cpu")
+            final_model.load_state_dict(state)
 
         return final_model
 
@@ -275,6 +270,7 @@ def _train(
     lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+    accelerator: Lazy[Accelerator] = Lazy(DefaultAccelerator),
     include_package: Optional[List[str]] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
@@ -292,24 +288,21 @@ def _train(
 
         common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
 
-    # Resolve and set device.
+    # Check working directory to see if we should recover from a previous run.
+    initial_state: Optional[Dict[str, Any]] = None
+    if config.state_path.is_file():
+        if config.is_local_main_process:
+            print(f"Recovering from previous run at {str(config.state_path.name)}")
+        initial_state = torch.load(config.state_path)
+
+    accelerator: Accelerator = accelerator.construct(
+        train_config=config,
+        model=model,
+        optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
+        initial_state=initial_state,
+    )
     device = config.worker_local_default_device
-    if config.is_distributed and device != torch.device("cpu"):
-        torch.cuda.set_device(device)
-
-    # Init distributed process group.
-    if config.is_distributed:
-        backend = "gloo" if device == torch.device("cpu") else "nccl"
-        dist.init_process_group(
-            backend=backend,
-            init_method=f"tcp://127.0.0.1:{config.distributed_port}",
-            world_size=config.world_size,
-            rank=worker_id,
-        )
-
-    grad_scaler: Optional[torch.cuda.amp.GradScaler] = None
-    if config.amp:
-        grad_scaler = torch.cuda.amp.GradScaler()
 
     # Construct data loaders.
     validation_dataloader_: Optional[DataLoader] = None
@@ -346,32 +339,6 @@ def _train(
         if validation_dataloader is not None:
             _check_dataloader(validation_dataloader)
 
-    # Check working directory to see if we should recover from a previous run.
-    initial_state: Optional[Dict[str, Any]] = None
-    if config.state_path.is_file():
-        if config.is_local_main_process:
-            print(f"Recovering from previous run at {str(config.state_path.name)}")
-        initial_state = torch.load(config.state_path)
-
-    # Prepare model.
-    model: Model = model.construct()
-    if initial_state is not None:
-        model.load_state_dict(initial_state["model"])
-    model = model.to(device)
-    if config.is_distributed:
-        model = cast(Model, nn.parallel.DistributedDataParallel(model))
-
-    # Prepare optimizer and lr scheduler.
-    optimizer: Optimizer = optimizer.construct(params=model.parameters())
-    if initial_state is not None:
-        optimizer.load_state_dict(initial_state["optimizer"])
-    lr_scheduler_: Optional[LRScheduler] = None
-    if lr_scheduler is not None:
-        lr_scheduler_ = lr_scheduler.construct(optimizer=optimizer)
-        if initial_state is not None:
-            lr_scheduler_.load_state_dict(initial_state["scheduler"])
-    lr_scheduler: Optional[LRScheduler] = lr_scheduler_
-
     # Set random seeds.
     random.seed(config.seed)
     np.random.seed(config.seed)
@@ -394,12 +361,10 @@ def _train(
     callbacks: List[TrainCallback] = [
         callback.construct(
             train_config=config,
-            model=model,
-            optimizer=optimizer,
+            accelerator=accelerator,
             dataset_dict=dataset_dict,
             train_dataloader=train_dataloader,
             validation_dataloader=validation_dataloader,
-            lr_scheduler=lr_scheduler,
         )
         for callback in (callbacks or [])
     ]
@@ -409,7 +374,7 @@ def _train(
 
     del initial_state
 
-    model.train()
+    accelerator.model.train()
     training_batches = enumerate(
         islice(
             chunked(
@@ -438,66 +403,45 @@ def _train(
         A closure that we'll call every `checkpoint_every` steps in the train loop to
         save model and training state.
         """
-        temp_state_file = tempfile.NamedTemporaryFile(
-            "w+b", dir=config.work_dir, delete=False, suffix=".pt"
+        train_state = {
+            "training_steps": step + 1,
+            "best_batch_loss": best_batch_loss,
+            f"val_{config.val_metric_name}": val_metric,
+            f"best_{config.val_metric_name}": best_val_metric,
+            "callbacks": [
+                callback.state_dict() for callback in callbacks  # type: ignore[union-attr]
+            ],
+        }
+        # For reason mypy can't figure out that `accelerator` is an `Accelerator` in this closure,
+        # and not a `Lazy[Accelerator]`.
+        cast(Accelerator, accelerator).save_checkpoint(
+            config.state_path_for_step(step), train_state
         )
-        try:
-            with Tqdm.wrapattr(
-                temp_state_file,
-                "write",
-                desc="Saving checkpoint",
-                leave=False,
-                disable=not config.is_local_main_process,
-            ) as f:
-                checkpoint_state = {
-                    "optimizer": optimizer.state_dict(),  # type: ignore[attr-defined]
-                    "scheduler": None
-                    if lr_scheduler is None
-                    else lr_scheduler.state_dict(),  # type: ignore[attr-defined]
-                    "model": model.module.state_dict()  # type: ignore[attr-defined]
-                    if config.is_distributed
-                    else model.state_dict(),  # type: ignore[attr-defined]
-                    "training_steps": step + 1,
-                    "best_batch_loss": best_batch_loss,
-                    f"val_{config.val_metric_name}": val_metric,
-                    f"best_{config.val_metric_name}": best_val_metric,
-                    "callbacks": [
-                        callback.state_dict() for callback in callbacks  # type: ignore[union-attr]
-                    ],
-                }
-                for callback in callbacks:  # type: ignore[union-attr]
-                    callback.pre_checkpoint(checkpoint_state)  # type: ignore[union-attr]
-                torch.save(checkpoint_state, f)
-            temp_state_file.close()
-            os.replace(temp_state_file.name, config.state_path_for_step(step))
 
-            # Link to most recent state path.
-            if config.state_path.is_file():
-                config.state_path.unlink()
-            os.link(config.state_path_for_step(step), config.state_path)
+        # Link to most recent state path.
+        # NOTE: While hard linking would be preferable to creating symlinks, some accelerators
+        # require a whole directory to save their state instead of a single file, which
+        # means state_path_for_step will be a directory, so a hard link won't work.
+        if config.state_path.is_symlink():
+            config.state_path.unlink()
+        config.state_path.symlink_to(config.state_path_for_step(step))
 
-            # Link to best state path.
-            if is_best_checkpoint():
-                if config.best_state_path.is_file():
-                    config.best_state_path.unlink()
-                os.link(config.state_path_for_step(step), config.best_state_path)
+        # Link to best state path.
+        if is_best_checkpoint():
+            if config.best_state_path.is_symlink():
+                config.best_state_path.unlink()
+            config.best_state_path.symlink_to(config.state_path_for_step(step))
 
-            # Clean up stale checkpoints.
-            if config.remove_stale_checkpoints:
-                checkpoints_to_keep = {
-                    config.best_state_path.resolve(),
-                    config.state_path.resolve(),
-                }
-                for path in config.work_dir.glob(f"state_worker{worker_id}_*.pt"):
-                    path = path.resolve()
-                    if path not in checkpoints_to_keep:
-                        path.unlink()
-
-            for callback in callbacks:  # type: ignore[union-attr]
-                callback.post_checkpoint(config.state_path_for_step)  # type: ignore[union-attr]
-        finally:
-            if os.path.exists(temp_state_file.name):
-                os.remove(temp_state_file.name)
+        # Clean up stale checkpoints.
+        if config.remove_stale_checkpoints:
+            checkpoints_to_keep = {
+                config.best_state_path.resolve(),
+                config.state_path.resolve(),
+            }
+            for path in config.work_dir.glob(f"state_worker{worker_id}_*.pt"):
+                path = path.resolve()
+                if path not in checkpoints_to_keep:
+                    path.unlink()
 
     # Catch data loader up to where we left off before.
     if start_step > 0:
@@ -529,30 +473,21 @@ def _train(
         for step, batch in train_batch_iterator:
             for callback in callbacks:
                 callback.pre_batch(step, batch)
-            optimizer.zero_grad()
             batch_loss = 0.0
-            for micro_batch in batch:
-                # Move tensors to right device.
-                micro_batch = _move_to_device(micro_batch, device)
-
+            for micro_batch_idx, micro_batch in enumerate(batch):
                 # Get loss.
-                with torch.cuda.amp.autocast(enabled=config.amp):
-                    outputs = model(**micro_batch)
-                    micro_batch_loss = outputs["loss"] / len(batch)
-
+                micro_batch_loss = accelerator.forward_train(
+                    micro_batch, micro_batch_idx, len(batch)
+                )
                 if torch.isnan(micro_batch_loss):
                     raise ValueError("nan loss encountered")
                 batch_loss += micro_batch_loss.detach().item()
 
                 # Calculate gradients.
-                if grad_scaler is not None:
-                    grad_scaler.scale(micro_batch_loss).backward()
-                else:
-                    micro_batch_loss.backward()
+                accelerator.backward(micro_batch_loss)
 
                 # Clean up in case it saves memory.
                 del micro_batch
-                del outputs
                 del micro_batch_loss
 
             for callback in callbacks:
@@ -563,24 +498,7 @@ def _train(
 
             del batch
 
-            # Unscale gradients.
-            if grad_scaler is not None:
-                grad_scaler.unscale_(optimizer)
-
-            # Clip gradients.
-            if config.max_grad_norm is not None:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm)
-
-            # Take optimizer step.
-            if grad_scaler is not None:
-                grad_scaler.step(optimizer)
-                grad_scaler.update()
-            else:
-                optimizer.step()
-
-            # Adjust LR schedule.
-            if lr_scheduler is not None:
-                lr_scheduler.step()
+            accelerator.step()
 
             # Gather average loss across all workers.
             if (
@@ -610,8 +528,7 @@ def _train(
                 assert config.validation_steps is not None
 
                 # Prepare model for validation.
-                model.eval()
-                optimizer.zero_grad()  # Not strictly necessary.
+                accelerator.model.eval()
 
                 running_metric = 0.0
                 with Tqdm.tqdm(
@@ -624,13 +541,9 @@ def _train(
                     for val_step, val_batch in enumerate(val_batch_iterator):
                         for callback in callbacks:
                             callback.pre_val_batch(step, val_step, val_batch)
-                        # Move tensors to right device.
-                        val_batch = _move_to_device(val_batch, device)
-
                         # Get metric.
-                        with torch.cuda.amp.autocast(enabled=config.amp):
-                            with torch.inference_mode():
-                                outputs = model(**val_batch)
+                        outputs = accelerator.forward_eval(val_batch)
+
                         for callback in callbacks:
                             callback.post_val_batch(step, val_step, outputs)
                         metric = outputs[config.val_metric_name]
@@ -665,7 +578,7 @@ def _train(
                 assert val_metric is not None
 
                 # Reset model to train mode.
-                model.train()
+                accelerator.model.train()
 
                 if best_val_metric is None:
                     best_val_metric = val_metric
@@ -701,8 +614,13 @@ def _train(
     for callback in callbacks:
         callback.post_train_loop()
 
+    if config.is_local_main_process:
+        accelerator.save_complete_weights_from_checkpoint(
+            config.best_state_path, config.final_weights_path
+        )
+
     if not config.is_distributed:
-        return model
+        return accelerator.model
     else:
         return None
 
@@ -715,22 +633,6 @@ def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool):
         for batch in dataloader:
             yield batch
         epoch += 1
-
-
-T = TypeVar("T")
-
-
-def _move_to_device(o: T, device: torch.device) -> T:
-    if isinstance(o, Tensor):
-        return o.to(device)  # type: ignore[return-value]
-    elif isinstance(o, dict):
-        return {k: _move_to_device(v, device) for k, v in o.items()}  # type: ignore[return-value]
-    elif isinstance(o, list):
-        return [_move_to_device(x, device) for x in o]  # type: ignore[return-value]
-    elif isinstance(o, tuple):
-        return tuple((_move_to_device(x, device) for x in o))  # type: ignore[return-value]
-    else:
-        return o
 
 
 def _check_dataset(dataset, split: str):
