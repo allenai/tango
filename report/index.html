@@ -1,0 +1,344 @@
+<!-- Tango Viz - This is a very simple example of using ONLY html+script tags to display a simple
+  graphviz -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TangoViz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@allenai/varnish@3.0.5/shellac/shellac.min.css"
+    />
+  </head>
+
+  <body>
+    <div id="root">
+      <noscript>JavaScript is required.</noscript>
+      <!-- Include AI2 header via shellac -->
+      <header>
+        <div class="banner">
+          <div class="content">
+            <a href="https://allenai.org">
+              <img
+                src="https://cdn.jsdelivr.net/npm/@allenai/varnish@3.0.5/shellac/ai2.svg"
+                alt="Allen Institute for AI"
+              />
+            </a>
+          </div>
+        </div>
+        <div class="content header-columns">
+          <!-- TODO: add a logo for tango -->
+          <h2 class="header-title">Tango</h2>
+        </div>
+      </header>
+      <div id="chart"></div>
+    </div>
+
+    <!-- styling is not great, here we do some global css, but keep in mind that the actual viz is
+      an svg, so not all css makes sense -->
+    <style>
+      #chart {
+        max-width: var(--breakpoints-lg);
+        margin: 0 auto;
+        background: var(--palette-background-info);
+      }
+      #chart svg {
+        height: 100%;
+        width: 100%;
+      }
+      image:hover {
+        height: 44px;
+        transform: translate(0, -12px);
+      }
+      .node {
+        filter: drop-shadow(4px 8px 3px rgba(0, 0, 0, 0.5));
+      }
+      .node:hover {
+        filter: drop-shadow(5px 9px 4px rgba(0, 0, 0, 0.6));
+      }
+    </style>
+
+    <!-- include any libs you need here -->
+    <script src="https://unpkg.com/dayjs@1.10.7/dayjs.min.js"></script>
+    <script src="https://unpkg.com/dayjs@1.10.7/plugin/duration.js"></script>
+    <script src="https://unpkg.com/dayjs@1.10.7/plugin/relativeTime.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.9.7/d3.min.js"></script>
+    <script
+      src="https://unpkg.com/viz.js@1.8.2/viz.js"
+      type="javascript/worker"
+    ></script>
+    <script src="https://unpkg.com/d3-graphviz@2.6.1/build/d3-graphviz.min.js"></script>
+
+    <script>
+      //extend dayjs https://day.js.org/docs/en/durations/humanize
+      dayjs.extend(window.dayjs_plugin_duration);
+      dayjs.extend(window.dayjs_plugin_relativeTime);
+
+      let data;
+      let graphviz;
+
+      const states = {
+        COMPLETED: "completed",
+        FAILED: "failed",
+        RUNNING: "running",
+        INCOMPLETE: "incomplete",
+      };
+
+      // colors
+      const colors = {
+        B2: "#D5EAFE",
+        B6: "#265ED4",
+        B10: "#223367",
+
+        G6: "#1EC28E",
+
+        N2: "#F8F9FA",
+        N9: "#47515C",
+
+        O8: "#FF9100",
+
+        R6: "#F7605F",
+      };
+
+      // return the status in correct color and the duration if we have space
+      const formatStatus = (data, showDuration) => {
+        if (!data.status) {
+          return "";
+        }
+        let color = colors.N9;
+        let sep = " - after ";
+        switch (data.status) {
+          case states.COMPLETED:
+            color = colors.G6;
+            break;
+          case states.FAILED:
+            color = colors.R6;
+            break;
+          case states.RUNNING:
+          case states.RUNNING:
+            color = colors.O8;
+            sep = " - so far ";
+            break;
+        }
+        // display the duration if it makes sense
+        let text = data.status;
+        if (showDuration && data.start_time) {
+          text += sep;
+          text += dayjs
+            .duration(
+              (data.end_time ? dayjs(data.end_time) : dayjs()).diff(
+                data.start_time
+              )
+            )
+            .humanize(false);
+        }
+        return `
+          <tr>
+            <td></td>
+            <td align="left"><font color="${color}">${text}</font></td>
+            <td></td>
+          </tr>
+          `;
+      };
+
+      // return a basic date
+      const formatDate = (label, date) => {
+        if (!date) {
+          return "";
+        }
+        return `
+        <tr>
+            <td></td>
+            <td align="left">${dayjs(date).format("M/D/YYYY h:mm:ss A")}</td>
+            <td></td>
+          </tr>
+          `;
+      };
+
+      // return a date range
+      const formatDateRange = (startDate, endDate) => {
+        if (!startDate) {
+          return "";
+        }
+
+        const dayFormat = "M/D/YYYY";
+        const timeFormat = "h:mm:ss A";
+        const fullFormat = `${dayFormat} ${timeFormat}`;
+        let endFormat = fullFormat;
+        if (
+          dayjs(startDate).format(dayFormat) ===
+          dayjs(endDate).format(dayFormat)
+        ) {
+          // if the same day, jsut show the time difference
+          endFormat = timeFormat;
+        }
+
+        return `
+        <tr>
+            <td></td>
+            <td align="left">${dayjs(startDate).format(fullFormat)} - ${dayjs(
+          endDate
+        ).format(endFormat)}</td>
+          <td></td>
+          </tr>
+          `;
+      };
+
+      // return a blue text with a href
+      const formatLink = (label, url) => {
+        if (!url) {
+          return "";
+        }
+        return `
+        <tr>
+          <td></td>
+          <td align="left" href="${url}" target="_blank"><font color="${
+          colors.N9
+        }">${label}:</font>${" "}<font color="${colors.B6}">${url}</font></td>
+          <td></td>
+        </tr>`;
+      };
+
+      // return a key (has a special id for copy to clipboard later)
+      // the `id="key;${value}" href=" "` is a hack to allow selecting ny id later
+      const formatKey = (value) => {
+        if (!value) {
+          return "";
+        }
+        return `
+        <tr>
+          <td></td>
+          <td align="left" id="key;${value}" href=" ">${value}</td>
+          <td></td>
+        </tr>`;
+      };
+
+      // return basic text
+      const formatText = (label, value) => {
+        if (!value) {
+          return "";
+        }
+        return `
+        <tr>
+          <td></td>
+          <td align="left">${label}:${" "}${value}</td>
+          <td></td>
+        </tr>`;
+      };
+
+      // convert the data to a node
+      const getTable = (data) => {
+        let ret = `label=<
+        <table cellspacing="0" cellpadding="2" border="0" color="${
+          colors.B10
+        }" cellborder="0" bgcolor="${colors.B2}">
+          <tr>
+            <td align="left" bgcolor="${colors.B10}" id="expando;${
+          data.unique_id
+        }" href=" "><img src="${data.open ? "close.svg" : "open.svg"}" /></td>
+            <td bgcolor="${colors.B10}" ><font point-size="16" color="${
+          colors.N2
+        }">${data.step_name}</font></td>
+        <td bgcolor="${colors.B10}"></td>
+          </tr>
+          ${data.open ? formatStatus(data, true) : formatStatus(data)}
+          ${data.open ? formatKey(data.unique_id) : null}
+          ${data.open ? formatText("Type", data.step_class_name) : null}
+          ${data.open ? formatText("Version", data.version) : null}
+          ${data.open ? formatDateRange(data.start_time, data.end_time) : null}
+          ${data.open ? formatLink("Results", data.result_location) : null}
+          ${data.open ? formatText("Error", data.error) : null}
+        </table>
+      >`;
+        return ret;
+      };
+
+      // convert the data to dot format
+      const convert = (json) => {
+        let nodes = [];
+        let edges = [];
+        Object.entries(json).forEach(([k, v]) => {
+          nodes.push(`"${k}" [id="${k}" tooltip=" " ${getTable(v)}];`);
+          v.dependencies.forEach((d) =>
+            edges.push(`"${d}" -> "${k}" [id="${d}->${k}" tooltip=" "];`)
+          );
+        });
+        return `${nodes.join("\n")} ${edges.join("\n")}`;
+      };
+
+      // http://bl.ocks.org/magjac/b2bf6da945e725a605e0d077781457b2
+      startApp = () => {
+        var expandos = d3.selectAll('*[id^="a_expando"]');
+        var keys = d3.selectAll('*[id^="a_key"]');
+
+        expandos.on("click", function () {
+          var event = d3.event;
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.which == 1) {
+            var id = d3.select(this).attr("id").split(";")[1];
+            data[id].open = !data[id].open;
+            render(data);
+          }
+        });
+
+        keys.on("click", function () {
+          var event = d3.event;
+          event.preventDefault();
+          event.stopPropagation();
+          if (event.which == 1) {
+            var id = d3.select(this).attr("id").split(";")[1];
+            navigator.clipboard.writeText(id);
+            alert(`ID Copied to clipboard: ${id}`);
+            // todo: test on server (fails locally)
+          }
+        });
+      };
+
+      const render = (d) => {
+        let digraph = `
+        digraph "" {
+          bgcolor="transparent"
+          node [shape=none fontcolor="${
+            colors.N9
+          }" fontsize="12" fontname="Helvetica"];
+          edge [penwidth=2.0 color="${colors.N9}"]
+          concentrate=True;
+          rankdir=TB;
+
+          ${convert(d || data)}
+        }
+        `;
+
+        graphviz
+          .zoomScaleExtent([0.2, 1])
+          .addImage("open.svg", "32px", "32px")
+          .addImage("close.svg", "32px", "32px")
+          .renderDot(digraph, startApp);
+      };
+
+      // TODO: we need to reload every few seconds (and keep local open node state)
+      fetch("/api/steps", {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      })
+        .then((res) => res.json())
+        .then((out) => {
+          data = out[Object.keys(out)[0]];
+          graphviz = d3
+            .select("#chart")
+            .graphviz()
+            .on("initEnd", render)
+            .transition(() => {
+              return d3.transition().duration(750);
+            });
+        })
+        .catch((err) => {
+          throw err;
+        });
+    </script>
+  </body>
+</html>
