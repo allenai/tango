@@ -1,4 +1,5 @@
 import random
+import shutil
 import warnings
 from itertools import islice
 from typing import Any, Dict, List, Optional, cast
@@ -206,6 +207,7 @@ class TorchTrainStep(Step):
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
             is_distributed=is_distributed,
+            devices=devices,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
             aggregate_val_metric=aggregate_val_metric,
@@ -253,7 +255,7 @@ class TorchTrainStep(Step):
 
         # Load best checkpoint before returning model.
         if config.final_weights_path.is_file():
-            print(f"Loading best weights from {config.final_weights_path.resolve().name}")
+            print(f"Loading best weights from {str(config.final_weights_path.resolve())}")
             state = torch.load(config.final_weights_path, map_location="cpu")
             final_model.load_state_dict(state)
 
@@ -288,20 +290,19 @@ def _train(
 
         common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
 
-    # Check working directory to see if we should recover from a previous run.
-    initial_state: Optional[Dict[str, Any]] = None
-    if config.state_path.is_file():
-        if config.is_local_main_process:
-            print(f"Recovering from previous run at {str(config.state_path.name)}")
-        initial_state = torch.load(config.state_path)
-
     accelerator: Accelerator = accelerator.construct(
         train_config=config,
         model=model,
         optimizer=optimizer,
         lr_scheduler=lr_scheduler,
-        initial_state=initial_state,
     )
+
+    # Check working directory to see if we should recover from a previous run.
+    initial_state: Optional[Dict[str, Any]] = None
+    if config.state_path.exists():
+        if config.is_local_main_process:
+            print(f"Recovering from previous run at {str(config.state_path.resolve())}")
+        initial_state = accelerator.load_checkpoint(config.state_path)
     device = config.worker_local_default_device
 
     # Construct data loaders.
@@ -433,15 +434,21 @@ def _train(
             config.best_state_path.symlink_to(config.state_path_for_step(step))
 
         # Clean up stale checkpoints.
-        if config.remove_stale_checkpoints:
+        if config.remove_stale_checkpoints and config.is_local_main_process:
             checkpoints_to_keep = {
                 config.best_state_path.resolve(),
                 config.state_path.resolve(),
             }
-            for path in config.work_dir.glob(f"state_worker{worker_id}_*.pt"):
+            for path in config.work_dir.glob("checkpoint_state*"):
                 path = path.resolve()
                 if path not in checkpoints_to_keep:
-                    path.unlink()
+                    if path.is_file():
+                        path.unlink()
+                    else:
+                        shutil.rmtree(path)
+
+        if config.is_distributed:
+            dist.barrier()
 
     # Catch data loader up to where we left off before.
     if start_step > 0:

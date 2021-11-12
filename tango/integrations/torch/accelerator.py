@@ -137,7 +137,7 @@ class DefaultAccelerator(Accelerator):
             else:
                 backend = "gloo"
             dist.init_process_group(
-                backend=backend,
+                backend="nccl" if self.device != torch.device("cpu") else "gloo",
                 init_method=f"tcp://127.0.0.1:{self.train_config.distributed_port}",
                 world_size=self.train_config.world_size,
                 rank=self.train_config.worker_id,
