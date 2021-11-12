@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-
-- Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
-  distributed workers, but only called every `log_every` steps.
-
 ### Changed
 
 - Made it possible to construct a step graph out of `Step` objects, instead of constructing it out of `StepStub` objects.
@@ -20,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made steps deterministic by default.
 - Brought back `MemoryStepCache`, so we can run steps without configuring anything.
 
+## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
+
+### Added
+
+- Added a `.log_batch()` method on `torch::TrainCallback` which is given the average loss across
+  distributed workers, but only called every `log_every` steps.
+
 ### Removed
 
 - Removed `.pre_log_batch()` method on `torch::TrainCallback`.
@@ -27,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed typo in parameter name `remove_stale_checkpoints` in `TorchTrainStep` (previously was `remove_state_checkpoints`).
+- Fixed bug in `FromParams` that would cause failures when `from __future__ import annotations`
+  was used with Python older than 3.10. See [PEP 563](https://www.python.org/dev/peps/pep-0563/)
+  for details.
 
 ## [v0.3.5](https://github.com/allenai/tango/releases/tag/v0.3.5) - 2021-11-05
 
