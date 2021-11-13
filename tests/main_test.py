@@ -3,7 +3,7 @@ import subprocess
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
-from tango.executor import ExecutorMetadata
+from tango.local_workspace import ExecutorMetadata
 from tango.version import VERSION
 
 
@@ -25,14 +25,15 @@ class TestMain(TangoTestCase):
         ]
         result = subprocess.run(cmd)
         assert result.returncode == 0
-        assert len(os.listdir(self.TEST_DIR / "step_cache")) == 2
-        assert (self.TEST_DIR / "hello").is_dir()
-        assert (self.TEST_DIR / "hello" / "cache-metadata.json").is_file()
-        assert (self.TEST_DIR / "hello" / "executor-metadata.json").is_file()
-        assert (self.TEST_DIR / "hello_world").is_dir()
+        assert len(os.listdir(self.TEST_DIR / "cache")) == 2
+        run_dir = next((self.TEST_DIR / "runs").iterdir())
+        assert (run_dir / "hello").is_dir()
+        assert (run_dir / "hello" / "cache-metadata.json").is_file()
+        assert (run_dir / "hello" / "executor-metadata.json").is_file()
+        assert (run_dir / "hello_world").is_dir()
 
         # Check metadata.
-        metadata_path = self.TEST_DIR / "hello_world" / "executor-metadata.json"
+        metadata_path = run_dir / "hello_world" / "executor-metadata.json"
         assert metadata_path.is_file()
         metadata_params = Params.from_file(metadata_path)
         metadata = ExecutorMetadata.from_params(metadata_params)
@@ -45,12 +46,14 @@ class TestMain(TangoTestCase):
         assert metadata.git.commit is not None
         assert metadata.git.remote is not None
 
-        assert (self.TEST_DIR / "hello_world" / "requirements.txt").is_file()
+        assert (run_dir / "hello_world" / "requirements.txt").is_file()
 
-        # Running again shouldn't create any more directories.
+        # Running again shouldn't create any more directories in the cache.
         result = subprocess.run(cmd)
         assert result.returncode == 0
-        assert len(os.listdir(self.TEST_DIR / "step_cache")) == 2
+        assert len(os.listdir(self.TEST_DIR / "cache")) == 2
+        # We should see two runs now.
+        assert len(os.listdir(self.TEST_DIR / "runs")) == 2
 
     def test_random_experiment(self):
         cmd = [
