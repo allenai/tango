@@ -91,7 +91,7 @@ You could then run this experiment with a config that looks like this:
     with run_experiment(
         "test_fixtures/integrations/pytorch_lightning/train.jsonnet"
     ) as run_dir:
-        assert (run_dir / "step_cache").is_dir()
+        assert (run_dir / "train").is_dir(), "Output for the 'train' step was not produced."
     # Restore state of registry.
     del Registrable._registry[Step]["generate_data"]
     del Registrable._registry[LightningModule]["basic_regression"]
@@ -105,9 +105,9 @@ For example,
 .. testoutput::
     :options: +ELLIPSIS
 
-    ● Starting run for "data"...
+    ● Starting run for "data" ...
     ✓ Finished run for "data"
-    ● Starting run for "train"...
+    ● Starting run for "train" ...
     ...
     ✓ Finished run for "train"
     ✓ The output for "train" is in ...
