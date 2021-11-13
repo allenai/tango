@@ -288,19 +288,10 @@ class Step(Registrable, Generic[T]):
 
         self.work_dir_for_run = workspace.work_dir(self)
         try:
-            click_logger.info(
-                click.style("\N{black circle} Starting run for ", fg="blue")
-                + click.style(f'"{self.name}"...', bold=True, fg="blue")
-                + click.style(f'"{self.name}"', bold=True, fg="blue")
-            )
             workspace.step_starting(self)
             try:
                 result = self.run(**kwargs)
                 result = workspace.step_finished(self, result)
-                click_logger.info(
-                    click.style("\N{check mark} Finished run for ", fg="green")
-                    + click.style(f'"{self.name}"', bold=True, fg="green")
-                )
                 return result
             except Exception as e:
                 workspace.step_failed(self, e)
@@ -376,43 +367,22 @@ class Step(Registrable, Generic[T]):
         else:
             return False
 
-    @classmethod
-    def _replace_steps_with_results(cls, o: Any, workspace: "Workspace"):
+    def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
-            return o.result(workspace)
+            return o.result(workspace, self)
         elif isinstance(o, WithUnresolvedSteps):
             return o.construct(workspace)
         elif isinstance(o, (list, tuple, set)):
-            return o.__class__(cls._replace_steps_with_results(i, workspace) for i in o)
+            return o.__class__(self._replace_steps_with_results(i, workspace) for i in o)
         elif isinstance(o, dict):
             return {
-                key: cls._replace_steps_with_results(value, workspace) for key, value in o.items()
+                key: self._replace_steps_with_results(value, workspace) for key, value in o.items()
             }
         else:
             return o
 
-    def _inject_dependencies(self, dependencies: Dict["Step", Any]):
-        def inject_dependencies(o: Any, dependencies: Dict[Step, Any]):
-            if isinstance(o, Step) and o in dependencies:
-                return dependencies[o]
-            elif isinstance(o, WithUnresolvedSteps):
-                o.args = inject_dependencies(o.args, dependencies)
-                o.kwargs = inject_dependencies(o.kwargs, dependencies)
-                return o
-            elif isinstance(o, (dict, Params)):
-                return o.__class__(
-                    {key: inject_dependencies(value, dependencies) for key, value in o.items()}
-                )
-            elif isinstance(o, (list, tuple, set)):
-                return o.__class__(inject_dependencies(i, dependencies) for i in o)
-            else:
-                return o
-
-        self.kwargs = inject_dependencies(self.kwargs, dependencies)
-
     def result(
-        self,
-        workspace: Optional["Workspace"] = None,
+        self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
     ) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there.
@@ -424,15 +394,33 @@ class Step(Registrable, Generic[T]):
             workspace = default_workspace
 
         if self in workspace.step_cache:
-            click_logger.info(
-                click.style(
-                    f'\N{check mark} Found output for "{self.name}" in cache', bold=True, fg="green"
-                )
-            )
+            if click_logger.isEnabledFor(logging.INFO):
+                message = click.style("\N{check mark} Found output for ", fg="green")
+                message += click.style(f'"{self.name}"', bold=True, fg="green")
+                message += click.style(" in cache", fg="green")
+                if needed_by is None:
+                    message += click.style(" ...", fg="green")
+                else:
+                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="green")
+                click_logger.info(message)
             return workspace.step_cache[self]
 
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-        return self._run_with_work_dir(workspace, **kwargs)
+
+        if click_logger.isEnabledFor(logging.INFO):
+            message = click.style("\N{black circle} Starting run for ", fg="blue")
+            message += click.style(f'"{self.name}"', bold=True, fg="blue")
+            if needed_by is None:
+                message += click.style(" ...", fg="blue")
+            else:
+                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
+            click_logger.info(message)
+        result = self._run_with_work_dir(workspace, **kwargs)
+        click_logger.info(
+            click.style("\N{check mark} Finished run for ", fg="green")
+            + click.style(f'"{self.name}"', bold=True, fg="green")
+        )
+        return result
 
     def ensure_result(
         self,
