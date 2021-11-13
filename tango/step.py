@@ -12,7 +12,6 @@ from typing import (
     Dict,
     Generic,
     Iterable,
-    Iterator,
     Optional,
     Set,
     Type,
@@ -45,7 +44,7 @@ from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
-    from tango.step_cache import StepCache
+    from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -276,7 +275,7 @@ class Step(Registrable, Generic[T]):
         """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, cache: "StepCache", **kwargs) -> T:
+    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
@@ -285,11 +284,16 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
-        step_dir = cache.step_dir(self)
-        self.work_dir_for_run = step_dir / "work"
+        self.work_dir_for_run = workspace.work_dir(self)
         try:
-            self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
-            return self.run(**kwargs)
+            workspace.step_starting(self)
+            try:
+                result = self.run(**kwargs)
+                result = workspace.step_finished(self, result)
+                return result
+            except Exception as e:
+                workspace.step_failed(self, e)
+                raise
         finally:
             # No cleanup, as we want to keep the directory for restarts or serialization.
             self.work_dir_for_run = None
@@ -363,15 +367,17 @@ class Step(Registrable, Generic[T]):
             return False
 
     @classmethod
-    def _replace_steps_with_results(cls, o: Any, cache: "StepCache"):
+    def _replace_steps_with_results(cls, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
-            return o.result(cache)
+            return o.result(workspace)
         elif isinstance(o, WithUnresolvedSteps):
-            return o.construct(cache)
+            return o.construct(workspace)
         elif isinstance(o, (list, tuple, set)):
-            return o.__class__(cls._replace_steps_with_results(i, cache) for i in o)
+            return o.__class__(cls._replace_steps_with_results(i, workspace) for i in o)
         elif isinstance(o, dict):
-            return {key: cls._replace_steps_with_results(value, cache) for key, value in o.items()}
+            return {
+                key: cls._replace_steps_with_results(value, workspace) for key, value in o.items()
+            }
         else:
             return o
 
@@ -396,33 +402,25 @@ class Step(Registrable, Generic[T]):
 
     def result(
         self,
-        cache: Optional["StepCache"] = None,
+        workspace: Optional["Workspace"] = None,
     ) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there.
 
         If necessary, this method will first produce the results of all steps it depends on."""
-        if cache is None:
-            from tango.step_cache import default_step_cache
+        if workspace is None:
+            from tango.workspace import default_workspace
 
-            cache = default_step_cache
-        if self in cache:
-            return cache[self]
+            workspace = default_workspace
+        if self in workspace.step_cache:
+            return workspace.step_cache[self]
 
-        kwargs = self._replace_steps_with_results(self.kwargs, cache)
-        result = self._run_with_work_dir(cache, **kwargs)
-        if self.cache_results:
-            cache[self] = result
-            if hasattr(result, "__next__"):
-                assert isinstance(result, Iterator)
-                # Caching the iterator will consume it, so we write it to the cache and then read from the cache
-                # for the return value.
-                return cache[self]
-        return result
+        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+        return self._run_with_work_dir(workspace, **kwargs)
 
     def ensure_result(
         self,
-        cache: Optional["StepCache"] = None,
+        workspace: Optional["Workspace"] = None,
     ) -> None:
         """This makes sure that the result of this step is in the cache. It does
         not return the result."""
@@ -431,16 +429,7 @@ class Step(Registrable, Generic[T]):
                 "It does not make sense to call ensure_result() on a step that's not cacheable."
             )
 
-        if cache is None:
-            from tango.step_cache import default_step_cache
-
-            cache = default_step_cache
-        if self in cache:
-            return
-
-        kwargs = self._replace_steps_with_results(self.kwargs, cache)
-        result = self._run_with_work_dir(cache, **kwargs)
-        cache[self] = result
+        self.result(workspace)
 
     def _ordered_dependencies(self) -> Iterable["Step"]:
         def dependencies_internal(o: Any) -> Iterable[Step]:
@@ -557,24 +546,24 @@ class WithUnresolvedSteps(CustomDetHash):
     def with_resolved_steps(
         cls,
         o: Any,
-        step_cache: "StepCache",
+        workspace: "Workspace",
     ):
         if isinstance(o, Step):
-            return o.result(step_cache)
+            return o.result(workspace)
         elif isinstance(o, cls):
             return o.construct(step_cache)
         elif isinstance(o, (dict, Params)):
             return o.__class__(
-                {key: cls.with_resolved_steps(value, step_cache) for key, value in o.items()}
+                {key: cls.with_resolved_steps(value, workspace) for key, value in o.items()}
             )
         elif isinstance(o, (list, tuple, set)):
-            return o.__class__(cls.with_resolved_steps(item, step_cache) for item in o)
+            return o.__class__(cls.with_resolved_steps(item, workspace) for item in o)
         else:
             return o
 
-    def construct(self, step_cache: "StepCache"):
-        resolved_args = self.with_resolved_steps(self.args, step_cache)
-        resolved_kwargs = self.with_resolved_steps(self.kwargs, step_cache)
+    def construct(self, workspace: "Workspace"):
+        resolved_args = self.with_resolved_steps(self.args, workspace)
+        resolved_kwargs = self.with_resolved_steps(self.kwargs, workspace)
         return self.constructor(*resolved_args, **resolved_kwargs)
 
     def det_hash_object(self) -> Any:

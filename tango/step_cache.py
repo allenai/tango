@@ -4,7 +4,6 @@ import weakref
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import Any, Dict, MutableMapping, Optional, OrderedDict, TypeVar
 
 try:
@@ -64,17 +63,6 @@ class StepCache(Registrable):
     def __len__(self) -> int:
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()
-
-    def step_dir(self, step: Step) -> Path:
-        """Steps that can be restarted (like a training job that gets interrupted half-way through)
-        must save their state somewhere. A :class:`StepCache` can help by providing a suitable location
-        in this method.
-
-        By default, the step dir is a temporary directory that gets cleaned up after every run.
-        This effectively disables restartability of steps."""
-
-        # TemporaryDirectory cleans up the directory automatically when the process exits. Neat!
-        return Path(TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir").name)
 
 
 @StepCache.register("memory")
