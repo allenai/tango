@@ -104,7 +104,7 @@ would produce the following output:
     ● Starting run for "data"...
     ✓ Finished run for "data"
     ● Starting run for "train"...
-    Loading best weights from state_worker0_step100.pt
+    Loading best weights from state_worker0_best.pt
     ✓ Finished run for "train"
 
 Tips
@@ -138,12 +138,16 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "TrainConfig",
+    "StopEarlyCallback",
     "StopEarly",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
+from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
-from .train_callback import StopEarly, TrainCallback
+from .train_callback import StopEarlyCallback, TrainCallback
+from .train_config import TrainConfig

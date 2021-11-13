@@ -12,6 +12,9 @@ Train step
 .. autoclass:: tango.integrations.torch.TorchTrainStep
    :members:
 
+.. autoclass:: tango.integrations.torch.TrainConfig
+   :members:
+
 Torch format
 ~~~~~~~~~~~~
 
@@ -53,6 +56,8 @@ Callbacks
 
 .. autoclass:: tango.integrations.torch.TrainCallback
    :members:
+
+.. autoclass:: tango.integrations.torch.StopEarlyCallback
 
 .. autoclass:: tango.integrations.torch.StopEarly
    :members:

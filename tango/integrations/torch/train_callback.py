@@ -1,14 +1,16 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import torch
+from overrides import overrides
 
-from tango.common.exceptions import TangoError
+from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
 from .data import DataLoader
+from .exceptions import StopEarly
 from .model import Model
 from .optim import LRScheduler, Optimizer
+from .train_config import TrainConfig
 
 
 class TrainCallback(Registrable):
@@ -25,31 +27,49 @@ class TrainCallback(Registrable):
         See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
         implementation.
 
+    Attributes
+    ----------
+    train_config : :class:`TrainConfig`
+    model : :class:`Model`
+    optimizer : :class:`Optimizer`
+    dataset_dict : :class:`tango.common.DatasetDictBase`
+    train_dataloader : :class:`DataLoader`
+    validation_dataloader : :class:`DataLoader`, optional
+    lr_scheduler : :class:`LRScheduler`, optional
+
     """
 
     def __init__(
         self,
-        work_dir: Path,
+        train_config: TrainConfig,
         model: Model,
         optimizer: Optimizer,
+        dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
         lr_scheduler: Optional[LRScheduler] = None,
-        is_local_main_process: bool = True,
-        world_size: int = 1,
-        worker_id: int = 0,
-        device: torch.device = torch.device("cpu"),
     ) -> None:
-        self.work_dir = work_dir
+        self.train_config = train_config
         self.model = model
         self.optimizer = optimizer
+        self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader
         self.lr_scheduler = lr_scheduler
-        self.is_local_main_process = is_local_main_process
-        self.worker_id = worker_id
-        self.world_size = world_size
-        self.device = device
+
+    @property
+    def work_dir(self) -> Path:
+        """
+        The working directory of the current train step.
+        """
+        return self.train_config.work_dir
+
+    @property
+    def is_local_main_process(self) -> bool:
+        """
+        If the current worker is the main distributed worker of the current node.
+        """
+        return self.train_config.is_local_main_process
 
     def state_dict(self) -> Dict[str, Any]:
         """
@@ -109,20 +129,20 @@ class TrainCallback(Registrable):
             The ``batch_loss`` here is the loss local to the current worker, not the
             overall (average) batch loss across distributed workers.
 
+            If you need the average loss, use :meth:`log_batch()`.
+
         """
         pass
 
-    def pre_log_batch(self, step: int, metrics_to_log: Dict[str, float]) -> None:
+    def log_batch(self, step: int, batch_loss: float) -> None:
         """
-        Called right before ``metrics_to_log`` are logged to the progress bar.
+        Called after the optimizer step. Here ``batch_loss`` is the average loss across
+        all distributed workers.
 
-        .. warning::
-            This may be called twice for a given ``step``: once before the validation
-            loop and once right after the validation loop with the updated validation metric.
-
-            Therefore if you're using your callback to log metrics externally,
-            it may be better to use the :meth:`post_batch()` and :meth:`post_val_loop()`
-            methods instead.
+        .. note::
+            This callback method is not necessarily called on every step.
+            The frequency depends on the value of the ``log_every`` parameter of
+            :class:`TorchTrainStep`.
 
         """
         pass
@@ -139,18 +159,32 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_val_loop(self, step: int, val_metric_name: str, val_metric: float) -> None:
+    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
         """
         Called right after the validation loop finishes.
         """
         pass
 
 
-class StopEarly(TangoError):
+@TrainCallback.register("torch::stop_early")
+class StopEarlyCallback(TrainCallback):
     """
-    Callbacks can raise this exception to stop training early without crashing.
+    A :class:`TrainCallback` for early stopping. Training is stopped early after
+    ``patience`` steps without an improvement to the validation metric.
 
-    .. important::
-        During distributed training all workers must raise this exception at the same point
-        in the training loop, otherwise there will be a deadlock.
+    .. tip::
+
+        Registered as a :class:`TrainCallback` under the name "torch::stop_early".
     """
+
+    def __init__(self, *args, patience: int = 10000, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.patience = patience
+        self.best_step = 0
+
+    @overrides
+    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+        if val_metric == best_val_metric:
+            self.best_step = step
+        elif step > self.best_step + self.patience:
+            raise StopEarly
