@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- W&B `torch::TrainCallback` logs with `step=step+1` now so that training curves in the W&B dashboard
+  match up with checkpoints saved locally and are easier to read (e.g. step 10000 instead of 9999).
+
 ## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
 
 ### Added
