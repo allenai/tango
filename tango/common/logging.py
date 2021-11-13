@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Optional
 
+import click
+
 from .util import _parse_bool
 
 
@@ -42,7 +44,6 @@ class TangoLogger(logging.Logger):
 
 
 logging.setLoggerClass(TangoLogger)
-logger = logging.getLogger(__name__)
 
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
@@ -57,6 +58,18 @@ TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
 """
 The log level.
 """
+
+
+click_logger = logging.getLogger("click")
+click_logger.propagate = False
+
+
+class ClickLoggerHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        click.echo(record.getMessage())
+
+
+click_logger.addHandler(ClickLoggerHandler())
 
 
 def initialize_logging(
@@ -89,3 +102,4 @@ def initialize_logging(
     if file_friendly_logging:
         FILE_FRIENDLY_LOGGING = True
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
+        click_logger.disabled = True

@@ -20,6 +20,8 @@ from typing import (
     cast,
 )
 
+import click
+
 try:
     from typing import get_args, get_origin  # type: ignore
 except ImportError:
@@ -38,7 +40,7 @@ from tango.common.from_params import (
     infer_method_params,
     pop_and_construct_arg,
 )
-from tango.common.logging import TangoLogger
+from tango.common.logging import TangoLogger, click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
@@ -286,16 +288,24 @@ class Step(Registrable, Generic[T]):
 
         self.work_dir_for_run = workspace.work_dir(self)
         try:
+            click_logger.info(
+                click.style("\N{black circle} Starting run for ", fg="blue")
+                + click.style(f'"{self.name}"...', bold=True, fg="blue")
+                + click.style(f'"{self.name}"', bold=True, fg="blue")
+            )
             workspace.step_starting(self)
             try:
                 result = self.run(**kwargs)
                 result = workspace.step_finished(self, result)
+                click_logger.info(
+                    click.style("\N{check mark} Finished run for ", fg="green")
+                    + click.style(f'"{self.name}"', bold=True, fg="green")
+                )
                 return result
             except Exception as e:
                 workspace.step_failed(self, e)
                 raise
         finally:
-            # No cleanup, as we want to keep the directory for restarts or serialization.
             self.work_dir_for_run = None
 
     @property
@@ -412,7 +422,13 @@ class Step(Registrable, Generic[T]):
             from tango.workspace import default_workspace
 
             workspace = default_workspace
+
         if self in workspace.step_cache:
+            click_logger.info(
+                click.style(
+                    f'\N{check mark} Found output for "{self.name}" in cache', bold=True, fg="green"
+                )
+            )
             return workspace.step_cache[self]
 
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
@@ -551,7 +567,7 @@ class WithUnresolvedSteps(CustomDetHash):
         if isinstance(o, Step):
             return o.result(workspace)
         elif isinstance(o, cls):
-            return o.construct(step_cache)
+            return o.construct(workspace)
         elif isinstance(o, (dict, Params)):
             return o.__class__(
                 {key: cls.with_resolved_steps(value, workspace) for key, value in o.items()}
