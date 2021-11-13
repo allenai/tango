@@ -345,7 +345,7 @@ def _run(
         )
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
-    workspace = LocalWorkspace(workspace_dir)  # TODO: make this configurable
+    workspace = LocalWorkspace(workspace_dir)
 
     # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
