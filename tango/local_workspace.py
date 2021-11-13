@@ -222,7 +222,9 @@ class LocalWorkspace(Workspace):
         return self.cache
 
     def work_dir(self, step: Step) -> Path:
-        return self.step_dir(step) / "work"
+        result = self.step_dir(step) / "work"
+        result.mkdir(parents=True, exist_ok=True)
+        return result
 
     def _step_info_file(self, step: Step) -> Path:
         return self.step_dir(step) / "stepinfo.dill"
