@@ -18,7 +18,7 @@ from .callbacks import LightningCallback
 from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
-from .plugins import LightningPlugin
+from .plugins import ALL_PLUGIN_TYPES, LightningTrainingTypePlugin
 from .profilers import LightningProfiler
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,8 @@ class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
         callbacks: Optional[List[LightningCallback]] = None,
         profiler: Optional[Union[str, Lazy[LightningProfiler]]] = None,
         accelerator: Optional[Union[str, LightningAccelerator]] = None,
-        plugins: Optional[List[LightningPlugin]] = None,
+        strategy: Optional[Union[str, LightningTrainingTypePlugin]] = None,
+        plugins: Optional[List[Union[str, ALL_PLUGIN_TYPES]]] = None,
         **kwargs,
     ):
         loggers: List[LightningLogger] = (
@@ -58,12 +59,10 @@ class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
             callbacks=callbacks,
             profiler=profiler,
             accelerator=accelerator,
+            strategy=strategy,
             plugins=plugins,
             **kwargs,
         )
-
-    def _to_params(self):
-        return {}
 
 
 LightningTrainer.register("default")(LightningTrainer)
