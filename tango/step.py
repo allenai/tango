@@ -447,9 +447,8 @@ class Step(Registrable, Generic[T]):
             if isinstance(o, Step):
                 yield o
             elif isinstance(o, WithUnresolvedSteps):
-                yield from itertools.chain(
-                    dependencies_internal(o.args), dependencies_internal(o.kwargs)
-                )
+                yield from dependencies_internal(o.args)
+                yield from dependencies_internal(o.kwargs)
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
             elif isinstance(o, dict):
