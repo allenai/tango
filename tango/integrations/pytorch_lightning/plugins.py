@@ -1,9 +1,14 @@
 from typing import Union
+
 import pytorch_lightning as pl
-from pytorch_lightning.plugins.training_type.training_type_plugin import TrainingTypePlugin
-from pytorch_lightning.plugins.precision.precision_plugin import PrecisionPlugin
-from pytorch_lightning.plugins.environments.cluster_environment import ClusterEnvironment
+from pytorch_lightning.plugins.environments.cluster_environment import (
+    ClusterEnvironment,
+)
 from pytorch_lightning.plugins.io.checkpoint_plugin import CheckpointIO
+from pytorch_lightning.plugins.precision.precision_plugin import PrecisionPlugin
+from pytorch_lightning.plugins.training_type.training_type_plugin import (
+    TrainingTypePlugin,
+)
 
 from tango.common.registrable import Registrable
 

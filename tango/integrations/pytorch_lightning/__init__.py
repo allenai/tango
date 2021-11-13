@@ -147,10 +147,10 @@ from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
 from .plugins import (
-    LightningTrainingTypePlugin,
-    LightningPrecisionPlugin,
-    LightningClusterEnvironmentPlugin,
     LightningCheckpointPlugin,
+    LightningClusterEnvironmentPlugin,
+    LightningPrecisionPlugin,
+    LightningTrainingTypePlugin,
 )
 from .profilers import LightningProfiler
 from .train import LightningTrainer, LightningTrainStep
