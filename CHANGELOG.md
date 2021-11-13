@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added separate classes for `LightningTrainingTypePlugin`, `LightningPrecisionPlugin`, `LightningClusterEnvironmentPlugin`, `LightningCheckpointPlugin` for compatibility with `pytorch-lightning>=1.5.0`.
+
+### Removed
+
+- Removed old `LightningPlugin` class.
+
 ## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
 
 ### Added
