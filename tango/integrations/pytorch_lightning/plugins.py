@@ -8,15 +8,6 @@ from pytorch_lightning.plugins.io.checkpoint_plugin import CheckpointIO
 from tango.common.registrable import Registrable
 
 
-# class LightningPlugin(Registrable):
-#     """
-#     For pytorch-lightning>=1.5.0, there is no base plugin class anymore. Instead, they have
-#     different types of plugin classes, and in the `Trainer`, they expect an object of type
-#     `Union` of all those classes. This class is simply an abstraction to refer to all
-#     plugin classes by a single registrable class.
-#     """
-
-
 class LightningTrainingTypePlugin(TrainingTypePlugin, Registrable):
     """
     This is simply a :class:`~tango.common.registrable.Registrable`
