@@ -1,10 +1,9 @@
 import logging
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Tuple
 
 from tango.workspace import Workspace
-
 
 logger = logging.getLogger(__name__)
 

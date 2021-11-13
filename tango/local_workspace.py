@@ -1,4 +1,3 @@
-from datetime import datetime
 import getpass
 import logging
 import os
@@ -7,8 +6,9 @@ import socket
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, Iterator, Iterable, TypeVar
+from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar
 
 import dill
 import petname
@@ -17,7 +17,7 @@ from tango import LocalStepCache, Step, StepCache
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
 from tango.version import VERSION
-from tango.workspace import Workspace, StepInfo
+from tango.workspace import StepInfo, Workspace
 
 logger = logging.getLogger(__name__)
 

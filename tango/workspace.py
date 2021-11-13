@@ -3,14 +3,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Optional, Dict, Set, TypeVar, Iterator, Iterable
+from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar
 
 import petname
 
 from tango import step_cache
-from tango.step_cache import StepCache
-from tango.step import Step
 from tango.common import Registrable
+from tango.step import Step
+from tango.step_cache import StepCache
 
 T = TypeVar("T")
 

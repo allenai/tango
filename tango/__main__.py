@@ -318,8 +318,8 @@ def _run(
     include_package: Optional[Sequence[str]] = None,
 ) -> Path:
     from tango.executor import Executor
-    from tango.step_graph import StepGraph
     from tango.local_workspace import LocalWorkspace
+    from tango.step_graph import StepGraph
     from tango.workspace_server import WorkspaceServer
 
     # Read params.
