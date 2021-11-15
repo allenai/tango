@@ -1,14 +1,16 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, TypeVar
 
 import click
 
 from tango.common.util import import_extra_module
-from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
+
+
+T = TypeVar("T")
 
 
 class Executor:
@@ -22,7 +24,7 @@ class Executor:
 
     def execute_step_graph(self, step_graph: StepGraph) -> str:
         """
-        Execute an entire :class:`tango.step_graph.StepGraph`.
+        Execute a :class:`tango.step_graph.StepGraph`.
         """
         # Import included packages to find registered components.
         if self.include_package is not None:
@@ -31,12 +33,19 @@ class Executor:
 
         run_name = self.workspace.register_run(step_graph.values())
 
-        for step in step_graph.values():
+        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+
+        # Execute all steps that need to run, i.e. steps that fall into one of the
+        # following two categories:
+        #  1. step should be cached but is not in cache
+        #  2. step is a dependency (direct or recursively) to another step that should be cached
+        #     but is not in the cache.
+        for step in ordered_steps:
             if step.cache_results:
-                self.execute_step(step)
+                step.ensure_result(self.workspace)
 
         # Print everything that has been computed.
-        for step in step_graph.values():
+        for step in ordered_steps:
             if step in self.workspace.step_cache:
                 info = self.workspace.step_info(step)
                 click.echo(
@@ -47,19 +56,3 @@ class Executor:
                 )
 
         return run_name
-
-    def execute_step(self, step: Step, quiet: bool = False) -> None:
-        if not quiet:
-            click.echo(
-                click.style("\N{black circle} Starting run for ", fg="blue")
-                + click.style(f'"{step.name}"...', bold=True, fg="blue")
-            )
-
-        # Run the step.
-        step.ensure_result(self.workspace)
-
-        if not quiet:
-            click.echo(
-                click.style("\N{check mark} Finished run for ", fg="green")
-                + click.style(f'"{step.name}"', bold=True, fg="green")
-            )

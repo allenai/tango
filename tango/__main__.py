@@ -26,12 +26,14 @@ You can see the the list of all available commands by running:
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --no-logging                    Disable logging altogether.
-      --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
+      --file-friendly-logging         Outputs progress bar status on
+                                      separate lines and slows refresh rate.
       --help                          Show this message and exit.
 
     Commands:
-      info  Get info about the current tango installation.
-      run   Run a tango experiment.
+      info    Get info about the current tango installation
+      run     Run a tango experiment
+      server  Run a local webserver that watches a workspace
 
 To see all of the available arguments and options for a particular command, run
 
@@ -226,7 +228,7 @@ def run(
     include_package: Optional[Sequence[str]] = None,
 ):
     """
-    Run a tango experiment.
+    Run a tango experiment
 
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
@@ -252,6 +254,9 @@ def run(
     help="""The directory of the workspace to monitor.""",
 )
 def server(workspace_dir: Union[str, os.PathLike]):
+    """
+    Run a local webserver that watches a workspace
+    """
     from tango.local_workspace import LocalWorkspace
     from tango.workspace_server import WorkspaceServer
 
@@ -270,7 +275,7 @@ def server(workspace_dir: Union[str, os.PathLike]):
 @click.pass_obj
 def info(config: TangoGlobalSettings):
     """
-    Get info about the current tango installation.
+    Get info about the current tango installation
     """
     import platform
 
@@ -318,8 +323,8 @@ def _run(
     include_package: Optional[Sequence[str]] = None,
 ) -> Path:
     from tango.executor import Executor
-    from tango.step_graph import StepGraph
     from tango.local_workspace import LocalWorkspace
+    from tango.step_graph import StepGraph
     from tango.workspace_server import WorkspaceServer
 
     # Read params.
@@ -345,7 +350,7 @@ def _run(
         )
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
-    workspace = LocalWorkspace(workspace_dir)  # TODO: make this configurable
+    workspace = LocalWorkspace(workspace_dir)
 
     # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))

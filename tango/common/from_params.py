@@ -78,21 +78,6 @@ def takes_kwargs(obj) -> bool:
     )
 
 
-def can_construct_from_params(type_: Type) -> bool:
-    if type_ in [str, int, float, bool]:
-        return True
-    origin = getattr(type_, "__origin__", None)
-    if origin == Lazy:
-        return True
-    elif origin:
-        if hasattr(type_, "from_params"):
-            return True
-        args = getattr(type_, "__args__")
-        return all(can_construct_from_params(arg) for arg in args)
-
-    return hasattr(type_, "from_params")
-
-
 def is_base_registrable(cls) -> bool:
     """
     Checks whether this is a class that directly inherits from Registrable, or is a subclass of such
@@ -467,11 +452,7 @@ def construct_arg(
     # This is special logic for handling types like Dict[str, TokenIndexer],
     # List[TokenIndexer], Tuple[TokenIndexer, Tokenizer], and Set[TokenIndexer],
     # which it creates by instantiating each value from_params and returning the resulting structure.
-    elif (
-        origin in {collections.abc.Mapping, Mapping, Dict, dict}
-        and len(args) == 2
-        and can_construct_from_params(args[-1])
-    ):
+    elif origin in {collections.abc.Mapping, Mapping, Dict, dict} and len(args) == 2:
         value_cls = annotation.__args__[-1]
         value_dict = {}
         if not isinstance(popped_params, Mapping):
@@ -491,7 +472,7 @@ def construct_arg(
 
         return value_dict
 
-    elif origin in (Tuple, tuple) and all(can_construct_from_params(arg) for arg in args):
+    elif origin in (Tuple, tuple):
         value_list = []
 
         for i, (value_cls, value_params) in enumerate(zip(annotation.__args__, popped_params)):
@@ -507,7 +488,7 @@ def construct_arg(
 
         return tuple(value_list)
 
-    elif origin in (Set, set) and len(args) == 1 and can_construct_from_params(args[0]):
+    elif origin in (Set, set) and len(args) == 1:
         value_cls = annotation.__args__[0]
 
         value_set = set()
@@ -566,11 +547,7 @@ def construct_arg(
     # For any other kind of iterable, we will just assume that a list is good enough, and treat
     # it the same as List. This condition needs to be at the end, so we don't catch other kinds
     # of Iterables with this branch.
-    elif (
-        origin in {collections.abc.Iterable, Iterable, List, list}
-        and len(args) == 1
-        and can_construct_from_params(args[0])
-    ):
+    elif origin in {collections.abc.Iterable, Iterable, List, list} and len(args) == 1:
         value_cls = annotation.__args__[0]
 
         value_list = []
@@ -588,7 +565,9 @@ def construct_arg(
 
         return value_list
 
-    elif inspect.isclass(annotation) and isinstance(popped_params, Params):
+    elif (inspect.isclass(annotation) or inspect.isclass(origin)) and isinstance(
+        popped_params, Params
+    ):
         # Constructing arbitrary classes from params
         arbitrary_class = origin or annotation
         subextras = create_extras(arbitrary_class, extras)
@@ -599,7 +578,7 @@ def construct_arg(
         from tango.step import WithUnresolvedSteps
 
         if origin != Step and params_contain_step:
-            return WithUnresolvedSteps(constructor_to_call, [], kwargs)
+            return WithUnresolvedSteps(constructor_to_call, *[], **kwargs)
         else:
             return constructor_to_call(**kwargs)  # type: ignore
 

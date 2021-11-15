@@ -1,5 +1,5 @@
 import logging
-from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Tuple
 from glob import glob
