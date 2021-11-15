@@ -127,7 +127,7 @@ class WandbTrainCallback(TrainCallback):
         if self.is_local_main_process:
             self.wandb.log(
                 {"train/loss": batch_loss, "train/lr": self.optimizer.param_groups[0]["lr"]},
-                step=step,
+                step=step + 1,
             )
 
     @overrides
@@ -138,5 +138,5 @@ class WandbTrainCallback(TrainCallback):
                     f"val/{self.train_config.val_metric_name}": val_metric,
                     f"val/best_{self.train_config.val_metric_name}": best_val_metric,
                 },
-                step=step,
+                step=step + 1,
             )
