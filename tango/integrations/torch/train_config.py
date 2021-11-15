@@ -76,9 +76,14 @@ class TrainConfig:
     The devices used (for distributed jobs).
     """
 
+    distributed_address: str = "127.0.0.1"
+    """
+    The IP address of the main distributed process.
+    """
+
     distributed_port: str = "54761"
     """
-    The port of the distributed backend.
+    The port of the main distributed process.
     """
 
     val_metric_name: str = "loss"

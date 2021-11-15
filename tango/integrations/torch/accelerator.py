@@ -35,20 +35,14 @@ class Accelerator(Registrable):
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
         model: Model = model.construct()
-        #  if initial_state is not None:
-        #      model.load_state_dict(initial_state["model"])
         return model.to(self.train_config.worker_local_default_device)
 
     def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
         optimizer: Optimizer = optimizer.construct(params=self.model.parameters())
-        #  if initial_state is not None:
-        #      optimizer.load_state_dict(initial_state["optimizer"])
         return optimizer
 
     def _construct_lr_scheduler(self, lr_scheduler: Lazy[LRScheduler]) -> LRScheduler:
         lr_scheduler: LRScheduler = lr_scheduler.construct(optimizer=self.optimizer)
-        #  if initial_state is not None:
-        #      lr_scheduler.load_state_dict(initial_state["scheduler"])
         return lr_scheduler
 
     @classmethod
@@ -137,8 +131,8 @@ class DefaultAccelerator(Accelerator):
             else:
                 backend = "gloo"
             dist.init_process_group(
-                backend="nccl" if self.device != torch.device("cpu") else "gloo",
-                init_method=f"tcp://127.0.0.1:{self.train_config.distributed_port}",
+                backend=backend,
+                init_method=f"tcp://{self.train_config.distributed_address}:{self.train_config.distributed_port}",
                 world_size=self.train_config.world_size,
                 rank=self.train_config.worker_id,
             )

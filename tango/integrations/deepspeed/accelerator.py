@@ -1,9 +1,12 @@
+import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import deepspeed
 import torch
+import torch.distributed as dist
 from deepspeed.utils.zero_to_fp32 import convert_zero_checkpoint_to_fp32_state_dict
+from overrides import overrides
 
 from tango.common import Lazy
 from tango.integrations.torch import (
@@ -22,18 +25,52 @@ class DeepSpeedAccelerator(Accelerator):
         train_config: TrainConfig,
         model: Lazy[Model],
         optimizer: Lazy[Optimizer],
-        deepspeed_config: Union[Path, Dict[str, Any]],
+        deepspeed_config: Dict[str, Any],
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     ) -> None:
         super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
+        self.device = self.train_config.worker_local_default_device
+        if self.train_config.is_distributed:
+            # Initialize distributed process group.
+            backend: str
+            if self.device != torch.device("cpu"):
+                torch.cuda.set_device(self.device)
+                backend = "nccl"
+            else:
+                backend = "gloo"
+            dist.init_process_group(
+                backend=backend,
+                init_method=f"tcp://{self.train_config.distributed_address}:{self.train_config.distributed_port}",
+                world_size=self.train_config.world_size,
+                rank=self.train_config.worker_id,
+            )
+            os.environ["RANK"] = str(self.train_config.worker_id)
+            os.environ["LOCAL_RANK"] = str(self.train_config.worker_id)
+            os.environ["WORLD_SIZE"] = str(self.train_config.world_size)
+            os.environ["MASTER_ADDR"] = str(self.train_config.distributed_address)
+            os.environ["MASTER_PORT"] = str(self.train_config.distributed_port)
+
+        # Make sure deepspeed config has everything it needs.
+        deepspeed_config["train_micro_batch_size_per_gpu"] = 1
+        deepspeed_config["gradient_accumulation_steps"] = self.train_config.grad_accum
+
+        # Initialize deepspeed engine.
         self.train_engine, self.optimizer, _, self.lr_scheduler = deepspeed.initialize(
             model=self.model,
             model_parameters=self.model.parameters(),
+            optimizer=self.optimizer,
             lr_scheduler=lr_scheduler,
-            dist_init_required=self.train_config.is_distributed,
+            dist_init_required=False,
             config=deepspeed_config,
         )
+
+    @overrides
+    def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
+        optimizer: Optimizer = optimizer.construct(
+            params=self.model.parameters(), model_params=self.model.parameters()
+        )
+        return optimizer
 
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
