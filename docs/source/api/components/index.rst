@@ -12,3 +12,4 @@ The core components of **AI2 Tango**.
    step
    step_cache
    step_graph
+   workspace
