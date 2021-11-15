@@ -60,7 +60,7 @@ _random_for_step_names = random.Random()
 
 class Step(Registrable, Generic[T]):
     """
-    This class defines one step in your experiment. To write your own step, just derive from this class
+    This class defines one step in your experiment. To write your own step, derive from this class
     and overwrite the :meth:`run()` method. The :meth:`run()` method must have parameters with type hints.
 
     ``Step.__init__()`` takes all the arguments we want to run the step with. They get passed
@@ -68,14 +68,14 @@ class Step(Registrable, Generic[T]):
     will be replaced with the step's results before calling :meth:`run()`. Further, there are four special
     parameters:
 
-    * ``step_name`` contains an optional human-readable name for the step. This name is used for
+    :param step_name: contains an optional human-readable name for the step. This name is used for
       error messages and the like, and has no consequence on the actual computation.
-    * ``cache_results`` specifies whether the results of this step should be cached. If this is
+    :param cache_results: specifies whether the results of this step should be cached. If this is
       ``False``, the step is recomputed every time it is needed. If this is not set at all,
       and :attr:`CACHEABLE` is ``True``, we cache if the step is marked as :attr:`DETERMINISTIC`,
       and we don't cache otherwise.
-    * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
-    * ``step_config`` is the original raw part of the experiment config corresponding to this step.
+    :param step_format: gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
+    :param step_config: is the original raw part of the experiment config corresponding to this step.
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
     """
 
@@ -359,9 +359,16 @@ class Step(Registrable, Generic[T]):
         return self.unique_id_cache
 
     def __hash__(self):
+        """
+        A step's hash is just its unique ID.
+        """
         return hash(self.unique_id)
 
     def __eq__(self, other):
+        """
+        Determines whether this step is equal to another step. Two steps with the same unique ID are
+        considered identical.
+        """
         if isinstance(other, Step):
             return self.unique_id == other.unique_id
         else:
@@ -455,17 +462,16 @@ class Step(Registrable, Generic[T]):
 
     @property
     def dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        This does not return recursive dependencies."""
+        """
+        Returns a set of steps that this step depends on. This does not return recursive dependencies.
+        """
         return set(self._ordered_dependencies())
 
     @property
     def recursive_dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        This returns recursive dependencies."""
-
+        """
+        Returns a set of steps that this step depends on. This returns recursive dependencies.
+        """
         seen = set()
         steps = list(self.dependencies)
         while len(steps) > 0:
@@ -479,7 +485,7 @@ class Step(Registrable, Generic[T]):
 
 class WithUnresolvedSteps(CustomDetHash):
     """
-    This is a helper class for scenarios where steps depend on other steps.
+    This is a helper class for some scenarios where steps depend on other steps.
 
     Let's say we have two steps, :class:`ConsumeDataStep` and :class:`ProduceDataStep`. The easiest way to make
     :class:`ConsumeDataStep` depend on :class:`ProduceDataStep` is to specify ``Produce`` as one of the arguments
@@ -539,10 +545,16 @@ class WithUnresolvedSteps(CustomDetHash):
     :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
     the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step
     are available at that time, and replaces the step in the arguments with the step's results.
+
+    :param function: The function to call after resolving steps to their results.
+    :param args: The args to pass to the function. These may contain steps, which will be resolved before the
+                 function is called.
+    :param kwargs: The kwargs to pass to the function. These may contain steps, which will be resolved before the
+                   function is called.
     """
 
-    def __init__(self, constructor, *args, **kwargs):
-        self.constructor = constructor
+    def __init__(self, function, *args, **kwargs):
+        self.function = function
         self.args = args
         self.kwargs = kwargs
 
@@ -552,6 +564,15 @@ class WithUnresolvedSteps(CustomDetHash):
         o: Any,
         workspace: "Workspace",
     ):
+        """
+        Recursively goes through a Python object and replaces all instances of :class:`.Step` with the results of
+        that step.
+
+        :param o: The Python object to go through
+        :param workspace: The workspace in which to resolve all steps
+        :return: A new object that's a copy of the original object, with all instances of :class:`.Step` replaced
+                 with the results of the step.
+        """
         if isinstance(o, Step):
             return o.result(workspace)
         elif isinstance(o, cls):
@@ -566,9 +587,15 @@ class WithUnresolvedSteps(CustomDetHash):
             return o
 
     def construct(self, workspace: "Workspace"):
+        """
+        Replaces all steps in the args that are stored in this object, and calls the function with those args.
+
+        :param workspace: The :class:`.Workspace` in which to resolve all the steps.
+        :return: The result of calling the function.
+        """
         resolved_args = self.with_resolved_steps(self.args, workspace)
         resolved_kwargs = self.with_resolved_steps(self.kwargs, workspace)
-        return self.constructor(*resolved_args, **resolved_kwargs)
+        return self.function(*resolved_args, **resolved_kwargs)
 
     def det_hash_object(self) -> Any:
-        return self.constructor.__qualname__, self.args, self.kwargs
+        return self.function.__qualname__, self.args, self.kwargs

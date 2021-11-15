@@ -206,6 +206,20 @@ class ExecutorMetadata(FromParams):
 
 @Workspace.register("local")
 class LocalWorkspace(Workspace):
+    """
+    This is a :class:`.Workspace` that keeps all its data in a local directory. This works great for single-machine
+    jobs, or for multiple machines in a cluster if they can all access the same NFS drive.
+
+    :param dir: The directory to store all the data in
+
+    The directory will have two subdirectories, ``cache/`` for the step cache, and ``runs/`` for the runs. For the
+    format of the ``cache/`` directory, refer to :class:`.LocalStepCache`. The ``runs/`` directory will contain one
+    subdirectory for each registered run. Each one of those contains a symlink from the name of the step to the
+    results directory in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps
+    that have not finished yet. You can tell the difference because either the symlink points to a directory that
+    doesn't exist, or it points to a directory in the step cache that doesn't contain results.
+    """
+
     def __init__(self, dir: PathOrStr):
         self.dir = Path(dir)
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -363,4 +377,13 @@ class LocalWorkspace(Workspace):
         return steps_for_run
 
     def run_dir(self, name: str) -> Path:
+        """
+        Returns the directory where a given run is stored.
+
+        :param name: The name of the run
+        :return: The directory where the results of the run are stored
+
+        If the run does not exist, this returns the directory where it will be stored if you call
+        :meth:`register_run()` with that name.
+        """
         return self.runs_dir / name
