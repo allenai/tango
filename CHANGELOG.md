@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added separate classes for `LightningTrainingTypePlugin`, `LightningPrecisionPlugin`, `LightningClusterEnvironmentPlugin`, `LightningCheckpointPlugin` for compatibility with `pytorch-lightning>=1.5.0`.
+
+### Removed
+
+- Removed old `LightningPlugin` class.
+
 ### Changed
 
 - W&B `torch::TrainCallback` logs with `step=step+1` now so that training curves in the W&B dashboard
