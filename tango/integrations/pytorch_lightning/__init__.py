@@ -132,7 +132,10 @@ __all__ = [
     "LightningLogger",
     "LightningModule",
     "LightningProfiler",
-    "LightningPlugin",
+    "LightningTrainingTypePlugin",
+    "LightningPrecisionPlugin",
+    "LightningClusterEnvironmentPlugin",
+    "LightningCheckpointPlugin",
     "LightningTrainStep",
     "LightningTrainer",
 ]
@@ -142,6 +145,11 @@ from .callbacks import LightningCallback
 from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
-from .plugins import LightningPlugin
+from .plugins import (
+    LightningCheckpointPlugin,
+    LightningClusterEnvironmentPlugin,
+    LightningPrecisionPlugin,
+    LightningTrainingTypePlugin,
+)
 from .profilers import LightningProfiler
 from .train import LightningTrainer, LightningTrainStep
