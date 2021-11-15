@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - W&B `torch::TrainCallback` logs with `step=step+1` now so that training curves in the W&B dashboard
   match up with checkpoints saved locally and are easier to read (e.g. step 10000 instead of 9999).
 
+### Fixed
+
+- Fixed bug in `FromParams` where a parameter to a `FromParams` class may not be instantiated correctly
+  if it's a class with a generic type parameter.
+
 ## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
 
 ### Added

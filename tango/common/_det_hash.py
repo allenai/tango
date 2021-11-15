@@ -22,7 +22,7 @@ class CustomDetHash:
     @abstractmethod
     def det_hash_object(self) -> Any:
         """
-        Return an object to use for hashing instead of ``self``.
+        Return an object to use for deterministic hashing instead of ``self``.
         """
         raise NotImplementedError()
 

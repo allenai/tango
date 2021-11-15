@@ -56,3 +56,7 @@ def test_experiment():
         }
     ) as run_dir:
         assert (run_dir / "saved_data").is_dir()
+        fmt = JsonFormat()
+        data = fmt.read(run_dir / "saved_data")
+        assert data["train"] == list(range(10))
+        assert data["val"] == list(range(10, 20))

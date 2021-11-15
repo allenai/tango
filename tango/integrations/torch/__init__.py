@@ -90,7 +90,7 @@ You could then run this experiment with a config that looks like this:
     with run_experiment(
         "test_fixtures/integrations/torch/train.jsonnet"
     ) as run_dir:
-        assert (run_dir / "step_cache").is_dir()
+        assert (run_dir / "train").is_dir(), "Output for the 'train' step was not produced."
     # Restore state of registry.
     del Registrable._registry[Step]["generate_data"]
     del Registrable._registry[Model]["basic_regression"]
@@ -106,6 +106,8 @@ would produce the following output:
 .. testoutput::
     :options: +ELLIPSIS
 
+    ● Starting run for "data"...
+    ✓ Finished run for "data"
     ● Starting run for "train"...
     Loading best weights from state_worker0_best.pt
     ✓ Finished run for "train"

@@ -20,6 +20,8 @@ from typing import (
     cast,
 )
 
+import click
+
 try:
     from typing import get_args, get_origin  # type: ignore
 except ImportError:
@@ -38,7 +40,7 @@ from tango.common.from_params import (
     infer_method_params,
     pop_and_construct_arg,
 )
-from tango.common.logging import TangoLogger
+from tango.common.logging import TangoLogger, click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
@@ -53,9 +55,12 @@ _version_re = re.compile("""^[a-zA-Z0-9]+$""")
 T = TypeVar("T")
 
 
+_random_for_step_names = random.Random()
+
+
 class Step(Registrable, Generic[T]):
     """
-    This class defines one step in your experiment. To write your own step, just derive from this class
+    This class defines one step in your experiment. To write your own step, derive from this class
     and overwrite the :meth:`run()` method. The :meth:`run()` method must have parameters with type hints.
 
     ``Step.__init__()`` takes all the arguments we want to run the step with. They get passed
@@ -63,14 +68,14 @@ class Step(Registrable, Generic[T]):
     will be replaced with the step's results before calling :meth:`run()`. Further, there are four special
     parameters:
 
-    * ``step_name`` contains an optional human-readable name for the step. This name is used for
+    :param step_name: contains an optional human-readable name for the step. This name is used for
       error messages and the like, and has no consequence on the actual computation.
-    * ``cache_results`` specifies whether the results of this step should be cached. If this is
+    :param cache_results: specifies whether the results of this step should be cached. If this is
       ``False``, the step is recomputed every time it is needed. If this is not set at all,
       and :attr:`CACHEABLE` is ``True``, we cache if the step is marked as :attr:`DETERMINISTIC`,
       and we don't cache otherwise.
-    * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
-    * ``step_config`` is the original raw part of the experiment config corresponding to this step.
+    :param step_format: gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
+    :param step_config: is the original raw part of the experiment config corresponding to this step.
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
     """
 
@@ -292,7 +297,6 @@ class Step(Registrable, Generic[T]):
                 workspace.step_failed(self, e)
                 raise
         finally:
-            # No cleanup, as we want to keep the directory for restarts or serialization.
             self.work_dir_for_run = None
 
     @property
@@ -348,35 +352,45 @@ class Step(Registrable, Generic[T]):
                     )
                 )[:32]
             else:
-                self.unique_id_cache += det_hash(random.getrandbits((58 ** 32).bit_length()))[:32]
+                self.unique_id_cache += det_hash(
+                    _random_for_step_names.getrandbits((58 ** 32).bit_length())
+                )[:32]
 
         return self.unique_id_cache
 
     def __hash__(self):
+        """
+        A step's hash is just its unique ID.
+        """
         return hash(self.unique_id)
 
     def __eq__(self, other):
+        """
+        Determines whether this step is equal to another step. Two steps with the same unique ID are
+        considered identical.
+        """
         if isinstance(other, Step):
             return self.unique_id == other.unique_id
         else:
             return False
 
-    @classmethod
-    def _replace_steps_with_results(cls, o: Any, workspace: "Workspace"):
+    def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
-            return o.result(workspace)
-        if isinstance(o, WithUnresolvedSteps):
+            return o.result(workspace, self)
+        elif isinstance(o, WithUnresolvedSteps):
             return o.construct(workspace)
-        if isinstance(o, (list, tuple, set)):
-            return o.__class__(cls._replace_steps_with_results(i, workspace) for i in o)
+        elif isinstance(o, (list, tuple, set)):
+            return o.__class__(self._replace_steps_with_results(i, workspace) for i in o)
         elif isinstance(o, dict):
             return {
-                key: cls._replace_steps_with_results(value, workspace) for key, value in o.items()
+                key: self._replace_steps_with_results(value, workspace) for key, value in o.items()
             }
         else:
             return o
 
-    def result(self, workspace: Optional["Workspace"] = None) -> T:
+    def result(
+        self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
+    ) -> T:
         """Returns the result of this step. If the results are cached, it returns those. Otherwise it
         runs the step and returns the result from there.
 
@@ -385,13 +399,40 @@ class Step(Registrable, Generic[T]):
             from tango.workspace import default_workspace
 
             workspace = default_workspace
+
         if self in workspace.step_cache:
+            if click_logger.isEnabledFor(logging.INFO):
+                message = click.style("\N{check mark} Found output for ", fg="green")
+                message += click.style(f'"{self.name}"', bold=True, fg="green")
+                message += click.style(" in cache", fg="green")
+                if needed_by is None:
+                    message += click.style(" ...", fg="green")
+                else:
+                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="green")
+                click_logger.info(message)
             return workspace.step_cache[self]
 
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-        return self._run_with_work_dir(workspace, **kwargs)
 
-    def ensure_result(self, workspace: Optional["Workspace"] = None) -> None:
+        if click_logger.isEnabledFor(logging.INFO):
+            message = click.style("\N{black circle} Starting run for ", fg="blue")
+            message += click.style(f'"{self.name}"', bold=True, fg="blue")
+            if needed_by is None:
+                message += click.style(" ...", fg="blue")
+            else:
+                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
+            click_logger.info(message)
+        result = self._run_with_work_dir(workspace, **kwargs)
+        click_logger.info(
+            click.style("\N{check mark} Finished run for ", fg="green")
+            + click.style(f'"{self.name}"', bold=True, fg="green")
+        )
+        return result
+
+    def ensure_result(
+        self,
+        workspace: Optional["Workspace"] = None,
+    ) -> None:
         """This makes sure that the result of this step is in the cache. It does
         not return the result."""
         if not self.cache_results:
@@ -405,6 +446,9 @@ class Step(Registrable, Generic[T]):
         def dependencies_internal(o: Any) -> Iterable[Step]:
             if isinstance(o, Step):
                 yield o
+            elif isinstance(o, WithUnresolvedSteps):
+                yield from dependencies_internal(o.args)
+                yield from dependencies_internal(o.kwargs)
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
             elif isinstance(o, dict):
@@ -418,17 +462,16 @@ class Step(Registrable, Generic[T]):
 
     @property
     def dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        This does not return recursive dependencies."""
+        """
+        Returns a set of steps that this step depends on. This does not return recursive dependencies.
+        """
         return set(self._ordered_dependencies())
 
     @property
     def recursive_dependencies(self) -> Set["Step"]:
-        """Returns a set of steps that this step depends on.
-
-        This returns recursive dependencies."""
-
+        """
+        Returns a set of steps that this step depends on. This returns recursive dependencies.
+        """
         seen = set()
         steps = list(self.dependencies)
         while len(steps) > 0:
@@ -442,7 +485,7 @@ class Step(Registrable, Generic[T]):
 
 class WithUnresolvedSteps(CustomDetHash):
     """
-    This is a helper class for scenarios where steps depend on other steps.
+    This is a helper class for some scenarios where steps depend on other steps.
 
     Let's say we have two steps, :class:`ConsumeDataStep` and :class:`ProduceDataStep`. The easiest way to make
     :class:`ConsumeDataStep` depend on :class:`ProduceDataStep` is to specify ``Produce`` as one of the arguments
@@ -502,32 +545,57 @@ class WithUnresolvedSteps(CustomDetHash):
     :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
     the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step
     are available at that time, and replaces the step in the arguments with the step's results.
+
+    :param function: The function to call after resolving steps to their results.
+    :param args: The args to pass to the function. These may contain steps, which will be resolved before the
+                 function is called.
+    :param kwargs: The kwargs to pass to the function. These may contain steps, which will be resolved before the
+                   function is called.
     """
 
-    def __init__(self, constructor, *args, **kwargs):
-        self.constructor = constructor
+    def __init__(self, function, *args, **kwargs):
+        self.function = function
         self.args = args
         self.kwargs = kwargs
 
     @classmethod
-    def with_resolved_steps(cls, o: Any, workspace: "Workspace"):
+    def with_resolved_steps(
+        cls,
+        o: Any,
+        workspace: "Workspace",
+    ):
+        """
+        Recursively goes through a Python object and replaces all instances of :class:`.Step` with the results of
+        that step.
+
+        :param o: The Python object to go through
+        :param workspace: The workspace in which to resolve all steps
+        :return: A new object that's a copy of the original object, with all instances of :class:`.Step` replaced
+                 with the results of the step.
+        """
         if isinstance(o, Step):
             return o.result(workspace)
-        elif isinstance(o, str):
-            return o  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-        elif isinstance(o, dict) or isinstance(o, Params):
+        elif isinstance(o, cls):
+            return o.construct(workspace)
+        elif isinstance(o, (dict, Params)):
             return o.__class__(
                 {key: cls.with_resolved_steps(value, workspace) for key, value in o.items()}
             )
-        if isinstance(o, (list, tuple, set)):
+        elif isinstance(o, (list, tuple, set)):
             return o.__class__(cls.with_resolved_steps(item, workspace) for item in o)
         else:
             return o
 
     def construct(self, workspace: "Workspace"):
+        """
+        Replaces all steps in the args that are stored in this object, and calls the function with those args.
+
+        :param workspace: The :class:`.Workspace` in which to resolve all the steps.
+        :return: The result of calling the function.
+        """
         resolved_args = self.with_resolved_steps(self.args, workspace)
         resolved_kwargs = self.with_resolved_steps(self.kwargs, workspace)
-        return self.constructor(*resolved_args, **resolved_kwargs)
+        return self.function(*resolved_args, **resolved_kwargs)
 
     def det_hash_object(self) -> Any:
-        return self.constructor.__qualname__, self.args, self.kwargs
+        return self.function.__qualname__, self.args, self.kwargs
