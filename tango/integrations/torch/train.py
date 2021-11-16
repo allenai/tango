@@ -257,7 +257,10 @@ class TorchTrainStep(Step):
         if config.final_weights_path.is_file():
             print(f"Loading best weights from {str(config.final_weights_path.resolve())}")
             state = torch.load(config.final_weights_path, map_location="cpu")
-            final_model.load_state_dict(state)
+            if isinstance(final_model, Model):
+                final_model.load_final_state_dict(state)
+            else:
+                final_model.load_state_dict(state)
 
         return final_model
 

@@ -69,8 +69,8 @@ class DeepSpeedAccelerator(Accelerator):
     @overrides
     def _construct_model(self, model: Lazy[Model]) -> Model:
         with deepspeed.zero.Init():
-            model: Model = model.construct()
-        return model.to(self.train_config.worker_local_default_device)
+            model: Model = model.construct()  # type: ignore[no-redef]
+        return model.to(self.train_config.worker_local_default_device)  # type: ignore[attr-defined]
 
     @overrides
     def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
