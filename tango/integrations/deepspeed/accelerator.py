@@ -29,6 +29,11 @@ class DeepSpeedAccelerator(Accelerator):
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     ) -> None:
+        # Make sure deepspeed config has everything it needs.
+        deepspeed_config["train_micro_batch_size_per_gpu"] = 1
+        deepspeed_config["gradient_accumulation_steps"] = train_config.grad_accum
+        self.deepspeed_config = deepspeed_config
+
         self.device = train_config.worker_local_default_device
         if train_config.is_distributed:
             # Initialize distributed process group.
@@ -52,10 +57,6 @@ class DeepSpeedAccelerator(Accelerator):
 
         super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
 
-        # Make sure deepspeed config has everything it needs.
-        deepspeed_config["train_micro_batch_size_per_gpu"] = 1
-        deepspeed_config["gradient_accumulation_steps"] = self.train_config.grad_accum
-
         # Initialize deepspeed engine.
         self.train_engine, self.optimizer, _, self.lr_scheduler = deepspeed.initialize(
             model=self.model,
@@ -68,7 +69,7 @@ class DeepSpeedAccelerator(Accelerator):
 
     @overrides
     def _construct_model(self, model: Lazy[Model]) -> Model:
-        with deepspeed.zero.Init():
+        with deepspeed.zero.Init(config_dict_or_path=self.deepspeed_config):
             model: Model = model.construct()  # type: ignore[no-redef]
         return model.to(self.train_config.worker_local_default_device)  # type: ignore[attr-defined]
 
