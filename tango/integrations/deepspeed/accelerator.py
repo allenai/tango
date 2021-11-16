@@ -29,9 +29,8 @@ class DeepSpeedAccelerator(Accelerator):
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     ) -> None:
-        super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
-        self.device = self.train_config.worker_local_default_device
-        if self.train_config.is_distributed:
+        self.device = train_config.worker_local_default_device
+        if train_config.is_distributed:
             # Initialize distributed process group.
             backend: str
             if self.device != torch.device("cpu"):
@@ -41,15 +40,17 @@ class DeepSpeedAccelerator(Accelerator):
                 backend = "gloo"
             dist.init_process_group(
                 backend=backend,
-                init_method=f"tcp://{self.train_config.distributed_address}:{self.train_config.distributed_port}",
-                world_size=self.train_config.world_size,
-                rank=self.train_config.worker_id,
+                init_method=f"tcp://{train_config.distributed_address}:{train_config.distributed_port}",
+                world_size=train_config.world_size,
+                rank=train_config.worker_id,
             )
-            os.environ["RANK"] = str(self.train_config.worker_id)
-            os.environ["LOCAL_RANK"] = str(self.train_config.worker_id)
-            os.environ["WORLD_SIZE"] = str(self.train_config.world_size)
-            os.environ["MASTER_ADDR"] = str(self.train_config.distributed_address)
-            os.environ["MASTER_PORT"] = str(self.train_config.distributed_port)
+            os.environ["RANK"] = str(train_config.worker_id)
+            os.environ["LOCAL_RANK"] = str(train_config.worker_id)
+            os.environ["WORLD_SIZE"] = str(train_config.world_size)
+            os.environ["MASTER_ADDR"] = str(train_config.distributed_address)
+            os.environ["MASTER_PORT"] = str(train_config.distributed_port)
+
+        super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
 
         # Make sure deepspeed config has everything it needs.
         deepspeed_config["train_micro_batch_size_per_gpu"] = 1
@@ -64,6 +65,12 @@ class DeepSpeedAccelerator(Accelerator):
             dist_init_required=False,
             config=deepspeed_config,
         )
+
+    @overrides
+    def _construct_model(self, model: Lazy[Model]) -> Model:
+        with deepspeed.zero.Init():
+            model: Model = model.construct()
+        return model.to(self.train_config.worker_local_default_device)
 
     @overrides
     def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
