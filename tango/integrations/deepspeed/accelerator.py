@@ -60,7 +60,7 @@ class DeepSpeedAccelerator(Accelerator):
             model=self.model,
             model_parameters=self.model.parameters(),
             optimizer=self.optimizer,
-            lr_scheduler=lr_scheduler,
+            lr_scheduler=self.lr_scheduler,
             dist_init_required=False,
             config=deepspeed_config,
         )
@@ -75,11 +75,13 @@ class DeepSpeedAccelerator(Accelerator):
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
     ) -> torch.Tensor:
-        outputs = self.train_engine(micro_batch)
+        micro_batch = self._move_to_device(micro_batch, self.device)
+        outputs = self.train_engine(**micro_batch)
         return outputs["loss"] / num_micro_batches
 
     def forward_eval(self, batch: Dict[str, Any]) -> Dict[str, Any]:
-        return self.train_engine(batch)
+        batch = self._move_to_device(batch, self.device)
+        return self.train_engine(**batch)
 
     def backward(self, loss: torch.Tensor) -> None:
         self.train_engine.backward(loss)
@@ -89,7 +91,7 @@ class DeepSpeedAccelerator(Accelerator):
 
     def save_checkpoint(self, path: Path, client_state: Dict[str, Any]) -> None:
         self.train_engine.save_checkpoint(
-            path, client_state["training_steps"], client_save=client_state
+            path, client_state["training_steps"], client_state=client_state
         )
 
     def load_checkpoint(self, path: Path) -> Dict[str, Any]:
