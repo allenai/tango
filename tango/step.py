@@ -531,7 +531,8 @@ class WithUnresolvedSteps(CustomDetHash):
 
         produce = ProduceDataStep()
         consume = ConsumeDataStep(
-            input_data = DataWithTimestamp(produce, time.now()))
+            input_data = DataWithTimestamp(produce, time.now())
+        )
 
     That does not work, because :class:`DataWithTimestamp` needs an object of type :class:`MyDataClass`, but we're
     giving it an object of type :class:`Step[MyDataClass]`. Instead, we change the last line to this:
@@ -540,7 +541,9 @@ class WithUnresolvedSteps(CustomDetHash):
 
         consume = ConsumeDataStep(
             input_data = WithUnresolvedSteps(
-                DataWithTimestamp, (produce, time.now()))
+                DataWithTimestamp, produce, time.now()
+            )
+        )
 
     :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
     the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step
