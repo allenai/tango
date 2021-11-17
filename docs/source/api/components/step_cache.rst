@@ -17,5 +17,7 @@ Metadata
 Implementations
 ---------------
 
+.. autoclass:: tango.step_cache.MemoryStepCache
+
 .. autoclass:: tango.step_cache.LocalStepCache
    :members:
