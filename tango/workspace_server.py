@@ -37,7 +37,9 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/":
             self.path = "report/index.html"
-        elif self.path == "/api/steps":
+        if self.path.startswith("/run/"):
+            self.path = "report/report.html"
+        elif self.path == "/api/stepinfo":
             self.send_response(200)
             self.send_header("Content-type", "text/json")
             self.end_headers()
@@ -45,6 +47,14 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
                 sub: self._run_map(sub, self.server.workspace)
                 for sub in list(self.server.workspace.registered_runs())
             }
+            output_json = json.dumps(output_data)
+            self.wfile.write(output_json.encode("utf-8"))
+            return
+        elif self.path == "/api/runlist":
+            self.send_response(200)
+            self.send_header("Content-type", "text/json")
+            self.end_headers()
+            output_data = list(self.server.workspace.registered_runs())
             output_json = json.dumps(output_data)
             self.wfile.write(output_json.encode("utf-8"))
             return
