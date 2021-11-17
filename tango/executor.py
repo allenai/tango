@@ -3,6 +3,7 @@ from typing import List, Optional, TypeVar
 
 import click
 
+from tango.common.logging import click_logger
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
 from tango.workspace import Workspace
@@ -35,11 +36,10 @@ class Executor:
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
-        # Execute all steps that need to run, i.e. steps that fall into one of the
-        # following two categories:
-        #  1. step should be cached but is not in cache
-        #  2. step is a dependency (direct or recursively) to another step that should be cached
-        #     but is not in the cache.
+        click_logger.info(
+            click.style("Starting new run ", fg="green")
+            + click.style(run_name, fg="green", bold=True)
+        )
         for step in ordered_steps:
             if step.cache_results:
                 step.ensure_result(self.workspace)
@@ -48,7 +48,7 @@ class Executor:
         for step in ordered_steps:
             if step in self.workspace.step_cache:
                 info = self.workspace.step_info(step)
-                click.echo(
+                click_logger.info(
                     click.style("\N{check mark} The output for ", fg="green")
                     + click.style(f'"{step.name}"', bold=True, fg="green")
                     + click.style(" is in ", fg="green")
