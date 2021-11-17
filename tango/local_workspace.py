@@ -338,7 +338,8 @@ class LocalWorkspace(Workspace):
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
         if name is None:
-            name = petname.generate()
+            while name is None or (self.runs_dir / name).exists():
+                name = petname.generate(words=3)
         run_dir = self.runs_dir / name
 
         # clean any existing run directory
