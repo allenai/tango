@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar
@@ -13,6 +14,22 @@ from tango.step import Step
 from tango.step_cache import StepCache
 
 T = TypeVar("T")
+
+
+class StepState(Enum):
+    """Describes the possible state a step can be in."""
+
+    INCOMPLETE = "incomplete"
+    """The step has not run yet."""
+
+    RUNNING = "running"
+    """The step is running right now."""
+
+    COMPLETED = "completed"
+    """The step finished running successfully."""
+
+    FAILED = "failed"
+    """The step ran, but failed."""
 
 
 @dataclass
@@ -79,23 +96,18 @@ class StepInfo:
             return None
 
     @property
-    def status(self) -> str:
+    def state(self) -> StepState:
         """
-        The result will be one of these:
-
-        - ``"incomplete"`` if the step has never started
-        - ``"running"`` if the step is running right now
-        - ``"completed"`` if the step completed successfully
-        - ``"failed"`` if the step failed
+        Returns the state of the step
         """
         if self.start_time is None and self.end_time is None and self.error is None:
-            return "incomplete"
+            return StepState.INCOMPLETE
         if self.start_time is not None and self.end_time is None and self.error is None:
-            return "running"
+            return StepState.RUNNING
         if self.start_time is not None and self.end_time is not None and self.error is None:
-            return "completed"
+            return StepState.COMPLETED
         if self.start_time is not None and self.end_time is not None and self.error is not None:
-            return "failed"
+            return StepState.COMPLETED
         raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
 
 
@@ -262,7 +274,7 @@ class MemoryWorkspace(Workspace):
 
     def step_finished(self, step: Step, result: T) -> T:
         existing_step_info = self.steps_to_info[step]
-        if existing_step_info.status != "running":
+        if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is ending, but it never started.")
         existing_step_info.end_time = datetime.now()
 
@@ -278,7 +290,7 @@ class MemoryWorkspace(Workspace):
     def step_failed(self, step: Step, e: Exception) -> None:
         assert e is not None
         existing_step_info = self.steps_to_info[step]
-        if existing_step_info.status != "running":
+        if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
         existing_step_info.end_time = datetime.now()
         existing_step_info.error = e
