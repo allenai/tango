@@ -10,18 +10,25 @@ def main():
     with changelog.open() as f:
         lines = f.readlines()
 
+    insert_index: int
     for i in range(len(lines)):
         line = lines[i]
         if line.startswith("## Unreleased"):
-            lines.insert(i + 1, "\n")
-            lines.insert(
-                i + 2,
-                f"## [v{VERSION}](https://github.com/allenai/tango/releases/tag/v{VERSION}) - "
-                f"{datetime.now().strftime('%Y-%m-%d')}\n",
-            )
+            insert_index = i + 1
+        elif line.startswith(f"## [v{VERSION}]"):
+            print("CHANGELOG already up-to-date")
+            return
+        elif line.startswith("## [v"):
             break
     else:
         raise RuntimeError("Couldn't find 'Unreleased' section")
+
+    lines.insert(insert_index, "\n")
+    lines.insert(
+        insert_index + 1,
+        f"## [v{VERSION}](https://github.com/allenai/tango/releases/tag/v{VERSION}) - "
+        f"{datetime.now().strftime('%Y-%m-%d')}\n",
+    )
 
     with changelog.open("w") as f:
         f.writelines(lines)
