@@ -81,8 +81,8 @@ class Step(Registrable, Generic[T]):
 
     DETERMINISTIC: bool = True
     """This describes whether this step can be relied upon to produce the same results every time
-    when given the same inputs. If this is ``False``, the step can't be cached, and neither can any
-    step that depends on it."""
+    when given the same inputs. If this is ``False``, you can still cache the output of the step,
+    but the results might be unexpected. Tango will print a warning in this case."""
 
     CACHEABLE: Optional[bool] = None
     """This provides a direct way to turn off caching. For example, a step that reads a HuggingFace
