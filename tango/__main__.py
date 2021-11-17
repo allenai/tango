@@ -25,9 +25,7 @@ You can see the the list of all available commands by running:
       --config FILE                   Path to a global tango.yml settings file.
       --log-level [debug|info|warning|error]
                                       Set the global log level.
-      --no-logging                    Disable logging altogether.
-      --file-friendly-logging         Outputs progress bar status on
-                                      separate lines and slows refresh rate.
+      --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
       --help                          Show this message and exit.
 
     Commands:
