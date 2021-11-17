@@ -333,7 +333,7 @@ def _run(
     # Import included packages to find registered components.
     # NOTE: The Executor imports these as well because it's meant to be used
     # directly, but we also need to import here in case the user is using a
-    # custom Executor or StepCache.
+    # custom Executor, StepCache, or Workspace.
     include_package: List[str] = list(include_package or [])
     include_package += params.pop("include_package", [])
     include_package += config.include_package or []
