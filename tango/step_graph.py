@@ -140,7 +140,7 @@ class StepGraph(Mapping[str, Step]):
         """
         return iter(self.parsed_steps)
 
-    def serialized(self) -> List[Step]:
+    def ordered_steps(self) -> List[Step]:
         """
         Returns the steps in this step graph in an order that can be executed one at a time.
 
