@@ -60,6 +60,12 @@ for a quick introduction to the format.
 The ``info`` command just prints out some useful information about the current tango installation,
 such as which integrations are available.
 
+``tango server``
+----------------
+
+The ``server`` command spins up a web server that watches a workspace. You can use this to track the
+progress of your runs while they are happening.
+
 """
 import os
 from dataclasses import dataclass
