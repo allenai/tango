@@ -400,7 +400,7 @@ class Step(Registrable, Generic[T]):
 
             workspace = default_workspace
 
-        if self in workspace.step_cache:
+        if self.cache_results and self in workspace.step_cache:
             if click_logger.isEnabledFor(logging.INFO):
                 message = click.style("\N{check mark} Found output for ", fg="green")
                 message += click.style(f'"{self.name}"', bold=True, fg="green")
