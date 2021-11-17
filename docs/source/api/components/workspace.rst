@@ -11,10 +11,8 @@ Implementations
 ---------------
 
 .. autoclass:: tango.workspace.MemoryWorkspace
-   :members:
 
 .. autoclass:: tango.local_workspace.LocalWorkspace
-   :members:
 
 Metadata
 --------
