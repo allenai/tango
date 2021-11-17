@@ -88,12 +88,7 @@ class TangoGlobalSettings(FromParams):
     An list of modules where custom registered steps or classes can be found.
     """
 
-    no_logging: bool = False
-    """
-    If ``True``, logging is disabled.
-    """
-
-    log_level: Optional[str] = "info"
+    log_level: Optional[str] = "error"
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
     """
@@ -152,11 +147,6 @@ class TangoGlobalSettings(FromParams):
     show_choices=True,
 )
 @click.option(
-    "--no-logging",
-    is_flag=True,
-    help="Disable logging altogether.",
-)
-@click.option(
     "--file-friendly-logging",
     is_flag=True,
     help="Outputs progress bar status on separate lines and slows refresh rate.",
@@ -166,22 +156,14 @@ def main(
     ctx,
     config: Optional[str],
     log_level: Optional[str],
-    no_logging: bool,
     file_friendly_logging: bool = False,
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    if no_logging or config.no_logging:
-        config.no_logging = True
-        log_level = None
-        config.log_level = None
-    elif log_level is not None:
-        config.log_level = log_level
-    else:
-        log_level = config.log_level
+    config.log_level = log_level
 
     common_logging.initialize_logging(
-        log_level=log_level, file_friendly_logging=file_friendly_logging
+        log_level=log_level, file_friendly_logging=file_friendly_logging, enable_click_logs=True
     )
 
     ctx.obj = config
