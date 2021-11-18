@@ -159,7 +159,7 @@ class LocalStepCache(StepCache):
             return None
 
     def __contains__(self, step: object) -> bool:
-        if isinstance(step, Step):
+        if isinstance(step, Step) and step.cache_results:
             key = step.unique_id
             if key in self.strong_cache:
                 return True
@@ -181,6 +181,10 @@ class LocalStepCache(StepCache):
         return result
 
     def __setitem__(self, step: Step, value: Any) -> None:
+        if not step.cache_results:
+            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
+            return
+
         location = self.step_dir(step)
         location.mkdir(parents=True, exist_ok=True)
 
@@ -210,6 +214,8 @@ class LocalStepCache(StepCache):
 
         You can use this even for a step that's not cached yet. In that case it will return the directory where
         the results will be written."""
+        if not step.cache_results:
+            raise RuntimeError(f"Uncacheable steps (like {step.name}) don't have step directories.")
         return self.dir / step.unique_id
 
 

@@ -5,6 +5,7 @@ import re
 from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -286,18 +287,29 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
-        self.work_dir_for_run = workspace.work_dir(self)
+        if self.cache_results:
+            self.work_dir_for_run = workspace.work_dir(self)
+            dir_for_cleanup = None
+        else:
+            dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
+            self.work_dir_for_run = Path(dir_for_cleanup.name)
+
         try:
-            workspace.step_starting(self)
+            if self.cache_results:
+                workspace.step_starting(self)
             try:
                 result = self.run(**kwargs)
-                result = workspace.step_finished(self, result)
+                if self.cache_results:
+                    result = workspace.step_finished(self, result)
                 return result
             except Exception as e:
-                workspace.step_failed(self, e)
+                if self.cache_results:
+                    workspace.step_failed(self, e)
                 raise
         finally:
             self.work_dir_for_run = None
+            if dir_for_cleanup is not None:
+                dir_for_cleanup.cleanup()
 
     @property
     def work_dir(self) -> Path:

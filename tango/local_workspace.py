@@ -337,6 +337,15 @@ class LocalWorkspace(Workspace):
         self._put_step_info(step, step_info)
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+        # sanity check targets
+        targets = list(targets)
+        for target in targets:
+            if not target.cache_results:
+                raise RuntimeError(
+                    f"Step {target.name} is marked as a target for a run, but is not cacheable. "
+                    "Only cacheable steps can be targets."
+                )
+
         if name is None:
             while name is None or (self.runs_dir / name).exists():
                 name = petname.generate(words=3)

@@ -32,7 +32,9 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        run_name = self.workspace.register_run(step_graph.values())
+        run_name = self.workspace.register_run(
+            step for step in step_graph.values() if step.cache_results
+        )
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
