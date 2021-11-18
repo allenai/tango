@@ -414,7 +414,7 @@ class Step(Registrable, Generic[T]):
 
         if self.cache_results and self in workspace.step_cache:
             if click_logger.isEnabledFor(logging.INFO):
-                message = click.style("\N{check mark} Found output for ", fg="green")
+                message = click.style("\N{check mark} Found output for step ", fg="green")
                 message += click.style(f'"{self.name}"', bold=True, fg="green")
                 message += click.style(" in cache", fg="green")
                 if needed_by is None:
@@ -427,7 +427,7 @@ class Step(Registrable, Generic[T]):
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
 
         if click_logger.isEnabledFor(logging.INFO):
-            message = click.style("\N{black circle} Starting run for ", fg="blue")
+            message = click.style("\N{black circle} Starting step ", fg="blue")
             message += click.style(f'"{self.name}"', bold=True, fg="blue")
             if needed_by is None:
                 message += click.style(" ...", fg="blue")
@@ -436,7 +436,7 @@ class Step(Registrable, Generic[T]):
             click_logger.info(message)
         result = self._run_with_work_dir(workspace, **kwargs)
         click_logger.info(
-            click.style("\N{check mark} Finished run for ", fg="green")
+            click.style("\N{check mark} Finished step ", fg="green")
             + click.style(f'"{self.name}"', bold=True, fg="green")
         )
         return result
