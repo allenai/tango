@@ -164,9 +164,7 @@ def main(
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    config.log_level = log_level
-
-    common_logging.initialize_logging(
+    config.log_level = common_logging.initialize_logging(
         log_level=log_level, file_friendly_logging=file_friendly_logging, enable_click_logs=True
     )
 
