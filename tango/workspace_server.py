@@ -1,11 +1,11 @@
-import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Tuple
 
-from tango.workspace import Workspace
+import click
 
-logger = logging.getLogger(__name__)
+from tango.common.logging import click_logger
+from tango.workspace import Workspace
 
 
 class WorkspaceRequestHandler(BaseHTTPRequestHandler):
@@ -21,7 +21,9 @@ class WorkspaceServer(ThreadingHTTPServer):
         self.workspace = workspace
 
     def serve_forever(self, poll_interval: float = 0.5) -> None:
-        logger.info("Server started at %s:%d" % self.server_address)
+        click_logger.info(
+            "Server started at " + click.style("http://%s:%d" % self.server_address, bold=True)
+        )
         super().serve_forever(poll_interval)
 
     def serve_in_background(self):

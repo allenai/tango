@@ -203,6 +203,12 @@ def main(
     help="Python packages or modules to import for tango components.",
     multiple=True,
 )
+@click.option(
+    "--server/--no-server",
+    type=bool,
+    help="Start a server that visualizes the current run",
+    default=True,
+)
 @click.pass_obj
 def run(
     config: TangoGlobalSettings,
@@ -210,6 +216,7 @@ def run(
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
+    server: bool = True,
 ):
     """
     Run a tango experiment
@@ -222,6 +229,7 @@ def run(
         workspace_dir=workspace_dir,
         overrides=overrides,
         include_package=include_package,
+        start_server=server,
     )
 
 
@@ -305,6 +313,7 @@ def _run(
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
+    start_server: bool = True,
 ) -> Path:
     from tango.executor import Executor
     from tango.local_workspace import LocalWorkspace
@@ -338,8 +347,9 @@ def _run(
 
     # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    server = WorkspaceServer.on_free_port(workspace)
-    server.serve_in_background()
+    if start_server:
+        server = WorkspaceServer.on_free_port(workspace)
+        server.serve_in_background()
 
     executor = Executor(
         workspace=workspace,
