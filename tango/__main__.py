@@ -97,6 +97,14 @@ class TangoGlobalSettings(FromParams):
     The log level to use. Options are "debug", "info", "warning", and "error".
     """
 
+    file_friendly_logging: bool = False
+    """
+    If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
+    down tqdm's output to only once every 10 seconds.
+
+    By default, it is set to ``False``.
+    """
+
     _path: Optional[Path] = None
 
     @classmethod
@@ -164,8 +172,16 @@ def main(
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    config.log_level = common_logging.initialize_logging(
-        log_level=log_level, file_friendly_logging=file_friendly_logging, enable_click_logs=True
+    if log_level is not None:
+        config.log_level = log_level
+
+    if file_friendly_logging is not None:
+        config.file_friendly_logging = file_friendly_logging
+
+    common_logging.initialize_logging(
+        log_level=config.log_level,
+        file_friendly_logging=config.file_friendly_logging,
+        enable_click_logs=True,
     )
 
     ctx.obj = config
