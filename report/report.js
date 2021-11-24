@@ -27,14 +27,14 @@ const colors = {
   white: "#FFFFFF",
 };
 
-// return the status in correct color and the duration if we have space
-const formatStatus = (data, showDuration) => {
-  if (!data.status) {
+// return the state in correct color and the duration if we have space
+const formatState = (data, showDuration) => {
+  if (!data.state) {
     return "";
   }
   let color = colors.N9;
   let sep = " - after ";
-  switch (data.status) {
+  switch (data.state) {
     case states.COMPLETED:
       color = colors.G8;
       break;
@@ -48,7 +48,7 @@ const formatStatus = (data, showDuration) => {
       break;
   }
   // display the duration if it makes sense
-  let text = data.status;
+  let text = data.state;
   if (showDuration && data.start_time) {
     text += sep;
     text += dayjs
@@ -168,13 +168,13 @@ const getTable = (data) => {
           </tr>
           <!-- Some extra space at the top -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
-          ${isOpen ? formatStatus(data, true) : formatStatus(data)}
+          ${isOpen ? formatState(data, true) : formatState(data)}
           ${isOpen ? formatText(undefined, data.unique_id) : null}
           ${isOpen ? formatText("Type", data.step_class_name) : null}
           ${isOpen ? formatText("Version", data.version) : null}
           ${isOpen ? formatDateRange(data.start_time, data.end_time) : null}
           ${
-            isOpen && data.status !== states.FAILED
+            isOpen && data.state !== states.FAILED
               ? formatLink("Results", data.result_location)
               : null
           }

@@ -31,7 +31,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             "end_time": step_info.end_time.isoformat() if step_info.end_time else None,
             "error": step_info.error,
             "result_location": step_info.result_location,
-            "status": str(step_info.state),
+            "state": str(step_info.state),
         }
 
     def do_GET(self):
