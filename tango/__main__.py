@@ -255,6 +255,9 @@ def server(workspace_dir: Union[str, os.PathLike]):
     workspace_dir = Path(workspace_dir)
     workspace = LocalWorkspace(workspace_dir)
     server = WorkspaceServer.on_free_port(workspace)
+    common_logging.click_logger.info(
+        "Server started at " + click.style(server.address_for_display(), bold=True)
+    )
     server.serve_forever()
 
 
@@ -347,14 +350,12 @@ def _run(
 
     # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    server = None
     if start_server:
         server = WorkspaceServer.on_free_port(workspace)
         server.serve_in_background()
 
-    executor = Executor(
-        workspace=workspace,
-        include_package=include_package,
-    )
+    executor = Executor(workspace=workspace, include_package=include_package, server=server)
 
     # Now execute the step graph.
     run_name = executor.execute_step_graph(step_graph)

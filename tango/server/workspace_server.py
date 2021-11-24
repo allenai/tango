@@ -2,11 +2,8 @@ import json
 import os
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Optional
 
-import click
-
-from tango.common.logging import click_logger
 from tango.workspace import StepInfo, Workspace
 
 _module_directory = os.path.dirname(os.path.abspath(__file__))
@@ -72,11 +69,16 @@ class WorkspaceServer(ThreadingHTTPServer):
         super().__init__(address, WorkspaceRequestHandler)
         self.workspace = workspace
 
-    def serve_forever(self, poll_interval: float = 0.5) -> None:
+    def address_for_display(self, run: Optional[str] = None) -> str:
         address, port = self.server_address
         if address == "0.0.0.0":
             address = "localhost"  # Safari has a problem with 0.0.0.0
-        click_logger.info("Server started at " + click.style(f"http://{address}:{port}", bold=True))
+        result = f"http://{address}:{port}"
+        if run is not None:
+            result += f"/run/{run}"
+        return result
+
+    def serve_forever(self, poll_interval: float = 0.5) -> None:
         super().serve_forever(poll_interval)
 
     def serve_in_background(self):
