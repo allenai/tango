@@ -159,7 +159,7 @@ const getTable = (data) => {
             <td align="left" bgcolor="${colors.B10}" id="expando;${
     data.unique_id
   }" href=" "><img src="${
-    isOpen ? "/report/close.svg" : "/report/open.svg"
+    isOpen ? "/close.svg" : "/open.svg"
   }" /></td>
             <td bgcolor="${colors.B10}" ><font point-size="16" color="${
     colors.N2
@@ -284,8 +284,8 @@ state.graphviz = d3
   .select("#chart")
   .graphviz()
   .zoomScaleExtent([0.2, 5])
-  .addImage("/report/open.svg", "32px", "32px")
-  .addImage("/report/close.svg", "32px", "32px")
+  .addImage("/open.svg", "32px", "32px")
+  .addImage("/close.svg", "32px", "32px")
   .on("initEnd", render)
   .transition(tans);
 

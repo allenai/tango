@@ -1,4 +1,5 @@
 import json
+import os
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Any, Dict, Tuple
@@ -8,8 +9,13 @@ import click
 from tango.common.logging import click_logger
 from tango.workspace import StepInfo, Workspace
 
+_module_directory = os.path.dirname(os.path.abspath(__file__))
+
 
 class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
+    def __init__(self, request, client_address, server):
+        super().__init__(request, client_address, server, directory=_module_directory)
+
     @classmethod
     def _run_map(cls, run_name: str, workspace: Workspace):
         step_map = workspace.registered_run(run_name)
@@ -36,9 +42,9 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/":
-            self.path = "report/index.html"
+            self.path = "index.html"
         if self.path.startswith("/run/"):
-            self.path = "report/report.html"
+            self.path = "report.html"
         elif self.path == "/api/stepinfo":
             self.send_response(200)
             self.send_header("Content-type", "text/json")

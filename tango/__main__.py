@@ -250,7 +250,7 @@ def server(workspace_dir: Union[str, os.PathLike]):
     Run a local webserver that watches a workspace
     """
     from tango.local_workspace import LocalWorkspace
-    from tango.workspace_server import WorkspaceServer
+    from tango.server.workspace_server import WorkspaceServer
 
     workspace_dir = Path(workspace_dir)
     workspace = LocalWorkspace(workspace_dir)
@@ -318,7 +318,7 @@ def _run(
     from tango.executor import Executor
     from tango.local_workspace import LocalWorkspace
     from tango.step_graph import StepGraph
-    from tango.workspace_server import WorkspaceServer
+    from tango.server.workspace_server import WorkspaceServer
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
