@@ -1,107 +1,160 @@
-from collections import OrderedDict
-from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import Any, Dict, List, Set, Union
+import logging
+from typing import Any, Dict, Iterator, List, Mapping, Set
 
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
+from tango.step import Step
+
+logger = logging.getLogger(__name__)
 
 
-@dataclass
-class StepStub:
-    """
-    Stub for a :class:`~tango.step.Step`.
-    """
-
-    name: str
-    """
-    The name of the step.
-    """
-
-    config: Dict[str, Any]
-    """
-    The configuration for the step.
-    """
-
-    dependencies: Set[str]
-    """
-    The other steps that this step directly depends on.
-    """
-
-
-class StepGraph(Sequence):
+class StepGraph(Mapping[str, Step]):
     """
     Represents an experiment as a directed graph.
 
-    It can be treated as either a :class:`~collections.abc.Mapping` of step names (``str``)
-    to :class:`StepStub`, or simply a :class:`~collections.abc.Sequence` of :class:`StepStub`.
-
-    When treated as a sequence, it can be assumed that no step in the sequence depends on a step
-    before it.
+    It can be treated as a :class:`~collections.abc.Mapping` of step names (``str``)
+    to :class:`Step`.
     """
 
-    def __init__(self, steps: Union[Dict[str, Any], Params]) -> None:
-        if isinstance(steps, Params):
-            steps = steps.as_dict()
-        remaining_steps_to_sort: Dict[str, StepStub] = {}
-        for step_name, step_config in steps.items():
-            dependencies = self._parse_direct_step_dependencies(step_config)
-            remaining_steps_to_sort[step_name] = StepStub(
-                name=step_name, config=step_config, dependencies=dependencies
-            )
+    def __init__(self, params: Dict[str, Params]):
+        # TODO: What happens with anonymous steps in here?
 
-        # These are the steps in the order that they should run.
-        self._ordered_steps: Dict[str, StepStub] = OrderedDict()
-        for _ in range(len(remaining_steps_to_sort)):
-            # Go through sorted to ensure this is deterministic.
-            for step_name in sorted(remaining_steps_to_sort.keys()):
-                step_stub = remaining_steps_to_sort[step_name]
-                for ref in step_stub.dependencies:
-                    if ref not in self._ordered_steps:
-                        # Step depends an other later step, so it needs to wait.
-                        break
+        # Determine the order in which to create steps so that all dependent steps are available when we need them.
+        # This algorithm for resolving step dependencies is O(n^2). Since we're
+        # anticipating the number of steps in a single config to be in the dozens at most (#famouslastwords),
+        # we choose simplicity over cleverness.
+        dependencies = {
+            step_name: self._find_step_dependencies(step_params)
+            for step_name, step_params in params.items()
+        }
+
+        # Check whether some of those dependencies can never be satisfied.
+        unsatisfiable_dependencies = {
+            dep
+            for step_deps in dependencies.values()
+            for dep in step_deps
+            if dep not in dependencies.keys()
+        }
+        if len(unsatisfiable_dependencies) > 0:
+            if len(unsatisfiable_dependencies) == 1:
+                dep = next(iter(unsatisfiable_dependencies))
+                raise ConfigurationError(
+                    f"Specified dependency '{dep}' can't be found in the config."
+                )
+            else:
+                raise ConfigurationError(
+                    f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}"
+                )
+
+        done: Set[str] = set()
+        todo = list(params.keys())
+        ordered_steps = list()
+        while len(todo) > 0:
+            new_todo = []
+            for step_name in todo:
+                if len(dependencies[step_name] & done) == len(dependencies[step_name]):
+                    done.add(step_name)
+                    ordered_steps.append(step_name)
                 else:
-                    self._ordered_steps[step_name] = step_stub
-                    remaining_steps_to_sort.pop(step_name)
-                    break
+                    new_todo.append(step_name)
+            if len(todo) == len(new_todo):
+                raise ConfigurationError(
+                    "Could not make progress parsing the steps. "
+                    "You probably have a circular reference between the steps."
+                )
+            todo = new_todo
+        del dependencies
+        del done
+        del todo
 
-        # Validate the graph.
-        if remaining_steps_to_sort:
-            err_msgs: List[str] = []
-            for step_name, step_stub in remaining_steps_to_sort.items():
-                for ref in step_stub.dependencies:
-                    if ref not in self._ordered_steps:
-                        err_msgs.append(f"Can't resolve dependency {ref} for {step_name}")
+        # Parse the steps
+        self.parsed_steps: Dict[str, Step] = {}
+        for step_name in ordered_steps:
+            step_params = params.pop(step_name)
+            if step_name in self.parsed_steps:
+                raise ConfigurationError(f"Duplicate step name {step_name}")
 
-            raise ConfigurationError("Invalid step graph:\n- " + "\n- ".join(err_msgs))
+            step_params = self._replace_step_dependencies(step_params, self.parsed_steps)
+            self.parsed_steps[step_name] = Step.from_params(step_params, step_name=step_name)
 
-    def __getitem__(self, key: Union[str, int]) -> StepStub:  # type: ignore[override]
+        # Sanity-check the graph
+        for step in self.parsed_steps.values():
+            if step.cache_results:
+                nondeterministic_dependencies = [
+                    s for s in step.recursive_dependencies if not s.DETERMINISTIC
+                ]
+                if len(nondeterministic_dependencies) > 0:
+                    nd_step = nondeterministic_dependencies[0]
+                    logger.warning(
+                        f"Task {step.name} is set to cache results, but depends on non-deterministic "
+                        f"step {nd_step.name}. This will produce confusing results."
+                    )
+
+    @classmethod
+    def _find_step_dependencies(cls, o: Any) -> Set[str]:
+        dependencies: Set[str] = set()
+        if isinstance(o, (list, tuple, set)):
+            for item in o:
+                dependencies = dependencies | cls._find_step_dependencies(item)
+        elif isinstance(o, dict):
+            if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+                dependencies.add(o["ref"])
+            else:
+                for value in o.values():
+                    dependencies = dependencies | cls._find_step_dependencies(value)
+        elif o is not None and not isinstance(o, (bool, str, int, float)):
+            raise ValueError(o)
+        return dependencies
+
+    @classmethod
+    def _replace_step_dependencies(cls, o: Any, existing_steps: Mapping[str, Step]) -> Any:
+        if isinstance(o, (list, tuple, set)):
+            return o.__class__(cls._replace_step_dependencies(i, existing_steps) for i in o)
+        elif isinstance(o, dict):
+            if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+                return existing_steps[o["ref"]]
+            else:
+                return {
+                    key: cls._replace_step_dependencies(value, existing_steps)
+                    for key, value in o.items()
+                }
+        elif o is not None and not isinstance(o, (bool, str, int, float)):
+            raise ValueError(o)
+        return o
+
+    def __getitem__(self, name: str) -> Step:
         """
-        Get the stub corresponding to ``key``.
+        Get the step with the given name.
         """
-        if isinstance(key, str):
-            return self._ordered_steps[key]
-        else:
-            return self._ordered_steps[list(self._ordered_steps.keys())[key]]
+        return self.parsed_steps[name]
 
     def __len__(self) -> int:
         """
         The number of steps in the experiment.
         """
-        return len(self._ordered_steps)
+        return len(self.parsed_steps)
 
-    @staticmethod
-    def _parse_direct_step_dependencies(o: Any) -> Set[str]:
-        dependencies: Set[str] = set()
-        if isinstance(o, (list, tuple, set)):
-            for item in o:
-                dependencies = dependencies | StepGraph._parse_direct_step_dependencies(item)
-        elif isinstance(o, dict):
-            if set(o.keys()) == {"type", "ref"}:
-                dependencies.add(o["ref"])
+    def __iter__(self) -> Iterator[str]:
+        """
+        The names of the steps in the experiment.
+        """
+        return iter(self.parsed_steps)
+
+    def ordered_steps(self) -> List[Step]:
+        """
+        Returns the steps in this step graph in an order that can be executed one at a time.
+
+        This does not take into account which steps may be cached. It simply returns an executable
+        order of steps.
+        """
+        result: List[Step] = []
+        steps_run: Set[Step] = set()
+        steps_not_run = list(self.parsed_steps.values())
+        while len(steps_not_run) > 0:
+            step = steps_not_run.pop(0)
+            if len(step.dependencies & steps_run) == len(step.dependencies):
+                steps_run.add(step)
+                result.append(step)
             else:
-                for value in o.values():
-                    dependencies = dependencies | StepGraph._parse_direct_step_dependencies(value)
-        elif o is not None and not isinstance(o, (bool, str, int, float)):
-            raise ValueError(o)
-        return dependencies
+                steps_not_run.append(step)
+        return result

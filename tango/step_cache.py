@@ -4,7 +4,7 @@ import weakref
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, MutableMapping, Optional, OrderedDict, TypeVar
+from typing import Any, Dict, MutableMapping, Optional, OrderedDict, TypeVar
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -38,15 +38,9 @@ class StepCache(Registrable):
     The default implementation is :class:`LocalStepCache`.
     """
 
-    def __init__(self, dir: PathOrStr):
-        self.dir = Path(dir)
-        self.dir.mkdir(parents=True, exist_ok=True)
-
-    def __contains__(self, step: object) -> bool:
+    def __contains__(self, step: Any) -> bool:
         """This is a generic implementation of ``__contains__``. If you are writing your own
         ``StepCache``, you might want to write a faster one yourself."""
-        from tango.step import Step
-
         if not isinstance(step, Step):
             return False
         try:
@@ -56,12 +50,12 @@ class StepCache(Registrable):
             return False
 
     @abstractmethod
-    def __getitem__(self, step: "Step") -> Any:
+    def __getitem__(self, step: Step) -> Any:
         """Returns the results for the given step."""
         raise NotImplementedError()
 
     @abstractmethod
-    def __setitem__(self, step: "Step", value: Any) -> None:
+    def __setitem__(self, step: Step, value: Any) -> None:
         """Writes the results for the given step. Throws an exception if the step is already cached."""
         raise NotImplementedError()
 
@@ -70,11 +64,41 @@ class StepCache(Registrable):
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()
 
-    def directory_for_run(self, step: "Step") -> Path:
-        """Steps that can be restarted (like a training job that gets interrupted half-way through)
-        must save their state somewhere. A :class:`StepCache` can help by providing a suitable location
-        in this method."""
-        return self.dir / step.unique_id
+
+@StepCache.register("memory")
+class MemoryStepCache(StepCache):
+    """
+    This is a :class:`.StepCache` that stores results in memory. It is little more than a Python dictionary.
+
+    .. tip::
+        Registered as :class:`StepCache` under the name "memory".
+    """
+
+    def __init__(self):
+        self.cache: Dict[str, Any] = {}
+
+    def __getitem__(self, step: Step) -> Any:
+        return self.cache[step.unique_id]
+
+    def __setitem__(self, step: Step, value: Any) -> None:
+        if step in self:
+            raise ValueError(f"{step.unique_id} is already cached! Will not overwrite.")
+        if step.cache_results:
+            self.cache[step.unique_id] = value
+        else:
+            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
+
+    def __contains__(self, step: object):
+        if isinstance(step, Step):
+            return step.unique_id in self.cache
+        else:
+            return False
+
+    def __len__(self) -> int:
+        return len(self.cache)
+
+
+default_step_cache = MemoryStepCache()
 
 
 @StepCache.register("local")
@@ -98,7 +122,8 @@ class LocalStepCache(StepCache):
     LRU_CACHE_MAX_SIZE = 8
 
     def __init__(self, dir: PathOrStr):
-        super().__init__(dir)
+        self.dir = Path(dir)
+        self.dir.mkdir(parents=True, exist_ok=True)
 
         # We keep an in-memory cache as well so we don't have to de-serialize stuff
         # we happen to have in memory already.
@@ -134,31 +159,33 @@ class LocalStepCache(StepCache):
             return None
 
     def __contains__(self, step: object) -> bool:
-        from tango.step import Step
-
-        if isinstance(step, Step):
+        if isinstance(step, Step) and step.cache_results:
             key = step.unique_id
             if key in self.strong_cache:
                 return True
             if key in self.weak_cache:
                 return True
-            metadata_file = self.directory_for_run(step) / "cache-metadata.json"
+            metadata_file = self.step_dir(step) / "cache-metadata.json"
             return metadata_file.exists()
         else:
             return False
 
-    def __getitem__(self, step: "Step") -> Any:
+    def __getitem__(self, step: Step) -> Any:
         key = step.unique_id
         result = self._get_from_cache(key)
         if result is None:
             if step not in self:
                 raise KeyError(step)
-            result = step.format.read(self.directory_for_run(step))
+            result = step.format.read(self.step_dir(step))
             self._add_to_cache(key, result)
         return result
 
-    def __setitem__(self, step: "Step", value: Any) -> None:
-        location = self.directory_for_run(step)
+    def __setitem__(self, step: Step, value: Any) -> None:
+        if not step.cache_results:
+            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
+            return
+
+        location = self.step_dir(step)
         location.mkdir(parents=True, exist_ok=True)
 
         metadata_location = location / "cache-metadata.json"
@@ -181,6 +208,15 @@ class LocalStepCache(StepCache):
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))
+
+    def step_dir(self, step: Step) -> Path:
+        """Returns the directory that contains the results of the step.
+
+        You can use this even for a step that's not cached yet. In that case it will return the directory where
+        the results will be written."""
+        if not step.cache_results:
+            raise RuntimeError(f"Uncacheable steps (like {step.name}) don't have step directories.")
+        return self.dir / step.unique_id
 
 
 @dataclass

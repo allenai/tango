@@ -14,7 +14,7 @@ __all__ = [
     "LocalStepCache",
 ]
 
-from tango.executor import Executor, SimpleExecutor
+from tango.executor import Executor
 from tango.format import (
     DillFormat,
     DillFormatIterator,
@@ -24,4 +24,4 @@ from tango.format import (
 )
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
-from tango.step_graph import StepGraph, StepStub
+from tango.step_graph import StepGraph

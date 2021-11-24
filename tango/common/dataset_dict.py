@@ -1,23 +1,12 @@
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Optional,
-    Sequence,
-    TypeVar,
-)
-
-from ._det_hash import CustomDetHash
+from typing import Any, Generic, Iterable, Iterator, Mapping, Sequence, TypeVar
 
 T = TypeVar("T")
 S = TypeVar("S")
 
 
 @dataclass
-class DatasetDictBase(CustomDetHash, Generic[S], Mapping[str, S]):
+class DatasetDictBase(Generic[S], Mapping[str, S]):
     """
     The base class for :class:`DatasetDict` and :class:`IterableDatasetDict`.
     """
@@ -31,28 +20,6 @@ class DatasetDictBase(CustomDetHash, Generic[S], Mapping[str, S]):
     """
     Metadata can contain anything you need.
     """
-
-    fingerprint: Optional[str] = None
-    """
-    A unique fingerprint associated with the data.
-
-    .. important::
-        When this is specified it will be used by the step caching mechanism to
-        determine when the data has changed. Otherwise the caching mechanism will
-        have to fall back to pickling the whole dataset dict to calculate a hash,
-        which can be slow, so it's recommend you set this whenever possible.
-    """
-
-    def det_hash_object(self) -> Any:
-        """
-        Overrides :meth:`~tango.common.det_hash.CustomDetHash.det_hash_object` to return
-        :attr:`fingerprint`  when specified instead of ``self`` to avoid costly serialization
-        of ``self``.
-        """
-        if self.fingerprint is not None:
-            return self.fingerprint
-        else:
-            return self
 
     def __getitem__(self, split: str) -> S:
         """

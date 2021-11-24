@@ -23,18 +23,3 @@ class BasicRegression(Model):
 
     def _to_params(self):
         return {}
-
-
-@Step.register("generate_data")
-class GenerateData(Step):
-    DETERMINISTIC = True
-    CACHEABLE = False
-
-    def run(self) -> DatasetDict:  # type: ignore[override]
-        torch.manual_seed(1)
-        return DatasetDict(
-            {
-                "train": [{"x": torch.rand(10), "y": torch.rand(1)} for _ in range(64)],
-                "validation": [{"x": torch.rand(10), "y": torch.rand(1)} for _ in range(32)],
-            }
-        )

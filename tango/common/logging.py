@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Optional
 
+import click
+
 from .util import _parse_bool
 
 
@@ -42,7 +44,6 @@ class TangoLogger(logging.Logger):
 
 
 logging.setLoggerClass(TangoLogger)
-logger = logging.getLogger(__name__)
 
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
@@ -59,8 +60,25 @@ The log level.
 """
 
 
+click_logger = logging.getLogger("click")
+click_logger.propagate = False
+
+
+class ClickLoggerHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        click.echo(record.getMessage())
+
+
+click_logger.addHandler(ClickLoggerHandler())
+click_logger.disabled = (
+    True  # This is disabled by default, in case nobody calls initialize_logging().
+)
+
+
 def initialize_logging(
+    *,
     log_level: Optional[str] = None,
+    enable_click_logs: bool = False,
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
 ):
@@ -69,23 +87,30 @@ def initialize_logging(
 
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
+    if log_level is None:
+        log_level = "error"
     if file_friendly_logging is None:
         file_friendly_logging = FILE_FRIENDLY_LOGGING
 
-    if log_level is not None:
-        level = logging._nameToLevel[log_level.upper()]
-        log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
-        if prefix is not None:
-            log_format = prefix + " " + log_format
-        logging.basicConfig(
-            format=log_format,
-            level=level,
-        )
-        # filelock emits too many messages, so tell it to be quiet unless it has something
-        # important to say.
-        logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
-        os.environ["TANGO_LOG_LEVEL"] = log_level
+    level = logging._nameToLevel[log_level.upper()]
+    log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
+    if prefix is not None:
+        log_format = prefix + " " + log_format
+    logging.basicConfig(
+        format=log_format,
+        level=level,
+    )
+    os.environ["TANGO_LOG_LEVEL"] = log_level
+
+    # filelock emits too many messages, so tell it to be quiet unless it has something
+    # important to say.
+    logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+
+    # We always want to see all click messages if we're running from the command line, and none otherwise.
+    click_logger.setLevel(logging.DEBUG)
+    click_logger.disabled = not enable_click_logs
 
     if file_friendly_logging:
         FILE_FRIENDLY_LOGGING = True
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
+        click_logger.disabled = True

@@ -372,7 +372,7 @@ class Params(MutableMapping):
         if value not in choices and not ok_because_class_name:
             key_str = self.history + key
             message = (
-                f"{value} not in acceptable choices for {key_str}: {choices}. "
+                f"'{value}' not in acceptable choices for {key_str}: {choices}. "
                 "You should either use the --include-package flag to make sure the correct module "
                 "is loaded, or use a fully qualified class name in your config file like "
                 """{"model": "my_module.models.MyModel"} to have it imported automatically."""

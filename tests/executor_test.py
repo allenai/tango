@@ -1,6 +1,6 @@
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
-from tango.executor import ExecutorMetadata
+from tango.local_workspace import ExecutorMetadata
 
 
 class TestMetadata(TangoTestCase):

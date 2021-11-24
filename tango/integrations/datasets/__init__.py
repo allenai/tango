@@ -58,17 +58,9 @@ def convert_to_tango_dataset_dict(hf_dataset_dict):
     reasons.
     """
     if isinstance(hf_dataset_dict, ds.IterableDatasetDict):
-        # There is no way to know when an iterable dataset will yeild different elements,
-        # so we generate a random fingerprint to use.
-        from uuid import uuid4
-
-        fingerprint = str(uuid4())
-        return IterableDatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
+        return IterableDatasetDict(splits=hf_dataset_dict)
     else:
-        fingerprint = ""
-        for key, dataset in sorted(hf_dataset_dict.items(), key=lambda x: x[0]):
-            fingerprint += f"{key}-{dataset._fingerprint}-"
-        return DatasetDict(splits=hf_dataset_dict, fingerprint=fingerprint)
+        return DatasetDict(splits=hf_dataset_dict)
 
 
 @Step.register("datasets::load")

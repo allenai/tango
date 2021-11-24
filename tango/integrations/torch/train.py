@@ -3,7 +3,7 @@ import random
 import tempfile
 import warnings
 from itertools import islice
-from typing import Any, Dict, List, Optional, TypeVar, cast
+from typing import Any, Dict, List, Optional, Set, TypeVar, cast
 
 import numpy as np
 import torch
@@ -17,6 +17,7 @@ from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.tqdm import Tqdm
+from tango.common.util import get_extra_imported_modules, import_extra_module
 from tango.format import Format
 from tango.step import Step
 
@@ -234,7 +235,7 @@ class TorchTrainStep(Step):
                     lr_scheduler,
                     validation_dataloader,
                     callbacks,
-                    self.executor.include_package,
+                    get_extra_imported_modules(),
                 ),
                 nprocs=num_workers,
             )
@@ -275,17 +276,15 @@ def _train(
     lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-    include_package: Optional[List[str]] = None,
+    include_package: Optional[Set[str]] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
 
     if config.is_distributed and include_package:
         # During distributed training we need to import `include_package` modules again
         # in order to initialize the lazy objects.
-        from tango.common.util import import_module_and_submodules
-
         for package_name in include_package:
-            import_module_and_submodules(package_name)
+            import_extra_module(package_name)
 
     if config.is_distributed:
         import tango.common.logging as common_logging

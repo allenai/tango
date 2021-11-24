@@ -37,6 +37,19 @@ def push_python_path(path: PathOrStr):
         sys.path.remove(path)
 
 
+_extra_imported_modules: Set[str] = set()
+
+
+def get_extra_imported_modules() -> Set[str]:
+    return _extra_imported_modules
+
+
+def import_extra_module(package_name: str) -> None:
+    global _extra_imported_modules
+    import_module_and_submodules(package_name)
+    _extra_imported_modules.add(package_name)
+
+
 def import_module_and_submodules(package_name: str, exclude: Optional[Set[str]] = None) -> None:
     """
     Import all submodules under the given package.
