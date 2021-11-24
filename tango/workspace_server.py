@@ -3,10 +3,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Any, Dict, Tuple
 
-from tango.workspace import StepInfo, Workspace
 import click
 
 from tango.common.logging import click_logger
+from tango.workspace import StepInfo, Workspace
 
 
 class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
@@ -31,7 +31,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             "end_time": step_info.end_time.isoformat() if step_info.end_time else None,
             "error": step_info.error,
             "result_location": step_info.result_location,
-            "status": step_info.state,
+            "status": str(step_info.state),
         }
 
     def do_GET(self):
@@ -67,9 +67,10 @@ class WorkspaceServer(ThreadingHTTPServer):
         self.workspace = workspace
 
     def serve_forever(self, poll_interval: float = 0.5) -> None:
-        click_logger.info(
-            "Server started at " + click.style("http://%s:%d" % self.server_address, bold=True)
-        )
+        address, port = self.server_address
+        if address == "0.0.0.0":
+            address = "localhost"  # Safari has a problem with 0.0.0.0
+        click_logger.info("Server started at " + click.style(f"http://{address}:{port}", bold=True))
         super().serve_forever(poll_interval)
 
     def serve_in_background(self):
