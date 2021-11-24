@@ -81,7 +81,7 @@ def initialize_logging(
     enable_click_logs: bool = False,
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
-) -> str:
+):
     global FILE_FRIENDLY_LOGGING
     global TANGO_LOG_LEVEL
 
@@ -114,5 +114,3 @@ def initialize_logging(
         FILE_FRIENDLY_LOGGING = True
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
         click_logger.disabled = True
-
-    return log_level
