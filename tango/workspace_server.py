@@ -1,12 +1,12 @@
 import json
-import logging
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
 from typing import Any, Dict, Tuple
 
 from tango.workspace import StepInfo, Workspace
+import click
 
-logger = logging.getLogger(__name__)
+from tango.common.logging import click_logger
 
 
 class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
@@ -31,7 +31,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             "end_time": step_info.end_time.isoformat() if step_info.end_time else None,
             "error": step_info.error,
             "result_location": step_info.result_location,
-            "status": step_info.status,
+            "status": step_info.state,
         }
 
     def do_GET(self):
@@ -67,7 +67,9 @@ class WorkspaceServer(ThreadingHTTPServer):
         self.workspace = workspace
 
     def serve_forever(self, poll_interval: float = 0.5) -> None:
-        logger.info("Server started at %s:%d" % self.server_address)
+        click_logger.info(
+            "Server started at " + click.style("http://%s:%d" % self.server_address, bold=True)
+        )
         super().serve_forever(poll_interval)
 
     def serve_in_background(self):

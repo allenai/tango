@@ -5,6 +5,7 @@ import re
 from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -81,8 +82,8 @@ class Step(Registrable, Generic[T]):
 
     DETERMINISTIC: bool = True
     """This describes whether this step can be relied upon to produce the same results every time
-    when given the same inputs. If this is ``False``, the step can't be cached, and neither can any
-    step that depends on it."""
+    when given the same inputs. If this is ``False``, you can still cache the output of the step,
+    but the results might be unexpected. Tango will print a warning in this case."""
 
     CACHEABLE: Optional[bool] = None
     """This provides a direct way to turn off caching. For example, a step that reads a HuggingFace
@@ -286,18 +287,29 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
-        self.work_dir_for_run = workspace.work_dir(self)
+        if self.cache_results:
+            self.work_dir_for_run = workspace.work_dir(self)
+            dir_for_cleanup = None
+        else:
+            dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
+            self.work_dir_for_run = Path(dir_for_cleanup.name)
+
         try:
-            workspace.step_starting(self)
+            if self.cache_results:
+                workspace.step_starting(self)
             try:
                 result = self.run(**kwargs)
-                result = workspace.step_finished(self, result)
+                if self.cache_results:
+                    result = workspace.step_finished(self, result)
                 return result
             except Exception as e:
-                workspace.step_failed(self, e)
+                if self.cache_results:
+                    workspace.step_failed(self, e)
                 raise
         finally:
             self.work_dir_for_run = None
+            if dir_for_cleanup is not None:
+                dir_for_cleanup.cleanup()
 
     @property
     def work_dir(self) -> Path:
@@ -400,9 +412,9 @@ class Step(Registrable, Generic[T]):
 
             workspace = default_workspace
 
-        if self in workspace.step_cache:
+        if self.cache_results and self in workspace.step_cache:
             if click_logger.isEnabledFor(logging.INFO):
-                message = click.style("\N{check mark} Found output for ", fg="green")
+                message = click.style("\N{check mark} Found output for step ", fg="green")
                 message += click.style(f'"{self.name}"', bold=True, fg="green")
                 message += click.style(" in cache", fg="green")
                 if needed_by is None:
@@ -415,7 +427,7 @@ class Step(Registrable, Generic[T]):
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
 
         if click_logger.isEnabledFor(logging.INFO):
-            message = click.style("\N{black circle} Starting run for ", fg="blue")
+            message = click.style("\N{black circle} Starting step ", fg="blue")
             message += click.style(f'"{self.name}"', bold=True, fg="blue")
             if needed_by is None:
                 message += click.style(" ...", fg="blue")
@@ -424,7 +436,7 @@ class Step(Registrable, Generic[T]):
             click_logger.info(message)
         result = self._run_with_work_dir(workspace, **kwargs)
         click_logger.info(
-            click.style("\N{check mark} Finished run for ", fg="green")
+            click.style("\N{check mark} Finished step ", fg="green")
             + click.style(f'"{self.name}"', bold=True, fg="green")
         )
         return result
@@ -531,7 +543,8 @@ class WithUnresolvedSteps(CustomDetHash):
 
         produce = ProduceDataStep()
         consume = ConsumeDataStep(
-            input_data = DataWithTimestamp(produce, time.now()))
+            input_data = DataWithTimestamp(produce, time.now())
+        )
 
     That does not work, because :class:`DataWithTimestamp` needs an object of type :class:`MyDataClass`, but we're
     giving it an object of type :class:`Step[MyDataClass]`. Instead, we change the last line to this:
@@ -540,7 +553,9 @@ class WithUnresolvedSteps(CustomDetHash):
 
         consume = ConsumeDataStep(
             input_data = WithUnresolvedSteps(
-                DataWithTimestamp, (produce, time.now()))
+                DataWithTimestamp, produce, time.now()
+            )
+        )
 
     :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
     the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step

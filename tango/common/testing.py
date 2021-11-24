@@ -6,7 +6,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
-from .aliases import PathOrStr
+from tango.common.aliases import PathOrStr
+from tango.common.logging import initialize_logging
 
 
 class TangoTestCase:
@@ -93,6 +94,7 @@ def run_experiment(
     the experiment and returns the path to the cache directory, a temporary directory that will be
     cleaned up on ``__exit__``.
     """
+    initialize_logging(enable_click_logs=True)
     test_case = TangoTestCase()
     try:
         test_case.setup_method()

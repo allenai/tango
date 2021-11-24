@@ -11,7 +11,7 @@ types-PyYAML
 types-setuptools
 
 # Automatic code formatting
-black==21.10b0
+black==21.11b1
 isort==5.10.1
 
 # Running tests
@@ -37,7 +37,7 @@ wheel
 Sphinx==4.3.0
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
-furo==2021.11.15
+furo==2021.11.23
 
 # Lets Sphinx parse markdown files in addition to rst.
 myst-parser==0.15.2

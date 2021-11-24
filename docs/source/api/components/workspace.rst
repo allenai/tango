@@ -11,13 +11,14 @@ Implementations
 ---------------
 
 .. autoclass:: tango.workspace.MemoryWorkspace
-   :members:
 
 .. autoclass:: tango.local_workspace.LocalWorkspace
-   :members:
 
 Metadata
 --------
+
+.. autoclass:: tango.workspace.StepState
+   :members:
 
 .. autoclass:: tango.workspace.StepInfo
    :members:

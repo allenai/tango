@@ -17,7 +17,7 @@ from tango import LocalStepCache, Step, StepCache
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
 from tango.version import VERSION
-from tango.workspace import StepInfo, Workspace
+from tango.workspace import StepInfo, StepState, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -275,9 +275,9 @@ class LocalWorkspace(Workspace):
 
         try:
             step_info = self._get_step_info(step)
-            if step_info.status not in {"incomplete", "failed"}:
+            if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED}:
                 raise RuntimeError(
-                    f"Step {step.name} is trying to start, but it is already {step_info.status}."
+                    f"Step {step.name} is trying to start, but it is already {step_info.state}."
                 )
 
             step_info.start_time = datetime.now()
@@ -291,7 +291,7 @@ class LocalWorkspace(Workspace):
         lock = self.locks[step]
 
         step_info = self._get_step_info(step)
-        if step_info.status != "running":
+        if step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is ending, but it never started.")
 
         if step.cache_results:
@@ -330,15 +330,25 @@ class LocalWorkspace(Workspace):
 
     def step_failed(self, step: Step, e: Exception) -> None:
         step_info = self._get_step_info(step)
-        if step_info.status != "running":
+        if step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
         step_info.end_time = datetime.now()
         step_info.error = e
         self._put_step_info(step, step_info)
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+        # sanity check targets
+        targets = list(targets)
+        for target in targets:
+            if not target.cache_results:
+                raise RuntimeError(
+                    f"Step {target.name} is marked as a target for a run, but is not cacheable. "
+                    "Only cacheable steps can be targets."
+                )
+
         if name is None:
-            name = petname.generate()
+            while name is None or (self.runs_dir / name).exists():
+                name = petname.generate(words=3)
         run_dir = self.runs_dir / name
 
         # clean any existing run directory
