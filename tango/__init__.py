@@ -22,8 +22,8 @@ from tango.format import (
     Format,
     JsonFormat,
     JsonFormatIterator,
+    SqliteDictFormat,
 )
-from tango.sqlite_dict_format import SqliteDictFormat
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
 from tango.step_graph import StepGraph
