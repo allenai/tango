@@ -320,8 +320,8 @@ def _run(
 ) -> Path:
     from tango.executor import Executor
     from tango.local_workspace import LocalWorkspace
-    from tango.step_graph import StepGraph
     from tango.server.workspace_server import WorkspaceServer
+    from tango.step_graph import StepGraph
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
