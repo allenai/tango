@@ -1,8 +1,8 @@
 ################################
 ###### Core dependencies #######
 ################################
-cached-path>=0.3.3,<0.4.0
-overrides>=3.1,<6.2
+cached-path>=0.3.4,<0.4.0
+overrides>=5.0,<6.2
 jsonnet>=0.10.0 ; sys.platform != 'win32'
 PyYAML>=5.4.1,<6.1
 dill
