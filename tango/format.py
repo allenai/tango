@@ -363,7 +363,10 @@ class SqliteDictFormat(Format[DatasetDict]):
             filename = f"{split_name}.sqlite"
             if not filename_is_safe(filename):
                 raise ValueError(f"{split_name} is not a valid name for a split.")
-            (dir / filename).unlink(missing_ok=True)
+            try:
+                (dir / filename).unlink()
+            except FileNotFoundError:
+                pass
             if isinstance(split, SqliteSparseSequence):
                 split.copy_to(dir / filename)
             else:
