@@ -2,8 +2,6 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 
-from overrides import overrides
-
 from tango.integrations.torch.train_callback import TrainCallback
 
 
@@ -87,7 +85,6 @@ class WandbTrainCallback(TrainCallback):
             **(wandb_kwargs or {}),
         )
 
-    @overrides
     def state_dict(self) -> Dict[str, Any]:
         if self.is_local_main_process:
             return {
@@ -96,13 +93,11 @@ class WandbTrainCallback(TrainCallback):
         else:
             return {}
 
-    @overrides
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         if self.is_local_main_process:
             self._wandb_kwargs["resume"] = "auto"
             self._run_id = state_dict["run_id"]
 
-    @overrides
     def pre_train_loop(self) -> None:
         if self.is_local_main_process:
             import wandb
@@ -117,12 +112,10 @@ class WandbTrainCallback(TrainCallback):
             if self._watch_model:
                 self.wandb.watch(self.model)
 
-    @overrides
     def post_train_loop(self) -> None:
         if self.is_local_main_process:
             self.wandb.finish()
 
-    @overrides
     def log_batch(self, step: int, batch_loss: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
@@ -130,7 +123,6 @@ class WandbTrainCallback(TrainCallback):
                 step=step + 1,
             )
 
-    @overrides
     def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
