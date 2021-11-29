@@ -23,6 +23,6 @@ petname>=2.6
 # that you install with 'pip install tango[torch]'.
 torch>=1.9.0,<1.11.0  # needed by: torch,pytorch_lightning
 numpy                 # needed by: torch
-datasets>=1.12,<1.16  # needed by: datasets
+datasets>=1.12,<1.17  # needed by: datasets
 wandb>=0.12,<0.13     # needed by: wandb
 pytorch-lightning>=1.5.0,<1.6.0  # needed by: pytorch_lightning
