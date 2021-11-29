@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Removed old `LightningPlugin` class.
+- Removed old `LightningPlugin` class
+- Removed requirement of the `overrides` package
 
 ### Changed
 
