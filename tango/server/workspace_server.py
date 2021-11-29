@@ -38,6 +38,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
         }
 
     def do_GET(self):
+        assert isinstance(self.server, WorkspaceServer)
         if self.path == "/":
             self.path = "index.html"
         if self.path.startswith("/run/"):
