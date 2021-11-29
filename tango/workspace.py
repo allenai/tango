@@ -158,9 +158,6 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
-    def steps(self, include_completed: bool = True) -> Iterable[StepInfo]:
-        raise NotImplementedError()
-
     @abstractmethod
     def step_starting(self, step: Step) -> None:
         """
@@ -253,14 +250,6 @@ class MemoryWorkspace(Workspace):
                 step.VERSION,
                 {dep.unique_id for dep in step.dependencies},
             )
-
-    def steps(
-        self, include_completed: bool = True
-    ) -> Iterable[StepInfo]:  # TODO: better selection of which steps to return
-        if include_completed:
-            return self.steps_to_info.values()
-        else:
-            return (info for info in self.steps_to_info.values() if info.end_time is None)
 
     def step_starting(self, step: Step) -> None:
         self.steps_to_info[step] = StepInfo(
