@@ -90,9 +90,7 @@ setup(
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests", "test_fixtures", "test_fixtures.*"],
     ),
-    package_data={
-        "tango.server": ["*.svg", "*.css", "*.js", "*.html"]
-    },
+    package_data={"tango.server": ["*.svg", "*.css", "*.js", "*.html"]},
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
     extras_require=extras,
