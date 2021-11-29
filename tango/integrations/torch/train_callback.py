@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from overrides import overrides
-
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
@@ -182,7 +180,6 @@ class StopEarlyCallback(TrainCallback):
         self.patience = patience
         self.best_step = 0
 
-    @overrides
     def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
         if val_metric == best_val_metric:
             self.best_step = step

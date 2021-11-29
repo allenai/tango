@@ -4,7 +4,6 @@ import warnings
 from filelock import AcquireReturnProxy
 from filelock import FileLock as _FileLock
 from filelock import Timeout
-from overrides import overrides
 
 from .aliases import PathOrStr
 
@@ -24,9 +23,6 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
         super().__init__(str(lock_file), timeout=timeout)
         self._read_only_ok = read_only_ok
 
-    # TODO (epwalsh): remove the `check_signature=False` when filelock removes the deprecated
-    # misspelled `poll_intervall` parameter.
-    @overrides(check_signature=False)
     def acquire(self, timeout=None, poll_interval=0.05) -> AcquireReturnProxy:
         try:
             return super().acquire(timeout=timeout, poll_interval=poll_interval)
