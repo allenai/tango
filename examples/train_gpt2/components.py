@@ -88,7 +88,7 @@ class TokenizeData(Step):
             num_proc=num_workers,
             desc=f"Grouping texts into chunks of {block_size}",
             cache_file_names={
-                "train": f"/tmp/wikitext2-train-{pretrained_model_name.replace('/', '-')}-chunked.cach",
+                "train": f"/tmp/wikitext2-train-{pretrained_model_name.replace('/', '-')}-chunked.cache",
                 "test": f"/tmp/wikitext2-test-{pretrained_model_name.replace('/', '-')}-chunked.cache",
                 "validation": f"/tmp/wikitext2-dev-{pretrained_model_name.replace('/', '-')}-chunked.cache",
             },
