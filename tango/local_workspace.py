@@ -307,7 +307,7 @@ class LocalWorkspace(Workspace):
                 result = self.step_cache[step]
 
         step_info.end_time = datetime.now()
-        step_info.result_location = str(self.step_dir(step))
+        step_info.result_location = str(self.step_dir(step).absolute())
         self._put_step_info(step, step_info)
 
         # Initialize metadata.
