@@ -16,10 +16,21 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
     @classmethod
     def _run_map(cls, run_name: str, workspace: Workspace):
         step_map = workspace.registered_run(run_name)
-        # TODO: This needs to return all dependencies as well.
+        seen_unique_ids = set(step.unique_id for step in step_map.values())
+        if len(step_map) > 0:
+            unseen_unique_ids = set.union(*(step_info.dependencies for step_info in step_map.values()))
+            unseen_unique_ids -= seen_unique_ids
+        else:
+            unseen_unique_ids = set()
+        step_infos = list(step_map.values())
+        while len(unseen_unique_ids) > 0:
+            step_info = workspace.step_info(unseen_unique_ids.pop())
+            step_infos.append(step_info)
+            seen_unique_ids.add(step_info.unique_id)
+            unseen_unique_ids |= step_info.dependencies - seen_unique_ids
+
         return {
-            step_info.unique_id: cls._serialize_step_info(step_info)
-            for step_info in step_map.values()
+            step_info.unique_id: cls._serialize_step_info(step_info) for step_info in step_infos
         }
 
     @classmethod

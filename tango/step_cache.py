@@ -4,7 +4,7 @@ import weakref
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, MutableMapping, Optional, OrderedDict, TypeVar
+from typing import Any, Dict, MutableMapping, Optional, OrderedDict, TypeVar, Union
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -209,14 +209,20 @@ class LocalStepCache(StepCache):
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))
 
-    def step_dir(self, step: Step) -> Path:
+    def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         """Returns the directory that contains the results of the step.
 
         You can use this even for a step that's not cached yet. In that case it will return the directory where
         the results will be written."""
-        if not step.cache_results:
-            raise RuntimeError(f"Uncacheable steps (like {step.name}) don't have step directories.")
-        return self.dir / step.unique_id
+        if isinstance(step_or_unique_id, Step):
+            if not step_or_unique_id.cache_results:
+                raise RuntimeError(
+                    f"Uncacheable steps (like {step_or_unique_id.name}) don't have step directories."
+                )
+            unique_id = step_or_unique_id.unique_id
+        else:
+            unique_id = step_or_unique_id
+        return self.dir / unique_id
 
 
 @dataclass
