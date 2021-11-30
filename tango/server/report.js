@@ -143,7 +143,7 @@ const formatText = (label, value) => {
   return `
         <tr>
           <td></td>
-          <td align="left">${label}${label ? ": " : ""}${value}</td>
+          <td align="left">${label ? label+": " : ""}${value}</td>
           <td></td>
         </tr>`;
 };
