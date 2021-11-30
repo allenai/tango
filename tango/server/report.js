@@ -191,9 +191,11 @@ const convert = (json) => {
   let nodes = [];
   let edges = [];
   Object.entries(json).forEach(([k, v]) => {
-    nodes.push(`"${k}" [id="${k}" tooltip=" " ${getTable(v)}];`);
-    v.dependencies.forEach((d) =>
-      edges.push(`"${d}" -> "${k}" [id="${d}->${k}" tooltip=" "];`)
+    nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(v)}];`);
+    v.dependencies.forEach((d) => {
+      let tooltip = `${json[d] ? json[d].step_name : '?'} -> ${v.step_name}`;
+      return edges.push(`"${d}" -> "${k}" [id="${d}->${k}" tooltip="${tooltip}"];`);
+    }
     );
   });
   return `${nodes.join("\n")} ${edges.join("\n")}`;
