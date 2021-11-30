@@ -18,7 +18,9 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
         step_map = workspace.registered_run(run_name)
         seen_unique_ids = set(step.unique_id for step in step_map.values())
         if len(step_map) > 0:
-            unseen_unique_ids = set.union(*(step_info.dependencies for step_info in step_map.values()))
+            unseen_unique_ids = set.union(
+                *(step_info.dependencies for step_info in step_map.values())
+            )
             unseen_unique_ids -= seen_unique_ids
         else:
             unseen_unique_ids = set()
