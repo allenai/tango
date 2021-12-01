@@ -12,7 +12,7 @@ click>=7.0,<9.0
 click-help-colors>=0.9.1,<0.10.0
 tqdm>=4.62,<4.63
 more-itertools>=8.0,<9.0
-petname>=2.6
+petname>=2.6,<3.0
 
 ##################################################
 ###### Extra dependencies for integrations #######
@@ -20,8 +20,8 @@ petname>=2.6
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
-torch>=1.9.0,<1.11.0  # needed by: torch,pytorch_lightning
-numpy                 # needed by: torch
-datasets>=1.12,<1.17  # needed by: datasets
-wandb>=0.12,<0.13     # needed by: wandb
+torch>=1.9.0,<1.11.0             # needed by: torch,pytorch_lightning
+numpy                            # needed by: torch
+datasets>=1.12,<2.0              # needed by: datasets
+wandb>=0.12,<0.13                # needed by: wandb
 pytorch-lightning>=1.5.0,<1.6.0  # needed by: pytorch_lightning
