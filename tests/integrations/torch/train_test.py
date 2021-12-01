@@ -14,7 +14,10 @@ class TestTrainStep(TangoTestCase):
     def test_basic_train(self, with_validation):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",
-            include_package=["test_fixtures.integrations.torch"],
+            include_package=[
+                "test_fixtures.integrations.common",
+                "test_fixtures.integrations.torch",
+            ],
             overrides="" if with_validation else "{'steps.train.validation_split':null}",
         )
         assert (result_dir / "train" / "data.pt").is_file()
@@ -32,7 +35,10 @@ class TestTrainStep(TangoTestCase):
     def test_train_distributed(self):
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/torch/train_dist.jsonnet",
-            include_package=["test_fixtures.integrations.torch"],
+            include_package=[
+                "test_fixtures.integrations.common",
+                "test_fixtures.integrations.torch",
+            ],
         )
         assert (result_dir / "train" / "data.pt").is_file()
         assert (result_dir / "train" / "work" / "weights.pt").is_file()

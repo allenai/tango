@@ -88,12 +88,10 @@ You could then run this experiment with a config that looks like this:
     from tango.common.testing import run_experiment
     from tango.common.registrable import Registrable
 
-    # Don't cache results, otherwise we'll have a pickling error.
     with run_experiment(
-        "test_fixtures/integrations/pytorch_lightning/train.jsonnet",
-        overrides="{'steps.train.cache_results':false}"
+        "test_fixtures/integrations/pytorch_lightning/train.jsonnet"
     ) as run_dir:
-        assert (run_dir / "step_cache").is_dir()
+        assert (run_dir / "train").is_dir(), "Output for the 'train' step was not produced."
     # Restore state of registry.
     del Registrable._registry[Step]["generate_data"]
     del Registrable._registry[LightningModule]["basic_regression"]
@@ -107,11 +105,14 @@ For example,
 .. testoutput::
     :options: +ELLIPSIS
 
-    ● Starting run for "data"...
-    ✓ Finished run for "data"
-    ● Starting run for "train"...
+    Server started at ...
+    Starting new run ...
+    ● Starting step "data" (needed by "train") ...
+    ✓ Finished step "data"
+    ● Starting step "train" ...
     ...
-    ✓ Finished run for "train"
+    ✓ Finished step "train"
+    ✓ The output for "train" is in ...
 
 Tips
 ----

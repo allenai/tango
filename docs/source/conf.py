@@ -86,3 +86,5 @@ html_theme_options = {
     },
     "dark_css_variables": {},
 }
+
+python_use_unqualified_type_names = True

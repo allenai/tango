@@ -1,20 +1,27 @@
+import itertools
 import logging
 import random
 import re
 from abc import abstractmethod
+from copy import deepcopy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     Generic,
+    Iterable,
     Optional,
+    Set,
     Type,
     TypeVar,
     Union,
     cast,
 )
+
+import click
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -27,20 +34,20 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common._det_hash import det_hash
+from tango.common._det_hash import CustomDetHash, det_hash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,
     infer_method_params,
     pop_and_construct_arg,
 )
-from tango.common.logging import TangoLogger
+from tango.common.logging import TangoLogger, click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
-    from tango.executor import Executor
+    from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +56,12 @@ _version_re = re.compile("""^[a-zA-Z0-9]+$""")
 T = TypeVar("T")
 
 
+_random_for_step_names = random.Random()
+
+
 class Step(Registrable, Generic[T]):
     """
-    This class defines one step in your experiment. To write your own step, just derive from this class
+    This class defines one step in your experiment. To write your own step, derive from this class
     and overwrite the :meth:`run()` method. The :meth:`run()` method must have parameters with type hints.
 
     ``Step.__init__()`` takes all the arguments we want to run the step with. They get passed
@@ -59,23 +69,21 @@ class Step(Registrable, Generic[T]):
     will be replaced with the step's results before calling :meth:`run()`. Further, there are four special
     parameters:
 
-    * ``step_name`` contains an optional human-readable name for the step. This name is used for
+    :param step_name: contains an optional human-readable name for the step. This name is used for
       error messages and the like, and has no consequence on the actual computation.
-    * ``cache_results`` specifies whether the results of this step should be cached. If this is
+    :param cache_results: specifies whether the results of this step should be cached. If this is
       ``False``, the step is recomputed every time it is needed. If this is not set at all,
       and :attr:`CACHEABLE` is ``True``, we cache if the step is marked as :attr:`DETERMINISTIC`,
       and we don't cache otherwise.
-    * ``step_format`` gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
-    * ``step_config`` is the original raw part of the experiment config corresponding to this step.
+    :param step_format: gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
+    :param step_config: is the original raw part of the experiment config corresponding to this step.
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
-    * ``step_executor`` is the :class:`~tango.executor.Executor` being used to run the step.
-      This can be accessed via the :attr:`executor` property within each step's :meth:`run()` method.
     """
 
-    DETERMINISTIC: bool = False
+    DETERMINISTIC: bool = True
     """This describes whether this step can be relied upon to produce the same results every time
-    when given the same inputs. If this is ``False``, the step can't be cached, and neither can any
-    step that depends on it."""
+    when given the same inputs. If this is ``False``, you can still cache the output of the step,
+    but the results might be unexpected. Tango will print a warning in this case."""
 
     CACHEABLE: Optional[bool] = None
     """This provides a direct way to turn off caching. For example, a step that reads a HuggingFace
@@ -99,7 +107,6 @@ class Step(Registrable, Generic[T]):
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
         step_config: Optional[Dict[str, Any]] = None,
-        step_executor: Optional["Executor"] = None,
         **kwargs,
     ):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
@@ -164,7 +171,6 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
 
         self._config = step_config
-        self._executor = step_executor
 
     @classmethod
     def from_params(  # type: ignore[override]
@@ -173,8 +179,6 @@ class Step(Registrable, Generic[T]):
         constructor_to_call: Callable[..., "Step"] = None,
         constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
         step_name: Optional[str] = None,
-        step_config: Optional[Dict[str, Any]] = None,
-        step_executor: Optional["Executor"] = None,
         **extras,
     ) -> "Step":
         # Why do we need a custom from_params? Step classes have a run() method that takes all the
@@ -205,6 +209,8 @@ class Step(Registrable, Generic[T]):
                     "should have been a dictionary was actually a list, or something else. "
                     f"This happened when constructing an object of type {cls}."
                 )
+
+        raw_step_config = deepcopy(params.as_dict(quiet=True))
 
         as_registrable = cast(Type[Registrable], cls)
         if "type" in params and params["type"] not in as_registrable.list_available():
@@ -243,12 +249,7 @@ class Step(Registrable, Generic[T]):
 
             explicitly_set = param_name in params
             constructed_arg = pop_and_construct_arg(
-                subclass.__name__,
-                param_name,
-                param.annotation,
-                param.default,
-                params,
-                **extras,
+                subclass.__name__, param_name, param.annotation, param.default, params, **extras
             )
 
             # If the param wasn't explicitly set in `params` and we just ended up constructing
@@ -265,9 +266,7 @@ class Step(Registrable, Generic[T]):
         else:
             params.assert_empty(subclass.__name__)
 
-        return subclass(
-            step_name=step_name, step_config=step_config, step_executor=step_executor, **kwargs
-        )
+        return subclass(step_name=step_name, step_config=raw_step_config, **kwargs)
 
     @abstractmethod
     def run(self, **kwargs) -> T:
@@ -275,34 +274,49 @@ class Step(Registrable, Generic[T]):
         Execute the step's action.
 
         This method needs to be implemented when creating a ``Step`` subclass, but
-        it shouldn't be called directly. Instead, call :meth:`run_with_work_dir()`.
+        it shouldn't be called directly. Instead, call :meth:`result()`.
         """
         raise NotImplementedError()
 
-    def run_with_work_dir(self, work_dir_for_run: Path) -> T:
-        """
-        Run the step with a working directory.
-        """
+    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
         if self.work_dir_for_run is not None:
-            raise ValueError("You can only run a Step's run() method once at a time.")
+            raise RuntimeError("You can only run a Step's run() method once at a time.")
 
         logger.info("Starting run for step %s of type %s", self.name, self.__class__.__name__)
 
         if self.DETERMINISTIC:
             random.seed(784507111)
 
+        if self.cache_results:
+            self.work_dir_for_run = workspace.work_dir(self)
+            dir_for_cleanup = None
+        else:
+            dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
+            self.work_dir_for_run = Path(dir_for_cleanup.name)
+
         try:
-            self.work_dir_for_run = work_dir_for_run
-            self.work_dir_for_run.mkdir(exist_ok=True, parents=True)
-            return self.run(**self.kwargs)
+            if self.cache_results:
+                workspace.step_starting(self)
+            try:
+                result = self.run(**kwargs)
+                if self.cache_results:
+                    result = workspace.step_finished(self, result)
+                return result
+            except Exception as e:
+                if self.cache_results:
+                    workspace.step_failed(self, e)
+                raise
         finally:
-            # No cleanup, as we want to keep the directory for restarts or serialization.
             self.work_dir_for_run = None
+            if dir_for_cleanup is not None:
+                dir_for_cleanup.cleanup()
 
     @property
     def work_dir(self) -> Path:
         """
-        The working directory that a step can use while its ``run()`` method runs.
+        The working directory that a step can use while its ``:meth:run()`` method runs.
+
+        This is a convenience property for you to call inside your :meth:`run()` method.
 
         This directory stays around across restarts. You cannot assume that it is empty when your
         step runs, but you can use it to store information that helps you restart a step if it
@@ -310,24 +324,15 @@ class Step(Registrable, Generic[T]):
         if self.work_dir_for_run is None:
             raise RuntimeError(
                 "You can only call this method while the step is running with a working directory. "
-                "Did you call '.run()' directly? You should only run a step with 'run_with_work_dir()'."
+                "Did you call '.run()' directly? You should only run a step with '.result()'."
             )
         return self.work_dir_for_run
 
     @property
-    def executor(self) -> "Executor":
-        """
-        The :class:`~tango.executor.Executor` being used to run this step.
-        """
-        if self._executor is None:
-            raise ValueError(f"No Executor has been assigned to this step! ('{self.name}')")
-        else:
-            return self._executor
-
-    @property
     def config(self) -> Dict[str, Any]:
         """
-        The raw configuration parameters for this step.
+        The configuration parameters that were used to construct the step. This can be empty
+        if the step was not constructed from a configuration file.
         """
         if self._config is None:
             raise ValueError(f"No config has been assigned to this step! ('{self.name}')")
@@ -359,15 +364,253 @@ class Step(Registrable, Generic[T]):
                     )
                 )[:32]
             else:
-                self.unique_id_cache += det_hash(random.getrandbits((58 ** 32).bit_length()))[:32]
+                self.unique_id_cache += det_hash(
+                    _random_for_step_names.getrandbits((58 ** 32).bit_length())
+                )[:32]
 
         return self.unique_id_cache
 
     def __hash__(self):
+        """
+        A step's hash is just its unique ID.
+        """
         return hash(self.unique_id)
 
     def __eq__(self, other):
+        """
+        Determines whether this step is equal to another step. Two steps with the same unique ID are
+        considered identical.
+        """
         if isinstance(other, Step):
             return self.unique_id == other.unique_id
         else:
             return False
+
+    def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
+        if isinstance(o, Step):
+            return o.result(workspace, self)
+        elif isinstance(o, WithUnresolvedSteps):
+            return o.construct(workspace)
+        elif isinstance(o, (list, tuple, set)):
+            return o.__class__(self._replace_steps_with_results(i, workspace) for i in o)
+        elif isinstance(o, dict):
+            return {
+                key: self._replace_steps_with_results(value, workspace) for key, value in o.items()
+            }
+        else:
+            return o
+
+    def result(
+        self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
+    ) -> T:
+        """Returns the result of this step. If the results are cached, it returns those. Otherwise it
+        runs the step and returns the result from there.
+
+        If necessary, this method will first produce the results of all steps it depends on."""
+        if workspace is None:
+            from tango.workspace import default_workspace
+
+            workspace = default_workspace
+
+        if self.cache_results and self in workspace.step_cache:
+            if click_logger.isEnabledFor(logging.INFO):
+                message = click.style("\N{check mark} Found output for step ", fg="green")
+                message += click.style(f'"{self.name}"', bold=True, fg="green")
+                message += click.style(" in cache", fg="green")
+                if needed_by is None:
+                    message += click.style(" ...", fg="green")
+                else:
+                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="green")
+                click_logger.info(message)
+            return workspace.step_cache[self]
+
+        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+
+        if click_logger.isEnabledFor(logging.INFO):
+            message = click.style("\N{black circle} Starting step ", fg="blue")
+            message += click.style(f'"{self.name}"', bold=True, fg="blue")
+            if needed_by is None:
+                message += click.style(" ...", fg="blue")
+            else:
+                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
+            click_logger.info(message)
+        result = self._run_with_work_dir(workspace, **kwargs)
+        click_logger.info(
+            click.style("\N{check mark} Finished step ", fg="green")
+            + click.style(f'"{self.name}"', bold=True, fg="green")
+        )
+        return result
+
+    def ensure_result(
+        self,
+        workspace: Optional["Workspace"] = None,
+    ) -> None:
+        """This makes sure that the result of this step is in the cache. It does
+        not return the result."""
+        if not self.cache_results:
+            raise RuntimeError(
+                "It does not make sense to call ensure_result() on a step that's not cacheable."
+            )
+
+        self.result(workspace)
+
+    def _ordered_dependencies(self) -> Iterable["Step"]:
+        def dependencies_internal(o: Any) -> Iterable[Step]:
+            if isinstance(o, Step):
+                yield o
+            elif isinstance(o, WithUnresolvedSteps):
+                yield from dependencies_internal(o.args)
+                yield from dependencies_internal(o.kwargs)
+            elif isinstance(o, str):
+                return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
+            elif isinstance(o, dict):
+                yield from dependencies_internal(o.values())
+            elif isinstance(o, Iterable):
+                yield from itertools.chain(*(dependencies_internal(i) for i in o))
+            else:
+                return
+
+        return dependencies_internal(self.kwargs.values())
+
+    @property
+    def dependencies(self) -> Set["Step"]:
+        """
+        Returns a set of steps that this step depends on. This does not return recursive dependencies.
+        """
+        return set(self._ordered_dependencies())
+
+    @property
+    def recursive_dependencies(self) -> Set["Step"]:
+        """
+        Returns a set of steps that this step depends on. This returns recursive dependencies.
+        """
+        seen = set()
+        steps = list(self.dependencies)
+        while len(steps) > 0:
+            step = steps.pop()
+            if step in seen:
+                continue
+            seen.add(step)
+            steps.extend(step.dependencies)
+        return seen
+
+
+class WithUnresolvedSteps(CustomDetHash):
+    """
+    This is a helper class for some scenarios where steps depend on other steps.
+
+    Let's say we have two steps, :class:`ConsumeDataStep` and :class:`ProduceDataStep`. The easiest way to make
+    :class:`ConsumeDataStep` depend on :class:`ProduceDataStep` is to specify ``Produce`` as one of the arguments
+    to the step. This works when ``Consume`` takes the output of ``Produce`` directly, or if it takes
+    it inside standard Python container, like a list, set, or dictionary.
+
+    But what if the output of :class:`ConsumeDataStep` needs to be added to a complex, custom data
+    structure? :class:`WithUnresolvedSteps` takes care of this scenario.
+
+    For example, this works without any help:
+
+    .. code-block:: Python
+
+        class ProduceDataStep(Step[MyDataClass]):
+            def run(self, ...) -> MyDataClass
+                ...
+                return MyDataClass(...)
+
+        class ConsumeDataStep(Step):
+            def run(self, input_data: MyDataClass):
+                ...
+
+        produce = ProduceDataStep()
+        consume = ConsumeDataStep(input_data = produce)
+
+    This scenario needs help:
+
+    .. code-block:: Python
+
+        @dataclass
+        class DataWithTimestamp:
+            data: MyDataClass
+            timestamp: float
+
+        class ProduceDataStep(Step[MyDataClass]):
+            def run(self, ...) -> MyDataClass
+                ...
+                return MyDataClass(...)
+
+        class ConsumeDataStep(Step):
+            def run(self, input_data: DataWithTimestamp):
+                ...
+
+        produce = ProduceDataStep()
+        consume = ConsumeDataStep(
+            input_data = DataWithTimestamp(produce, time.now())
+        )
+
+    That does not work, because :class:`DataWithTimestamp` needs an object of type :class:`MyDataClass`, but we're
+    giving it an object of type :class:`Step[MyDataClass]`. Instead, we change the last line to this:
+
+    .. code-block:: Python
+
+        consume = ConsumeDataStep(
+            input_data = WithUnresolvedSteps(
+                DataWithTimestamp, produce, time.now()
+            )
+        )
+
+    :class:`WithUnresolvedSteps` will delay calling the constructor of ``DataWithTimestamp`` until
+    the :meth:`run()` method runs. Tango will make sure that the results from the ``produce`` step
+    are available at that time, and replaces the step in the arguments with the step's results.
+
+    :param function: The function to call after resolving steps to their results.
+    :param args: The args to pass to the function. These may contain steps, which will be resolved before the
+                 function is called.
+    :param kwargs: The kwargs to pass to the function. These may contain steps, which will be resolved before the
+                   function is called.
+    """
+
+    def __init__(self, function, *args, **kwargs):
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+
+    @classmethod
+    def with_resolved_steps(
+        cls,
+        o: Any,
+        workspace: "Workspace",
+    ):
+        """
+        Recursively goes through a Python object and replaces all instances of :class:`.Step` with the results of
+        that step.
+
+        :param o: The Python object to go through
+        :param workspace: The workspace in which to resolve all steps
+        :return: A new object that's a copy of the original object, with all instances of :class:`.Step` replaced
+                 with the results of the step.
+        """
+        if isinstance(o, Step):
+            return o.result(workspace)
+        elif isinstance(o, cls):
+            return o.construct(workspace)
+        elif isinstance(o, (dict, Params)):
+            return o.__class__(
+                {key: cls.with_resolved_steps(value, workspace) for key, value in o.items()}
+            )
+        elif isinstance(o, (list, tuple, set)):
+            return o.__class__(cls.with_resolved_steps(item, workspace) for item in o)
+        else:
+            return o
+
+    def construct(self, workspace: "Workspace"):
+        """
+        Replaces all steps in the args that are stored in this object, and calls the function with those args.
+
+        :param workspace: The :class:`.Workspace` in which to resolve all the steps.
+        :return: The result of calling the function.
+        """
+        resolved_args = self.with_resolved_steps(self.args, workspace)
+        resolved_kwargs = self.with_resolved_steps(self.kwargs, workspace)
+        return self.function(*resolved_args, **resolved_kwargs)
+
+    def det_hash_object(self) -> Any:
+        return self.function.__qualname__, self.args, self.kwargs

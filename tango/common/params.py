@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, TypeVar, Union
 
 import yaml
-from overrides import overrides
 
 # _jsonnet doesn't work on Windows, so we have to use fakes.
 try:
@@ -252,7 +251,6 @@ class Params(MutableMapping):
             self.params = _replace_none(params)
         self.history = history
 
-    @overrides
     def pop(self, key: str, default: Any = DEFAULT, keep_as_dict: bool = False) -> Any:
 
         """
@@ -316,7 +314,6 @@ class Params(MutableMapping):
         else:
             raise ValueError("Cannot convert variable to bool: " + value)
 
-    @overrides
     def get(self, key: str, default: Any = DEFAULT):
         """
         Performs the functionality associated with ``dict.get(key)`` but also checks for returned
@@ -372,7 +369,7 @@ class Params(MutableMapping):
         if value not in choices and not ok_because_class_name:
             key_str = self.history + key
             message = (
-                f"{value} not in acceptable choices for {key_str}: {choices}. "
+                f"'{value}' not in acceptable choices for {key_str}: {choices}. "
                 "You should either use the --include-package flag to make sure the correct module "
                 "is loaded, or use a fully qualified class name in your config file like "
                 """{"model": "my_module.models.MyModel"} to have it imported automatically."""

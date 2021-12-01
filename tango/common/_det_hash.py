@@ -22,7 +22,7 @@ class CustomDetHash:
     @abstractmethod
     def det_hash_object(self) -> Any:
         """
-        Return an object to use for hashing instead of ``self``.
+        Return an object to use for deterministic hashing instead of ``self``.
         """
         raise NotImplementedError()
 
@@ -50,7 +50,7 @@ class DetHashFromInitParams(CustomDetHash):
 
 class DetHashWithVersion(CustomDetHash):
     """
-    Add this class as a mixing base class to make sure your class's det_hash can be modified
+    Add this class as a mixin base class to make sure your class's det_hash can be modified
     by altering a static ``VERSION`` member of your class.
     """
 
@@ -65,7 +65,7 @@ class DetHashWithVersion(CustomDetHash):
 
 class _DetHashPickler(dill.Pickler):
     def __init__(self, buffer: io.BytesIO):
-        super().__init__(buffer)
+        super().__init__(buffer, protocol=4)
 
         # We keep track of how deeply we are nesting the pickling of an object.
         # If a class returns `self` as part of `det_hash_object()`, it causes an

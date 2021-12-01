@@ -7,18 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Loosened `Click` dependency to include v7.0.
+
+### Fixed
+
+- `Workspace`, `MemoryWorkspace`, and `LocalWorkspace` can now be imported directly from the `tango`
+  base module.
+
+## [v0.4.0rc1](https://github.com/allenai/tango/releases/tag/v0.4.0rc1) - 2021-11-30
+
 ### Added
 
+- Introduced the concept of the `Workspace`, with `LocalWorkspace` and `MemoryWorkspace` as initial implementations.
+- Added a stub of a webserver that will be able to visualize runs as they happen.
 - Added separate classes for `LightningTrainingTypePlugin`, `LightningPrecisionPlugin`, `LightningClusterEnvironmentPlugin`, `LightningCheckpointPlugin` for compatibility with `pytorch-lightning>=1.5.0`.
 
 ### Removed
 
-- Removed old `LightningPlugin` class.
+- Removed old `LightningPlugin` class
+- Removed requirement of the `overrides` package
 
 ### Changed
 
+- Made it possible to construct a step graph out of `Step` objects, instead of constructing it out of `StepStub` objects.
+- Removed dataset fingerprinting code, since we can now use `Step` to make sure things are cached.
+- Made steps deterministic by default.
+- Brought back `MemoryStepCache`, so we can run steps without configuring anything.
 - W&B `torch::TrainCallback` logs with `step=step+1` now so that training curves in the W&B dashboard
   match up with checkpoints saved locally and are easier to read (e.g. step 10000 instead of 9999).
+- `filelock >= 3.4` required, parameter `poll_intervall`  to `tango.common.file_lock.FileLock.acquire` renamed
+  to `poll_interval`.
+
+### Fixed
+
+- Fixed bug in `FromParams` where a parameter to a `FromParams` class may not be instantiated correctly
+  if it's a class with a generic type parameter.
 
 ## [v0.3.6](https://github.com/allenai/tango/releases/tag/v0.3.6) - 2021-11-12
 

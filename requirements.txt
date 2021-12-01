@@ -1,18 +1,18 @@
 ################################
 ###### Core dependencies #######
 ################################
-cached-path>=0.3.1,<0.4.0
-overrides>=3.1,<6.2
+cached-path>=1.0.0,<1.1.0
 jsonnet>=0.10.0 ; sys.platform != 'win32'
 PyYAML>=5.4.1,<6.1
 dill
 base58
 xxhash
-filelock>=3.3,<3.4
-click>=8.0,<9.0
+filelock>=3.4,<3.5
+click>=7.0,<9.0
 click-help-colors>=0.9.1,<0.10.0
 tqdm>=4.62,<4.63
 more-itertools>=8.0,<9.0
+petname>=2.6
 
 ##################################################
 ###### Extra dependencies for integrations #######
@@ -20,9 +20,10 @@ more-itertools>=8.0,<9.0
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
+<<<<<<< HEAD
 torch>=1.9.0,<1.11.0             # needed by: torch,pytorch_lightning,deepspeed
 numpy                            # needed by: torch
-datasets>=1.12,<1.16             # needed by: datasets
+datasets>=1.12,<1.17             # needed by: datasets
 wandb>=0.12,<0.13                # needed by: wandb
 pytorch-lightning>=1.5.0,<1.6.0  # needed by: pytorch_lightning
 deepspeed==0.5.6                 # needed by: deepspeed

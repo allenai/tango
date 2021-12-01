@@ -20,6 +20,11 @@ from typing import (
     get_type_hints,
 )
 
+from tango.common._det_hash import CustomDetHash
+from tango.common.exceptions import ConfigurationError
+from tango.common.lazy import Lazy
+from tango.common.params import Params
+
 try:
     # For PEP 604 support (python >= 3.10)
     from types import UnionType  # type: ignore[attr-defined]
@@ -28,11 +33,6 @@ except ImportError:
     class UnionType:  # type: ignore
         pass
 
-
-from ._det_hash import CustomDetHash
-from .exceptions import ConfigurationError
-from .lazy import Lazy
-from .params import Params
 
 logger = logging.getLogger(__name__)
 
@@ -76,21 +76,6 @@ def takes_kwargs(obj) -> bool:
         p.kind == inspect.Parameter.VAR_KEYWORD  # type: ignore
         for p in signature.parameters.values()
     )
-
-
-def can_construct_from_params(type_: Type) -> bool:
-    if type_ in [str, int, float, bool]:
-        return True
-    origin = getattr(type_, "__origin__", None)
-    if origin == Lazy:
-        return True
-    elif origin:
-        if hasattr(type_, "from_params"):
-            return True
-        args = getattr(type_, "__args__")
-        return all(can_construct_from_params(arg) for arg in args)
-
-    return hasattr(type_, "from_params")
 
 
 def is_base_registrable(cls) -> bool:
@@ -318,12 +303,28 @@ def pop_and_construct_arg(
     return construct_arg(class_name, name, popped_params, annotation, default, **extras)
 
 
+def _params_contain_step(o: Any) -> bool:
+    from tango.step import Step
+
+    if isinstance(o, Step):
+        return True
+    elif isinstance(o, str):
+        return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
+    elif isinstance(o, dict) or isinstance(o, Params):
+        return _params_contain_step(o.values())
+    elif isinstance(o, Iterable):
+        return any(_params_contain_step(p) for p in o)
+    else:
+        return False
+
+
 def construct_arg(
     class_name: str,
     argument_name: str,
     popped_params: Params,
     annotation: Type,
     default: Any,
+    could_be_step: bool = True,
     **extras,
 ) -> Any:
     """
@@ -331,13 +332,32 @@ def construct_arg(
     """
     from tango.step import Step
 
+    if could_be_step:
+        # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
+        # it will fall back to returning a dict. So we can't try parsing as a non-step first.
+        backup_params = deepcopy(popped_params)
+        try:
+            return construct_arg(
+                class_name,
+                argument_name,
+                popped_params,
+                Step[annotation],  # type: ignore
+                default,
+                could_be_step=False,
+                **extras,
+            )
+        except (ValueError, TypeError, ConfigurationError, AttributeError):
+            popped_params = backup_params
+
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
 
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
 
-    if inspect.isclass(annotation) and issubclass(annotation, FromParams):
+    if (inspect.isclass(annotation) and issubclass(annotation, FromParams)) or (
+        inspect.isclass(origin) and issubclass(origin, FromParams)
+    ):
         if popped_params is default:
             return default
         elif origin is None and isinstance(popped_params, annotation):
@@ -356,13 +376,22 @@ def construct_arg(
                     popped_params = Params({"type": popped_params})
             elif isinstance(popped_params, dict):
                 popped_params = Params(popped_params)
-            elif not isinstance(popped_params, Params):
+            elif not isinstance(popped_params, (Params, Step)):
                 raise TypeError(
                     f"Expected a `Params` object, found `{popped_params}` instead while constructing "
                     f"parameter '{argument_name}' for `{class_name}`"
                 )
 
-            result = annotation.from_params(popped_params, **subextras)
+            from tango.step import WithUnresolvedSteps
+
+            result: Union[FromParams, WithUnresolvedSteps]
+            if isinstance(popped_params, Step):
+                result = popped_params
+            else:
+                if origin != Step and _params_contain_step(popped_params):
+                    result = WithUnresolvedSteps(annotation.from_params, popped_params)
+                else:
+                    result = annotation.from_params(popped_params, **subextras)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
@@ -423,11 +452,7 @@ def construct_arg(
     # This is special logic for handling types like Dict[str, TokenIndexer],
     # List[TokenIndexer], Tuple[TokenIndexer, Tokenizer], and Set[TokenIndexer],
     # which it creates by instantiating each value from_params and returning the resulting structure.
-    elif (
-        origin in {collections.abc.Mapping, Mapping, Dict, dict}
-        and len(args) == 2
-        and can_construct_from_params(args[-1])
-    ):
+    elif origin in {collections.abc.Mapping, Mapping, Dict, dict} and len(args) == 2:
         value_cls = annotation.__args__[-1]
         value_dict = {}
         if not isinstance(popped_params, Mapping):
@@ -447,7 +472,7 @@ def construct_arg(
 
         return value_dict
 
-    elif origin in (Tuple, tuple) and all(can_construct_from_params(arg) for arg in args):
+    elif origin in (Tuple, tuple):
         value_list = []
 
         for i, (value_cls, value_params) in enumerate(zip(annotation.__args__, popped_params)):
@@ -463,7 +488,7 @@ def construct_arg(
 
         return tuple(value_list)
 
-    elif origin in (Set, set) and len(args) == 1 and can_construct_from_params(args[0]):
+    elif origin in (Set, set) and len(args) == 1:
         value_cls = annotation.__args__[0]
 
         value_set = set()
@@ -522,11 +547,7 @@ def construct_arg(
     # For any other kind of iterable, we will just assume that a list is good enough, and treat
     # it the same as List. This condition needs to be at the end, so we don't catch other kinds
     # of Iterables with this branch.
-    elif (
-        origin in {collections.abc.Iterable, Iterable, List, list}
-        and len(args) == 1
-        and can_construct_from_params(args[0])
-    ):
+    elif origin in {collections.abc.Iterable, Iterable, List, list} and len(args) == 1:
         value_cls = annotation.__args__[0]
 
         value_list = []
@@ -544,12 +565,22 @@ def construct_arg(
 
         return value_list
 
-    elif inspect.isclass(annotation) and isinstance(popped_params, Params):
-        subextras = create_extras(annotation, extras)
-        constructor_to_inspect = annotation.__init__
-        constructor_to_call = annotation
-        kwargs = create_kwargs(constructor_to_inspect, annotation, popped_params, **subextras)
-        return constructor_to_call(**kwargs)  # type: ignore
+    elif (inspect.isclass(annotation) or inspect.isclass(origin)) and isinstance(
+        popped_params, Params
+    ):
+        # Constructing arbitrary classes from params
+        arbitrary_class = origin or annotation
+        subextras = create_extras(arbitrary_class, extras)
+        constructor_to_inspect = arbitrary_class.__init__
+        constructor_to_call = arbitrary_class
+        params_contain_step = _params_contain_step(popped_params)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, **subextras)
+        from tango.step import WithUnresolvedSteps
+
+        if origin != Step and params_contain_step:
+            return WithUnresolvedSteps(constructor_to_call, *[], **kwargs)
+        else:
+            return constructor_to_call(**kwargs)  # type: ignore
 
     else:
         # Pass it on as is and hope for the best.   ¯\_(ツ)_/¯
@@ -704,7 +735,7 @@ class FromParams(CustomDetHash):
 
         def replace_object_with_params(o: Any) -> Any:
             if isinstance(o, FromParams):
-                return o.to_params().as_dict()
+                return o.to_params().as_dict(quiet=True)
             elif isinstance(o, (list, tuple, set)):
                 return [replace_object_with_params(i) for i in o]
             elif isinstance(o, dict):

@@ -25,13 +25,13 @@ You can see the the list of all available commands by running:
       --config FILE                   Path to a global tango.yml settings file.
       --log-level [debug|info|warning|error]
                                       Set the global log level.
-      --no-logging                    Disable logging altogether.
       --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
       --help                          Show this message and exit.
 
     Commands:
-      info  Get info about the current tango installation.
-      run   Run a tango experiment.
+      info    Get info about the current tango installation
+      run     Run a tango experiment
+      server  Run a local webserver that watches a workspace
 
 To see all of the available arguments and options for a particular command, run
 
@@ -58,8 +58,13 @@ for a quick introduction to the format.
 The ``info`` command just prints out some useful information about the current tango installation,
 such as which integrations are available.
 
-"""
+``tango server``
+----------------
 
+The ``server`` command spins up a web server that watches a workspace. You can use this to track the
+progress of your runs while they are happening.
+
+"""
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -72,6 +77,7 @@ import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
 from tango.common.params import Params
+from tango.common.util import import_extra_module
 from tango.version import VERSION
 
 
@@ -86,14 +92,17 @@ class TangoGlobalSettings(FromParams):
     An list of modules where custom registered steps or classes can be found.
     """
 
-    no_logging: bool = False
-    """
-    If ``True``, logging is disabled.
-    """
-
-    log_level: Optional[str] = "info"
+    log_level: Optional[str] = "error"
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
+    """
+
+    file_friendly_logging: bool = False
+    """
+    If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
+    down tqdm's output to only once every 10 seconds.
+
+    By default, it is set to ``False``.
     """
 
     _path: Optional[Path] = None
@@ -150,11 +159,6 @@ class TangoGlobalSettings(FromParams):
     show_choices=True,
 )
 @click.option(
-    "--no-logging",
-    is_flag=True,
-    help="Disable logging altogether.",
-)
-@click.option(
     "--file-friendly-logging",
     is_flag=True,
     help="Outputs progress bar status on separate lines and slows refresh rate.",
@@ -164,22 +168,20 @@ def main(
     ctx,
     config: Optional[str],
     log_level: Optional[str],
-    no_logging: bool,
     file_friendly_logging: bool = False,
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
 
-    if no_logging or config.no_logging:
-        config.no_logging = True
-        log_level = None
-        config.log_level = None
-    elif log_level is not None:
+    if log_level is not None:
         config.log_level = log_level
-    else:
-        log_level = config.log_level
+
+    if file_friendly_logging is not None:
+        config.file_friendly_logging = file_friendly_logging
 
     common_logging.initialize_logging(
-        log_level=log_level, file_friendly_logging=file_friendly_logging
+        log_level=config.log_level,
+        file_friendly_logging=config.file_friendly_logging,
+        enable_click_logs=True,
     )
 
     ctx.obj = config
@@ -197,9 +199,9 @@ def main(
 )
 @click.option(
     "-d",
-    "--directory",
+    "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""The directory in which to save the results of each step. If not specified,
+    help="""The directory of the workspace in which to work. If not specified,
     a named temporary directory will be created.""",
     default=None,
 )
@@ -217,26 +219,59 @@ def main(
     help="Python packages or modules to import for tango components.",
     multiple=True,
 )
+@click.option(
+    "--server/--no-server",
+    type=bool,
+    help="Start a server that visualizes the current run",
+    default=True,
+)
 @click.pass_obj
 def run(
     config: TangoGlobalSettings,
     experiment: str,
-    directory: Optional[Union[str, os.PathLike]] = None,
+    workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
+    server: bool = True,
 ):
     """
-    Run a tango experiment.
+    Run a tango experiment
 
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
     _run(
         config,
         experiment,
-        directory=directory,
+        workspace_dir=workspace_dir,
         overrides=overrides,
         include_package=include_package,
+        start_server=server,
     )
+
+
+@main.command(
+    cls=HelpColorsCommand,
+    help_options_color="green",
+    help_headers_color="yellow",
+    context_settings={"max_content_width": 115},
+)
+@click.option(
+    "-d",
+    "--workspace-dir",
+    type=click.Path(file_okay=False),
+    help="""The directory of the workspace to monitor.""",
+)
+def server(workspace_dir: Union[str, os.PathLike]):
+    """
+    Run a local webserver that watches a workspace
+    """
+    from tango.local_workspace import LocalWorkspace
+    from tango.workspace_server import WorkspaceServer
+
+    workspace_dir = Path(workspace_dir)
+    workspace = LocalWorkspace(workspace_dir)
+    server = WorkspaceServer.on_free_port(workspace)
+    server.serve_forever()
 
 
 @main.command(
@@ -248,7 +283,7 @@ def run(
 @click.pass_obj
 def info(config: TangoGlobalSettings):
     """
-    Get info about the current tango installation.
+    Get info about the current tango installation
     """
     import platform
 
@@ -291,14 +326,15 @@ def info(config: TangoGlobalSettings):
 def _run(
     config: TangoGlobalSettings,
     experiment: str,
-    directory: Optional[Union[str, os.PathLike]] = None,
+    workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-):
-    from tango.common.util import import_module_and_submodules
+    start_server: bool = True,
+) -> Path:
     from tango.executor import Executor
-    from tango.step_cache import StepCache
+    from tango.local_workspace import LocalWorkspace
     from tango.step_graph import StepGraph
+    from tango.workspace_server import WorkspaceServer
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -306,38 +342,39 @@ def _run(
     # Import included packages to find registered components.
     # NOTE: The Executor imports these as well because it's meant to be used
     # directly, but we also need to import here in case the user is using a
-    # custom Executor or StepCache.
+    # custom Executor, StepCache, or Workspace.
     include_package: List[str] = list(include_package or [])
     include_package += params.pop("include_package", [])
     include_package += config.include_package or []
     for package_name in include_package:
-        import_module_and_submodules(package_name)
+        import_extra_module(package_name)
 
     # Prepare directory.
-    if directory is None:
+    if workspace_dir is None:
         from tempfile import mkdtemp
 
-        directory = mkdtemp(prefix="tango-")
+        workspace_dir = mkdtemp(prefix="tango-")
         click.echo(
-            "Creating temporary directory for run: " + click.style(f"{directory}", fg="yellow")
+            "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
+    workspace_dir = Path(workspace_dir)
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+    workspace = LocalWorkspace(workspace_dir)
 
-    # Initialize step graph, cache, and executor.
+    # Initialize step graph, server, and executor.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    step_cache = StepCache.from_params(
-        params.pop("cache", default={}), dir=directory / "step_cache"
-    )
-    executor = Executor.from_params(
-        params.pop("executor", default={}),
-        dir=directory,
-        step_cache=step_cache,
+    if start_server:
+        server = WorkspaceServer.on_free_port(workspace)
+        server.serve_in_background()
+
+    executor = Executor(
+        workspace=workspace,
         include_package=include_package,
     )
 
-    # Now executor the step graph.
-    executor.execute_step_graph(step_graph)
+    # Now execute the step graph.
+    run_name = executor.execute_step_graph(step_graph)
+    return workspace.run_dir(run_name)
 
 
 if __name__ == "__main__":
