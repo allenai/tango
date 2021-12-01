@@ -13,9 +13,10 @@ from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar
 import dill
 import petname
 
-from tango import LocalStepCache, Step, StepCache
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
+from tango.step import Step
+from tango.step_cache import LocalStepCache, StepCache
 from tango.version import VERSION
 from tango.workspace import StepInfo, StepState, Workspace
 
