@@ -23,3 +23,25 @@ image:hover {
 .node:hover {
   filter: drop-shadow(5px 9px 4px rgba(0, 0, 0, 0.6));
 }
+
+.notification {
+  position: absolute;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: 999;
+  width: 384px;
+  max-width: calc(100vw - var(--spacing-lg));
+  padding: var(--spacing-md) var(--spacing-lg);
+  overflow: hidden;
+  line-height: 1.5715;
+  word-wrap: break-word;
+  background: var(--palette-common-white);
+  border-radius: var(--shape-border-radius-default);
+  box-shadow: 0 3px 6px -4px #0000001f, 0 6px 16px #00000014,
+    0 9px 28px 8px #0000000d;
+}
+
+.highlight {
+  color: var(--color-o9);
+  font-weight: var(--typography-font-weight-bold);
+}

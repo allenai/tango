@@ -27,15 +27,16 @@ const colors = {
   white: "#FFFFFF",
 };
 
+// pop a temportal notfication to user
 const tempAlert = (msg, duration) => {
   let el = document.createElement("div");
-  el.setAttribute("style","position:absolute;top:40%;left:20%;background-color:white;");
+  el.className = "notification";
   el.innerHTML = msg;
-  setTimeout(function() {
+  setTimeout(function () {
     el.parentNode.removeChild(el);
   }, duration);
   document.body.appendChild(el);
-}
+};
 
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
@@ -153,7 +154,7 @@ const formatText = (label, value) => {
   return `
         <tr>
           <td></td>
-          <td align="left">${label ? label+": " : ""}${value}</td>
+          <td align="left">${label ? label + ": " : ""}${value}</td>
           <td></td>
         </tr>`;
 };
@@ -168,9 +169,7 @@ const getTable = (data) => {
           <tr>
             <td align="left" bgcolor="${colors.B10}" id="expando;${
     data.unique_id
-  }" href=" "><img src="${
-    isOpen ? "/close.svg" : "/open.svg"
-  }" /></td>
+  }" href=" "><img src="${isOpen ? "/close.svg" : "/open.svg"}" /></td>
             <td bgcolor="${colors.B10}" ><font point-size="16" color="${
     colors.N2
   }">${data.step_name}</font></td>
@@ -203,10 +202,11 @@ const convert = (json) => {
   Object.entries(json).forEach(([k, v]) => {
     nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(v)}];`);
     v.dependencies.forEach((d) => {
-      let tooltip = `${json[d] ? json[d].step_name : '?'} -> ${v.step_name}`;
-      return edges.push(`"${d}" -> "${k}" [id="${d}->${k}" tooltip="${tooltip}"];`);
-    }
-    );
+      let tooltip = `${json[d] ? json[d].step_name : "?"} -> ${v.step_name}`;
+      return edges.push(
+        `"${d}" -> "${k}" [id="${d}->${k}" tooltip="${tooltip}"];`
+      );
+    });
   });
   return `${nodes.join("\n")} ${edges.join("\n")}`;
 };
@@ -239,8 +239,13 @@ startApp = () => {
     selection.addRange(range);
     range = selection.getRangeAt(0);
     range.selectNode(evt.target);
-    document.execCommand("copy");
-    tempAlert("Text copied to clipboard.",500);
+    if (range.toString().trim() !== "") {
+      document.execCommand("copy");
+      tempAlert(
+        `<span class="highlight">${range}</span> copied to clipboard.`,
+        3000
+      );
+    }
   }
   nodes.forEach(function (elem) {
     elem.addEventListener("click", nodeClickHandler);
