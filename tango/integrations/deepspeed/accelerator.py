@@ -6,7 +6,6 @@ import deepspeed
 import torch
 import torch.distributed as dist
 from deepspeed.utils.zero_to_fp32 import convert_zero_checkpoint_to_fp32_state_dict
-from overrides import overrides
 
 from tango.common import Lazy
 from tango.integrations.torch import (
@@ -67,13 +66,11 @@ class DeepSpeedAccelerator(Accelerator):
             config=deepspeed_config,
         )
 
-    @overrides
     def _construct_model(self, model: Lazy[Model]) -> Model:
         with deepspeed.zero.Init(config_dict_or_path=self.deepspeed_config):
             model: Model = model.construct()  # type: ignore[no-redef]
         return model.to(self.train_config.worker_local_default_device)  # type: ignore[attr-defined]
 
-    @overrides
     def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
         optimizer: Optimizer = optimizer.construct(
             params=self.model.parameters(), model_params=self.model.parameters()
