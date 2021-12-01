@@ -27,6 +27,16 @@ const colors = {
   white: "#FFFFFF",
 };
 
+const tempAlert = (msg, duration) => {
+  let el = document.createElement("div");
+  el.setAttribute("style","position:absolute;top:40%;left:20%;background-color:white;");
+  el.innerHTML = msg;
+  setTimeout(function() {
+    el.parentNode.removeChild(el);
+  }, duration);
+  document.body.appendChild(el);
+}
+
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
   if (!data.state) {
@@ -230,6 +240,7 @@ startApp = () => {
     range = selection.getRangeAt(0);
     range.selectNode(evt.target);
     document.execCommand("copy");
+    tempAlert("Text copied to clipboard.",500);
   }
   nodes.forEach(function (elem) {
     elem.addEventListener("click", nodeClickHandler);
