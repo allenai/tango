@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
@@ -43,8 +44,9 @@ class TestMain(TangoTestCase):
             "string2": "World!",
             "join_with": ", ",
         }
-        assert metadata.git.commit is not None
-        assert metadata.git.remote is not None
+        if (Path.cwd() / ".git").exists():
+            assert metadata.git.commit is not None
+            assert metadata.git.remote is not None
 
         assert (run_dir / "hello_world" / "requirements.txt").is_file()
 
