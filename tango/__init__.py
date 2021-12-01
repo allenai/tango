@@ -17,16 +17,16 @@ __all__ = [
     "LocalWorkspace",
 ]
 
-from .executor import Executor
-from .format import (
+from tango.executor import Executor
+from tango.format import (
     DillFormat,
     DillFormatIterator,
     Format,
     JsonFormat,
     JsonFormatIterator,
 )
-from .local_workspace import LocalWorkspace
-from .step import Step
-from .step_cache import LocalStepCache, StepCache
-from .step_graph import StepGraph
-from .workspace import MemoryWorkspace, Workspace
+from tango.local_workspace import LocalWorkspace
+from tango.step import Step
+from tango.step_cache import LocalStepCache, StepCache
+from tango.step_graph import StepGraph
+from tango.workspace import MemoryWorkspace, Workspace
