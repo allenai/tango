@@ -2,7 +2,6 @@ from typing import Any, Dict, List, OrderedDict
 
 import datasets
 import torch
-from overrides import overrides
 from transformers import (
     GPT2Config,
     GPT2LMHeadModel,
@@ -32,7 +31,6 @@ class GPT2Model(GPT2LMHeadModel, Model):
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
         return cls(config)
 
-    @overrides
     def load_final_state_dict(self, state_dict: OrderedDict[str, torch.Tensor]):
         missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
         if missing_keys and set(missing_keys) != {"lm_head.weight"}:
