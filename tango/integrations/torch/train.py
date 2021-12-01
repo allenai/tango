@@ -74,6 +74,7 @@ class TorchTrainStep(Step):
         validation_dataloader: Optional[Lazy[DataLoader]] = None,
         seed: int = 42,
         train_steps: Optional[int] = None,
+        train_epochs: Optional[int] = None,
         validation_steps: Optional[int] = None,
         grad_accum: int = 1,
         log_every: int = 10,
@@ -125,6 +126,9 @@ class TorchTrainStep(Step):
         train_steps : :class:`int`, optional
             The number of steps to train for. If not specified training will
             stop after a complete iteration through the `train_dataloader`.
+        train_epochs : :class:`int`, optionsl
+            The number of epochs to train for. You cannot specify `train_steps` and `train_epochs`
+            at the same time.
         validation_steps : :class:`int`, optional
             The number of steps to validate for. If not specified validation
             will stop after a complete iteration through the `validation_dataloader`.
@@ -200,12 +204,18 @@ class TorchTrainStep(Step):
             is_distributed = True
             num_workers = len(devices)
 
+        if train_steps is not None and train_epochs is not None:
+            raise ConfigurationError(
+                "You cannot specify train_steps and train_epochs at the same time."
+            )
+
         config = TrainConfig(
             self.work_dir,
             train_split=train_split,
             validation_split=validation_split,
             seed=seed,
             train_steps=train_steps,
+            train_epochs=train_epochs,
             grad_accum=grad_accum,
             log_every=log_every,
             checkpoint_every=checkpoint_every,
@@ -324,9 +334,10 @@ def _train(
     _check_dataset(train_dataset, config.train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
+    assert config.train_steps is None or config.train_epochs is None
     if config.train_steps is None:
         try:
-            config.train_steps = len(train_dataloader)
+            config.train_steps = len(train_dataloader) * (config.train_epochs or 1)
         except TypeError:
             raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
     assert config.train_steps is not None  # for mypy

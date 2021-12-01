@@ -41,6 +41,13 @@ class TrainConfig:
     The number of steps to train for.
     """
 
+    train_epochs: Optional[int] = None
+    """
+    The number of epochs to train for.
+
+    You cannot specify `train_steps` and `train_epochs` at the same time.
+    """
+
     validation_steps: Optional[int] = None
     """
     The number of validation steps.
