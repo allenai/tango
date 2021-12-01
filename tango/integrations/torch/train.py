@@ -328,7 +328,7 @@ def _train(
         try:
             config.train_steps = len(train_dataloader)
         except TypeError:
-            raise ConfigurationError("You must sest 'train_steps' for streaming/iterable datasets")
+            raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
     assert config.train_steps is not None  # for mypy
     if validation_dataloader is not None:
         if config.validation_steps is None:
