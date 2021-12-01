@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   match up with checkpoints saved locally and are easier to read (e.g. step 10000 instead of 9999).
 - `filelock >= 3.4` required, parameter `poll_intervall`  to `tango.common.file_lock.FileLock.acquire` renamed
   to `poll_interval`.
+- Loosened `Click` dependency to include v7.0.
 
 ### Fixed
 
