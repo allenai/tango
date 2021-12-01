@@ -2,7 +2,7 @@ import random
 import shutil
 import warnings
 from itertools import islice
-from typing import Any, Dict, List, Optional, Set, TypeVar, cast
+from typing import Any, Dict, List, Optional, Set, cast
 
 import numpy as np
 import torch

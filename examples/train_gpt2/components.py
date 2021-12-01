@@ -29,7 +29,7 @@ class GPT2Model(GPT2LMHeadModel, Model):
     @classmethod
     def new_random_from_pretrained(cls, pretrained_model_name_or_path: str) -> "GPT2Model":
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
-        return cls(config)
+        return cls(config)  # type: ignore
 
     def load_final_state_dict(self, state_dict: OrderedDict[str, torch.Tensor]):
         missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
