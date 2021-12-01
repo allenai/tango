@@ -1,0 +1,44 @@
+<!-- Tango Viz - This is a very simple example of using ONLY html+script tags to display a simple
+  graphviz -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>TangoViz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@allenai/varnish@3.0.5/shellac/shellac.min.css"
+    />
+    <link rel="stylesheet" href="/global.css" />
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+
+  <body>
+    <div id="root">
+      <noscript>JavaScript is required.</noscript>
+      <header>
+        <div class="banner">
+          <div class="content">
+            <a href="https://allenai.org">
+              <img
+                src="https://cdn.jsdelivr.net/npm/@allenai/varnish@3.0.5/shellac/ai2.svg"
+                alt="Allen Institute for AI"
+              />
+            </a>
+          </div>
+        </div>
+        <div class="content header-columns">
+          <img src="/only_tango.svg" class="logo" />
+          <h2 class="header-title">Tango</h2>
+        </div>
+      </header>
+      <div class="selectruns">
+        <h2>Select a run:</h2>
+        <div id="content"></div>
+      </div>
+    </div>
+
+    <script src="/index.js"></script>
+  </body>
+</html>
