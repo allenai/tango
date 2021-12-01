@@ -233,6 +233,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: ${{ github.workspace }}-RELEASE_NOTES.md
-          prerelease: ${{ contains(env.TAG, '-rc') }}
+          prerelease: ${{ contains(env.TAG, 'rc') }}
           files: |
             dist/*
