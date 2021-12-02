@@ -5,6 +5,7 @@ import click
 
 from tango.common.logging import click_logger
 from tango.common.util import import_extra_module
+from tango.server.workspace_server import WorkspaceServer
 from tango.step_graph import StepGraph
 from tango.workspace import Workspace
 
@@ -19,9 +20,15 @@ class Executor:
     An ``Executor`` is a class that is responsible for running steps and caching their results.
     """
 
-    def __init__(self, workspace: Workspace, include_package: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        workspace: Workspace,
+        include_package: Optional[List[str]] = None,
+        server: Optional[WorkspaceServer] = None,
+    ) -> None:
         self.workspace = workspace
         self.include_package = include_package
+        self.server = server
 
     def execute_step_graph(self, step_graph: StepGraph) -> str:
         """
@@ -35,6 +42,11 @@ class Executor:
         run_name = self.workspace.register_run(
             step for step in step_graph.values() if step.cache_results
         )
+        if self.server is not None:
+            click_logger.info(
+                "Server started at "
+                + click.style(self.server.address_for_display(run_name), bold=True)
+            )
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 

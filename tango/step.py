@@ -129,6 +129,9 @@ class Step(Registrable, Generic[T]):
             self.name = self.unique_id
         else:
             self.name = step_name
+        # TODO: It is bad design to have the step_name in the Step class. The same step can be part of multiple
+        # runs at the same time, and they can have different names in different runs. Step names are
+        # a property of the run, not of the step.
 
         if cache_results is True:
             if not self.CACHEABLE:
