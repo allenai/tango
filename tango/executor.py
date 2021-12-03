@@ -60,17 +60,6 @@ class Executor:
         uncacheable_leaf_steps = {
             step for step in set(step_graph.values()) - interior_steps if not step.cache_results
         }
-        # also pick any uncacheable direct dependencies of leaf steps
-        while True:
-            new_uncacheable_leaf_steps = uncacheable_leaf_steps
-            for step in uncacheable_leaf_steps:
-                for dep in step.dependencies:
-                    if not dep.cache_results:
-                        new_uncacheable_leaf_steps.add(dep)
-            if new_uncacheable_leaf_steps == uncacheable_leaf_steps:
-                break
-            uncacheable_leaf_steps = new_uncacheable_leaf_steps
-        del new_uncacheable_leaf_steps
 
         click_logger.info(
             click.style("Starting new run ", fg="green")
