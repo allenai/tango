@@ -107,7 +107,7 @@ class StepInfo:
         if self.start_time is not None and self.end_time is not None and self.error is None:
             return StepState.COMPLETED
         if self.start_time is not None and self.end_time is not None and self.error is not None:
-            return StepState.COMPLETED
+            return StepState.FAILED
         raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
 
 
