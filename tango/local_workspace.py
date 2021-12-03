@@ -286,6 +286,9 @@ class LocalWorkspace(Workspace):
                 )
 
             step_info.start_time = datetime.now()
+            step_info.end_time = None
+            step_info.error = None
+            step_info.result_location = None
             self._put_step_info(step, step_info)
         except:  # noqa: E722
             lock.release()
