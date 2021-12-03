@@ -52,7 +52,7 @@ class Executor:
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
-        # find leaf steps
+        # find uncacheable leaf steps
         interior_steps: Set[Step] = set()
         for step in ordered_steps:
             for dependency in step.dependencies:
