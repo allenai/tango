@@ -1,10 +1,8 @@
-import collections
 import logging
-from typing import List, Optional, TypeVar, MutableMapping
+from typing import List, Optional, TypeVar, Set
 
 import click
 
-from tango import Step
 from tango.common.logging import click_logger
 from tango.common.util import import_extra_module
 from tango.server.workspace_server import WorkspaceServer
@@ -36,6 +34,8 @@ class Executor:
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
+        from tango import Step
+
         # Import included packages to find registered components.
         if self.include_package is not None:
             for package_name in self.include_package:
@@ -52,10 +52,25 @@ class Executor:
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
-        step_needed_by_count: MutableMapping[Step, int] = collections.Counter()
+        # find leaf steps
+        interior_steps: Set[Step] = set()
         for step in ordered_steps:
             for dependency in step.dependencies:
-                step_needed_by_count[dependency] += 1
+                interior_steps.add(dependency)
+        uncacheable_leaf_steps = {
+            step for step in set(step_graph.values()) - interior_steps if not step.cache_results
+        }
+        # also pick any uncacheable direct dependencies of leaf steps
+        while True:
+            new_uncacheable_leaf_steps = uncacheable_leaf_steps
+            for step in uncacheable_leaf_steps:
+                for dep in step.dependencies:
+                    if not dep.cache_results:
+                        new_uncacheable_leaf_steps.add(dep)
+            if new_uncacheable_leaf_steps == uncacheable_leaf_steps:
+                break
+            uncacheable_leaf_steps = new_uncacheable_leaf_steps
+        del new_uncacheable_leaf_steps
 
         click_logger.info(
             click.style("Starting new run ", fg="green")
@@ -64,7 +79,7 @@ class Executor:
         for step in ordered_steps:
             if step.cache_results:
                 step.ensure_result(self.workspace)
-            elif step_needed_by_count[step] <= 0:
+            elif step in uncacheable_leaf_steps:
                 step.result(self.workspace)
 
         # Print everything that has been computed.
