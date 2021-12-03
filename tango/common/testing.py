@@ -82,6 +82,7 @@ class TangoTestCase:
             workspace_dir=str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
+            start_server=False,
         )
 
 
