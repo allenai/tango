@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, TypeVar, Set
+from typing import List, Optional, Set, TypeVar
 
 import click
 

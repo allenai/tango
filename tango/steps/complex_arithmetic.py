@@ -1,6 +1,5 @@
-from typing import Tuple, Union
-
 import cmath
+from typing import Tuple, Union
 
 from tango import Step
 

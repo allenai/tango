@@ -5,13 +5,13 @@ integration.
 
 __all__ = ["DatasetRemixStep", "PrintStep"]
 
-from .dataset_remix import DatasetRemixStep
-from .print import PrintStep
 from .complex_arithmetic import (
     AdditionStep,
+    CosineStep,
     ExponentiateStep,
     MultiplyStep,
     SineStep,
-    CosineStep,
     SubtractionStep,
 )
+from .dataset_remix import DatasetRemixStep
+from .print import PrintStep
