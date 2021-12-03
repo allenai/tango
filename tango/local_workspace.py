@@ -265,7 +265,12 @@ class LocalWorkspace(Workspace):
                 raise KeyError()
 
     def _put_step_info(self, step: Step, step_info: StepInfo) -> None:
-        with self._step_info_file(step).open("wb") as f:
+        path = self._step_info_file(step)
+        try:
+            path.parent.mkdir()
+        except FileExistsError:
+            pass
+        with path.open("wb") as f:
             return dill.dump(step_info, f)
 
     def _step_lock_file(self, step: Step) -> Path:
@@ -366,6 +371,13 @@ class LocalWorkspace(Workspace):
         else:
             run_dir.mkdir(parents=True, exist_ok=True)
 
+        # write step info for all steps
+        all_steps = set(targets)
+        for step in targets:
+            all_steps.union(step.recursive_dependencies)
+        for step in all_steps:
+            self._put_step_info(step, self._get_step_info(step))
+
         # write targets
         for target in targets:
             (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
@@ -382,8 +394,8 @@ class LocalWorkspace(Workspace):
             if not step_symlink.is_symlink():
                 continue
             step_name = str(step_symlink.name)
-            with (step_symlink / "stepinfo.dill").open("rb") as f:
-                step_info = dill.load(f)
+            unique_id = str(step_symlink.resolve().name)
+            step_info = self._get_step_info(unique_id)
             assert isinstance(step_info, StepInfo)
             steps_for_run[step_name] = step_info
         return steps_for_run
