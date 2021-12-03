@@ -1,11 +1,11 @@
-from collections import Counter
+from collections import Counter, MutableMapping
 
 import pytest
 
 from tango import Step
 from tango.common.testing import TangoTestCase
 
-step_execution_count = Counter()
+step_execution_count: MutableMapping[str, int] = Counter()
 
 
 @Step.register("step_a")
