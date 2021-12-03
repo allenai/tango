@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Sample experiment configurations that prove Euler's identity
+
 ### Changed
 
 - Loosened `Click` dependency to include v7.0.
@@ -17,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Workspace`, `MemoryWorkspace`, and `LocalWorkspace` can now be imported directly from the `tango`
   base module.
+- Uncacheable leaf steps would never get executed. This is now fixed.
+- We were treating failed steps as if they were completed by accident.
+- The visualization had a problem with showing steps that never executed because a dependency failed.
+
 
 ## [v0.4.0rc1](https://github.com/allenai/tango/releases/tag/v0.4.0rc1) - 2021-11-30
 
