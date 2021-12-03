@@ -67,6 +67,13 @@ class StepGraph(Mapping[str, Step]):
         del done
         del todo
 
+        # make sure default steps are available
+        import tango.integrations.datasets  # noqa: F401
+        import tango.integrations.pytorch_lightning  # noqa: F401
+        import tango.integrations.torch  # noqa: F401
+        import tango.integrations.wandb  # noqa: F401
+        import tango.steps  # noqa: F401
+
         # Parse the steps
         self.parsed_steps: Dict[str, Step] = {}
         for step_name in ordered_steps:
