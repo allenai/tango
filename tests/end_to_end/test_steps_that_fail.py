@@ -1,4 +1,5 @@
-from collections import Counter, MutableMapping
+from collections import Counter
+from typing import MutableMapping
 
 import pytest
 
