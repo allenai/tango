@@ -6,8 +6,6 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 
 <!-- end tagline -->
 
-⚠️ *Currently under rapid development, use at your own risk!* ⚠️
-
 <!-- <p align="center"> -->
 <p>
     <a href="https://github.com/allenai/tango/actions">
