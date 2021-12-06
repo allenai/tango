@@ -13,6 +13,7 @@
 installation
 overview
 examples/index
+faq
 CHANGELOG
 ```
 
