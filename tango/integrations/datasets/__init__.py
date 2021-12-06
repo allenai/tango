@@ -23,11 +23,14 @@ You could run this with:
 """
 
 
+from pathlib import Path
 from typing import Any, List, Optional, TypeVar, Union, overload
 
 import datasets as ds
 
+from tango.common.aliases import PathOrStr
 from tango.common.dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
+from tango.format import Format
 from tango.step import Step
 
 __all__ = [
@@ -146,3 +149,27 @@ class ConcatenateDatasets(Step):
         Concatenate the list of datasets.
         """
         return ds.concatenate_datasets(datasets, info=info, split=split, axis=axis)
+
+
+T = Union[ds.Dataset, ds.DatasetDict]
+
+
+@Format.register("datasets")
+class DatasetsFormat(Format[T]):
+    """
+    This format writes a :class:`datasets.Dataset` or :class:`datasets.DatasetDict` to disk
+    using :meth:`datasets.Dataset.save_to_disk()`.
+    """
+
+    VERSION = 1
+
+    def write(self, artifact: T, dir: PathOrStr):
+        dataset_path = Path(dir) / "data"
+        artifact.save_to_disk(str(dataset_path))
+
+    def read(self, dir: PathOrStr) -> T:
+        dataset_path = Path(dir) / "data"
+        return ds.load_from_disk(str(dataset_path))
+
+    def checksum(self, dir: PathOrStr) -> str:
+        return self._checksum_artifact(Path(dir) / "data")
