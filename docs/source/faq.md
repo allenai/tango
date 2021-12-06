@@ -1,4 +1,4 @@
-# FAQs
+# FAQ
 
 ```{include} ../../README.md
 :start-after: <!-- start faq -->
