@@ -84,7 +84,7 @@ to check your installation.
 
 <!-- end install -->
 
-## FAQs
+## FAQ
 
 <!-- start faq -->
 
