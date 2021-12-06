@@ -95,6 +95,12 @@ to check your installation.
 
 <!-- end check install -->
 
+## FAQ
+
+### Why is the library named Tango?
+
+The motivation behind this library is that we can make research easier by composing it into well-defined steps.  What happens when you choreograph a number of steps together?  Well, you get a dance.  And since our [team's leader](https://nasmith.github.io/) is part of a tango band, "AI2 Tango" was an obvious choice!
+
 ## Team
 
 <!-- start team -->
