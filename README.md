@@ -2,11 +2,9 @@
 
 <!-- start tagline -->
 
-A Python library for choreographing your machine learning research.
+AI2 Tango replaces messy directories and spreadsheets full of file versions by organizing experiments into discrete steps that can be cached and reused throughout the lifetime of a research project.
 
 <!-- end tagline -->
-
-⚠️ *Currently under rapid development, use at your own risk!* ⚠️
 
 <!-- <p align="center"> -->
 <p>
