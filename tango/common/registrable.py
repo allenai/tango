@@ -14,6 +14,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
     Tuple,
     Type,
     TypeVar,
@@ -22,7 +23,12 @@ from typing import (
 
 from .exceptions import ConfigurationError, RegistryKeyError
 from .from_params import FromParams
-from .util import find_integrations, find_submodules, import_module_and_submodules
+from .util import (
+    could_be_class_name,
+    find_integrations,
+    find_submodules,
+    import_module_and_submodules,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,24 +164,45 @@ class Registrable(FromParams):
     @classmethod
     def search_modules(cls: Type[_RegistrableT], name: str):
         """
-        Search for an import modules where ``name`` might be registered.
+        Search for and import modules where ``name`` might be registered.
         """
-        integrations = {m.split(".")[-1]: m for m in find_integrations()}
-        modules: List[str] = []
-        if name in integrations:
-            modules.append(integrations[name])
-        elif "::" in name:
-            maybe_integration = name.split("::")[0]
-            if maybe_integration in integrations:
-                modules.append(integrations[maybe_integration])
-        else:
-            for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
-                modules.append(module)
-        for module in modules:
+        if could_be_class_name(name) or name in cls.list_available():
+            return None
+
+        def try_import(module):
             try:
                 import_module_and_submodules(module)
             except (ModuleNotFoundError, ImportError):
-                continue
+                pass
+
+        integrations = {m.split(".")[-1]: m for m in find_integrations()}
+        integrations_imported: Set[str] = set()
+        if name in integrations:
+            try_import(integrations[name])
+            integrations_imported.add(name)
+            if name in cls.list_available():
+                return None
+
+        if "::" in name:
+            maybe_integration = name.split("::")[0]
+            if maybe_integration in integrations:
+                try_import(integrations[maybe_integration])
+                integrations_imported.add(maybe_integration)
+                if name in cls.list_available():
+                    return None
+
+        for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
+            try_import(module)
+            if name in cls.list_available():
+                return None
+
+        # If we still haven't found the registered 'name', try importing all other integrations.
+        for integration_name, module in integrations.items():
+            if integration_name not in integrations_imported:
+                try_import(module)
+                integrations_imported.add(integration_name)
+                if name in cls.list_available():
+                    return None
 
     @classmethod
     def resolve_class_name(
@@ -199,7 +226,7 @@ class Registrable(FromParams):
         if name in Registrable._registry[cls]:
             subclass, constructor = Registrable._registry[cls][name]
             return subclass, constructor
-        elif "." in name:
+        elif could_be_class_name(name):
             # This might be a fully qualified class name, so we'll try importing its "module"
             # and finding it there.
             parts = name.split(".")
