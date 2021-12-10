@@ -3,7 +3,6 @@ from typing import Any, Dict, Iterator, List, Mapping, Set
 
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
-from tango.common.util import import_integrations
 from tango.step import Step
 
 logger = logging.getLogger(__name__)
@@ -69,9 +68,11 @@ class StepGraph(Mapping[str, Step]):
         del todo
 
         # make sure default steps are available
+        import tango.integrations.datasets  # noqa: F401
+        import tango.integrations.pytorch_lightning  # noqa: F401
+        import tango.integrations.torch  # noqa: F401
+        import tango.integrations.wandb  # noqa: F401
         import tango.steps  # noqa: F401
-
-        import_integrations()
 
         # Parse the steps
         self.parsed_steps: Dict[str, Step] = {}

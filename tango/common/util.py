@@ -134,12 +134,3 @@ def find_integrations() -> Iterable[str]:
     Find all tango integration modules.
     """
     yield from find_submodules("tango.integrations", recursive=False)
-
-
-def import_integrations() -> None:
-    for integration_module in find_integrations():
-        try:
-            importlib.import_module(integration_module)
-        except ModuleNotFoundError:
-            # If we don't have the dependencies installed, the integrations don't work.
-            pass
