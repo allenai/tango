@@ -1,4 +1,6 @@
-from tango.common.util import find_integrations, find_submodules
+import pytest
+
+from tango.common.util import could_be_class_name, find_integrations, find_submodules
 
 
 def test_find_submodules():
@@ -14,3 +16,16 @@ def test_find_integrations():
     integrations = set(find_integrations())
     assert "tango.integrations.torch" in integrations
     assert "tango.integrations.torch.format" not in integrations
+
+
+@pytest.mark.parametrize(
+    "name, result",
+    [
+        ("", False),
+        ("foo.Bar", True),
+        ("foo.Bar.", False),
+        ("1foo.Bar", False),
+    ],
+)
+def test_could_be_class_name(name: str, result: bool):
+    assert could_be_class_name(name) is result

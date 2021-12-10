@@ -134,3 +134,14 @@ def find_integrations() -> Iterable[str]:
     Find all tango integration modules.
     """
     yield from find_submodules("tango.integrations", recursive=False)
+
+
+def could_be_class_name(name: str) -> bool:
+    if "." in name and not name.endswith("."):
+        return all([_is_valid_python_name(part) for part in name.split(".")])
+    else:
+        return False
+
+
+def _is_valid_python_name(name: str) -> bool:
+    return bool(name and name[0].isalpha() and name.isalnum())
