@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from typing import (
     Any,
+    Dict,
     Generic,
     Iterable,
     Iterator,
-    Mapping,
     MutableMapping,
     Sequence,
     TypeVar,
@@ -20,12 +20,12 @@ class DatasetDictBase(Generic[S], MutableMapping[str, S]):
     The base class for :class:`DatasetDict` and :class:`IterableDatasetDict`.
     """
 
-    splits: MutableMapping[str, S]
+    splits: Dict[str, S]
     """
     A mapping of dataset split names to splits.
     """
 
-    metadata: Mapping[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
     """
     Metadata can contain anything you need.
     """
