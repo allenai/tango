@@ -90,6 +90,15 @@ class StepGraph(Mapping[str, Step]):
                         f"step {nd_step.name}. This will produce confusing results."
                     )
 
+    @staticmethod
+    def _dict_is_ref(d: dict) -> bool:
+        keys = set(d.keys())
+        if keys == {"ref"}:
+            return True
+        if keys == {"type", "ref"} and d["type"] == "ref":
+            return True
+        return False
+
     @classmethod
     def _find_step_dependencies(cls, o: Any) -> Set[str]:
         dependencies: Set[str] = set()
@@ -97,7 +106,7 @@ class StepGraph(Mapping[str, Step]):
             for item in o:
                 dependencies = dependencies | cls._find_step_dependencies(item)
         elif isinstance(o, dict):
-            if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+            if cls._dict_is_ref(o):
                 dependencies.add(o["ref"])
             else:
                 for value in o.values():
@@ -111,7 +120,7 @@ class StepGraph(Mapping[str, Step]):
         if isinstance(o, (list, tuple, set)):
             return o.__class__(cls._replace_step_dependencies(i, existing_steps) for i in o)
         elif isinstance(o, dict):
-            if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+            if cls._dict_is_ref(o):
                 return existing_steps[o["ref"]]
             else:
                 return {
