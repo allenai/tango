@@ -223,6 +223,8 @@ class TorchTrainStep(Step):
             amp=amp,
             max_grad_norm=max_grad_norm,
             is_distributed=is_distributed,
+            devices=devices,
+            distributed_port=distributed_port,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
             aggregate_val_metric=aggregate_val_metric,

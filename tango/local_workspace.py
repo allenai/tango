@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar
+from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
 
 import dill
 import petname
@@ -229,8 +229,8 @@ class LocalWorkspace(Workspace):
         self.runs_dir = self.dir / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
 
-    def step_dir(self, step: Step) -> Path:
-        return self.cache.step_dir(step)
+    def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
+        return self.cache.step_dir(step_or_unique_id)
 
     @property
     def step_cache(self) -> StepCache:
@@ -241,27 +241,36 @@ class LocalWorkspace(Workspace):
         result.mkdir(parents=True, exist_ok=True)
         return result
 
-    def _step_info_file(self, step: Step) -> Path:
-        return self.step_dir(step) / "stepinfo.dill"
+    def _step_info_file(self, step_or_unique_id: Union[Step, str]) -> Path:
+        return self.step_dir(step_or_unique_id) / "stepinfo.dill"
 
-    def step_info(self, step: Step) -> StepInfo:
-        return self._get_step_info(step)
+    def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
+        return self._get_step_info(step_or_unique_id)
 
-    def _get_step_info(self, step: Step) -> StepInfo:
+    def _get_step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
-            with self._step_info_file(step).open("rb") as f:
+            with self._step_info_file(step_or_unique_id).open("rb") as f:
                 return dill.load(f)
         except FileNotFoundError:
-            return StepInfo(
-                step.unique_id,
-                step.name if step.name != step.unique_id else None,
-                step.__class__.__name__,
-                step.VERSION,
-                {dep.unique_id for dep in step.dependencies},
-            )
+            if isinstance(step_or_unique_id, Step):
+                step = step_or_unique_id
+                return StepInfo(
+                    step.unique_id,
+                    step.name if step.name != step.unique_id else None,
+                    step.__class__.__name__,
+                    step.VERSION,
+                    {dep.unique_id for dep in step.dependencies},
+                )
+            else:
+                raise KeyError()
 
     def _put_step_info(self, step: Step, step_info: StepInfo) -> None:
-        with self._step_info_file(step).open("wb") as f:
+        path = self._step_info_file(step)
+        try:
+            path.parent.mkdir()
+        except FileExistsError:
+            pass
+        with path.open("wb") as f:
             return dill.dump(step_info, f)
 
     def _step_lock_file(self, step: Step) -> Path:
@@ -282,6 +291,9 @@ class LocalWorkspace(Workspace):
                 )
 
             step_info.start_time = datetime.now()
+            step_info.end_time = None
+            step_info.error = None
+            step_info.result_location = None
             self._put_step_info(step, step_info)
         except:  # noqa: E722
             lock.release()
@@ -304,7 +316,7 @@ class LocalWorkspace(Workspace):
                 result = self.step_cache[step]
 
         step_info.end_time = datetime.now()
-        step_info.result_location = str(self.step_dir(step))
+        step_info.result_location = str(self.step_dir(step).absolute())
         self._put_step_info(step, step_info)
 
         # Initialize metadata.
@@ -349,7 +361,7 @@ class LocalWorkspace(Workspace):
 
         if name is None:
             while name is None or (self.runs_dir / name).exists():
-                name = petname.generate(words=3)
+                name = petname.generate()
         run_dir = self.runs_dir / name
 
         # clean any existing run directory
@@ -359,20 +371,21 @@ class LocalWorkspace(Workspace):
         else:
             run_dir.mkdir(parents=True, exist_ok=True)
 
+        # write step info for all steps
+        all_steps = set(targets)
+        for step in targets:
+            all_steps.union(step.recursive_dependencies)
+        for step in all_steps:
+            self._put_step_info(step, self._get_step_info(step))
+
         # write targets
         for target in targets:
             (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
 
         return name
 
-    def registered_runs(self) -> Dict[str, Dict[str, StepInfo]]:
-        result = {}
-        for run_dir in self.runs_dir.iterdir():
-            if not run_dir.is_dir():
-                continue
-            run_name = str(run_dir.name)
-            result[run_name] = self.registered_run(run_name)
-        return result
+    def registered_runs(self) -> List[str]:
+        return [str(run_dir.name) for run_dir in self.runs_dir.iterdir() if run_dir.is_dir()]
 
     def registered_run(self, name: str) -> Dict[str, StepInfo]:
         run_dir = self.runs_dir / name
@@ -381,8 +394,8 @@ class LocalWorkspace(Workspace):
             if not step_symlink.is_symlink():
                 continue
             step_name = str(step_symlink.name)
-            with (step_symlink / "stepinfo.dill").open("rb") as f:
-                step_info = dill.load(f)
+            unique_id = str(step_symlink.resolve().name)
+            step_info = self._get_step_info(unique_id)
             assert isinstance(step_info, StepInfo)
             steps_for_run[step_name] = step_info
         return steps_for_run

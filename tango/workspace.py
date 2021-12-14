@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar
+from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
 
 import petname
 
@@ -107,7 +107,7 @@ class StepInfo:
         if self.start_time is not None and self.end_time is not None and self.error is None:
             return StepState.COMPLETED
         if self.start_time is not None and self.end_time is not None and self.error is not None:
-            return StepState.COMPLETED
+            return StepState.FAILED
         raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
 
 
@@ -152,13 +152,10 @@ class Workspace(Registrable):
         return Path(TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir").name)
 
     @abstractmethod
-    def step_info(self, step: Step) -> StepInfo:
+    def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         """
         Returns a :class:`.StepInfo` for a given step
         """
-        raise NotImplementedError()
-
-    def steps(self, include_completed: bool = True) -> Iterable[StepInfo]:
         raise NotImplementedError()
 
     @abstractmethod
@@ -207,24 +204,28 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def registered_runs(self) -> Dict[str, Dict[str, StepInfo]]:
+    def registered_runs(self) -> List[str]:
         """
         Returns all runs in the workspace
 
-        :return: A dictionary mapping run names to runs, where each run is represented as a mapping from step name
-                 to :class:`.StepInfo`.
+        :return: A list of run names that are registered in the workspace
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def registered_run(self, name: str) -> Dict[str, StepInfo]:
         """
         Returns the run with the given name
 
         :return: A run, represented as a mapping from step name to :class:`.StepInfo`.
 
+        Note that this dictionary only contains the targets of a run. Usually, that means it
+        contains all named steps. Un-named dependencies (or dependencies that are not targets)
+        are not contained in the result.
+
         This method throws ``KeyError`` if there is no run with the given name.
         """
-        return self.registered_runs()[name]
+        raise NotImplementedError()
 
 
 @Workspace.register("memory")
@@ -235,35 +236,36 @@ class MemoryWorkspace(Workspace):
     """
 
     def __init__(self):
-        self.steps_to_info: Dict[Step, StepInfo] = {}
+        self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Set[Step]] = {}
 
     @property
     def step_cache(self) -> StepCache:
         return step_cache.default_step_cache
 
-    def step_info(self, step: Step) -> StepInfo:
+    def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
+        unique_id = (
+            step_or_unique_id.unique_id
+            if isinstance(step_or_unique_id, Step)
+            else step_or_unique_id
+        )
         try:
-            return self.steps_to_info[step]
+            return self.unique_id_to_info[unique_id]
         except KeyError:
-            return StepInfo(
-                step.unique_id,
-                step.name if step.name != step.unique_id else None,
-                step.__class__.__name__,
-                step.VERSION,
-                {dep.unique_id for dep in step.dependencies},
-            )
-
-    def steps(
-        self, include_completed: bool = True
-    ) -> Iterable[StepInfo]:  # TODO: better selection of which steps to return
-        if include_completed:
-            return self.steps_to_info.values()
-        else:
-            return (info for info in self.steps_to_info.values() if info.end_time is None)
+            if isinstance(step_or_unique_id, Step):
+                step = step_or_unique_id
+                return StepInfo(
+                    step.unique_id,
+                    step.name if step.name != step.unique_id else None,
+                    step.__class__.__name__,
+                    step.VERSION,
+                    {dep.unique_id for dep in step.dependencies},
+                )
+            else:
+                raise KeyError()
 
     def step_starting(self, step: Step) -> None:
-        self.steps_to_info[step] = StepInfo(
+        self.unique_id_to_info[step.unique_id] = StepInfo(
             step.unique_id,
             step.name if step.name != step.unique_id else None,
             step.__class__.__name__,
@@ -273,7 +275,7 @@ class MemoryWorkspace(Workspace):
         )
 
     def step_finished(self, step: Step, result: T) -> T:
-        existing_step_info = self.steps_to_info[step]
+        existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is ending, but it never started.")
         existing_step_info.end_time = datetime.now()
@@ -289,7 +291,7 @@ class MemoryWorkspace(Workspace):
 
     def step_failed(self, step: Step, e: Exception) -> None:
         assert e is not None
-        existing_step_info = self.steps_to_info[step]
+        existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
         existing_step_info.end_time = datetime.now()
@@ -300,7 +302,7 @@ class MemoryWorkspace(Workspace):
             name = petname.generate()
         self.runs[name] = set(targets)
         for step in self.runs[name]:
-            self.steps_to_info[step] = StepInfo(
+            self.unique_id_to_info[step.unique_id] = StepInfo(
                 step.unique_id,
                 step.name if step.name != step.unique_id else None,
                 step.__class__.__name__,
@@ -309,11 +311,11 @@ class MemoryWorkspace(Workspace):
             )
         return name
 
-    def registered_runs(self) -> Dict[str, Dict[str, StepInfo]]:
-        return {
-            run_name: {step.unique_id: self.steps_to_info[step] for step in steps}
-            for run_name, steps in self.runs.items()
-        }
+    def registered_runs(self) -> List[str]:
+        return list(self.runs.keys())
+
+    def registered_run(self, name: str) -> Dict[str, StepInfo]:
+        return {step.unique_id: self.unique_id_to_info[step.unique_id] for step in self.runs[name]}
 
 
 default_workspace = MemoryWorkspace()

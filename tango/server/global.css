@@ -1,0 +1,9 @@
+.logo {
+  height: 49px;
+}
+.header-columns {
+  grid-template-columns: auto auto 1fr;
+}
+.menu {
+  justify-self: end;
+}

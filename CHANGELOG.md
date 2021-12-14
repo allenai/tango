@@ -7,14 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `SqliteDictFormat` for datasets.
+
+## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
+
+### Added
+
+- Sample experiment configurations that prove Euler's identity
+
 ### Changed
 
 - Loosened `Click` dependency to include v7.0.
+- Loosened `datasets` dependency.
+- Tightened `petname` dependency to exclude next major release for safety.
 
 ### Fixed
 
 - `Workspace`, `MemoryWorkspace`, and `LocalWorkspace` can now be imported directly from the `tango`
   base module.
+- Uncacheable leaf steps would never get executed. This is now fixed.
+- We were treating failed steps as if they were completed by accident.
+- The visualization had a problem with showing steps that never executed because a dependency failed.
+- Fixed a bug where `Lazy` inputs to a `Step` would fail to resolve arguments that come from the result
+  of another step.
+- Fixed a bug in `TorchTrainStep` where some arguments for distributed training (`devices`, `distributed_port`) weren't being set properly.
+
 
 ## [v0.4.0rc1](https://github.com/allenai/tango/releases/tag/v0.4.0rc1) - 2021-11-30
 
@@ -23,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced the concept of the `Workspace`, with `LocalWorkspace` and `MemoryWorkspace` as initial implementations.
 - Added a stub of a webserver that will be able to visualize runs as they happen.
 - Added separate classes for `LightningTrainingTypePlugin`, `LightningPrecisionPlugin`, `LightningClusterEnvironmentPlugin`, `LightningCheckpointPlugin` for compatibility with `pytorch-lightning>=1.5.0`.
-- `SqliteDictFormat` for datasets
+- Added a visualization of workspaces that can show step graphs while they're executing.
 
 ### Removed
 

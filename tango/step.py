@@ -41,6 +41,7 @@ from tango.common.from_params import (
     infer_method_params,
     pop_and_construct_arg,
 )
+from tango.common.lazy import Lazy
 from tango.common.logging import TangoLogger, click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
@@ -129,6 +130,9 @@ class Step(Registrable, Generic[T]):
             self.name = self.unique_id
         else:
             self.name = step_name
+        # TODO: It is bad design to have the step_name in the Step class. The same step can be part of multiple
+        # runs at the same time, and they can have different names in different runs. Step names are
+        # a property of the run, not of the step.
 
         if cache_results is True:
             if not self.CACHEABLE:
@@ -389,6 +393,16 @@ class Step(Registrable, Generic[T]):
     def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
             return o.result(workspace, self)
+        elif isinstance(o, Lazy):
+            return Lazy(
+                o._constructor,
+                params=Params(
+                    self._replace_steps_with_results(o._params.as_dict(quiet=True), workspace)
+                ),
+                constructor_extras=self._replace_steps_with_results(
+                    o._constructor_extras, workspace
+                ),
+            )
         elif isinstance(o, WithUnresolvedSteps):
             return o.construct(workspace)
         elif isinstance(o, (list, tuple, set)):
@@ -458,6 +472,8 @@ class Step(Registrable, Generic[T]):
         def dependencies_internal(o: Any) -> Iterable[Step]:
             if isinstance(o, Step):
                 yield o
+            elif isinstance(o, Lazy):
+                yield from dependencies_internal(o._params.as_dict(quiet=True))
             elif isinstance(o, WithUnresolvedSteps):
                 yield from dependencies_internal(o.args)
                 yield from dependencies_internal(o.kwargs)
@@ -590,6 +606,12 @@ class WithUnresolvedSteps(CustomDetHash):
         """
         if isinstance(o, Step):
             return o.result(workspace)
+        elif isinstance(o, Lazy):
+            return Lazy(
+                o._constructor,
+                params=Params(cls.with_resolved_steps(o._params.as_dict(quiet=True), workspace)),
+                constructor_extras=cls.with_resolved_steps(o._constructor_extras, workspace),
+            )
         elif isinstance(o, cls):
             return o.construct(workspace)
         elif isinstance(o, (dict, Params)):
