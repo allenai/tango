@@ -143,7 +143,7 @@ SAFE_FILENAME_CHARS = frozenset("-_.%s%s" % (string.ascii_letters, string.digits
 def filename_is_safe(filename: str) -> bool:
     return all(c in SAFE_FILENAME_CHARS for c in filename)
 
-  
+
 def could_be_class_name(name: str) -> bool:
     if "." in name and not name.endswith("."):
         return all([_is_valid_python_name(part) for part in name.split(".")])
