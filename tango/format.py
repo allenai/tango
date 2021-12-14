@@ -5,7 +5,6 @@ import importlib
 import json
 import logging
 import lzma
-import mmap
 import pathlib
 from abc import abstractmethod
 from os import PathLike
@@ -26,7 +25,6 @@ from typing import (
 )
 
 import dill
-import xxhash
 
 from tango.common import DatasetDict, filename_is_safe
 from tango.common.aliases import PathOrStr
@@ -64,32 +62,6 @@ class Format(Registrable, Generic[T]):
     def read(self, dir: PathOrStr) -> T:
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
-
-    @abstractmethod
-    def checksum(self, dir: PathOrStr) -> str:
-        """
-        Produces a checksum of the serialized artifact.
-
-        Should raise :class:`FileNotFoundError` if the artifact can't be found.
-        """
-        raise NotImplementedError()
-
-    @staticmethod
-    def _checksum_artifact(path: PathOrStr) -> str:
-        """
-        A helper method that can be used to compute the checksum of an artifact.
-
-        This can make implementing :meth:`checksum()` easier.
-        """
-        filepath = Path(path)
-        if not filepath.is_file():
-            raise FileNotFoundError(str(filepath))
-
-        h = xxhash.xxh128()
-        with filepath.open("rb") as f:
-            with mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ) as m:
-                h.update(m)
-        return h.hexdigest()
 
 
 _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
@@ -174,10 +146,6 @@ class DillFormat(Format[T], Generic[T]):
                 return DillFormatIterator(filename)  # type: ignore
             else:
                 return unpickler.load()
-
-    def checksum(self, dir: PathOrStr) -> str:
-        path = self._get_artifact_path(dir)
-        return self._checksum_artifact(path)
 
     def _get_artifact_path(self, dir: PathOrStr) -> Path:
         return Path(dir) / ("data.dill" + _SUFFIXES[self.open])
@@ -314,14 +282,6 @@ class JsonFormat(Format[T], Generic[T]):
         else:
             raise RuntimeError("This should be impossible.")
 
-    def checksum(self, dir: PathOrStr) -> str:
-        iterator_filename = self._get_artifact_path(dir, iterator=True)
-        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
-        if iterator_filename.exists():
-            return self._checksum_artifact(iterator_filename)
-        else:
-            return self._checksum_artifact(non_iterator_filename)
-
     def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
         return Path(dir) / (("data.jsonl" if iterator else "data.json") + _SUFFIXES[self.open])
 
@@ -382,8 +342,3 @@ class SqliteDictFormat(Format[DatasetDict]):
             for filename in dir.glob("*.sqlite")
         }
         return DatasetDict(metadata=metadata, splits=splits)
-
-    def checksum(self, dir: PathOrStr) -> str:
-        # This is not trivial to implement because sqlite files can be different even if they contain the same
-        # data.
-        raise NotImplementedError()

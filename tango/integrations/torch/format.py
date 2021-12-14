@@ -39,6 +39,3 @@ class TorchFormat(Format[T], Generic[T]):
                     f"File {filename} is too recent for this version of {self.__class__}."
                 )
             return artifact
-
-    def checksum(self, dir: PathOrStr) -> str:
-        return self._checksum_artifact(Path(dir) / "data.pt")
