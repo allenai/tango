@@ -1,17 +1,26 @@
 from dataclasses import dataclass, field
-from typing import Any, Generic, Iterable, Iterator, Mapping, Sequence, TypeVar
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Sequence,
+    TypeVar,
+)
 
 T = TypeVar("T")
 S = TypeVar("S")
 
 
 @dataclass
-class DatasetDictBase(Generic[S], Mapping[str, S]):
+class DatasetDictBase(Generic[S], MutableMapping[str, S]):
     """
     The base class for :class:`DatasetDict` and :class:`IterableDatasetDict`.
     """
 
-    splits: Mapping[str, S]
+    splits: MutableMapping[str, S]
     """
     A mapping of dataset split names to splits.
     """
@@ -26,6 +35,12 @@ class DatasetDictBase(Generic[S], Mapping[str, S]):
         Get a split in :attr:`splits`.
         """
         return self.splits[split]
+
+    def __setitem__(self, split: str, dataset: S):
+        self.splits[split] = dataset
+
+    def __delitem__(self, split: str):
+        del self.splits[split]
 
     def __contains__(self, split: str) -> bool:  # type: ignore[override]
         """
@@ -55,7 +70,7 @@ class DatasetDictBase(Generic[S], Mapping[str, S]):
 @dataclass
 class DatasetDict(DatasetDictBase[Sequence[T]], Generic[T]):
     """
-    A generic :class:`~collections.abc.Mapping` class of split names (:class:`str`) to datasets
+    A generic :class:`~collections.abc.MutableMapping` class of split names (:class:`str`) to datasets
     (``Sequence[T]``).
     """
 
