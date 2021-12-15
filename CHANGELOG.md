@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - Sample experiment configurations that prove Euler's identity
 
 ### Changed
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loosened `Click` dependency to include v7.0.
 - Loosened `datasets` dependency.
 - Tightened `petname` dependency to exclude next major release for safety.
+- `LoadDataset` step from `datasets` integration is now cacheable, using the `DatasetsFormat` format by default.
+  But this only works with non-streaming datasets. For streaming datasets, you should use the `LoadStreamingDataset` step instead.
 
 ### Fixed
 
