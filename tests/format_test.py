@@ -12,7 +12,6 @@ class TestFormat(TangoTestCase):
         artifact = "Hello, World!"
         format = DillFormat[str](compress)
         format.write(artifact, self.TEST_DIR)
-        format.checksum(self.TEST_DIR)
         assert format.read(self.TEST_DIR) == artifact
 
     @pytest.mark.parametrize("compress", _OPEN_FUNCTIONS.keys())
@@ -29,7 +28,6 @@ class TestFormat(TangoTestCase):
         artifact = {"Hello, World!": "Hi!"}
         format = JsonFormat[Dict[str, str]](compress)
         format.write(artifact, self.TEST_DIR)
-        format.checksum(self.TEST_DIR)
         assert format.read(self.TEST_DIR) == artifact
 
     @pytest.mark.parametrize("compress", _OPEN_FUNCTIONS.keys())

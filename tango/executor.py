@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, TypeVar
+from typing import List, Optional, Set, TypeVar
 
 import click
 
@@ -34,6 +34,8 @@ class Executor:
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
+        from tango import Step
+
         # Import included packages to find registered components.
         if self.include_package is not None:
             for package_name in self.include_package:
@@ -50,6 +52,15 @@ class Executor:
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
 
+        # find uncacheable leaf steps
+        interior_steps: Set[Step] = set()
+        for step in ordered_steps:
+            for dependency in step.dependencies:
+                interior_steps.add(dependency)
+        uncacheable_leaf_steps = {
+            step for step in set(step_graph.values()) - interior_steps if not step.cache_results
+        }
+
         click_logger.info(
             click.style("Starting new run ", fg="green")
             + click.style(run_name, fg="green", bold=True)
@@ -57,6 +68,8 @@ class Executor:
         for step in ordered_steps:
             if step.cache_results:
                 step.ensure_result(self.workspace)
+            elif step in uncacheable_leaf_steps:
+                step.result(self.workspace)
 
         # Print everything that has been computed.
         for step in ordered_steps:

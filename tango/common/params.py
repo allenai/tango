@@ -32,6 +32,7 @@ except ImportError:
 
 from .aliases import PathOrStr
 from .exceptions import ConfigurationError
+from .util import could_be_class_name
 
 logger = logging.getLogger(__name__)
 
@@ -365,7 +366,7 @@ class Params(MutableMapping):
         """
         default = choices[0] if default_to_first_choice else self.DEFAULT
         value = self.pop(key, default)
-        ok_because_class_name = allow_class_names and "." in value
+        ok_because_class_name = allow_class_names and could_be_class_name(value)
         if value not in choices and not ok_because_class_name:
             key_str = self.history + key
             message = (

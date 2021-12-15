@@ -32,15 +32,38 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 
 ## Installation
 
-<!-- start py version -->
+<!-- start install -->
 
 **ai2-tango** requires Python 3.7 or later.
 
-<!-- end py version -->
+### Installing with `conda`
+
+**ai2-tango** is available on conda-forge. You can install just the base package with
+
+```bash
+conda install tango -c conda-forge
+```
+
+You can pick and choose from the integrations with one of these:
+
+```bash
+conda install tango-datasets -c conda-forge
+conda install tango-pytorch_lightning -c conda-forge
+conda install tango-torch -c conda-forge
+conda install tango-wandb -c conda-forge
+```
+
+You can also install everything:
+
+```bash
+conda install tango-all -c conda-forge
+```
+
+Even though **ai2-tango** itself is quite small, installing everything will pull in a lot of dependencies.
+Don't be surprised if this takes a while!
+
 
 ### Installing with `pip`
-
-<!-- start install pip -->
 
 **ai2-tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
 
@@ -54,11 +77,7 @@ To install with a specific integration, such as `torch` for example, run
 pip install ai2-tango[torch]
 ```
 
-<!-- end install pip -->
-
 ### Installing from source
-
-<!-- start install source -->
 
 To install **ai2-tango** from source, first clone [the repository](https://github.com/allenai/tango):
 
@@ -79,11 +98,8 @@ To install with a specific integration, such as `torch` for example, run
 pip install -e .[torch]
 ```
 
-<!-- end install source -->
-
 ### Checking your installation
 
-<!-- start check install -->
 
 Run
 
@@ -93,7 +109,17 @@ tango info
 
 to check your installation.
 
-<!-- end check install -->
+<!-- end install -->
+
+## FAQ
+
+<!-- start faq -->
+
+### Why is the library named Tango?
+
+The motivation behind this library is that we can make research easier by composing it into well-defined steps.  What happens when you choreograph a number of steps together?  Well, you get a dance.  And since our [team's leader](https://nasmith.github.io/) is part of a tango band, "AI2 Tango" was an obvious choice!
+
+<!-- end faq -->
 
 ## Team
 

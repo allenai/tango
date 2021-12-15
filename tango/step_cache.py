@@ -195,7 +195,7 @@ class LocalStepCache(StepCache):
 
         try:
             step.format.write(value, location)
-            metadata = CacheMetadata(step=step.unique_id, checksum=step.format.checksum(location))
+            metadata = CacheMetadata(step=step.unique_id)
             metadata.to_params().to_file(temp_metadata_location)
             self._add_to_cache(step.unique_id, value)
             temp_metadata_location.rename(metadata_location)
@@ -230,9 +230,4 @@ class CacheMetadata(FromParams):
     step: str
     """
     The step name.
-    """
-
-    checksum: str
-    """
-    A checksum of the run's artifacts.
     """
