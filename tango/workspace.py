@@ -289,7 +289,7 @@ class MemoryWorkspace(Workspace):
                 return self.step_cache[step]
         return result
 
-    def step_failed(self, step: Step, e: Exception) -> None:
+    def step_failed(self, step: Step, e: BaseException) -> None:
         assert e is not None
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:

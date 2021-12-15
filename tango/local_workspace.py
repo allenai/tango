@@ -341,7 +341,7 @@ class LocalWorkspace(Workspace):
 
         return result
 
-    def step_failed(self, step: Step, e: Exception) -> None:
+    def step_failed(self, step: Step, e: BaseException) -> None:
         step_info = self._get_step_info(step)
         if step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
