@@ -182,7 +182,7 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def step_failed(self, step: Step, e: Exception) -> None:
+    def step_failed(self, step: Step, e: BaseException) -> None:
         """
         The :class:`.Step` class calls this when a step failed.
 

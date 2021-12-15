@@ -306,15 +306,9 @@ class Step(Registrable, Generic[T]):
                 if self.cache_results:
                     result = workspace.step_finished(self, result)
                 return result
-            # KeyboardInterrupt inherits from BaseException, not Exception, so requires its
-            # own catch.
-            except KeyboardInterrupt as e:
+            except BaseException as e:
                 # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
                 # Maybe have a `workspace.step_interrupted()` method?
-                if self.cache_results:
-                    workspace.step_failed(self, e)
-                raise
-            except Exception as e:
                 if self.cache_results:
                     workspace.step_failed(self, e)
                 raise
