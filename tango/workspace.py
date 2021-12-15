@@ -75,7 +75,7 @@ class StepInfo:
     The time this step stopped running. This will be set whether the step succeeded or failed.
     """
 
-    error: Optional[Exception] = None
+    error: Optional[BaseException] = None
     """
     If the step failed, this is where the error goes.
     """
