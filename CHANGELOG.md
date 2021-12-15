@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Sample experiment configurations that prove Euler's identity
+- Added `pre_epoch()` and `post_epoch()` callback methods to PyTorch `TrainCallback`.
 
 ### Changed
 

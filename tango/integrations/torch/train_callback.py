@@ -95,6 +95,18 @@ class TrainCallback(Registrable):
         """
         pass
 
+    def pre_epoch(self, epoch: int) -> None:
+        """
+        Called right before the start of an epoch. Epochs start at 0.
+        """
+        pass
+
+    def post_epoch(self, epoch: int) -> None:
+        """
+        Called after an epoch is completed. Epochs start at 0.
+        """
+        pass
+
     def pre_checkpoint(self, checkpoint_state: Dict[str, Any]) -> None:
         """
         Called directly before the checkpoint is saved.
