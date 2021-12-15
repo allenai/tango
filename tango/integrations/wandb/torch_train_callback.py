@@ -70,6 +70,10 @@ class WandbTrainCallback(TrainCallback):
                 file=sys.stderr,
             )
 
+        _wandb_config = self.train_config.as_dict()
+        if wandb_config is not None:
+            _wandb_config.update(wandb_config)
+
         self._watch_model = watch_model
         self._run_id: Optional[str] = None
         self._wandb_kwargs: Dict[str, Any] = dict(
@@ -77,13 +81,20 @@ class WandbTrainCallback(TrainCallback):
             project=project,
             entity=entity,
             group=group,
-            name=name,
+            name=name or self._get_run_name_from_step(),
             notes=notes,
-            config=wandb_config,
+            config=_wandb_config,
             tags=tags,
             anonymous="allow",
             **(wandb_kwargs or {}),
         )
+
+    def _get_run_name_from_step(self) -> str:
+        """
+        Generate a run name for W&B based on the step unique ID.
+        """
+        step_name, step_hash = self.train_config.step.split("-", maxsplit=1)
+        return f"{step_name}-{step_hash[:6]}"
 
     def state_dict(self) -> Dict[str, Any]:
         if self.is_local_main_process:
