@@ -71,6 +71,7 @@ class WandbTrainCallback(TrainCallback):
             )
 
         _wandb_config = self.train_config.as_dict()
+        _wandb_config["work_dir"] = str(self.train_config.work_dir.resolve())
         if wandb_config is not None:
             _wandb_config.update(wandb_config)
 
