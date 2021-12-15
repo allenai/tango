@@ -9,13 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - `SqliteDictFormat` for datasets.
+
+### Changed
+
+- `LoadDataset` step from `datasets` integration is now cacheable, using the `DatasetsFormat` format by default.
+  But this only works with non-streaming datasets. For streaming datasets, you should use the `LoadStreamingDataset` step instead.
+
+### Fixed
+
+- Fixed bug where `KeyboardInterrupt` exceptions were not handled properly by steps and workspaces.
 
 ## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
 
 ### Added
 
-- Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - Sample experiment configurations that prove Euler's identity
 
 ### Changed
@@ -23,8 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loosened `Click` dependency to include v7.0.
 - Loosened `datasets` dependency.
 - Tightened `petname` dependency to exclude next major release for safety.
-- `LoadDataset` step from `datasets` integration is now cacheable, using the `DatasetsFormat` format by default.
-  But this only works with non-streaming datasets. For streaming datasets, you should use the `LoadStreamingDataset` step instead.
 
 ### Fixed
 
