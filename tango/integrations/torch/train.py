@@ -210,6 +210,7 @@ class TorchTrainStep(Step):
             )
 
         config = TrainConfig(
+            self.unique_id,
             self.work_dir,
             train_split=train_split,
             validation_split=validation_split,
