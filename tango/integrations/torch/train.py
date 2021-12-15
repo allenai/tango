@@ -427,9 +427,7 @@ def _train(
     model.train()
     training_batches = enumerate(
         islice(
-            chunked(
-                _cycle_through_epochs(train_dataloader, config.is_distributed), config.grad_accum
-            ),
+            _cycle_through_epochs(train_dataloader, config.is_distributed, config.grad_accum),
             config.train_steps,
         )
     )
@@ -720,7 +718,7 @@ def _train(
             if config.should_checkpoint_this_step(step):
                 save_state(step)
 
-        # End train loop.
+        # End train loop
 
         # Final post-epoch callback.
         for callback in callbacks:
@@ -743,13 +741,13 @@ def _train(
         return None
 
 
-def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool):
+def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool, grad_accum: int):
     epoch = 0
     while True:
         if is_distributed and isinstance(dataloader.sampler, DistributedSampler):
             dataloader.sampler.set_epoch(epoch)
-        for batch in dataloader:
-            yield (epoch, batch)
+        for batch in chunked(dataloader, grad_accum):
+            yield epoch, batch
         epoch += 1
 
 
