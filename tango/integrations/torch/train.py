@@ -336,15 +336,12 @@ def _train(
     _check_dataset(train_dataset, config.train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
-    steps_per_epoch: Optional[int] = None
-    try:
-        steps_per_epoch = len(train_dataloader)
-    except TypeError:
-        if config.train_steps is None:
-            raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
-
     if config.train_steps is None:
-        assert steps_per_epoch is not None and config.train_epochs is not None
+        assert config.train_epochs is not None
+        try:
+            steps_per_epoch = len(train_dataloader)
+        except TypeError:
+            raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
         config.train_steps = steps_per_epoch * (config.train_epochs or 1)
 
     assert config.train_steps is not None  # for mypy
@@ -518,6 +515,7 @@ def _train(
                 os.remove(temp_state_file.name)
 
     # Catch data loader up to where we left off before.
+    current_epoch: int = -1
     if start_step > 0:
         with Tqdm.tqdm(
             training_batches,
@@ -525,7 +523,7 @@ def _train(
             total=start_step - 1,
             disable=not config.is_local_main_process,
         ) as batch_iter:
-            for step, (_, batch) in batch_iter:
+            for step, (current_epoch, batch) in batch_iter:
                 del batch
                 if step >= start_step - 1:
                     break
@@ -545,10 +543,15 @@ def _train(
     )
     try:
         for step, (epoch, batch) in train_batch_iterator:
-            # Pre-epoch callback.
-            if steps_per_epoch is not None and step % steps_per_epoch == 0:
+            if epoch != current_epoch:
+                # Start of new epoch.
+                if epoch > 0:
+                    # Call post-epoch callbacks for the last epoch.
+                    for callback in callbacks:
+                        callback.post_epoch(current_epoch)
                 for callback in callbacks:
                     callback.pre_epoch(epoch)
+                current_epoch = epoch
 
             # Pre-batch callback.
             for callback in callbacks:
@@ -717,10 +720,11 @@ def _train(
             if config.should_checkpoint_this_step(step):
                 save_state(step)
 
-            # Post-epoch callback.
-            if steps_per_epoch is not None and (step + 1) % steps_per_epoch == 0:
-                for callback in callbacks:
-                    callback.post_epoch(epoch)
+        # End train loop.
+
+        # Final post-epoch callback.
+        for callback in callbacks:
+            callback.post_epoch(current_epoch)
     except StopEarly:
         if config.is_local_main_process:
             print("Stopping early!")
