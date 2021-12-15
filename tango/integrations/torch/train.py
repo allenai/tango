@@ -204,9 +204,9 @@ class TorchTrainStep(Step):
             is_distributed = True
             num_workers = len(devices)
 
-        if train_steps is not None and train_epochs is not None:
+        if (train_steps is not None) == (train_epochs is not None):
             raise ConfigurationError(
-                "You cannot specify train_steps and train_epochs at the same time."
+                "One of 'train_steps' or 'train_epochs' needs to be specified, but not both."
             )
 
         config = TrainConfig(
@@ -336,13 +336,16 @@ def _train(
     _check_dataset(train_dataset, config.train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
-    assert config.train_steps is None or config.train_epochs is None
     if config.train_steps is None:
+        assert config.train_epochs is not None
         try:
-            config.train_steps = len(train_dataloader) * (config.train_epochs or 1)
+            steps_per_epoch = len(train_dataloader)
         except TypeError:
             raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
+        config.train_steps = steps_per_epoch * (config.train_epochs or 1)
+
     assert config.train_steps is not None  # for mypy
+
     if validation_dataloader is not None:
         if config.validation_steps is None:
             try:
@@ -424,9 +427,7 @@ def _train(
     model.train()
     training_batches = enumerate(
         islice(
-            chunked(
-                _cycle_through_epochs(train_dataloader, config.is_distributed), config.grad_accum
-            ),
+            _cycle_through_epochs(train_dataloader, config.is_distributed, config.grad_accum),
             config.train_steps,
         )
     )
@@ -512,6 +513,7 @@ def _train(
                 os.remove(temp_state_file.name)
 
     # Catch data loader up to where we left off before.
+    current_epoch: int = -1
     if start_step > 0:
         with Tqdm.tqdm(
             training_batches,
@@ -519,7 +521,7 @@ def _train(
             total=start_step - 1,
             disable=not config.is_local_main_process,
         ) as batch_iter:
-            for step, batch in batch_iter:
+            for step, (current_epoch, batch) in batch_iter:
                 del batch
                 if step >= start_step - 1:
                     break
@@ -538,9 +540,21 @@ def _train(
         disable=not config.is_local_main_process,
     )
     try:
-        for step, batch in train_batch_iterator:
+        for step, (epoch, batch) in train_batch_iterator:
+            if epoch != current_epoch:
+                # Start of new epoch.
+                if epoch > 0:
+                    # Call post-epoch callbacks for the last epoch.
+                    for callback in callbacks:
+                        callback.post_epoch(current_epoch)
+                for callback in callbacks:
+                    callback.pre_epoch(epoch)
+                current_epoch = epoch
+
+            # Pre-batch callback.
             for callback in callbacks:
                 callback.pre_batch(step, batch)
+
             optimizer.zero_grad()
             batch_loss = 0.0
             for micro_batch in batch:
@@ -567,6 +581,7 @@ def _train(
                 del outputs
                 del micro_batch_loss
 
+            # Post-batch callback.
             for callback in callbacks:
                 callback.post_batch(step, batch_loss)
 
@@ -686,6 +701,7 @@ def _train(
                 elif not config.minimize_val_metric and val_metric >= best_val_metric:
                     best_val_metric = val_metric
 
+                # Post validation callback.
                 for callback in callbacks:
                     callback.post_val_loop(step, val_metric, best_val_metric)
 
@@ -701,6 +717,12 @@ def _train(
             # Checkpoint.
             if config.should_checkpoint_this_step(step):
                 save_state(step)
+
+        # End train loop
+
+        # Final post-epoch callback.
+        for callback in callbacks:
+            callback.post_epoch(current_epoch)
     except StopEarly:
         if config.is_local_main_process:
             print("Stopping early!")
@@ -719,13 +741,13 @@ def _train(
         return None
 
 
-def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool):
+def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool, grad_accum: int):
     epoch = 0
     while True:
         if is_distributed and isinstance(dataloader.sampler, DistributedSampler):
             dataloader.sampler.set_epoch(epoch)
-        for batch in dataloader:
-            yield batch
+        for batch in chunked(dataloader, grad_accum):
+            yield epoch, batch
         epoch += 1
 
 

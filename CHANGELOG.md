@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - `SqliteDictFormat` for datasets.
+- Added `pre_epoch()` and `post_epoch()` callback methods to PyTorch `TrainCallback`.
 
 ### Changed
 
