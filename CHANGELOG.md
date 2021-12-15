@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `SqliteDictFormat` for datasets.
+
+## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
+
+### Added
+
 - Sample experiment configurations that prove Euler's identity
 
 ### Changed

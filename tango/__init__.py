@@ -9,6 +9,7 @@ __all__ = [
     "Executor",
     "JsonFormat",
     "JsonFormatIterator",
+    "SqliteDictFormat",
     "Step",
     "StepCache",
     "LocalStepCache",
@@ -24,6 +25,7 @@ from tango.format import (
     Format,
     JsonFormat,
     JsonFormatIterator,
+    SqliteDictFormat,
 )
 from tango.local_workspace import LocalWorkspace
 from tango.step import Step

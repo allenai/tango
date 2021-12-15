@@ -5,7 +5,7 @@ import importlib
 import json
 import logging
 import lzma
-import mmap
+import pathlib
 from abc import abstractmethod
 from os import PathLike
 from pathlib import Path
@@ -25,12 +25,13 @@ from typing import (
 )
 
 import dill
-import xxhash
 
+from tango.common import DatasetDict, filename_is_safe
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
+from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
 
 T = TypeVar("T")
 
@@ -61,32 +62,6 @@ class Format(Registrable, Generic[T]):
     def read(self, dir: PathOrStr) -> T:
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
-
-    @abstractmethod
-    def checksum(self, dir: PathOrStr) -> str:
-        """
-        Produces a checksum of the serialized artifact.
-
-        Should raise :class:`FileNotFoundError` if the artifact can't be found.
-        """
-        raise NotImplementedError()
-
-    @staticmethod
-    def _checksum_artifact(path: PathOrStr) -> str:
-        """
-        A helper method that can be used to compute the checksum of an artifact.
-
-        This can make implementing :meth:`checksum()` easier.
-        """
-        filepath = Path(path)
-        if not filepath.is_file():
-            raise FileNotFoundError(str(filepath))
-
-        h = xxhash.xxh128()
-        with filepath.open("rb") as f:
-            with mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ) as m:
-                h.update(m)
-        return h.hexdigest()
 
 
 _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
@@ -171,10 +146,6 @@ class DillFormat(Format[T], Generic[T]):
                 return DillFormatIterator(filename)  # type: ignore
             else:
                 return unpickler.load()
-
-    def checksum(self, dir: PathOrStr) -> str:
-        path = self._get_artifact_path(dir)
-        return self._checksum_artifact(path)
 
     def _get_artifact_path(self, dir: PathOrStr) -> Path:
         return Path(dir) / ("data.dill" + _SUFFIXES[self.open])
@@ -311,14 +282,6 @@ class JsonFormat(Format[T], Generic[T]):
         else:
             raise RuntimeError("This should be impossible.")
 
-    def checksum(self, dir: PathOrStr) -> str:
-        iterator_filename = self._get_artifact_path(dir, iterator=True)
-        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
-        if iterator_filename.exists():
-            return self._checksum_artifact(iterator_filename)
-        else:
-            return self._checksum_artifact(non_iterator_filename)
-
     def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
         return Path(dir) / (("data.jsonl" if iterator else "data.json") + _SUFFIXES[self.open])
 
@@ -346,3 +309,36 @@ class JsonFormatIterator(Iterator[T], Generic[T]):
             self.f.close()
             self.f = None
             raise StopIteration()
+
+
+@Format.register("sqlite")
+class SqliteDictFormat(Format[DatasetDict]):
+    VERSION = 3
+
+    def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
+        dir = pathlib.Path(dir)
+        with gzip.open(dir / "metadata.dill.gz", "wb") as f:
+            dill.dump(artifact.metadata, f)
+        for split_name, split in artifact.splits.items():
+            filename = f"{split_name}.sqlite"
+            if not filename_is_safe(filename):
+                raise ValueError(f"{split_name} is not a valid name for a split.")
+            try:
+                (dir / filename).unlink()
+            except FileNotFoundError:
+                pass
+            if isinstance(split, SqliteSparseSequence):
+                split.copy_to(dir / filename)
+            else:
+                sqlite = SqliteSparseSequence(dir / filename)
+                sqlite.extend(split)
+
+    def read(self, dir: Union[str, PathLike]) -> DatasetDict:
+        dir = pathlib.Path(dir)
+        with gzip.open(dir / "metadata.dill.gz", "rb") as f:
+            metadata = dill.load(f)
+        splits = {
+            filename.stem: SqliteSparseSequence(filename, read_only=True)
+            for filename in dir.glob("*.sqlite")
+        }
+        return DatasetDict(metadata=metadata, splits=splits)
