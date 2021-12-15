@@ -111,7 +111,7 @@ class LoadDataset(Step):
     DETERMINISTIC = True
     VERSION = "001"
     CACHEABLE = True
-    FORMAT: Format = DatasetsFormat()
+    FORMAT = DatasetsFormat()
 
     def run(self, path: str, **kwargs) -> Union[ds.DatasetDict, ds.Dataset]:  # type: ignore
         """

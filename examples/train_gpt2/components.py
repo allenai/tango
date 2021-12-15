@@ -5,8 +5,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer, default_data_collator
 from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 
 from tango import Step
-from tango.common import DatasetDict
-from tango.integrations.datasets import convert_to_tango_dataset_dict
+from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
@@ -39,7 +38,8 @@ class TransformerDefaultCollator(DataCollator[Any]):
 @Step.register("tokenize_data")
 class TokenizeData(Step):
     DETERMINISTIC = True
-    CACHEABLE = False
+    CACHEABLE = True
+    FORMAT = DatasetsFormat()
 
     def run(  # type: ignore[override]
         self,
@@ -47,7 +47,7 @@ class TokenizeData(Step):
         pretrained_model_name: str,
         block_size: int = 1024,
         num_workers: int = 1,
-    ) -> DatasetDict:
+    ) -> datasets.DatasetDict:
         tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_name)
 
         def tokenize_function(example):
@@ -94,6 +94,4 @@ class TokenizeData(Step):
             },
         )
 
-        # It's important for caching any steps that use this dataset as input
-        # to convert it to a native Tango DatasetDict.
-        return convert_to_tango_dataset_dict(dataset)
+        return dataset
