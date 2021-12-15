@@ -111,6 +111,9 @@ class LoadDataset(Step):
     DETERMINISTIC = True
     VERSION = "001"
     CACHEABLE = True
+    # Even though HuggingFace datasets has its own caching mechanism, it can still be worth caching
+    # this step with tango's mechanism since some datasets take a really long time to query from HuggingFace
+    # ("bigscience/P3", for example). Tango's caching mechanism circumvents that issue.
     FORMAT = DatasetsFormat()
 
     def run(self, path: str, **kwargs) -> Union[ds.DatasetDict, ds.Dataset]:  # type: ignore
@@ -142,7 +145,9 @@ class LoadStreamingDataset(Step):
 
     DETERMINISTIC = True
     VERSION = "001"
-    CACHEABLE = False  # can't be cached
+    CACHEABLE = (
+        False  # can't be cached with `DatasetsFormat`, and might be really inefficient anyway.
+    )
 
     def run(  # type: ignore
         self, path: str, **kwargs
