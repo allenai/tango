@@ -1,15 +1,28 @@
 import logging
-from typing import Iterable, Optional, List, Dict
+from typing import Dict, Iterable, List, Optional
 
 import more_itertools
-import torch
 import numpy as np
-from transformers import GPT2LMHeadModel, CTRLLMHeadModel, OpenAIGPTLMHeadModel, XLNetLMHeadModel, \
-    TransfoXLLMHeadModel, XLMWithLMHeadModel, GPT2Tokenizer, CTRLTokenizer, OpenAIGPTTokenizer, XLNetTokenizer, \
-    TransfoXLTokenizer, XLMTokenizer, AutoTokenizer, AutoModel, AutoModelWithLMHead, AutoModelForSeq2SeqLM, \
-    AutoModelForCausalLM
+import torch
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSeq2SeqLM,
+    AutoTokenizer,
+    CTRLLMHeadModel,
+    CTRLTokenizer,
+    GPT2LMHeadModel,
+    GPT2Tokenizer,
+    OpenAIGPTLMHeadModel,
+    OpenAIGPTTokenizer,
+    TransfoXLLMHeadModel,
+    TransfoXLTokenizer,
+    XLMTokenizer,
+    XLMWithLMHeadModel,
+    XLNetLMHeadModel,
+    XLNetTokenizer,
+)
 
-from tango import Step, JsonFormat
+from tango import JsonFormat, Step
 from tango.common.logging import make_tqdm
 from tango.common.util import threaded_generator
 
@@ -67,7 +80,7 @@ class RunGeneration(Step[Iterable[str]]):
         prompts: Iterable[str],
         model_name: str,
         *,
-        batch_size: int = 4,        # TODO: This should not be part of the unique id
+        batch_size: int = 4,  # TODO: This should not be part of the unique id
         max_length: int = 20,
         temperature: float = 1.0,
         repetition_penalty: float = 1.0,
@@ -115,7 +128,8 @@ class RunGeneration(Step[Iterable[str]]):
                 add_special_tokens=False,
                 return_tensors="pt",
                 padding=True,
-                **tokenizer_kwargs)
+                **tokenizer_kwargs,
+            )
 
         def prepare_batch_with_prefix(prompts: List[str]) -> Dict[str, torch.Tensor]:
             if len(prefix) > 0:
@@ -128,12 +142,20 @@ class RunGeneration(Step[Iterable[str]]):
         # model-specific exceptions
         if model.config_class.model_type == "ctrl":
             if temperature > 0.7:
-                logger.warning("CTRL typically works better with lower temperatures (and lower top_k).")
+                logger.warning(
+                    "CTRL typically works better with lower temperatures (and lower top_k)."
+                )
 
             def prepare_batch_fn(prompts: List[str]) -> Dict[str, torch.Tensor]:
                 encoded_prompts = prepare_batch_without_prefix([prefix + t for t in prompts])
-                if not any(encoded_prompts["token_ids"][0, 0] == x for x in tokenizer.control_codes.values()):
-                    logger.info("WARNING! You are not starting your generation from a control code so you won't get good results")
+                if not any(
+                    encoded_prompts["token_ids"][0, 0] == x
+                    for x in tokenizer.control_codes.values()
+                ):
+                    logger.warning(
+                        "You are not starting your generation from a control code "
+                        "so you won't get good results!"
+                    )
                 return encoded_prompts
 
         elif model.config_class.model_type == "xlm":
@@ -158,14 +180,17 @@ class RunGeneration(Step[Iterable[str]]):
         for encoded_batch in tqdm(encoded_batches, desc="Processing batches"):
             generated_sequences = model.generate(
                 **encoded_batch,
-                max_length=adjust_length_to_model(max_length + encoded_batch["input_ids"].size(1), model),
+                max_length=adjust_length_to_model(
+                    max_length + encoded_batch["input_ids"].size(1), model
+                ),
                 temperature=temperature,
                 top_k=k,
                 top_p=p,
                 repetition_penalty=repetition_penalty,
                 do_sample=True,
                 num_return_sequences=num_return_sequences,
-                synced_gpus=n_gpu > 1)
+                synced_gpus=n_gpu > 1,
+            )
 
             # TODO: What happens with num_return_sequences > 1?
             # TODO: Run on GPU
@@ -174,13 +199,16 @@ class RunGeneration(Step[Iterable[str]]):
             # strip padding on the left
             generated_sequences = [
                 sequence[start_token:]
-                for sequence, start_token in zip(generated_sequences, (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens)
+                for sequence, start_token in zip(
+                    generated_sequences,
+                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens,
+                )
             ]
 
             # strip padding on the right
             # Note: If the model produces an EOS token in the middle of the sequence, this will fail.
             generated_sequences = [
-                sequence[:len(sequence)-(sequence == eos_token_id).sum()]
+                sequence[: len(sequence) - (sequence == eos_token_id).sum()]
                 for sequence in generated_sequences
             ]
 

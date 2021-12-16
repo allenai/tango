@@ -118,12 +118,12 @@ def initialize_logging(
 
 
 def logging_tqdm(
-        i,
-        *,
-        logger: Optional[logging.Logger] = None,
-        desc: str = "Working",
-        total: Optional[int] = None,
-        seconds_between_updates: int = 5
+    i,
+    *,
+    logger: Optional[logging.Logger] = None,
+    desc: str = "Working",
+    total: Optional[int] = None,
+    seconds_between_updates: int = 5,
 ):
     if logger is None:
         logger = logging.getLogger()
@@ -134,10 +134,10 @@ def logging_tqdm(
 
     def elapsed_string(time_in_seconds: float) -> str:
         s = ""
-        if time_in_seconds >= (60*60):
-            hours = time_in_seconds // (60*60)
+        if time_in_seconds >= (60 * 60):
+            hours = time_in_seconds // (60 * 60)
             s += f"{hours:.0f}:"
-            time_in_seconds -= (60*60) * hours
+            time_in_seconds -= (60 * 60) * hours
         if time_in_seconds >= 60 or len(s) > 0:
             minutes = time_in_seconds // 60
             if len(s) <= 0:
@@ -170,7 +170,10 @@ def logging_tqdm(
                 speed_string = f"{1 / speed:.2f} seconds per item"
             if total is not None:
                 fraction = done / total
-                logger.info(f"{desc}, {done}/{total} ({fraction*100:.2f}%), {speed_string}, ETA {elapsed_string((total - done) / speed)}")
+                logger.info(
+                    f"{desc}, {done}/{total} ({fraction*100:.2f}%), "
+                    f"{speed_string}, ETA {elapsed_string((total - done) / speed)}"
+                )
             else:
                 logger.info(f"{desc}, {done} in {elapsed_string(time_since_start)}, {speed_string}")
 
@@ -185,4 +188,5 @@ def logging_tqdm(
 def make_tqdm(logger: Optional[logging.Logger] = None):
     def tqdm(*args, **kwargs):
         return logging_tqdm(*args, **kwargs, logger=logger)
+
     return tqdm
