@@ -322,6 +322,9 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         This format has special support for iterables. If you write an iterator, it will consume the
         iterator. If you read an iterator, it will read the iterator lazily.
 
+        Be aware that if your strings contain newlines, you will read out more strings than you wrote.
+        For this reason, it's often advisable to use `JsonFormat` instead. With `JsonFormat`, all special
+        characters are escaped, strings are quoted, but it's all still human-readable.
     """
 
     VERSION = 1
