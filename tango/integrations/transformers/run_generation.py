@@ -99,7 +99,7 @@ class RunGeneration(Step[Iterable[List[str]]]):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         n_gpu = torch.cuda.device_count()
 
-        logger.info(f"device: {device}, n_gpu: {n_gpu}, 16-bits training: {fp16}")
+        logger.info(f"device: {device}, n_gpu: {n_gpu}, 16-bits: {fp16}")
 
         np.random.seed(seed)
         torch.manual_seed(seed)
