@@ -1,7 +1,11 @@
 import datasets
 
 from tango.common.testing import TangoTestCase
-from tango.integrations.datasets import LoadDataset, convert_to_tango_dataset_dict
+from tango.integrations.datasets import (
+    DatasetsFormat,
+    LoadDataset,
+    convert_to_tango_dataset_dict,
+)
 from tango.step import Step
 
 
@@ -27,10 +31,13 @@ class TestDatasets(TangoTestCase):
         assert "train" in dataset_dict1.splits
 
     def test_load_concatenate_and_interleave(self):
-        self.run(
+        result_dir = self.run(
             self.FIXTURES_ROOT / "integrations" / "datasets" / "config.json",
             overrides={
                 "steps.train_data.cache_dir": str(self.TEST_DIR / "cache"),
                 "steps.dev_data.cache_dir": str(self.TEST_DIR / "cache"),
             },
         )
+        assert (result_dir / "train_data" / "data").is_dir()
+        dataset = DatasetsFormat().read(result_dir / "train_data")
+        assert len(dataset) == 2

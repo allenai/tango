@@ -23,15 +23,21 @@ You could run this with:
 """
 
 
+from pathlib import Path
 from typing import Any, List, Optional, TypeVar, Union, overload
 
 import datasets as ds
 
+from tango.common.aliases import PathOrStr
 from tango.common.dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
+from tango.common.exceptions import ConfigurationError
+from tango.format import Format
 from tango.step import Step
 
 __all__ = [
     "LoadDataset",
+    "LoadStreamingDataset",
+    "DatasetsFormat",
     "convert_to_tango_dataset_dict",
     "InterleaveDatasets",
     "ConcatenateDatasets",
@@ -63,6 +69,29 @@ def convert_to_tango_dataset_dict(hf_dataset_dict):
         return DatasetDict(splits=hf_dataset_dict)
 
 
+T = Union[ds.Dataset, ds.DatasetDict]
+
+
+@Format.register("datasets")
+class DatasetsFormat(Format[T]):
+    """
+    This format writes a :class:`datasets.Dataset` or :class:`datasets.DatasetDict` to disk
+    using :meth:`datasets.Dataset.save_to_disk()`.
+
+    It is the default :class:`~tango.format.Format` for the :class:`LoadDataset` step.
+    """
+
+    VERSION = 1
+
+    def write(self, artifact: T, dir: PathOrStr):
+        dataset_path = Path(dir) / "data"
+        artifact.save_to_disk(str(dataset_path))
+
+    def read(self, dir: PathOrStr) -> T:
+        dataset_path = Path(dir) / "data"
+        return ds.load_from_disk(str(dataset_path))
+
+
 @Step.register("datasets::load")
 class LoadDataset(Step):
     """
@@ -72,22 +101,70 @@ class LoadDataset(Step):
 
         Registered as a :class:`~tango.step.Step` under the name "datasets::load".
 
+    .. important::
+
+        If you are loading an :class:`~datasets.IterableDataset` or :class:`~datasets.IterableDatasetDict`
+        you need to use the :class:`LoadStreamingDataset` step instead.
+
     """
 
     DETERMINISTIC = True
     VERSION = "001"
-    CACHEABLE = False  # These are already cached by huggingface.
+    CACHEABLE = True
+    # Even though HuggingFace datasets has its own caching mechanism, it can still be worth caching
+    # this step with tango's mechanism since some datasets take a really long time to query from HuggingFace
+    # ("bigscience/P3", for example). Tango's caching mechanism circumvents that issue.
+    FORMAT = DatasetsFormat()
 
-    def run(  # type: ignore
-        self, path: str, **kwargs
-    ) -> Union[ds.DatasetDict, ds.Dataset, ds.IterableDatasetDict, ds.IterableDataset]:
+    def run(self, path: str, **kwargs) -> Union[ds.DatasetDict, ds.Dataset]:  # type: ignore
         """
         Load the HuggingFace dataset specified by ``path``.
 
         ``path`` is the canonical name or path to the dataset. Additional key word arguments
         are passed as-is to :func:`datasets.load_dataset()`.
         """
-        return ds.load_dataset(path, **kwargs)
+        dataset = ds.load_dataset(path, **kwargs)
+        if not isinstance(dataset, (ds.Dataset, ds.DatasetDict)):
+            raise ConfigurationError(
+                f"{self.__class__.__name__} can only be used with non-streaming datasets. "
+                f"For streaming datasets, use the 'LoadStreamingDataset' ('datasets::load_streaming') step instead."
+            )
+        return dataset
+
+
+@Step.register("datasets::load_streaming")
+class LoadStreamingDataset(Step):
+    """
+    This step loads an iterable/streaming `HuggingFace dataset <https://huggingface.co/datasets>`_.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name "datasets::load_streaming".
+
+    """
+
+    DETERMINISTIC = True
+    VERSION = "001"
+    CACHEABLE = (
+        False  # can't be cached with `DatasetsFormat`, and might be really inefficient anyway.
+    )
+
+    def run(  # type: ignore
+        self, path: str, **kwargs
+    ) -> Union[ds.IterableDatasetDict, ds.IterableDataset]:
+        """
+        Load the HuggingFace streaming dataset specified by ``path``.
+
+        ``path`` is the canonical name or path to the dataset. Additional key word arguments
+        are passed as-is to :func:`datasets.load_dataset()`.
+        """
+        dataset = ds.load_dataset(path, **kwargs)
+        if not isinstance(dataset, (ds.IterableDataset, ds.IterableDatasetDict)):
+            raise ConfigurationError(
+                f"{self.__class__.__name__} can only be used with streaming datasets. "
+                f"For non-streaming datasets, use the 'LoadDataset' ('datasets::load') step instead."
+            )
+        return dataset
 
 
 DatasetType = TypeVar("DatasetType", ds.Dataset, ds.IterableDataset)

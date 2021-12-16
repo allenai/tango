@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - `SqliteDictFormat` for datasets.
 - Added `pre_epoch()` and `post_epoch()` callback methods to PyTorch `TrainCallback`.
 
 ### Changed
 
+- `LoadDataset` step from `datasets` integration is now cacheable, using the `DatasetsFormat` format by default.
+  But this only works with non-streaming datasets. For streaming datasets, you should use the `LoadStreamingDataset` step instead.
+
+### Fixed
+
+- Fixed bug where `KeyboardInterrupt` exceptions were not handled properly by steps and workspaces.
 - `WandbTrainCallback` now will use part of the step's unique ID as the name for the W&B run by default, to make
   it easier to indentify which tango step corresponds to each run in W&B.
 - `WandbTrainCallback` will save the entire `TrainConfig` object to the W&B config.

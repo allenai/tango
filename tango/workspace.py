@@ -75,7 +75,7 @@ class StepInfo:
     The time this step stopped running. This will be set whether the step succeeded or failed.
     """
 
-    error: Optional[Exception] = None
+    error: Optional[BaseException] = None
     """
     If the step failed, this is where the error goes.
     """
@@ -182,7 +182,7 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def step_failed(self, step: Step, e: Exception) -> None:
+    def step_failed(self, step: Step, e: BaseException) -> None:
         """
         The :class:`.Step` class calls this when a step failed.
 
@@ -289,7 +289,7 @@ class MemoryWorkspace(Workspace):
                 return self.step_cache[step]
         return result
 
-    def step_failed(self, step: Step, e: Exception) -> None:
+    def step_failed(self, step: Step, e: BaseException) -> None:
         assert e is not None
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
