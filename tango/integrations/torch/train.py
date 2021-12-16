@@ -1,17 +1,15 @@
 import os
 import random
 import tempfile
-import warnings
 from itertools import islice
-from typing import Any, Dict, List, Optional, Set, TypeVar, cast
+from typing import Any, Dict, List, Optional, Set, cast
 
 import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 from more_itertools import chunked
-from torch import Tensor
-from torch.utils.data import DistributedSampler, IterableDataset
+from torch.utils.data import DistributedSampler
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
@@ -28,6 +26,7 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
+from .util import check_dataloader, check_dataset, move_to_device
 
 
 @Step.register("torch::train")
@@ -45,19 +44,19 @@ class TorchTrainStep(Step):
         During validation, the validation metric (specified by the ``val_metric_name`` parameter)
         is aggregated by simply averaging across validation batches and distributed processes.
         This behavior is usually correct when your validation metric is "loss" or "accuracy",
-        for example, but may not be correct for other metrics such as F1.
+        for example, but may not be correct for other metrics like "F1".
 
         If this is not correct for your metric you will need to handle the aggregation
-        internally in your model so that the metric returned from :meth:`torch.nn.Module.forward()`
-        is already aggregated correctly. Then set the parameter ``aggregate_val_metric`` to
-        ``False``.
+        internally in your model or with a :class:`TrainCallback`
+        using the :meth:`TrainCallback.post_val_batch()` method.
+        Then set the parameter ``auto_aggregate_val_metric`` to ``False``.
 
         Note that correctly aggregating your metric during distributed training will
         involve distributed communication.
 
     """
 
-    DETERMINISTIC: bool = True
+    DETERMINISTIC = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
 
@@ -86,7 +85,7 @@ class TorchTrainStep(Step):
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
-        aggregate_val_metric: bool = True,
+        auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
         remove_stale_checkpoints: bool = True,
     ) -> Model:
@@ -98,7 +97,7 @@ class TorchTrainStep(Step):
 
         model : :class:`Model`
             The model to train. It should return a ``dict`` that includes the ``loss``
-            during training and validation.
+            during training and the ``val_metric_name`` during validation.
         dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
             The train and optional validation data.
         train_dataloader : :class:`DataLoader`
@@ -161,11 +160,12 @@ class TorchTrainStep(Step):
             Whether the validation metric is meant to be minimized (such as the loss).
             Default is ``True``. When using a metric such as accuracy, you should set
             this to ``False``.
-        aggregate_val_metric : :class:`bool`
+        auto_aggregate_val_metric : :class:`bool`
             If ``True`` (the default), the validation metric will be averaged across
             validation batches and distributed processes. This may not be the correct
             behavior for some metrics (such as F1), in which you should set this to
-            ``False`` and handle the aggregation internally in your model.
+            ``False`` and handle the aggregation internally in your model
+            or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
         remove_stale_checkpoints : :class:`bool`
@@ -228,7 +228,7 @@ class TorchTrainStep(Step):
             distributed_port=distributed_port,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
-            aggregate_val_metric=aggregate_val_metric,
+            auto_aggregate_val_metric=auto_aggregate_val_metric,
             remove_stale_checkpoints=remove_stale_checkpoints,
             world_size=num_workers,
         )
@@ -327,14 +327,14 @@ def _train(
     validation_dataloader_: Optional[DataLoader] = None
     if config.validation_split is not None:
         validation_dataset = dataset_dict[config.validation_split]
-        _check_dataset(validation_dataset, config.validation_split)
+        check_dataset(validation_dataset, config.validation_split)
         if validation_dataloader is not None:
             validation_dataloader_ = validation_dataloader.construct(dataset=validation_dataset)
         else:
             validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
     validation_dataloader: Optional[DataLoader] = validation_dataloader_
     train_dataset = dataset_dict[config.train_split]
-    _check_dataset(train_dataset, config.train_split)
+    check_dataset(train_dataset, config.train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
     if config.train_steps is None:
@@ -358,9 +358,9 @@ def _train(
 
     # Make sure we're using a DistributedSampler during distributed training.
     if config.is_distributed:
-        _check_dataloader(train_dataloader)
+        check_dataloader(train_dataloader)
         if validation_dataloader is not None:
-            _check_dataloader(validation_dataloader)
+            check_dataloader(validation_dataloader)
 
     # Check working directory to see if we should recover from a previous run.
     initial_state: Optional[Dict[str, Any]] = None
@@ -560,7 +560,7 @@ def _train(
             batch_loss = 0.0
             for micro_batch in batch:
                 # Move tensors to right device.
-                micro_batch = _move_to_device(micro_batch, device)
+                micro_batch = move_to_device(micro_batch, device)
 
                 # Get loss.
                 with torch.cuda.amp.autocast(enabled=config.amp):
@@ -653,7 +653,7 @@ def _train(
                         for callback in callbacks:
                             callback.pre_val_batch(step, val_step, val_batch)
                         # Move tensors to right device.
-                        val_batch = _move_to_device(val_batch, device)
+                        val_batch = move_to_device(val_batch, device)
 
                         # Get metric.
                         with torch.cuda.amp.autocast(enabled=config.amp):
@@ -663,7 +663,7 @@ def _train(
                             callback.post_val_batch(step, val_step, outputs)
                         metric = outputs[config.val_metric_name]
 
-                        if config.aggregate_val_metric:
+                        if config.auto_aggregate_val_metric:
                             running_metric += metric if isinstance(metric, float) else metric.item()
                             val_metric = running_metric / (val_step + 1)
                         else:
@@ -673,7 +673,7 @@ def _train(
                         if (
                             config.is_distributed
                             and config.should_log_this_val_step(val_step)
-                            and config.aggregate_val_metric
+                            and config.auto_aggregate_val_metric
                         ):
                             val_metric_tensor = torch.tensor(val_metric, device=device)
                             dist.all_reduce(val_metric_tensor)
@@ -750,45 +750,3 @@ def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool, grad_acc
         for batch in chunked(dataloader, grad_accum):
             yield epoch, batch
         epoch += 1
-
-
-T = TypeVar("T")
-
-
-def _move_to_device(o: T, device: torch.device) -> T:
-    if isinstance(o, Tensor):
-        return o.to(device)  # type: ignore[return-value]
-    elif isinstance(o, dict):
-        return {k: _move_to_device(v, device) for k, v in o.items()}  # type: ignore[return-value]
-    elif isinstance(o, list):
-        return [_move_to_device(x, device) for x in o]  # type: ignore[return-value]
-    elif isinstance(o, tuple):
-        return tuple((_move_to_device(x, device) for x in o))  # type: ignore[return-value]
-    else:
-        return o
-
-
-def _check_dataset(dataset, split: str):
-    try:
-        len(dataset)
-    except TypeError:
-        if not isinstance(dataset, IterableDataset):
-            warnings.warn(
-                f"Dataset for {split} split appears to be a streaming/iterable dataset, "
-                "but is not an instance of 'torch.utils.data.IterableDataset'. This could cause issues "
-                "within the DataLoader.",
-                UserWarning,
-            )
-
-
-def _check_dataloader(dataloader: DataLoader):
-    # If using a regular dataset and not streaming/iterable dataset, we
-    # should probably be using a `DistributedSampler`.
-    if not isinstance(dataloader.dataset, IterableDataset) and not isinstance(
-        dataloader.sampler, DistributedSampler
-    ):
-        warnings.warn(
-            "DistributedSampler is required for dataloader during distributed training, "
-            f"found {type(dataloader.sampler)} instead.",
-            UserWarning,
-        )

@@ -56,6 +56,13 @@ class TrainCallback(Registrable):
         self.lr_scheduler = lr_scheduler
 
     @property
+    def step_id(self) -> str:
+        """
+        The unique ID of the current :class:`~tango.Step`.
+        """
+        return self.train_config.step_id
+
+    @property
     def work_dir(self) -> Path:
         """
         The working directory of the current train step.
@@ -166,6 +173,13 @@ class TrainCallback(Registrable):
     def post_val_batch(self, step: int, val_step: int, val_batch_outputs: Dict[str, Any]) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
+
+        .. tip::
+            This method can be used to modify ``val_batch_outputs`` in place, which is useful
+            in scenarios like distributed training where you might need to aggregate metrics
+            in a special way other than a simple average. If that's the case, make sure
+            to set ``auto_aggregate_val_metric`` to ``False`` in :class:`TorchTrainStep`.
+
         """
         pass
 

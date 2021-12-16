@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `TorchEvalStep` to torch integration, registered as "torch::eval".
+
+### Changed
+
+- Renamed `aggregate_val_metric` to `auto_aggregate_val_metric` in `TorchTrainStep`.
+
 ## [v0.4.0rc3](https://github.com/allenai/tango/releases/tag/v0.4.0rc3) - 2021-12-15
 
 ### Added
