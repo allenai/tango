@@ -61,7 +61,11 @@ with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
 
 
 def adjust_length_to_model(length, model):
-    max_sequence_length = model.config.max_position_embeddings
+    max_sequence_length = (
+        model.config.max_position_embeddings
+        if hasattr(model.config, "max_position_embeddings")
+        else MAX_LENGTH
+    )
     if length < 0 and max_sequence_length > 0:
         length = max_sequence_length
     elif 0 < max_sequence_length < length:
