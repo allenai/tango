@@ -287,7 +287,9 @@ class LocalWorkspace(Workspace):
             step_info = self._get_step_info(step)
             if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED}:
                 raise RuntimeError(
-                    f"Step {step.name} is trying to start, but it is already {step_info.state}."
+                    f"Step {step.name} is trying to start, but it is already {step_info.state}. "
+                    "If you are sure this is incorrect, remove the file at "
+                    f"{self._step_info_file(step).absolute()} to mark the step as incomplete."
                 )
 
             step_info.start_time = datetime.now()
