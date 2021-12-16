@@ -1,6 +1,8 @@
 <div align="center">
 <br>
 <img src="./docs/source/_static/tango_final_horizontal.png" width="600" />
+<!-- TODO: Change logo image to this once it's on main: -->
+<!-- <img src="https://raw.githubusercontent.com/allenai/tango/main/docs/source/_static/tango_final_horizontal.png" width="600"/> -->
 <br>
 <br>
 <p>
