@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import more_itertools
 import numpy as np
@@ -22,7 +22,7 @@ from transformers import (
     XLNetTokenizer,
 )
 
-from tango import JsonFormat, Step
+from tango import Format, JsonFormat, Step
 from tango.common.logging import make_tqdm
 from tango.common.util import threaded_generator
 
@@ -73,9 +73,9 @@ def adjust_length_to_model(length, model):
 
 @Step.register("transformers::run_generation")
 class RunGeneration(Step[Iterable[str]]):
-    FORMAT = JsonFormat
+    FORMAT: Format = JsonFormat()
 
-    def run(
+    def run(  # type: ignore
         self,
         prompts: Iterable[str],
         model_name: str,
@@ -103,7 +103,7 @@ class RunGeneration(Step[Iterable[str]]):
             torch.cuda.manual_seed_all(seed)
 
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer_kwargs = {}
+        tokenizer_kwargs: Dict[str, Any] = {}
         tokenizer.padding_side = "left"
         tokenizer.pad_token = tokenizer.eos_token
         eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)

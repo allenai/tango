@@ -169,7 +169,7 @@ def threaded_generator(g, queue_size: int = 16):
     from queue import Queue
     from threading import Thread
 
-    q = Queue(maxsize=queue_size)
+    q: Queue = Queue(maxsize=queue_size)
 
     sentinel = object()
 
