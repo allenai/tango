@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
 - `SqliteDictFormat` for datasets.
 - Added `pre_epoch()` and `post_epoch()` callback methods to PyTorch `TrainCallback`.
+- Added the `transformers::run_generation` step, which runs seq2seq language models in inference mode.
+- Added `logging_tqdm`, if you don't want a progress bar, but you still want to see progress in the logs.
+- Added `threaded_generator()`, for wrapping generators so that they run in a separate thread from the generator's consumer.
 
 ### Changed
 
