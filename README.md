@@ -1,27 +1,28 @@
-# [AI2 Tango](https://ai2-tango.readthedocs.io/)
-
-<!-- start tagline -->
-
-AI2 Tango replaces messy directories and spreadsheets full of file versions by organizing experiments into discrete steps that can be cached and reused throughout the lifetime of a research project.
-
-<!-- end tagline -->
-
-<!-- <p align="center"> -->
+<div align="center">
+<br>
+<img src="./docs/source/_static/tango_final_horizontal.png" width="600" />
+<br>
+<br>
 <p>
-    <a href="https://github.com/allenai/tango/actions">
-        <img alt="CI" src="https://github.com/allenai/tango/workflows/CI/badge.svg?event=push&branch=main">
-    </a>
-    <a href="https://pypi.org/project/ai2-tango/">
-        <img alt="PyPI" src="https://img.shields.io/pypi/v/ai2-tango">
-    </a>
-    <a href="https://ai2-tango.readthedocs.io/en/latest/?badge=latest">
-        <img src="https://readthedocs.org/projects/ai2-tango/badge/?version=latest" alt="Documentation Status" />
-    </a>
-    <a href="https://github.com/allenai/tango/blob/main/LICENSE">
-        <img alt="License" src="https://img.shields.io/github/license/allenai/tango.svg?color=blue&cachedrop">
-    </a>
-    <br/>
+<!-- start tagline -->
+AI2 Tango replaces messy directories and spreadsheets full of file versions by organizing experiments into discrete steps that can be cached and reused throughout the lifetime of a research project.
+<!-- end tagline -->
 </p>
+<hr/>
+<a href="https://github.com/allenai/tango/actions">
+    <img alt="CI" src="https://github.com/allenai/tango/workflows/CI/badge.svg?event=push&branch=main">
+</a>
+<a href="https://pypi.org/project/ai2-tango/">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/ai2-tango">
+</a>
+<a href="https://ai2-tango.readthedocs.io/en/latest/?badge=latest">
+    <img src="https://readthedocs.org/projects/ai2-tango/badge/?version=latest" alt="Documentation Status" />
+</a>
+<a href="https://github.com/allenai/tango/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/allenai/tango.svg?color=blue&cachedrop">
+</a>
+<br/>
+</div>
 
 ## Quick links
 
