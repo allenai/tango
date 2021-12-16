@@ -37,7 +37,7 @@ class TorchEvalStep(Step):
 
         If this is not correct for your metric you will need to handle the aggregation
         internally in your model or with an :class:`EvalCallback`
-        using the :meth:`TrainCallback.post_val_batch()` method.
+        using the :meth:`EvalCallback.post_batch()` method.
         Then set the parameter ``auto_aggregate_metrics`` to ``False``.
 
     """
