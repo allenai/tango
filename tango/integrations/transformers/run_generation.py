@@ -195,14 +195,16 @@ class RunGeneration(Step[Iterable[List[str]]]):
             # TODO: Run on GPU
             # TODO: Run on multiple GPUs
 
-            generated_sequences = generated_sequences.view(-1, num_return_sequences, *generated_sequences.shape[1:])
+            generated_sequences = generated_sequences.view(
+                -1, num_return_sequences, *generated_sequences.shape[1:]
+            )
 
             # strip padding on the left
             generated_sequences = [
                 per_prompt_sequences[:, start_token:]
                 for per_prompt_sequences, start_token in zip(
                     generated_sequences,
-                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens
+                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens,
                 )
             ]
 
