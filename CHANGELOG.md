@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug where `KeyboardInterrupt` exceptions were not handled properly by steps and workspaces.
+- `WandbTrainCallback` now will use part of the step's unique ID as the name for the W&B run by default, to make
+  it easier to indentify which tango step corresponds to each run in W&B.
+- `WandbTrainCallback` will save the entire `TrainConfig` object to the W&B config.
 
 ## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
 
