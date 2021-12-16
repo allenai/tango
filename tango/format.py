@@ -71,10 +71,10 @@ _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
     "null": open,
     "gz": gzip.open,  # type: ignore
     "gzip": gzip.open,  # type: ignore
-    "bz": bz2.open,
-    "bz2": bz2.open,
-    "bzip": bz2.open,
-    "bzip2": bz2.open,
+    "bz": bz2.open,  # type: ignore
+    "bz2": bz2.open,  # type: ignore
+    "bzip": bz2.open,  # type: ignore
+    "bzip2": bz2.open,  # type: ignore
     "lzma": lzma.open,
 }
 
