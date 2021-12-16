@@ -127,13 +127,18 @@ class RunGeneration(Step[Iterable[List[str]]]):
             model.half()
 
         def prepare_batch_without_prefix(prompts: List[str]) -> Dict[str, torch.Tensor]:
-            return tokenizer.batch_encode_plus(
+            result = tokenizer.batch_encode_plus(
                 prompts,
                 add_special_tokens=False,
                 return_tensors="pt",
                 padding=True,
                 **tokenizer_kwargs,
             )
+            result = {
+                key: tensor.to(device)
+                for key, tensor in result.items()
+            }
+            return result
 
         def prepare_batch_with_prefix(prompts: List[str]) -> Dict[str, torch.Tensor]:
             if len(prefix) > 0:
