@@ -311,6 +311,94 @@ class JsonFormatIterator(Iterator[T], Generic[T]):
             raise StopIteration()
 
 
+@Format.register("text")
+class TextFormat(Format[Union[str, Iterable[str]]]):
+    """This format writes the artifact as a single file in text format.
+    Optionally, it can compress the data. This is very flexible, but not always the fastest.
+
+    This format can only write strings, or iterable of strings.
+
+    .. tip::
+        This format has special support for iterables. If you write an iterator, it will consume the
+        iterator. If you read an iterator, it will read the iterator lazily.
+
+    """
+
+    VERSION = 1
+
+    def __init__(self, compress: Optional[str] = None):
+        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        try:
+            self.open = _OPEN_FUNCTIONS[compress]
+        except KeyError:
+            raise ConfigurationError(f"The {compress} compression format does not exist.")
+
+    def write(self, artifact: Union[str, Iterable[str]], dir: PathOrStr):
+        if hasattr(artifact, "__next__"):
+            filename = self._get_artifact_path(dir, iterator=True)
+            with self.open(filename, "wt") as f:
+                for item in cast(Iterable, artifact):
+                    f.write(str(item))
+                    f.write("\n")
+        else:
+            filename = self._get_artifact_path(dir, iterator=False)
+            with self.open(filename, "wt") as f:
+                f.write(str(artifact))
+
+    def read(self, dir: PathOrStr) -> Union[str, Iterable[str]]:
+        iterator_filename = self._get_artifact_path(dir, iterator=True)
+        iterator_exists = iterator_filename.exists()
+        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
+        non_iterator_exists = non_iterator_filename.exists()
+
+        if iterator_exists and non_iterator_exists:
+            self.logger.warning(
+                "Both %s and %s exist. Ignoring %s.",
+                iterator_filename,
+                non_iterator_filename,
+                iterator_filename,
+            )
+            iterator_exists = False
+
+        if not iterator_exists and not non_iterator_exists:
+            raise IOError("Attempting to read non-existing data from %s", dir)
+        if iterator_exists and not non_iterator_exists:
+            return TextFormatIterator(iterator_filename)  # type: ignore
+        elif not iterator_exists and non_iterator_exists:
+            with self.open(non_iterator_filename, "rt") as f:
+                return f.read()
+        else:
+            raise RuntimeError("This should be impossible.")
+
+    def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
+        return Path(dir) / (("texts.txt" if iterator else "text.txt") + _SUFFIXES[self.open])
+
+
+class TextFormatIterator(Iterator[str]):
+    """
+    An ``Iterator`` class that is used so we can return an iterator from ``TextFormat.read()``.
+    """
+
+    def __init__(self, filename: PathOrStr):
+        self.f: Optional[IO[Any]] = _open_compressed(filename, "rt")
+
+    def __iter__(self) -> Iterator[str]:
+        return self
+
+    def __next__(self) -> str:
+        if self.f is None:
+            raise StopIteration()
+        try:
+            line = self.f.readline()
+            if len(line) <= 0:
+                raise EOFError()
+            return line
+        except EOFError:
+            self.f.close()
+            self.f = None
+            raise StopIteration()
+
+
 @Format.register("sqlite")
 class SqliteDictFormat(Format[DatasetDict]):
     VERSION = 3
