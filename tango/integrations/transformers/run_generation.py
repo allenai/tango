@@ -72,8 +72,8 @@ def adjust_length_to_model(length, model):
 
 
 @Step.register("transformers::run_generation")
-class RunGeneration(Step[Iterable[str]]):
-    FORMAT: Format = JsonFormat()
+class RunGeneration(Step[Iterable[List[str]]]):
+    FORMAT: Format = JsonFormat("gz")
 
     def run(  # type: ignore
         self,
@@ -91,7 +91,7 @@ class RunGeneration(Step[Iterable[str]]):
         seed: int = 42,
         num_return_sequences: int = 1,
         fp16: bool = False,
-    ) -> Iterable[str]:
+    ) -> Iterable[List[str]]:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         n_gpu = torch.cuda.device_count()
 
@@ -192,26 +192,33 @@ class RunGeneration(Step[Iterable[str]]):
                 synced_gpus=n_gpu > 1,
             )
 
-            # TODO: What happens with num_return_sequences > 1?
             # TODO: Run on GPU
             # TODO: Run on multiple GPUs
 
+            generated_sequences = generated_sequences.view(-1, num_return_sequences, *generated_sequences.shape[1:])
+
             # strip padding on the left
             generated_sequences = [
-                sequence[start_token:]
-                for sequence, start_token in zip(
+                per_prompt_sequences[:, start_token:]
+                for per_prompt_sequences, start_token in zip(
                     generated_sequences,
-                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens,
+                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens
                 )
             ]
 
             # strip padding on the right
             # Note: If the model produces an EOS token in the middle of the sequence, this will fail.
             generated_sequences = [
-                sequence[: len(sequence) - (sequence == eos_token_id).sum()]
-                for sequence in generated_sequences
+                [
+                    sequence[: len(sequence) - (sequence == eos_token_id).sum()]
+                    for sequence in per_prompt_sequences
+                ]
+                for per_prompt_sequences in generated_sequences
             ]
 
-            texts = tokenizer.batch_decode(generated_sequences, clean_up_tokenization_spaces=True)
+            texts = [
+                tokenizer.batch_decode(per_prompt_sequences, clean_up_tokenization_spaces=True)
+                for per_prompt_sequences in generated_sequences
+            ]
 
             yield from texts
