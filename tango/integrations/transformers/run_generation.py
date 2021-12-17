@@ -111,10 +111,13 @@ class RunGeneration(Step[Iterable[List[str]]]):
         tokenizer.padding_side = "left"
         tokenizer.pad_token = tokenizer.eos_token
         eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
+        pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
         try:
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            seq2seq_model = True   # Seq2Seq models don't return their own prefix.
         except ValueError:
             model = AutoModelForCausalLM.from_pretrained(model_name)
+            seq2seq_model = False
 
         # HF does not do this? WTF?
         model.eval()
@@ -187,11 +190,15 @@ class RunGeneration(Step[Iterable[List[str]]]):
         encoded_batches = threaded_generator(encoded_batches)
 
         for encoded_batch in tqdm(encoded_batches, desc="Processing batches"):
+            if seq2seq_model:
+                length = max_length
+            else:
+                length = adjust_length_to_model(
+                    max_length + encoded_batch["input_ids"].size(1), model
+                )
             generated_sequences = model.generate(
                 **encoded_batch,
-                max_length=adjust_length_to_model(
-                    max_length + encoded_batch["input_ids"].size(1), model
-                ),
+                max_length=length,
                 temperature=temperature,
                 top_k=k,
                 top_p=p,
@@ -206,22 +213,26 @@ class RunGeneration(Step[Iterable[List[str]]]):
 
             generated_sequences = generated_sequences.view(
                 -1, num_return_sequences, *generated_sequences.shape[1:]
-            )
+            ).to("cpu")
 
-            # strip padding on the left
-            generated_sequences = [
-                per_prompt_sequences[:, start_token:]
-                for per_prompt_sequences, start_token in zip(
-                    generated_sequences,
-                    (encoded_batch["attention_mask"] == 0).sum(dim=1) + num_prefix_tokens,
-                )
-            ]
+            # strip prefix tokens
+            if not seq2seq_model:
+                generated_sequences = generated_sequences[..., num_prefix_tokens:]
 
-            # strip padding on the right
-            # Note: If the model produces an EOS token in the middle of the sequence, this will fail.
+            def strip_special_tokens(t: torch.Tensor) -> torch.Tensor:
+                # amazing that torch has no capability for this
+                start = 0
+                while start < len(t) and int(t[start]) in {0, eos_token_id, pad_token_id}:
+                    start += 1
+                end = len(t)
+                while int(t[end - 1]) in {0, eos_token_id, pad_token_id} and end > start:
+                    end -= 1
+                return t[start:end]
+
+            # strip padding
             generated_sequences = [
                 [
-                    sequence[: len(sequence) - (sequence == eos_token_id).sum()]
+                    strip_special_tokens(sequence)
                     for sequence in per_prompt_sequences
                 ]
                 for per_prompt_sequences in generated_sequences
