@@ -110,9 +110,18 @@ class RunGeneration(Step[Iterable[List[str]]]):
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         tokenizer_kwargs: Dict[str, Any] = {}
         tokenizer.padding_side = "left"
-        tokenizer.pad_token = tokenizer.eos_token
+
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        if tokenizer.pad_token is None:
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+
+        if tokenizer.eos_token is None:
+            tokenizer.add_special_tokens({'eos_token': '[EOS]'})
+
         eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
         pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
+
         try:
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
             seq2seq_model = True   # Seq2Seq models don't return their own prefix.
