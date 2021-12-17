@@ -1,11 +1,12 @@
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
 
+import dill
 import petname
 
 from tango import step_cache
@@ -75,9 +76,14 @@ class StepInfo:
     The time this step stopped running. This will be set whether the step succeeded or failed.
     """
 
-    error: Optional[BaseException] = None
+    error: Optional[Union[BaseException, str]] = None
     """
     If the step failed, this is where the error goes.
+
+    .. note::
+        Some ``Workspace`` implementations need to serialize ``StepInfo`` (using pickle or dill, for example),
+        but some exceptions can't be pickled. In those cases ``error`` will just be a string representation
+        of the exception.
     """
 
     result_location: Optional[str] = None
@@ -109,6 +115,31 @@ class StepInfo:
         if self.start_time is not None and self.end_time is not None and self.error is not None:
             return StepState.FAILED
         raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
+
+    def serialize(self) -> bytes:
+        """
+        Returns a serialized form of the ``StepInfo``.
+        """
+        instance_to_dump = self
+        if isinstance(self.error, BaseException):
+            # See if we can pickle and unpickle the exception.
+            # When we can't, we'll fallback to storing the exception as a string
+            # representation of it.
+            dump = dill.dumps(self.error)
+            try:
+                dill.loads(dump)
+            except TypeError:
+                # Fails with TypeError for some exceptions that take multiple positional
+                # arguments.
+                instance_to_dump = replace(self, error=repr(self.error))
+        return dill.dumps(instance_to_dump)
+
+    @classmethod
+    def deserialize(cls, data: bytes) -> "StepInfo":
+        """
+        Deserialize the result of :meth:`serialize()` into a ``StepInfo`` instance.
+        """
+        return dill.loads(data)
 
 
 class Workspace(Registrable):
