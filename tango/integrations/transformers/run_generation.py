@@ -78,6 +78,7 @@ def adjust_length_to_model(length, model):
 @Step.register("transformers::run_generation")
 class RunGeneration(Step[Iterable[List[str]]]):
     FORMAT: Format = JsonFormat("gz")
+    VERSION = "001"
 
     def run(  # type: ignore
         self,
