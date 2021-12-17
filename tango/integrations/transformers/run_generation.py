@@ -216,10 +216,6 @@ class RunGeneration(Step[Iterable[List[str]]]):
                 -1, num_return_sequences, *generated_sequences.shape[1:]
             ).to("cpu")
 
-            # strip prefix tokens
-            if not seq2seq_model:
-                generated_sequences = generated_sequences[..., num_prefix_tokens:]
-
             def strip_special_tokens(t: torch.Tensor) -> torch.Tensor:
                 # amazing that torch has no capability for this
                 start = 0
@@ -238,6 +234,16 @@ class RunGeneration(Step[Iterable[List[str]]]):
                 ]
                 for per_prompt_sequences in generated_sequences
             ]
+
+            # strip prefix
+            if not seq2seq_model:
+                generated_sequences = [
+                    [
+                        sequence[num_prefix_tokens:]
+                        for sequence in per_prompt_sequences
+                    ]
+                    for per_prompt_sequences in generated_sequences
+                ]
 
             texts = [
                 tokenizer.batch_decode(per_prompt_sequences, clean_up_tokenization_spaces=True)
