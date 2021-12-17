@@ -209,9 +209,6 @@ class RunGeneration(Step[Iterable[List[str]]]):
                 synced_gpus=n_gpu > 1,
             )
 
-            # TODO: Run on GPU
-            # TODO: Run on multiple GPUs
-
             generated_sequences = generated_sequences.view(
                 -1, num_return_sequences, *generated_sequences.shape[1:]
             ).to("cpu")
