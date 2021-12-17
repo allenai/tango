@@ -162,25 +162,7 @@ class RunGeneration(Step[Iterable[List[str]]]):
         num_prefix_tokens: Optional[int] = None
 
         # model-specific exceptions
-        if model.config_class.model_type == "ctrl":
-            if temperature > 0.7:
-                logger.warning(
-                    "CTRL typically works better with lower temperatures (and lower top_k)."
-                )
-
-            def prepare_batch_fn(prompts: List[str]) -> Dict[str, torch.Tensor]:
-                encoded_prompts = prepare_batch_without_prefix([prefix + t for t in prompts])
-                if not any(
-                    encoded_prompts["token_ids"][0, 0] == x
-                    for x in tokenizer.control_codes.values()
-                ):
-                    logger.warning(
-                        "You are not starting your generation from a control code "
-                        "so you won't get good results!"
-                    )
-                return encoded_prompts
-
-        elif model.config_class.model_type == "xlm":
+        if model.config_class.model_type == "xlm":
             use_lang_emb = hasattr(model.config, "use_lang_emb") and model.config.use_lang_emb
             if hasattr(model.config, "lang2id") and use_lang_emb:
                 model.config.lang_id = xlm_language
