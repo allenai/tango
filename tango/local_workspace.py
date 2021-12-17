@@ -10,7 +10,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
 
-import dill
 import petname
 
 from tango.common import FromParams, PathOrStr
@@ -250,7 +249,7 @@ class LocalWorkspace(Workspace):
     def _get_step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
             with self._step_info_file(step_or_unique_id).open("rb") as f:
-                return dill.load(f)
+                return StepInfo.deserialize(f.read())
         except FileNotFoundError:
             if isinstance(step_or_unique_id, Step):
                 step = step_or_unique_id
@@ -271,7 +270,8 @@ class LocalWorkspace(Workspace):
         except FileExistsError:
             pass
         with path.open("wb") as f:
-            return dill.dump(step_info, f)
+            dump = step_info.serialize()
+            f.write(dump)
 
     def _step_lock_file(self, step: Step) -> Path:
         step_dir = self.step_dir(step)
