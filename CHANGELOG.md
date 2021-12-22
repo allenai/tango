@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `aggregate_val_metric` to `auto_aggregate_val_metric` in `TorchTrainStep`.
 
+## [v0.4.0rc4](https://github.com/allenai/tango/releases/tag/v0.4.0rc4) - 2021-12-20
+
+### Fixed
+
+- Fixed a bug where `StepInfo` fails to deserialize when `error` is an exception that can't be pickled.
+
 ## [v0.4.0rc3](https://github.com/allenai/tango/releases/tag/v0.4.0rc3) - 2021-12-15
 
 ### Added
