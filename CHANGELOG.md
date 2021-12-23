@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Run name printed at the end of a run so it's easier to find.
+
 ### Fixed
 
 - Fixed torch `StepEarlyCallback` state not being recovered properly on restarts.
