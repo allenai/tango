@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
+
 ### Fixed
 
 - Fixed torch `StepEarlyCallback` state not being recovered properly on restarts.
