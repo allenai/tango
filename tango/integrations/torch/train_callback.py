@@ -211,3 +211,16 @@ class StopEarlyCallback(TrainCallback):
             self.best_step = step
         elif step > self.best_step + self.patience:
             raise StopEarly
+
+    def state_dict(self) -> Dict[str, Any]:
+        """
+        Return any state that needs to be kept after a restart.
+        """
+        return {"patience": self.patience, "best_step": self.best_step}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        """
+        Load the state on a restart.
+        """
+        self.patience = state_dict["patience"]
+        self.best_step = state_dict["best_step"]
