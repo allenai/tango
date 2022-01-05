@@ -82,4 +82,8 @@ class Executor:
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
 
+        click_logger.info(
+            click.style("Finished run ", fg="green") + click.style(run_name, fg="green", bold=True)
+        )
+
         return run_name

@@ -113,6 +113,7 @@ would produce the following output:
     Loading best weights from state_worker0_best.pt
     ✓ Finished step "train"
     ✓ The output for "train" is in ...
+    Finished run ...
 
 
 Tips
