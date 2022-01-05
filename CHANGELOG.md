@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
+
+### Fixed
+
+- Fixed torch `StepEarlyCallback` state not being recovered properly on restarts.
+
+## [v0.4.0rc4](https://github.com/allenai/tango/releases/tag/v0.4.0rc4) - 2021-12-20
+
+### Fixed
+
+- Fixed a bug where `StepInfo` fails to deserialize when `error` is an exception that can't be pickled.
+
 ## [v0.4.0rc3](https://github.com/allenai/tango/releases/tag/v0.4.0rc3) - 2021-12-15
 
 ### Added
