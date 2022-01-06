@@ -1,10 +1,8 @@
 import os
-import random
 import tempfile
 from itertools import islice
 from typing import Any, Dict, List, Optional, Set, cast
 
-import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn as nn
@@ -26,7 +24,7 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
-from .util import check_dataloader, check_dataset, move_to_device
+from .util import check_dataloader, check_dataset, move_to_device, set_seed_all
 
 
 @Step.register("torch::train")
@@ -389,11 +387,7 @@ def _train(
     lr_scheduler: Optional[LRScheduler] = lr_scheduler_
 
     # Set random seeds.
-    random.seed(config.seed)
-    np.random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(config.seed)
+    set_seed_all(config.seed)
 
     batch_loss: float = 0.0
     best_batch_loss: Optional[float] = None
