@@ -1,6 +1,8 @@
+import random
 import warnings
 from typing import TypeVar
 
+import numpy as np
 import torch
 from torch.utils.data import DistributedSampler, IterableDataset
 
@@ -46,3 +48,11 @@ def check_dataloader(dataloader: DataLoader):
             f"found {type(dataloader.sampler)} instead.",
             UserWarning,
         )
+
+
+def set_seed_all(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)

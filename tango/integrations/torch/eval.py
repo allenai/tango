@@ -16,7 +16,7 @@ from tango.step import Step
 from .data import DataLoader
 from .eval_callback import EvalCallback
 from .model import Model
-from .util import check_dataset, move_to_device
+from .util import check_dataset, move_to_device, set_seed_all
 
 
 @Step.register("torch::eval")
@@ -99,12 +99,7 @@ class TorchEvalStep(Step):
             A list of :class:`EvalCallback`.
 
         """
-        # Set seeds.
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(seed)
+        set_seed_all(seed)
 
         check_dataset(dataset_dict, test_split)
 
