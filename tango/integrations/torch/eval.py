@@ -1,9 +1,7 @@
-import random
 from collections import defaultdict
 from itertools import islice
 from typing import Dict, List, Optional, Sequence, Union
 
-import numpy as np
 import torch
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -16,7 +14,7 @@ from tango.step import Step
 from .data import DataLoader
 from .eval_callback import EvalCallback
 from .model import Model
-from .util import check_dataset, move_to_device, set_seed_all
+from .util import check_dataset, move_to_device, resolve_device, set_seed_all
 
 
 @Step.register("torch::eval")
@@ -104,25 +102,7 @@ class TorchEvalStep(Step):
         check_dataset(dataset_dict, test_split)
 
         # Resolve device.
-        _device: torch.device
-        if device is None:
-            if torch.cuda.is_available():
-                print("CUDA is available")
-                _device = torch.device("cuda")
-            else:
-                _device = torch.device("cpu")
-        elif isinstance(device, int):
-            if device >= 0:
-                _device = torch.device(f"cuda:{device}")
-            else:
-                _device = torch.device("cpu")
-        elif isinstance(device, str):
-            _device = torch.device(device)
-        elif isinstance(device, torch.device):
-            _device = device
-        else:
-            raise ValueError(f"unexpected type for 'device': '{device}'")
-        device: torch.device = _device
+        device: torch.device = resolve_device(device)
 
         # Prep model.
         model = model.eval().to(device)

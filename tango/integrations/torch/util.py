@@ -1,6 +1,6 @@
 import random
 import warnings
-from typing import TypeVar
+from typing import Optional, TypeVar, Union
 
 import numpy as np
 import torch
@@ -56,3 +56,24 @@ def set_seed_all(seed: int):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def resolve_device(device: Optional[Union[int, str, torch.device]] = None) -> torch.device:
+    if device is None:
+        if torch.cuda.is_available():
+            # TODO (epwalsh, dirkgr): automatically pick which GPU to use when there are multiple
+            print("CUDA is available")
+            return torch.device("cuda")
+        else:
+            return torch.device("cpu")
+    elif isinstance(device, int):
+        if device >= 0:
+            return torch.device(f"cuda:{device}")
+        else:
+            return torch.device("cpu")
+    elif isinstance(device, str):
+        return torch.device(device)
+    elif isinstance(device, torch.device):
+        return device
+    else:
+        raise TypeError(f"unexpected type for 'device': '{device}'")
