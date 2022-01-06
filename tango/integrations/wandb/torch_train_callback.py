@@ -1,5 +1,5 @@
 import os
-import sys
+import warnings
 from typing import Any, Dict, List, Optional
 
 from tango.integrations.torch.train_callback import TrainCallback
@@ -65,9 +65,9 @@ class WandbTrainCallback(TrainCallback):
         super().__init__(*args, **kwargs)
 
         if self.is_local_main_process and "WANDB_API_KEY" not in os.environ:
-            print(
+            warnings.warn(
                 "Missing environment variable 'WANDB_API_KEY' required to authenticate to Weights & Biases.",
-                file=sys.stderr,
+                UserWarning,
             )
 
         _wandb_config = self.train_config.as_dict()

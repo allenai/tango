@@ -1,9 +1,12 @@
 import logging
 import os
+import sys
 from typing import Optional
 
 import click
 
+from .aliases import PathOrStr
+from .exceptions import SigTermReceived
 from .util import _parse_bool
 
 
@@ -16,6 +19,10 @@ class TangoLogger(logging.Logger):
     def __init__(self, name):
         super().__init__(name)
         self._seen_msgs = set()
+
+    def log(self, level, msg, *args, **kwargs):
+        msg = msg if not FILE_FRIENDLY_LOGGING else click.unstyle(msg)
+        super().log(level, msg, *args, **kwargs)
 
     def debug_once(self, msg, *args, **kwargs):
         if msg not in self._seen_msgs:
@@ -43,6 +50,14 @@ class TangoLogger(logging.Logger):
             self._seen_msgs.add(msg)
 
 
+class TangoFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord):
+        out = super().format(record)
+        if FILE_FRIENDLY_LOGGING:
+            out = click.unstyle(out)
+        return out
+
+
 logging.setLoggerClass(TangoLogger)
 
 
@@ -66,13 +81,20 @@ click_logger.propagate = False
 
 class ClickLoggerHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
-        click.echo(record.getMessage())
+        click.echo(record.getMessage(), color=not FILE_FRIENDLY_LOGGING)
 
 
 click_logger.addHandler(ClickLoggerHandler())
 click_logger.disabled = (
     True  # This is disabled by default, in case nobody calls initialize_logging().
 )
+
+
+def get_formatter(prefix: Optional[str] = None) -> TangoFormatter:
+    log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
+    if prefix is not None:
+        log_format = prefix + " " + log_format
+    return TangoFormatter(log_format)
 
 
 def initialize_logging(
@@ -93,13 +115,11 @@ def initialize_logging(
         file_friendly_logging = FILE_FRIENDLY_LOGGING
 
     level = logging._nameToLevel[log_level.upper()]
-    log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
-    if prefix is not None:
-        log_format = prefix + " " + log_format
+    formatter = get_formatter(prefix)
     logging.basicConfig(
-        format=log_format,
         level=level,
     )
+    TANGO_LOG_LEVEL = log_level
     os.environ["TANGO_LOG_LEVEL"] = log_level
 
     # filelock emits too many messages, so tell it to be quiet unless it has something
@@ -113,4 +133,26 @@ def initialize_logging(
     if file_friendly_logging:
         FILE_FRIENDLY_LOGGING = True
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
-        click_logger.disabled = True
+
+    # Write uncaught exceptions to the logs.
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers:
+        handler.setFormatter(formatter)
+
+    def excepthook(exctype, value, traceback):
+        # For interruptions, call the original exception handler.
+        if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
+            sys.__excepthook__(exctype, value, traceback)
+            return
+        root_logger.critical("Uncaught exception", exc_info=(exctype, value, traceback))
+
+    sys.excepthook = excepthook
+
+
+def add_file_handler(filepath: PathOrStr):
+    root_logger = logging.getLogger()
+    file_handler = logging.FileHandler(str(filepath))
+    formatter = get_formatter()
+    file_handler.setFormatter(formatter)
+    root_logger.addHandler(file_handler)
+    click_logger.addHandler(file_handler)

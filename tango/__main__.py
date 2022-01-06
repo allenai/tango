@@ -105,6 +105,11 @@ class TangoGlobalSettings(FromParams):
     By default, it is set to ``False``.
     """
 
+    disable_file_logging: bool = False
+    """
+    Use this to disable piping logs to a file.
+    """
+
     _path: Optional[Path] = None
 
     @classmethod
@@ -292,14 +297,18 @@ def info(config: TangoGlobalSettings):
 
     from tango.common.util import find_integrations, import_module_and_submodules
 
-    click.echo(f"Tango version {VERSION} (python {platform.python_version()})")
+    common_logging.click_logger.info(
+        f"Tango version {VERSION} (python {platform.python_version()})"
+    )
 
     # Show info about config.
     if config.path is not None:
-        click.echo("\nConfig:")
-        click.secho(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
+        common_logging.click_logger.info("\nConfig:")
+        common_logging.click_logger.info(
+            click.style(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
+        )
         if config.include_package:
-            click.echo("\n   Included packages:")
+            common_logging.click_logger.info("\n   Included packages:")
             for package in config.include_package:
                 is_found = True
                 try:
@@ -307,12 +316,16 @@ def info(config: TangoGlobalSettings):
                 except (ModuleNotFoundError, ImportError):
                     is_found = False
                 if is_found:
-                    click.secho(f"   \N{check mark} {package}", fg="green")
+                    common_logging.click_logger.info(
+                        click.style(f"   \N{check mark} {package}", fg="green")
+                    )
                 else:
-                    click.secho(f"   \N{ballot x} {package} (not found)", fg="red")
+                    common_logging.click_logger.info(
+                        click.style(f"   \N{ballot x} {package} (not found)", fg="red")
+                    )
 
     # Show info about integrations.
-    click.echo("\nIntegrations:")
+    common_logging.click_logger.info("\nIntegrations:")
     for integration in find_integrations():
         name = integration.split(".")[-1]
         is_installed = True
@@ -321,9 +334,11 @@ def info(config: TangoGlobalSettings):
         except (ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
-            click.secho(f" \N{check mark} {name}", fg="green")
+            common_logging.click_logger.info(click.style(f" \N{check mark} {name}", fg="green"))
         else:
-            click.secho(f" \N{ballot x} {name} (not installed)", fg="yellow")
+            common_logging.click_logger.info(
+                click.style(f" \N{ballot x} {name} (not installed)", fg="yellow")
+            )
 
 
 def _run(
@@ -357,25 +372,33 @@ def _run(
         from tempfile import mkdtemp
 
         workspace_dir = mkdtemp(prefix="tango-")
-        click.echo(
+        common_logging.click_logger.info(
             "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
     workspace = LocalWorkspace(workspace_dir)
 
-    # Initialize step graph, server, and executor.
+    # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    run_name = workspace.register_run(step for step in step_graph.values() if step.cache_results)
+    run_dir = workspace.run_dir(run_name)
+
+    # Capture logs to file.
+    if not config.disable_file_logging:
+        common_logging.add_file_handler(run_dir / "out.log")
+
+    # Initialize server.
     server = None
     if start_server:
         server = WorkspaceServer.on_free_port(workspace)
         server.serve_in_background()
 
+    # Initialize Executor and execute the step graph.
     executor = Executor(workspace=workspace, include_package=include_package, server=server)
+    executor.execute_step_graph(step_graph, run_name=run_name)
 
-    # Now execute the step graph.
-    run_name = executor.execute_step_graph(step_graph)
-    return workspace.run_dir(run_name)
+    return run_dir
 
 
 if __name__ == "__main__":

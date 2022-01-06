@@ -1,12 +1,14 @@
+import logging
 from typing import Any
 
+from tango.common.logging import click_logger
 from tango.step import Step
 
 
 @Step.register("print")
 class PrintStep(Step):
     """
-    This step just prints out its input and also returns what it prints.
+    This step just logs or prints its input and also returns what it prints.
     """
 
     DETERMINISTIC = True
@@ -17,5 +19,10 @@ class PrintStep(Step):
         Print out the input.
         """
         out = str(input)
-        print(out)
+        if self.logger.isEnabledFor(logging.INFO):
+            self.logger.info(out)
+        elif click_logger.isEnabledFor(logging.INFO):
+            click_logger.info(out)
+        else:
+            print(out)
         return out

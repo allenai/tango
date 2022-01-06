@@ -30,7 +30,7 @@ class Executor:
         self.include_package = include_package
         self.server = server
 
-    def execute_step_graph(self, step_graph: StepGraph) -> str:
+    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None) -> str:
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
@@ -41,9 +41,19 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        run_name = self.workspace.register_run(
-            step for step in step_graph.values() if step.cache_results
-        )
+        if run_name is None:
+            run_name = self.workspace.register_run(
+                step for step in step_graph.values() if step.cache_results
+            )
+        else:
+            try:
+                self.workspace.registered_run(run_name)
+            except KeyError:
+                self.workspace.register_run(
+                    (step for step in step_graph.values() if step.cache_results), name=run_name
+                )
+        assert run_name is not None
+
         if self.server is not None:
             click_logger.info(
                 "Server started at "
