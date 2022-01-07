@@ -134,11 +134,12 @@ def initialize_logging(
         FILE_FRIENDLY_LOGGING = True
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
-    # Write uncaught exceptions to the logs.
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
+        handler.setLevel(level)
         handler.setFormatter(formatter)
 
+    # Write uncaught exceptions to the logs.
     def excepthook(exctype, value, traceback):
         # For interruptions, call the original exception handler.
         if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
@@ -151,8 +152,14 @@ def initialize_logging(
 
 def add_file_handler(filepath: PathOrStr):
     root_logger = logging.getLogger()
+
+    from .tqdm import logger as tqdm_logger
+
     file_handler = logging.FileHandler(str(filepath))
     formatter = get_formatter()
     file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
-    click_logger.addHandler(file_handler)
+    if TANGO_LOG_LEVEL is not None:
+        file_handler.setLevel(logging._nameToLevel[TANGO_LOG_LEVEL.upper()])
+
+    for logger in (root_logger, click_logger, tqdm_logger):
+        logger.addHandler(file_handler)

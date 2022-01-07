@@ -2,6 +2,7 @@ import itertools
 import logging
 import random
 import re
+import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
@@ -42,15 +43,13 @@ from tango.common.from_params import (
     pop_and_construct_arg,
 )
 from tango.common.lazy import Lazy
-from tango.common.logging import TangoLogger, click_logger
+from tango.common.logging import click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
     from tango.workspace import Workspace
-
-logger = logging.getLogger(__name__)
 
 _version_re = re.compile("""^[a-zA-Z0-9]+$""")
 
@@ -110,8 +109,6 @@ class Step(Registrable, Generic[T]):
         step_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-
         if self.VERSION is not None:
             assert _version_re.match(
                 self.VERSION
@@ -140,8 +137,9 @@ class Step(Registrable, Generic[T]):
                     f"Step {self.name} is configured to use the cache, but it's not a cacheable step."
                 )
             if not self.DETERMINISTIC:
-                logger.warning(
-                    f"Step {self.name} is going to be cached despite not being deterministic."
+                warnings.warn(
+                    f"Step {self.name} is going to be cached despite not being deterministic.",
+                    UserWarning,
                 )
             self.cache_results = True
         elif cache_results is False:
@@ -157,8 +155,9 @@ class Step(Registrable, Generic[T]):
             elif c == (True, False):
                 self.cache_results = False
             elif c == (False, True):
-                logger.warning(
-                    f"Step {self.name} is set to be cacheable despite not being deterministic."
+                warnings.warn(
+                    f"Step {self.name} is set to be cacheable despite not being deterministic.",
+                    UserWarning,
                 )
                 self.cache_results = True
             elif c == (True, True):
@@ -175,6 +174,10 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
 
         self._config = step_config
+
+    @property
+    def logger(self) -> logging.Logger:
+        return logging.getLogger(self.__class__.__name__)
 
     @classmethod
     def from_params(  # type: ignore[override]
@@ -285,8 +288,6 @@ class Step(Registrable, Generic[T]):
     def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
-
-        logger.info("Starting run for step %s of type %s", self.name, self.__class__.__name__)
 
         if self.DETERMINISTIC:
             random.seed(784507111)

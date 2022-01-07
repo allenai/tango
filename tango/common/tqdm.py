@@ -50,7 +50,7 @@ def replace_cr_with_newline(message: str) -> str:
     return message
 
 
-class TqdmToLogsWriter(object):
+class TqdmToLogsWriter:
     def __init__(self):
         self.last_message_written_time = 0.0
 

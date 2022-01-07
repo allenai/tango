@@ -1,4 +1,3 @@
-import logging
 import os
 import random
 import tempfile
@@ -241,6 +240,7 @@ class TorchTrainStep(Step):
             mp.spawn(
                 _train,
                 args=(
+                    self.logger,
                     config,
                     model,
                     dataset_dict,
@@ -258,6 +258,7 @@ class TorchTrainStep(Step):
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
+                self.logger,
                 config,
                 model,
                 dataset_dict,
@@ -282,6 +283,7 @@ class TorchTrainStep(Step):
 
 def _train(
     worker_id: int,
+    logger,
     config: TrainConfig,
     model: Lazy[Model],
     dataset_dict: DatasetDictBase,
@@ -304,7 +306,6 @@ def _train(
         import tango.common.logging as common_logging
 
         common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
-    logger = logging.getLogger(TorchTrainStep.__name__)
 
     # Resolve and set device.
     device = config.worker_local_default_device
