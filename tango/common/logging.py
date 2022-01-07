@@ -1,3 +1,37 @@
+"""
+Tools for configuring logging.
+
+Configuring logging in your own CLI
+-----------------------------------
+
+If you're writing your own CLI that uses tango, you can utilize the :func:`initialize_logging()`
+function to easily configure logging properly.
+
+For example,
+
+.. testcode::
+
+    from tango.common.logging import initialize_logging, teardown_logging
+
+    initialize_logging(log_level="info")
+
+    logger = logging.getLogger()
+    logger.info("Running script!")
+
+    teardown_logging()
+
+.. testoutput::
+    :options: +ELLIPSIS
+
+    [... INFO root] Running script!
+
+If you want to have logs written to a file, you can use the :func:`file_handler` context manager.
+
+Logging from workers processes or threads
+-----------------------------------------
+
+"""
+
 import logging
 import logging.handlers
 import multiprocessing as mp
@@ -15,15 +49,34 @@ from .util import _parse_bool
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
 """
-If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
+If this flag is set to ``True``, we remove special styling characters from log messages,
+add newlines to tqdm output even on an interactive terminal, and we slow
 down tqdm's output to only once every 10 seconds.
 
-By default, it is set to ``False``.
+By default, it is set to ``False``. It can be changed by setting the corresponding environment
+variable (``FILE_FRIENDLY_LOGGING``) or field in a :class:`~tango.__main__.TangoGlobalSettings`
+file (``file_friendly_logging``) to "true" or "false",
+or from the command line with the ``--file-friendly-logging`` flag.
+For example,
+
+.. code-block::
+
+    $ tango --file-friendly-logging run ...
+
 """
 
 TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
 """
-The log level.
+The log level to use globally. The value can be set from the corresponding environment variable
+(``TANGO_LOG_LEVEL``) or field in a :class:`~tango.__main__.TangoGlobalSettings` file (``log_level``),
+or from the command line with the ``--log-level`` option.
+Possible values are "debug", "info", "warning", or "error" (not case sensitive).
+For example,
+
+.. code-block::
+
+    $ tango --log-level info run ...
+
 """
 
 _LOGGING_QUEUE: Optional[mp.Queue] = None
@@ -39,42 +92,18 @@ Thread used for logging records from worker processes.
 
 class TangoLogger(logging.Logger):
     """
-    A custom subclass of 'logging.Logger' that keeps a set of messages to
-    implement {debug,info,etc.}_once() methods.
+    A custom subclass of :class:`logging.Logger` that does some additional cleaning
+    of messages when :attr:`FILE_FRIENDLY_LOGGING` is on.
+
+    This is the default logger class used when :func:`initialize_logging()` is called.
     """
 
     def __init__(self, name):
         super().__init__(name)
-        self._seen_msgs = set()
 
     def log(self, level, msg, *args, **kwargs):
         msg = msg if not FILE_FRIENDLY_LOGGING else click.unstyle(msg)
         super().log(level, msg, *args, **kwargs)
-
-    def debug_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.debug(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def info_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.info(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def warning_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.warning(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def error_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.error(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def critical_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.critical(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
 
 
 class TangoFormatter(logging.Formatter):
@@ -100,6 +129,14 @@ logging.setLoggerClass(TangoLogger)
 
 
 click_logger = logging.getLogger("click")
+"""
+A logger that logs messages through
+`click <https://click.palletsprojects.com/>`_'s
+``click.echo()`` function.
+
+This is provides a convenient way for command-line apps to log pretty, styled messages.
+"""
+
 click_logger.propagate = False
 
 
@@ -122,6 +159,9 @@ def get_formatter(prefix: Optional[str] = None) -> TangoFormatter:
 
 
 def logger_thread(queue):
+    """
+    Receives log records from worker processes and handles them.
+    """
     while True:
         record = queue.get()
         if record is None:
@@ -131,6 +171,9 @@ def logger_thread(queue):
 
 
 def get_logging_queue() -> Optional[mp.Queue]:
+    """
+    Get the logging queue to pass to :func:`initialize_logging()` from worker processes.
+    """
     return _LOGGING_QUEUE
 
 
@@ -142,6 +185,31 @@ def initialize_logging(
     prefix: Optional[str] = None,
     queue: Optional[mp.Queue] = None,
 ):
+    """
+    Initialize logging, which includes setting the global log level, format, and configuring
+    handlers.
+
+    .. tip::
+        This should be called as early on in your script as possible.
+
+    .. tip::
+        You should also call :func:`teardown_logging()` as the end of your script.
+
+    Parameters
+    ----------
+    log_level : :class:`str`
+        Can be one of "debug", "info", "warning", "error". Defaults to the value
+        of :data:`TANGO_LOG_LEVEL`.
+    enable_click_logs : :class:`bool`
+        Set to ``True`` to enable messages from the :data:`click_logger`.
+    file_friendly_logging : :class:`bool`
+        Enable or disable file friendly logging. Defaults to the value of :data:`FILE_FRIENDLY_LOGGING`.
+    prefix : :class:`str`
+        An optional prefix to prepend to log lines.
+    queue : :class:`multiprocessing.Queue`
+        This should only be used from worker threads/processes, and should be set to result
+        of :func:`get_logging_queue()`.
+    """
     global FILE_FRIENDLY_LOGGING
     global TANGO_LOG_LEVEL
     global _LOGGING_THREAD
@@ -227,6 +295,10 @@ def initialize_logging(
 
 
 def teardown_logging():
+    """
+    Cleanup any logging fixtures created from :func:`initialize_logging()`. Should
+    be called at the end of your script.
+    """
     global _LOGGING_QUEUE
     global _LOGGING_THREAD
 
@@ -263,6 +335,27 @@ def remove_file_handler(handler: logging.FileHandler):
 
 @contextmanager
 def file_handler(filepath: PathOrStr):
+    """
+    A context manager that can be used to route logs to a file by adding a
+    :class:`logging.FileHandler` to the root logger's handlers.
+
+    For example,
+
+    .. code-block::
+
+        from tango.common.logging import initialize_logging, file_handler, teardown_logging
+
+        initialize_logging(log_level="info")
+
+        logger = logging.getLogger()
+        logger.info("Hi!")
+
+        with file_handler("log.out"):
+            logger.info("This message should also go into 'log.out'")
+
+        teardown_logging()
+
+    """
     handler = add_file_handler(filepath)
     try:
         yield handler
