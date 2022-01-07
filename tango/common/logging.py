@@ -273,7 +273,7 @@ def initialize_logging(
     global _LOGGING_THREAD
     global _LOGGING_QUEUE
 
-    is_main_process: bool = True
+    is_main_process: bool
     if hasattr(mp, "parent_process"):  # python 3.8 or greater
         is_main_process = mp.parent_process() is None  # type: ignore[attr]
     else:
@@ -288,9 +288,6 @@ def initialize_logging(
 
     level = logging._nameToLevel[log_level.upper()]
 
-    logging.basicConfig(
-        level=level,
-    )
     TANGO_LOG_LEVEL = log_level
     os.environ["TANGO_LOG_LEVEL"] = log_level
 
@@ -307,6 +304,7 @@ def initialize_logging(
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     root_logger = logging.getLogger()
+    root_logger.setLevel(level)
     root_logger.handlers.clear()
 
     if queue is not None:
@@ -334,7 +332,7 @@ def initialize_logging(
 
     sys.excepthook = excepthook
 
-    if is_main_process is None:
+    if is_main_process:
         # Main process, set formatter and handlers, start logging thread.
         formatter = get_formatter(prefix)
 
