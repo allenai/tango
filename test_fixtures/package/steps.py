@@ -1,11 +1,12 @@
 import logging
 import multiprocessing as mp
 import random
+import time
 from string import ascii_letters
-from typing import Optional
 
 import tango.common.logging as common_logging
 from tango import Step
+from tango.common import Tqdm
 
 
 @Step.register("float")
@@ -44,6 +45,9 @@ class RandomStringStep(Step):
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     def run(self, num_proc: int = 2) -> bool:  # type: ignore
+        for _ in Tqdm.tqdm(list(range(10)), desc="progress from main process"):
+            time.sleep(0.1)
+
         workers = []
         logging_queue = common_logging.get_logging_queue()
         assert logging_queue is not None
@@ -62,3 +66,5 @@ def _worker_function(worker_id: int, logging_queue: mp.Queue):
     common_logging.initialize_logging(prefix=f"[worker {worker_id}]", queue=logging_queue)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
+    for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):
+        time.sleep(0.1)

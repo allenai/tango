@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 import click
+import pytest
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
@@ -13,7 +14,9 @@ from tango.version import VERSION
 
 
 class TestMain(TangoTestCase):
-    def clean_log_lines(self, log_lines: List[str]) -> List[str]:
+    def clean_log_lines(
+        self, log_lines: List[str], file_friendly_logging: bool = False
+    ) -> List[str]:
         out = []
         for line in log_lines:
             # Remove the logging prefix with PID, timestamp, level, etc so we're just left
@@ -23,22 +26,32 @@ class TestMain(TangoTestCase):
                 "",
                 line,
             )
-            line = click.unstyle(line)
+            unstyled_line = click.unstyle(line)
+            if file_friendly_logging:
+                assert line == unstyled_line
+            line = unstyled_line
             if line:
-                out.append(line.rstrip())
+                out.append(line.strip())
         return out
 
     def check_logs(
-        self, run_dir: Path, process_result: subprocess.CompletedProcess
+        self,
+        run_dir: Path,
+        process_result: subprocess.CompletedProcess,
+        file_friendly_logging: bool = False,
     ) -> Tuple[List[str], List[str]]:
-        stdout_lines = self.clean_log_lines(process_result.stdout.decode().split("\n"))
-        stderr_lines = self.clean_log_lines(process_result.stderr.decode().split("\n"))
+        stdout_lines = self.clean_log_lines(
+            process_result.stdout.decode().replace("\r", "\n").split("\n")
+        )
+        #  stderr_lines = self.clean_log_lines(
+        #      process_result.stderr.decode().replace("\r", "\n").split("\n")
+        #  )
 
         log_file = run_dir / "out.log"
         assert log_file.is_file()
 
         log_lines = open(log_file).readlines()
-        cleaned_log_lines = self.clean_log_lines(log_lines)
+        cleaned_log_lines = self.clean_log_lines(log_lines, file_friendly_logging)
 
         # The first few log messages in stdout may not be in the log file, since those get
         # emitted before the run dir is created.
@@ -48,8 +61,8 @@ class TestMain(TangoTestCase):
         for line in filtered_stdout_lines:
             assert line in cleaned_log_lines
 
-        for line in stderr_lines:
-            assert line in cleaned_log_lines
+        #  for line in stderr_lines:
+        #      assert line in cleaned_log_lines
 
         return log_lines, cleaned_log_lines
 
@@ -118,20 +131,33 @@ class TestMain(TangoTestCase):
         result = subprocess.run(cmd)
         assert result.returncode == 0
 
-    def test_experiment_with_multiprocessing(self):
-        cmd = [
-            "tango",
-            "--log-level",
-            "info",
-            "run",
-            str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
-            "-i",
-            "test_fixtures.package",
-            "-d",
-            str(self.TEST_DIR),
-        ]
+    @pytest.mark.parametrize("start_method", ["fork", "spawn"])
+    @pytest.mark.parametrize("file_friendly_logging", [True, False])
+    def test_experiment_with_multiprocessing(self, file_friendly_logging, start_method):
+        cmd = (
+            [
+                "tango",
+                "--log-level",
+                "info",
+                "--start-method",
+                start_method,
+            ]
+            + ([] if not file_friendly_logging else ["--file-friendly-logging"])
+            + [
+                "run",
+                str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
+                "-i",
+                "test_fixtures.package",
+                "-d",
+                str(self.TEST_DIR),
+            ]
+        )
         result = subprocess.run(cmd, capture_output=True)
         run_dir = next((self.TEST_DIR / "runs").iterdir())
-        _, clean_log_lines = self.check_logs(run_dir, result)
+        _, clean_log_lines = self.check_logs(run_dir, result, file_friendly_logging)
+        all_logs = "\n".join(clean_log_lines)
         assert "Hello from worker 0!" in clean_log_lines
         assert "Hello from worker 1!" in clean_log_lines
+        # Make sure tqdm output makes it into the log file.
+        assert "progress from main process: 100%" in all_logs
+        assert "progress from worker: 100%" in all_logs

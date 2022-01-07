@@ -210,6 +210,11 @@ def main(
     ctx.obj = config
 
 
+@main.result_callback()
+def cleanup(*args, **kwargs):
+    common_logging.teardown_logging()
+
+
 @main.command(
     cls=HelpColorsCommand,
     help_options_color="green",
@@ -270,7 +275,6 @@ def run(
         include_package=include_package,
         start_server=server,
     )
-    common_logging.teardown_logging()
 
 
 @main.command(
@@ -299,7 +303,6 @@ def server(workspace_dir: Union[str, os.PathLike]):
         "Server started at " + click.style(server.address_for_display(), bold=True)
     )
     server.serve_forever()
-    common_logging.teardown_logging()
 
 
 @main.command(
@@ -359,8 +362,6 @@ def info(config: TangoGlobalSettings):
             common_logging.click_logger.info(
                 click.style(f" \N{ballot x} {name} (not installed)", fg="yellow")
             )
-
-    common_logging.teardown_logging()
 
 
 def _run(
