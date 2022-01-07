@@ -1,6 +1,10 @@
 import os
+import re
 import subprocess
 from pathlib import Path
+from typing import List, Tuple
+
+import click
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
@@ -9,6 +13,46 @@ from tango.version import VERSION
 
 
 class TestMain(TangoTestCase):
+    def clean_log_lines(self, log_lines: List[str]) -> List[str]:
+        out = []
+        for line in log_lines:
+            # Remove the logging prefix with PID, timestamp, level, etc so we're just left
+            # with the message.
+            line = re.sub(
+                r"^\[\d+ \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} (DEBUG|INFO|WARNING|ERROR) [^\]]+\] ",
+                "",
+                line,
+            )
+            line = click.unstyle(line)
+            if line:
+                out.append(line.rstrip())
+        return out
+
+    def check_logs(
+        self, run_dir: Path, process_result: subprocess.CompletedProcess
+    ) -> Tuple[List[str], List[str]]:
+        stdout_lines = self.clean_log_lines(process_result.stdout.decode().split("\n"))
+        stderr_lines = self.clean_log_lines(process_result.stderr.decode().split("\n"))
+
+        log_file = run_dir / "out.log"
+        assert log_file.is_file()
+
+        log_lines = open(log_file).readlines()
+        cleaned_log_lines = self.clean_log_lines(log_lines)
+
+        # The first few log messages in stdout may not be in the log file, since those get
+        # emitted before the run dir is created.
+        filtered_stdout_lines = stdout_lines[
+            next(i for i, line in enumerate(stdout_lines) if line.startswith("Server started at")) :
+        ]
+        for line in filtered_stdout_lines:
+            assert line in cleaned_log_lines
+
+        for line in stderr_lines:
+            assert line in cleaned_log_lines
+
+        return log_lines, cleaned_log_lines
+
     def test_version(self):
         result = subprocess.run(["tango", "--version"], capture_output=True, text=True)
         assert result.returncode == 0
@@ -24,7 +68,7 @@ class TestMain(TangoTestCase):
             "-d",
             str(self.TEST_DIR),
         ]
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, capture_output=True)
         assert result.returncode == 0
         assert len(os.listdir(self.TEST_DIR / "cache")) == 2
         run_dir = next((self.TEST_DIR / "runs").iterdir())
@@ -48,7 +92,11 @@ class TestMain(TangoTestCase):
             assert metadata.git.commit is not None
             assert metadata.git.remote is not None
 
+        # Check for requirements.txt file.
         assert (run_dir / "hello_world" / "requirements.txt").is_file()
+
+        # Check logs.
+        self.check_logs(run_dir, result)
 
         # Running again shouldn't create any more directories in the cache.
         result = subprocess.run(cmd)
@@ -69,3 +117,21 @@ class TestMain(TangoTestCase):
         ]
         result = subprocess.run(cmd)
         assert result.returncode == 0
+
+    def test_experiment_with_multiprocessing(self):
+        cmd = [
+            "tango",
+            "--log-level",
+            "info",
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
+            "-i",
+            "test_fixtures.package",
+            "-d",
+            str(self.TEST_DIR),
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        run_dir = next((self.TEST_DIR / "runs").iterdir())
+        _, clean_log_lines = self.check_logs(run_dir, result)
+        assert "Hello from worker 0!" in clean_log_lines
+        assert "Hello from worker 1!" in clean_log_lines

@@ -13,6 +13,29 @@ from .aliases import PathOrStr
 from .exceptions import SigTermReceived
 from .util import _parse_bool
 
+FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
+"""
+If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
+down tqdm's output to only once every 10 seconds.
+
+By default, it is set to ``False``.
+"""
+
+TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
+"""
+The log level.
+"""
+
+_LOGGING_QUEUE: Optional[mp.Queue] = None
+"""
+Used to send log records from worker processes back to the main logging thread.
+"""
+
+_LOGGING_THREAD: Optional[threading.Thread] = None
+"""
+Thread used for logging records from worker processes.
+"""
+
 
 class TangoLogger(logging.Logger):
     """
@@ -62,21 +85,18 @@ class TangoFormatter(logging.Formatter):
         return out
 
 
+class WarningFilter(logging.Filter):
+    """
+    Filters out everything that is at the WARNING level or higher. This is meant to be used
+    with a stdout handler when a stderr handler is also configured. That way WARNING and ERROR
+    messages aren't duplicated.
+    """
+
+    def filter(self, record):
+        return record.levelno < logging.WARNING
+
+
 logging.setLoggerClass(TangoLogger)
-
-
-FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
-"""
-If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
-down tqdm's output to only once every 10 seconds.
-
-By default, it is set to ``False``.
-"""
-
-TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
-"""
-The log level.
-"""
 
 
 click_logger = logging.getLogger("click")
@@ -108,10 +128,6 @@ def logger_thread(queue):
             break
         logger = logging.getLogger(record.name)
         logger.handle(record)
-
-
-_LOGGING_QUEUE: Optional[mp.Queue] = None
-_LOGGING_THREAD: Optional[threading.Thread] = None
 
 
 def get_logging_queue() -> Optional[mp.Queue]:
@@ -162,6 +178,8 @@ def initialize_logging(
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+
     if queue is not None:
         if mp.parent_process() is None:
             raise ValueError("'queue' can only be given to initialize_logging() in child processes")
@@ -186,15 +204,21 @@ def initialize_logging(
     sys.excepthook = excepthook
 
     if mp.parent_process() is None:
-        # Main process.
-
+        # Main process, set formatter and handlers, start logging thread.
         formatter = get_formatter(prefix)
 
-        for handler in root_logger.handlers:
-            handler.setLevel(level)
-            handler.setFormatter(formatter)
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        stdout_handler.setLevel(level)
+        stdout_handler.addFilter(WarningFilter())
+        stdout_handler.setFormatter(formatter)
 
-        # Start logging thread.
+        stderr_handler = logging.StreamHandler(sys.stderr)
+        stderr_handler.setLevel(logging.WARNING)
+        stderr_handler.setFormatter(formatter)
+
+        root_logger.addHandler(stdout_handler)
+        root_logger.addHandler(stderr_handler)
+
         _LOGGING_QUEUE = mp.Queue()
         _LOGGING_THREAD = threading.Thread(
             target=logger_thread, args=(_LOGGING_QUEUE,), daemon=True

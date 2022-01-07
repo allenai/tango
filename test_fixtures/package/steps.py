@@ -61,4 +61,4 @@ class MultiprocessingStep(Step):
 def _worker_function(worker_id: int, logging_queue: mp.Queue):
     common_logging.initialize_logging(prefix=f"[worker {worker_id}]", queue=logging_queue)
     logger = logging.getLogger(MultiprocessingStep.__name__)
-    logger.info("Hello!")
+    logger.info("Hello from worker %d!", worker_id)
