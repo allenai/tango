@@ -279,9 +279,6 @@ def initialize_logging(
     else:
         is_main_process = mp.current_process().name == "MainProcess"
 
-    if is_main_process and _LOGGING_THREAD is not None:
-        raise RuntimeError("initialize_logging() can only be called once!")
-
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
     if log_level is None:
