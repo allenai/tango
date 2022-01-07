@@ -26,6 +26,8 @@ You can see the the list of all available commands by running:
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
+      --start-method [fork|spawn|forkserver]
+                                      Set the multiprocessing start method.
       --help                          Show this message and exit.
 
     Commands:
