@@ -187,7 +187,10 @@ click_logger.propagate = False
 
 class ClickLoggerHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
-        click.echo(record.getMessage(), color=not FILE_FRIENDLY_LOGGING)
+        if FILE_FRIENDLY_LOGGING:
+            click.echo(click.unstyle(record.getMessage()))
+        else:
+            click.echo(record.getMessage())
 
 
 click_logger.addHandler(ClickLoggerHandler())
