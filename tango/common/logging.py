@@ -273,7 +273,13 @@ def initialize_logging(
     global _LOGGING_THREAD
     global _LOGGING_QUEUE
 
-    if mp.parent_process() is None and _LOGGING_THREAD is not None:
+    is_main_process: bool = True
+    if hasattr(mp, "parent_process"):
+        is_main_process = mp.parent_process() is None  # python 3.8 or greater
+    else:
+        is_main_process = mp.current_process().name == "MainProcess"
+
+    if is_main_process and _LOGGING_THREAD is not None:
         raise RuntimeError("initialize_logging() can only be called once!")
 
     if log_level is None:
@@ -307,7 +313,7 @@ def initialize_logging(
     root_logger.handlers.clear()
 
     if queue is not None:
-        if mp.parent_process() is None:
+        if is_main_process:
             raise ValueError("'queue' can only be given to initialize_logging() in child processes")
 
         queue_handler = logging.handlers.QueueHandler(queue)
@@ -331,7 +337,7 @@ def initialize_logging(
 
     sys.excepthook = excepthook
 
-    if mp.parent_process() is None:
+    if is_main_process is None:
         # Main process, set formatter and handlers, start logging thread.
         formatter = get_formatter(prefix)
 

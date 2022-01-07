@@ -156,8 +156,8 @@ class TestMain(TangoTestCase):
         run_dir = next((self.TEST_DIR / "runs").iterdir())
         _, clean_log_lines = self.check_logs(run_dir, result, file_friendly_logging)
         all_logs = "\n".join(clean_log_lines)
-        assert "Hello from worker 0!" in clean_log_lines
-        assert "Hello from worker 1!" in clean_log_lines
+        assert "[rank 0] Hello from worker 0!" in clean_log_lines
+        assert "[rank 1] Hello from worker 1!" in clean_log_lines
         # Make sure tqdm output makes it into the log file.
         assert "progress from main process: 100%" in all_logs
         assert "progress from worker: 100%" in all_logs
