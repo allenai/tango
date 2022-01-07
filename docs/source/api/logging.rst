@@ -14,6 +14,8 @@ Reference
 
 .. autofunction:: tango.common.logging.initialize_logging
 
+.. autofunction:: tango.common.logging.initialize_worker_logging
+
 .. autofunction:: tango.common.logging.teardown_logging
 
 .. autofunction:: tango.common.logging.file_handler

@@ -49,10 +49,10 @@ class MultiprocessingStep(Step):
             time.sleep(0.1)
 
         workers = []
-        logging_queue = common_logging.get_logging_queue()
-        assert logging_queue is not None
         for i in range(num_proc):
-            worker = mp.Process(target=_worker_function, args=(i, logging_queue))
+            worker = mp.Process(
+                target=_worker_function, args=(i, common_logging.get_logging_queue())
+            )
             workers.append(worker)
             worker.start()
 
@@ -63,7 +63,7 @@ class MultiprocessingStep(Step):
 
 
 def _worker_function(worker_id: int, logging_queue: mp.Queue):
-    common_logging.initialize_worker_logging(logging_queue, worker_id)
+    common_logging.initialize_worker_logging(worker_id, logging_queue)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
     for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):

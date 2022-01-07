@@ -240,6 +240,11 @@ class TorchTrainStep(Step):
 
             import tango.common.logging as common_logging
 
+            try:
+                logging_queue = common_logging.get_logging_queue()
+            except RuntimeError:
+                logging_queue = None
+
             mp.spawn(
                 _train,
                 args=(
@@ -252,7 +257,7 @@ class TorchTrainStep(Step):
                     validation_dataloader,
                     callbacks,
                     get_extra_imported_modules(),
-                    common_logging.get_logging_queue(),
+                    logging_queue,
                 ),
                 nprocs=num_workers,
             )
@@ -307,7 +312,7 @@ def _train(
     if config.is_distributed and logging_queue is not None:
         import tango.common.logging as common_logging
 
-        common_logging.initialize_worker_logging(logging_queue, config.worker_id)
+        common_logging.initialize_worker_logging(config.worker_id, logging_queue)
     logger = logging.getLogger(TorchTrainStep.__name__)
 
     # Resolve and set device.

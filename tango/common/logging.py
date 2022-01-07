@@ -27,8 +27,42 @@ For example,
 
 If you want to have logs written to a file, you can use the :func:`file_handler` context manager.
 
-Logging from workers processes or threads
------------------------------------------
+Logging from worker processes or threads
+----------------------------------------
+
+If you have steps or other function that spawn workers, and you want to enable logging within
+those workers, you can call the :func:`initialize_worker_logging()` function to configure
+logging within each worker. This assumes that you've called :func:`initialize_logging()` from the
+main process (the tango CLI does this for you), and you've passed the logging queue
+as an argument to your worker functions. You can get this queue by calling :func:`get_logging_queue()`.
+
+For example,
+
+.. code-block::
+
+    import logging
+    import multiprocessing as mp
+
+    from tango import Step
+    from tango.common.logging import initialize_worker_logging, get_logging_queue
+
+    @Step.register("multiprocessing_step")
+    class MultiprocessingStep(Step):
+        def run(self, num_proc: int = 2) -> bool:  # type: ignore
+            workers = []
+            for i in range(num_proc):
+                worker = mp.Process(target=_worker_function, args=(i, get_logging_queue()))
+                workers.append(worker)
+                worker.start()
+            for worker in workers:
+                worker.join()
+            return True
+
+
+    def _worker_function(worker_id: int, logging_queue: mp.Queue):
+        initialize_worker_logging(worker_id, logging_queue)
+        logger = logging.getLogger(MultiprocessingStep.__name__)
+        logger.info("Hello from worker %d!", worker_id)
 
 """
 
@@ -181,10 +215,14 @@ def logger_thread(queue):
         logger.handle(record)
 
 
-def get_logging_queue() -> Optional[mp.Queue]:
+def get_logging_queue() -> mp.Queue:
     """
     Get the logging queue to pass to :func:`initialize_logging()` from worker processes.
     """
+    if _LOGGING_QUEUE is None:
+        raise RuntimeError(
+            "logging queue has not been initialized, did you forget to call 'initialize_logging()'?"
+        )
     return _LOGGING_QUEUE
 
 
@@ -207,6 +245,9 @@ def initialize_logging(
     .. tip::
         You should also call :func:`teardown_logging()` as the end of your script.
 
+    .. tip::
+        For worker threads/processes, use :func:`initialize_worker_logging()` instead.
+
     Parameters
     ----------
     log_level : :class:`str`
@@ -220,10 +261,11 @@ def initialize_logging(
         An optional prefix to prepend to log lines.
     queue : :class:`multiprocessing.Queue`
         This should only be used from worker threads/processes, and should be set to result
-        of :func:`get_logging_queue()`.
-
-        .. tip::
-            For worker threads/processes, use :func:`initialize_worker_logging()` instead.
+        of :func:`get_logging_queue()`, but it's better to use :func:`initialize_worker_logging()`
+        from workers instead of this function.
+    worker_rank : :class:`int`
+        This should only be used from worker threads/processes, but it's better to use
+        :func:`initialize_worker_logging()` from workers instead of this function.
 
     """
     global FILE_FRIENDLY_LOGGING
@@ -312,7 +354,20 @@ def initialize_logging(
         _LOGGING_THREAD.start()
 
 
-def initialize_worker_logging(queue: mp.Queue, worker_rank: int):
+def initialize_worker_logging(worker_rank: int, queue: mp.Queue):
+    """
+    Initialize logging in a worker thread/process.
+
+    Parameters
+    ----------
+    worker_rank : :class:`int`
+        The rank/ID of the worker.
+    queue : :class:`multiprocessing.Queue`
+        The logging queue that sends records to the main logging thread. The ``queue`` itself
+        should be obtain from the :func:`get_logging_queue()` function **in the main thread/process**,
+        and then should be sent to the worker function as an argument.
+
+    """
     return initialize_logging(queue=queue, worker_rank=worker_rank)
 
 
