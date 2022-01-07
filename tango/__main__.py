@@ -65,6 +65,7 @@ The ``server`` command spins up a web server that watches a workspace. You can u
 progress of your runs while they are happening.
 
 """
+import multiprocessing as mp
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -105,10 +106,10 @@ class TangoGlobalSettings(FromParams):
     By default, it is set to ``False``.
     """
 
-    multiprocessing_start_method: Optional[str] = None
+    multiprocessing_start_method: str = "spawn"
     """
     The ``start_method`` to use when starting new multiprocessing workers. Can be "fork", "spawn",
-    or "forkserver".
+    or "forkserver". Default is "spawn".
 
     See :func:`multiprocessing.set_start_method()` for more details.
     """
@@ -190,10 +191,7 @@ def main(
     if start_method is not None:
         config.multiprocessing_start_method = start_method
 
-    if config.multiprocessing_start_method is not None:
-        import multiprocess as mp
-
-        mp.set_start_method("fork")
+    mp.set_start_method(config.multiprocessing_start_method)
 
     if log_level is not None:
         config.log_level = log_level

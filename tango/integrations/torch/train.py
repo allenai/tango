@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 import tempfile
@@ -237,10 +238,11 @@ class TorchTrainStep(Step):
         if is_distributed:
             import torch.multiprocessing as mp
 
+            import tango.common.logging as common_logging
+
             mp.spawn(
                 _train,
                 args=(
-                    self.logger,
                     config,
                     model,
                     dataset_dict,
@@ -250,6 +252,7 @@ class TorchTrainStep(Step):
                     validation_dataloader,
                     callbacks,
                     get_extra_imported_modules(),
+                    common_logging.get_logging_queue(),
                 ),
                 nprocs=num_workers,
             )
@@ -258,7 +261,6 @@ class TorchTrainStep(Step):
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
-                self.logger,
                 config,
                 model,
                 dataset_dict,
@@ -283,7 +285,6 @@ class TorchTrainStep(Step):
 
 def _train(
     worker_id: int,
-    logger,
     config: TrainConfig,
     model: Lazy[Model],
     dataset_dict: DatasetDictBase,
@@ -293,6 +294,7 @@ def _train(
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     include_package: Optional[Set[str]] = None,
+    logging_queue=None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
 
@@ -302,10 +304,11 @@ def _train(
         for package_name in include_package:
             import_extra_module(package_name)
 
-    if config.is_distributed:
+    if config.is_distributed and logging_queue is not None:
         import tango.common.logging as common_logging
 
-        common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
+        common_logging.initialize_worker_logging(logging_queue, config.worker_id)
+    logger = logging.getLogger(TorchTrainStep.__name__)
 
     # Resolve and set device.
     device = config.worker_local_default_device

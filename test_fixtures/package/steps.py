@@ -63,7 +63,7 @@ class MultiprocessingStep(Step):
 
 
 def _worker_function(worker_id: int, logging_queue: mp.Queue):
-    common_logging.initialize_logging(prefix=f"[worker {worker_id}]", queue=logging_queue)
+    common_logging.initialize_worker_logging(logging_queue, worker_id)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
     for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):

@@ -125,6 +125,17 @@ class WarningFilter(logging.Filter):
         return record.levelno < logging.WARNING
 
 
+class WorkerLogFilter(logging.Filter):
+    def __init__(self, rank=-1):
+        super().__init__()
+        self._rank = rank
+
+    def filter(self, record):
+        if self._rank != -1:
+            record.msg = f"[rank {self._rank}] {record.msg}"
+        return True
+
+
 logging.setLoggerClass(TangoLogger)
 
 
@@ -184,6 +195,7 @@ def initialize_logging(
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
     queue: Optional[mp.Queue] = None,
+    worker_rank: Optional[int] = None,
 ):
     """
     Initialize logging, which includes setting the global log level, format, and configuring
@@ -209,6 +221,10 @@ def initialize_logging(
     queue : :class:`multiprocessing.Queue`
         This should only be used from worker threads/processes, and should be set to result
         of :func:`get_logging_queue()`.
+
+        .. tip::
+            For worker threads/processes, use :func:`initialize_worker_logging()` instead.
+
     """
     global FILE_FRIENDLY_LOGGING
     global TANGO_LOG_LEVEL
@@ -254,6 +270,8 @@ def initialize_logging(
 
         queue_handler = logging.handlers.QueueHandler(queue)
         queue_handler.setLevel(level)
+        if worker_rank is not None:
+            queue_handler.addFilter(WorkerLogFilter(worker_rank))
 
         from .tqdm import logger as tqdm_logger
 
@@ -292,6 +310,10 @@ def initialize_logging(
             target=logger_thread, args=(_LOGGING_QUEUE,), daemon=True
         )
         _LOGGING_THREAD.start()
+
+
+def initialize_worker_logging(queue: mp.Queue, worker_rank: int):
+    return initialize_logging(queue=queue, worker_rank=worker_rank)
 
 
 def teardown_logging():
