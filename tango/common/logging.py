@@ -1,6 +1,10 @@
 import logging
+import logging.handlers
+import multiprocessing as mp
 import os
 import sys
+import threading
+from contextlib import contextmanager
 from typing import Optional
 
 import click
@@ -91,10 +95,27 @@ click_logger.disabled = (
 
 
 def get_formatter(prefix: Optional[str] = None) -> TangoFormatter:
-    log_format = "[%(asctime)s %(levelname)s %(name)s] %(message)s"
+    log_format = "[%(process)d %(asctime)s %(levelname)s %(name)s] %(message)s"
     if prefix is not None:
         log_format = prefix + " " + log_format
     return TangoFormatter(log_format)
+
+
+def logger_thread(queue):
+    while True:
+        record = queue.get()
+        if record is None:
+            break
+        logger = logging.getLogger(record.name)
+        logger.handle(record)
+
+
+_LOGGING_QUEUE: Optional[mp.Queue] = None
+_LOGGING_THREAD: Optional[threading.Thread] = None
+
+
+def get_logging_queue() -> Optional[mp.Queue]:
+    return _LOGGING_QUEUE
 
 
 def initialize_logging(
@@ -103,9 +124,15 @@ def initialize_logging(
     enable_click_logs: bool = False,
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
+    queue: Optional[mp.Queue] = None,
 ):
     global FILE_FRIENDLY_LOGGING
     global TANGO_LOG_LEVEL
+    global _LOGGING_THREAD
+    global _LOGGING_QUEUE
+
+    if mp.parent_process() is None and _LOGGING_THREAD is not None:
+        raise RuntimeError("initialize_logging() can only be called once!")
 
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
@@ -115,7 +142,7 @@ def initialize_logging(
         file_friendly_logging = FILE_FRIENDLY_LOGGING
 
     level = logging._nameToLevel[log_level.upper()]
-    formatter = get_formatter(prefix)
+
     logging.basicConfig(
         level=level,
     )
@@ -135,9 +162,18 @@ def initialize_logging(
         os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     root_logger = logging.getLogger()
-    for handler in root_logger.handlers:
-        handler.setLevel(level)
-        handler.setFormatter(formatter)
+    if queue is not None:
+        if mp.parent_process() is None:
+            raise ValueError("'queue' can only be given to initialize_logging() in child processes")
+
+        queue_handler = logging.handlers.QueueHandler(queue)
+        queue_handler.setLevel(level)
+
+        from .tqdm import logger as tqdm_logger
+
+        for logger in (root_logger, click_logger, tqdm_logger):
+            logger.handlers.clear()
+            logger.addHandler(queue_handler)
 
     # Write uncaught exceptions to the logs.
     def excepthook(exctype, value, traceback):
@@ -149,17 +185,62 @@ def initialize_logging(
 
     sys.excepthook = excepthook
 
+    if mp.parent_process() is None:
+        # Main process.
 
-def add_file_handler(filepath: PathOrStr):
+        formatter = get_formatter(prefix)
+
+        for handler in root_logger.handlers:
+            handler.setLevel(level)
+            handler.setFormatter(formatter)
+
+        # Start logging thread.
+        _LOGGING_QUEUE = mp.Queue()
+        _LOGGING_THREAD = threading.Thread(
+            target=logger_thread, args=(_LOGGING_QUEUE,), daemon=True
+        )
+        _LOGGING_THREAD.start()
+
+
+def teardown_logging():
+    global _LOGGING_QUEUE
+    global _LOGGING_THREAD
+
+    if _LOGGING_QUEUE is not None:
+        _LOGGING_QUEUE.put(None)
+
+    if _LOGGING_THREAD is not None:
+        _LOGGING_THREAD.join()
+
+
+def add_file_handler(filepath: PathOrStr) -> logging.FileHandler:
     root_logger = logging.getLogger()
 
     from .tqdm import logger as tqdm_logger
 
-    file_handler = logging.FileHandler(str(filepath))
+    handler = logging.FileHandler(str(filepath))
     formatter = get_formatter()
-    file_handler.setFormatter(formatter)
-    if TANGO_LOG_LEVEL is not None:
-        file_handler.setLevel(logging._nameToLevel[TANGO_LOG_LEVEL.upper()])
+    handler.setFormatter(formatter)
 
     for logger in (root_logger, click_logger, tqdm_logger):
-        logger.addHandler(file_handler)
+        logger.addHandler(handler)
+
+    return handler
+
+
+def remove_file_handler(handler: logging.FileHandler):
+    root_logger = logging.getLogger()
+
+    from .tqdm import logger as tqdm_logger
+
+    for logger in (root_logger, click_logger, tqdm_logger):
+        logger.removeHandler(handler)
+
+
+@contextmanager
+def file_handler(filepath: PathOrStr):
+    handler = add_file_handler(filepath)
+    try:
+        yield handler
+    finally:
+        remove_file_handler(handler)

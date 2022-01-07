@@ -77,7 +77,7 @@ class TangoTestCase:
             overrides = json.dumps(overrides)
 
         return _run(
-            TangoGlobalSettings(disable_file_logging=True),
+            TangoGlobalSettings(),
             str(config),
             workspace_dir=str(self.TEST_DIR / "workspace"),
             overrides=overrides,

@@ -105,9 +105,12 @@ class TangoGlobalSettings(FromParams):
     By default, it is set to ``False``.
     """
 
-    disable_file_logging: bool = False
+    multiprocessing_start_method: Optional[str] = None
     """
-    Use this to disable piping logs to a file.
+    The ``start_method`` to use when starting new multiprocessing workers. Can be "fork", "spawn",
+    or "forkserver".
+
+    See :func:`multiprocessing.set_start_method()` for more details.
     """
 
     _path: Optional[Path] = None
@@ -168,14 +171,29 @@ class TangoGlobalSettings(FromParams):
     is_flag=True,
     help="Outputs progress bar status on separate lines and slows refresh rate.",
 )
+@click.option(
+    "--start-method",
+    help="Set the multiprocessing start method.",
+    type=click.Choice(["fork", "spawn", "forkserver"], case_sensitive=True),
+    show_choices=True,
+)
 @click.pass_context
 def main(
     ctx,
-    config: Optional[str],
-    log_level: Optional[str],
+    config: Optional[str] = None,
+    log_level: Optional[str] = None,
     file_friendly_logging: bool = False,
+    start_method: Optional[str] = None,
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
+
+    if start_method is not None:
+        config.multiprocessing_start_method = start_method
+
+    if config.multiprocessing_start_method is not None:
+        import multiprocess as mp
+
+        mp.set_start_method("fork")
 
     if log_level is not None:
         config.log_level = log_level
@@ -252,6 +270,7 @@ def run(
         include_package=include_package,
         start_server=server,
     )
+    common_logging.teardown_logging()
 
 
 @main.command(
@@ -280,6 +299,7 @@ def server(workspace_dir: Union[str, os.PathLike]):
         "Server started at " + click.style(server.address_for_display(), bold=True)
     )
     server.serve_forever()
+    common_logging.teardown_logging()
 
 
 @main.command(
@@ -340,6 +360,8 @@ def info(config: TangoGlobalSettings):
                 click.style(f" \N{ballot x} {name} (not installed)", fg="yellow")
             )
 
+    common_logging.teardown_logging()
+
 
 def _run(
     config: TangoGlobalSettings,
@@ -385,18 +407,16 @@ def _run(
     run_dir = workspace.run_dir(run_name)
 
     # Capture logs to file.
-    if not config.disable_file_logging:
-        common_logging.add_file_handler(run_dir / "out.log")
+    with common_logging.file_handler(run_dir / "out.log"):
+        # Initialize server.
+        server = None
+        if start_server:
+            server = WorkspaceServer.on_free_port(workspace)
+            server.serve_in_background()
 
-    # Initialize server.
-    server = None
-    if start_server:
-        server = WorkspaceServer.on_free_port(workspace)
-        server.serve_in_background()
-
-    # Initialize Executor and execute the step graph.
-    executor = Executor(workspace=workspace, include_package=include_package, server=server)
-    executor.execute_step_graph(step_graph, run_name=run_name)
+        # Initialize Executor and execute the step graph.
+        executor = Executor(workspace=workspace, include_package=include_package, server=server)
+        executor.execute_step_graph(step_graph, run_name=run_name)
 
     return run_dir
 

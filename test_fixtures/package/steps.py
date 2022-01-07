@@ -1,6 +1,10 @@
+import logging
+import multiprocessing as mp
 import random
 from string import ascii_letters
+from typing import Optional
 
+import tango.common.logging as common_logging
 from tango import Step
 
 
@@ -35,3 +39,26 @@ class ConcatStringsStep(Step):
 class RandomStringStep(Step):
     def run(self, length: int = 10) -> str:  # type: ignore
         return "".join([random.choice(ascii_letters) for _ in range(length)])
+
+
+@Step.register("multiprocessing_step")
+class MultiprocessingStep(Step):
+    def run(self, num_proc: int = 2) -> bool:  # type: ignore
+        workers = []
+        logging_queue = common_logging.get_logging_queue()
+        assert logging_queue is not None
+        for i in range(num_proc):
+            worker = mp.Process(target=_worker_function, args=(i, logging_queue))
+            workers.append(worker)
+            worker.start()
+
+        for worker in workers:
+            worker.join()
+
+        return True
+
+
+def _worker_function(worker_id: int, logging_queue: mp.Queue):
+    common_logging.initialize_logging(prefix=f"[worker {worker_id}]", queue=logging_queue)
+    logger = logging.getLogger(MultiprocessingStep.__name__)
+    logger.info("Hello!")
