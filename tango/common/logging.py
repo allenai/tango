@@ -274,8 +274,8 @@ def initialize_logging(
     global _LOGGING_QUEUE
 
     is_main_process: bool = True
-    if hasattr(mp, "parent_process"):
-        is_main_process = mp.parent_process() is None  # python 3.8 or greater
+    if hasattr(mp, "parent_process"):  # python 3.8 or greater
+        is_main_process = mp.parent_process() is None  # type: ignore[attr]
     else:
         is_main_process = mp.current_process().name == "MainProcess"
 
