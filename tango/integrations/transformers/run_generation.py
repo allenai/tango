@@ -169,6 +169,8 @@ class RunGeneration(Step[Iterable[List[str]]]):
         elif model.config_class.model_type in {"xlnet", "transfo-xl"}:
             prefix = prefix if prefix else PREFIX
         if model.__class__.__name__ in ["TransfoXLLMHeadModel"]:
+            # This actually doesn't work in the current version of transformers, which is probably a bug in the
+            # transformers library.
             tokenizer_kwargs = {"add_space_before_punct_symbol": True}
 
         if num_prefix_tokens is None:
