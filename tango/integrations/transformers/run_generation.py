@@ -131,9 +131,6 @@ class RunGeneration(Step[Iterable[List[str]]]):
 
         # HF does not do this? WTF?
         model.eval()
-        # Memory saving hack according to Iz
-        for parameter in model.parameters():
-            parameter.required_grad = False
 
         model.to(device)
         if fp16:
@@ -188,17 +185,18 @@ class RunGeneration(Step[Iterable[List[str]]]):
                 length = adjust_length_to_model(
                     max_length + encoded_batch["input_ids"].size(1), model
                 )
-            generated_sequences = model.generate(
-                **encoded_batch,
-                max_length=length,
-                temperature=temperature,
-                top_k=k,
-                top_p=p,
-                repetition_penalty=repetition_penalty,
-                do_sample=True,
-                num_return_sequences=num_return_sequences,
-                synced_gpus=n_gpu > 1,
-            )
+            with torch.inference_mode():
+                generated_sequences = model.generate(
+                    **encoded_batch,
+                    max_length=length,
+                    temperature=temperature,
+                    top_k=k,
+                    top_p=p,
+                    repetition_penalty=repetition_penalty,
+                    do_sample=True,
+                    num_return_sequences=num_return_sequences,
+                    synced_gpus=n_gpu > 1,
+                )
 
             generated_sequences = generated_sequences.view(
                 -1, num_return_sequences, *generated_sequences.shape[1:]
