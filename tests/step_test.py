@@ -34,3 +34,15 @@ class TestStep(TangoTestCase):
 
         step = Step.from_params({"type": "foo", "bar": {"x": 1}})
         assert step.result().x == 1
+
+    def test_no_hash_arguments(self):
+        @Step.register("no_hash_step")
+        class SkipArgStep(Step):
+            SKIP_ID_ARGUMENTS = {"arg"}
+
+            def run(self, arg: str) -> int:  # type: ignore
+                return 5
+
+        step1 = SkipArgStep(arg="foo")
+        step2 = SkipArgStep(arg="bar")
+        assert step1.unique_id == step2.unique_id

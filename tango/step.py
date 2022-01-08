@@ -102,6 +102,15 @@ class Step(Registrable, Generic[T]):
     """This specifies the format the results of this step will be serialized in. See the documentation
     for :class:`~tango.format.Format` for details."""
 
+    SKIP_ID_ARGUMENTS: Set[str] = set()
+    """If your :meth:`run()` method takes some arguments that don't affect the results, list them here.
+    Arguments listed here will not be used to calculate this step's unique ID, and thus changing those
+    arguments does not invalidate the cache.
+
+    For example, you might use this for the batch size in an inference step, where you only care about
+    the model output, not about how many outputs you can produce at the same time.
+    """
+
     def __init__(
         self,
         step_name: Optional[str] = None,
@@ -362,11 +371,16 @@ class Step(Registrable, Generic[T]):
 
             self.unique_id_cache += "-"
             if self.DETERMINISTIC:
+                hash_kwargs = {
+                    key: value
+                    for key, value in self.kwargs.items()
+                    if key not in self.SKIP_ID_ARGUMENTS
+                }
                 self.unique_id_cache += det_hash(
                     (
                         (self.format.__class__.__module__, self.format.__class__.__qualname__),
                         self.format.VERSION,
-                        self.kwargs,
+                        hash_kwargs,
                     )
                 )[:32]
             else:
