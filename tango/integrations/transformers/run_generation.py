@@ -79,13 +79,14 @@ def adjust_length_to_model(length, model):
 class RunGeneration(Step[Iterable[List[str]]]):
     FORMAT: Format = JsonFormat("gz")
     VERSION = "001"
+    SKIP_ID_ARGUMENTS = {"batch_size"}
 
     def run(  # type: ignore
         self,
         prompts: Iterable[str],
         model_name: str,
         *,
-        batch_size: int = 4,  # TODO: This should not be part of the unique id
+        batch_size: int = 4,
         max_length: int = 20,
         temperature: float = 1.0,
         repetition_penalty: float = 1.0,
