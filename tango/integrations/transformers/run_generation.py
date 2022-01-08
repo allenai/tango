@@ -114,17 +114,17 @@ class RunGeneration(Step[Iterable[List[str]]]):
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
         if tokenizer.pad_token is None:
-            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 
         if tokenizer.eos_token is None:
-            tokenizer.add_special_tokens({'eos_token': '[EOS]'})
+            tokenizer.add_special_tokens({"eos_token": "[EOS]"})
 
         eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
         pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
 
         try:
             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-            seq2seq_model = True   # Seq2Seq models don't return their own prefix.
+            seq2seq_model = True  # Seq2Seq models don't return their own prefix.
         except ValueError:
             model = AutoModelForCausalLM.from_pretrained(model_name)
             seq2seq_model = False
@@ -144,10 +144,7 @@ class RunGeneration(Step[Iterable[List[str]]]):
                 padding=True,
                 **tokenizer_kwargs,
             )
-            result = {
-                key: tensor.to(device)
-                for key, tensor in result.items()
-            }
+            result = {key: tensor.to(device) for key, tensor in result.items()}
             return result
 
         def prepare_batch_with_prefix(prompts: List[str]) -> Dict[str, torch.Tensor]:
@@ -216,20 +213,14 @@ class RunGeneration(Step[Iterable[List[str]]]):
 
             # strip padding
             generated_sequences = [
-                [
-                    strip_special_tokens(sequence)
-                    for sequence in per_prompt_sequences
-                ]
+                [strip_special_tokens(sequence) for sequence in per_prompt_sequences]
                 for per_prompt_sequences in generated_sequences
             ]
 
             # strip prefix
             if not seq2seq_model:
                 generated_sequences = [
-                    [
-                        sequence[num_prefix_tokens:]
-                        for sequence in per_prompt_sequences
-                    ]
+                    [sequence[num_prefix_tokens:] for sequence in per_prompt_sequences]
                     for per_prompt_sequences in generated_sequences
                 ]
 
