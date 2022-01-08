@@ -339,6 +339,8 @@ def initialize_logging(
         # Main process, set formatter and handlers, start logging thread.
         formatter = get_formatter(prefix)
 
+        # Create stdout and stderr handlers so that we can route DEBUG and INFO
+        # messages to stdout, and WARNING and ERROR messages to stderr.
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setLevel(level)
         stdout_handler.addFilter(WarningFilter())
@@ -351,6 +353,9 @@ def initialize_logging(
         root_logger.addHandler(stdout_handler)
         root_logger.addHandler(stderr_handler)
 
+        # Set up logging queue and thread to emit log records from worker processes/threads.
+        # Inspired by:
+        # https://docs.python.org/dev/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
         _LOGGING_QUEUE = mp.Queue()
         _LOGGING_THREAD = threading.Thread(
             target=logger_thread, args=(_LOGGING_QUEUE,), daemon=True

@@ -243,6 +243,8 @@ class TorchTrainStep(Step):
             try:
                 logging_queue = common_logging.get_logging_queue()
             except RuntimeError:
+                # Might happen if user is using tango as a library without the CLI
+                # and never called `common_logging.initialize_logging()`.
                 logging_queue = None
 
             mp.spawn(

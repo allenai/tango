@@ -43,9 +43,6 @@ class TestMain(TangoTestCase):
         stdout_lines = self.clean_log_lines(
             process_result.stdout.decode().replace("\r", "\n").split("\n")
         )
-        #  stderr_lines = self.clean_log_lines(
-        #      process_result.stderr.decode().replace("\r", "\n").split("\n")
-        #  )
 
         log_file = run_dir / "out.log"
         assert log_file.is_file()
@@ -60,9 +57,6 @@ class TestMain(TangoTestCase):
         ]
         for line in filtered_stdout_lines:
             assert line in cleaned_log_lines
-
-        #  for line in stderr_lines:
-        #      assert line in cleaned_log_lines
 
         return log_lines, cleaned_log_lines
 
