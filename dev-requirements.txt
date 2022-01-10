@@ -37,7 +37,7 @@ wheel
 Sphinx==4.3.1
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
-furo==2021.11.23
+furo==2022.1.2
 
 # Lets Sphinx parse markdown files in addition to rst.
 myst-parser==0.16.1
