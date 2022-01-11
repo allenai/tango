@@ -1,9 +1,11 @@
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 import more_itertools
 import numpy as np
 import torch
+from datasets import Dataset
+from datasets import DatasetDict as HfDatasetDict
 from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
@@ -27,7 +29,6 @@ from tango.common import DatasetDict
 from tango.common.logging import make_tqdm
 from tango.common.sequences import MappedSequence
 from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
-from tango.common.util import threaded_generator
 
 logger = logging.getLogger(__name__)
 tqdm = make_tqdm(logger)
@@ -172,7 +173,7 @@ def _generate(
 
     batches = more_itertools.chunked(tqdm(prompts, desc="Pre-processing prompts"), batch_size)
     encoded_batches = map(prepare_batch_fn, batches)
-    encoded_batches = threaded_generator(encoded_batches)
+    # encoded_batches = threaded_generator(encoded_batches)
 
     for encoded_batch in tqdm(encoded_batches, desc="Processing batches"):
         if seq2seq_model:
@@ -273,13 +274,13 @@ class RunGeneration(Step[Iterable[List[str]]]):
 @Step.register("transformers::run_generation_dataset")
 class RunGenerationDataset(Step[DatasetDict]):
     FORMAT: Format = SqliteDictFormat()
-    VERSION = "001"
+    VERSION = "002"
     SKIP_ID_ARGUMENTS = {"batch_size"}
 
     def run(  # type: ignore
         self,
         model_name: str,
-        input: DatasetDict,
+        input: Union[DatasetDict, HfDatasetDict],
         prompt_field: str,
         *,
         output_field: Optional[str] = None,
@@ -296,6 +297,8 @@ class RunGenerationDataset(Step[DatasetDict]):
         num_return_sequences: int = 1,
         fp16: bool = False,
     ) -> DatasetDict:
+        if isinstance(input, HfDatasetDict):
+            input = DatasetDict(input, {})
         if splits is None:
             splits = input.keys()
 
@@ -309,9 +312,12 @@ class RunGenerationDataset(Step[DatasetDict]):
                         len(output_split),
                         len(input_split) - len(output_split),
                     )
-                prompts = MappedSequence(
-                    lambda i: i[prompt_field], input_split[len(output_split) :]
-                )
+                if len(output_split) > 0:
+                    if isinstance(input_split, Dataset):
+                        input_split = input_split.select(range(len(output_split), len(input_split)))
+                    else:
+                        input_split = input_split[len(output_split) :]
+                prompts = MappedSequence(lambda i: i[prompt_field], input_split)
                 generations = _generate(
                     model_name,
                     prompts,
