@@ -291,20 +291,22 @@ def initialize_logging(
 
     level = logging._nameToLevel[log_level.upper()]
 
+    # Update global flags and corresponding environment variables, if necessary,
+    # so that child processes can read the environment variables to determine the right
+    # settings.
     TANGO_LOG_LEVEL = log_level
     os.environ["TANGO_LOG_LEVEL"] = log_level
+    if file_friendly_logging is not None:
+        FILE_FRIENDLY_LOGGING = file_friendly_logging
+        os.environ["FILE_FRIENDLY_LOGGING"] = str(file_friendly_logging).lower()
 
+    # Handle special cases for specific loggers:
     # filelock emits too many messages, so tell it to be quiet unless it has something
     # important to say.
     logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
-
     # We always want to see all click messages if we're running from the command line, and none otherwise.
     click_logger.setLevel(logging.DEBUG)
     click_logger.disabled = not enable_click_logs
-
-    if file_friendly_logging:
-        FILE_FRIENDLY_LOGGING = True
-        os.environ["FILE_FRIENDLY_LOGGING"] = "true"
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
@@ -313,6 +315,9 @@ def initialize_logging(
     if queue is not None:
         if is_main_process:
             raise ValueError("'queue' can only be given to initialize_logging() in child processes")
+
+        # Child process, set handler and level, no need to set formatting since only raw log records
+        # will be sent to the logging thread.
 
         queue_handler = logging.handlers.QueueHandler(queue)
         queue_handler.setLevel(level)
@@ -337,6 +342,7 @@ def initialize_logging(
 
     if is_main_process:
         # Main process, set formatter and handlers, start logging thread.
+
         formatter = get_formatter(prefix)
 
         # Create stdout and stderr handlers so that we can route DEBUG and INFO
