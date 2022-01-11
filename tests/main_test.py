@@ -152,6 +152,8 @@ class TestMain(TangoTestCase):
         all_logs = "\n".join(clean_log_lines)
         assert "[rank 0] Hello from worker 0!" in clean_log_lines
         assert "[rank 1] Hello from worker 1!" in clean_log_lines
+        assert "[rank 0] Hello from the click logger in worker 0!" in clean_log_lines
+        assert "[rank 1] Hello from the click logger in worker 1!" in clean_log_lines
         # Make sure tqdm output makes it into the log file.
         assert "progress from main process: 100%" in all_logs
         assert "progress from worker: 100%" in all_logs

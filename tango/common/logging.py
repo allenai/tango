@@ -113,6 +113,9 @@ For example,
 
 """
 
+# CLick logger disabled by default in case nobody calls initialize_logging().
+TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(os.environ.get("TANGO_CLICK_LOGGER_ENABLED", False))
+
 _LOGGING_QUEUE: Optional[mp.Queue] = None
 """
 Used to send log records from worker processes back to the main logging thread.
@@ -194,9 +197,7 @@ class ClickLoggerHandler(logging.Handler):
 
 
 click_logger.addHandler(ClickLoggerHandler())
-click_logger.disabled = (
-    True  # This is disabled by default, in case nobody calls initialize_logging().
-)
+click_logger.disabled = TANGO_CLICK_LOGGER_ENABLED
 
 
 def get_formatter(prefix: Optional[str] = None) -> TangoFormatter:
@@ -232,7 +233,7 @@ def get_logging_queue() -> mp.Queue:
 def initialize_logging(
     *,
     log_level: Optional[str] = None,
-    enable_click_logs: bool = False,
+    enable_click_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
     queue: Optional[mp.Queue] = None,
@@ -271,10 +272,7 @@ def initialize_logging(
         :func:`initialize_worker_logging()` from workers instead of this function.
 
     """
-    global FILE_FRIENDLY_LOGGING
-    global TANGO_LOG_LEVEL
-    global _LOGGING_THREAD
-    global _LOGGING_QUEUE
+    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLICK_LOGGER_ENABLED, _LOGGING_THREAD, _LOGGING_QUEUE
 
     is_main_process: bool
     if hasattr(mp, "parent_process"):  # python 3.8 or greater
@@ -288,6 +286,8 @@ def initialize_logging(
         log_level = "error"
     if file_friendly_logging is None:
         file_friendly_logging = FILE_FRIENDLY_LOGGING
+    if enable_click_logs is None:
+        enable_click_logs = TANGO_CLICK_LOGGER_ENABLED
 
     level = logging._nameToLevel[log_level.upper()]
 
@@ -299,6 +299,9 @@ def initialize_logging(
     if file_friendly_logging is not None:
         FILE_FRIENDLY_LOGGING = file_friendly_logging
         os.environ["FILE_FRIENDLY_LOGGING"] = str(file_friendly_logging).lower()
+    if enable_click_logs is not None:
+        TANGO_CLICK_LOGGER_ENABLED = enable_click_logs
+        os.environ["TANGO_CLICK_LOGGER_ENABLED"] = str(enable_click_logs).lower()
 
     # Handle special cases for specific loggers:
     # filelock emits too many messages, so tell it to be quiet unless it has something

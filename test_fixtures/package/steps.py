@@ -66,5 +66,6 @@ def _worker_function(worker_id: int, logging_queue: mp.Queue):
     common_logging.initialize_worker_logging(worker_id, logging_queue)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
+    common_logging.click_logger.info("Hello from the click logger in worker %d!", worker_id)
     for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):
         time.sleep(0.1)
