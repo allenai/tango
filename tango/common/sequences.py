@@ -1,7 +1,7 @@
 import bisect
 import random
 from collections import abc
-from typing import Optional, Sequence, Union
+from typing import Callable, Optional, Sequence, Union
 
 
 class ShuffledSequence(abc.Sequence):
@@ -83,3 +83,19 @@ class ConcatenatedSequence(abc.Sequence):
 
     def __contains__(self, item) -> bool:
         return any(s.__contains__(item) for s in self.sequences)
+
+
+class MappedSequence(abc.Sequence):
+    def __init__(self, fn: Callable, inner_sequence: Sequence):
+        self.inner = inner_sequence
+        self.fn = fn
+
+    def __getitem__(self, item):
+        item = self.inner.__getitem__(item)
+        return self.fn(item)
+
+    def __len__(self):
+        return self.inner.__len__()
+
+    def __contains__(self, item):
+        return any(e == item for e in self)
