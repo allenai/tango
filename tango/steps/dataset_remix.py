@@ -1,6 +1,7 @@
+import collections
 import random
 import re
-from typing import Any, Dict, Mapping, Sequence
+from typing import Any, Dict, List, Mapping, Sequence
 
 from tango.common.dataset_dict import DatasetDict
 from tango.common.sequences import (
@@ -12,7 +13,7 @@ from tango.step import Step
 
 
 @Step.register("dataset_remix")
-class DatasetRemixStep(Step):
+class DatasetRemixStep(Step[DatasetDict]):
     """
     This step can remix splits in a :class:`~tango.common.dataset_dict.DatasetDict` into new splits.
 
@@ -104,3 +105,34 @@ class DatasetRemixStep(Step):
             }
 
         return DatasetDict(splits=result, metadata=input.metadata)
+
+
+@Step.register("dataset_combine")
+class DatasetCombineStep(Step[DatasetDict]):
+    DETERMINISTIC = True
+    CACHEABLE = False  # This is so fast it's not worth caching.
+    VERSION = "001"
+
+    def run(  # type: ignore
+        self,
+        inputs: List[DatasetDict],
+        shuffle: bool = False,
+        random_seed: int = 1532637578,
+    ) -> DatasetDict:
+        split_to_datasets: Dict[str, List[Sequence]] = collections.defaultdict(lambda: [])
+        for input in inputs:
+            for split_name, sequence in input.items():
+                split_to_datasets[split_name].append(sequence)
+        result: Dict[str, Sequence] = {
+            split_name: ConcatenatedSequence(*sequences)
+            for split_name, sequences in split_to_datasets.items()
+        }
+
+        if shuffle:
+            random.seed(random_seed)
+            result = {
+                split_name: ShuffledSequence(split_instances)
+                for split_name, split_instances in result.items()
+            }
+
+        return DatasetDict(result, {})
