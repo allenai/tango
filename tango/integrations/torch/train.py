@@ -238,15 +238,6 @@ class TorchTrainStep(Step):
         if is_distributed:
             import torch.multiprocessing as mp
 
-            import tango.common.logging as common_logging
-
-            try:
-                logging_queue = common_logging.get_logging_queue()
-            except RuntimeError:
-                # Might happen if user is using tango as a library without the CLI
-                # and never called `common_logging.initialize_logging()`.
-                logging_queue = None
-
             mp.spawn(
                 _train,
                 args=(
@@ -259,7 +250,6 @@ class TorchTrainStep(Step):
                     validation_dataloader,
                     callbacks,
                     get_extra_imported_modules(),
-                    logging_queue,
                 ),
                 nprocs=num_workers,
             )
@@ -301,7 +291,6 @@ def _train(
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     include_package: Optional[Set[str]] = None,
-    logging_queue=None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
 
@@ -311,10 +300,10 @@ def _train(
         for package_name in include_package:
             import_extra_module(package_name)
 
-    if config.is_distributed and logging_queue is not None:
+    if config.is_distributed:
         import tango.common.logging as common_logging
 
-        common_logging.initialize_worker_logging(config.worker_id, logging_queue)
+        common_logging.initialize_worker_logging(config.worker_id)
     logger = logging.getLogger(TorchTrainStep.__name__)
 
     # Resolve and set device.

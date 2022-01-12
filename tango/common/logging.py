@@ -68,8 +68,10 @@ For example,
 
 import logging
 import logging.handlers
-import multiprocessing as mp
 import os
+import pickle
+import socketserver
+import struct
 import sys
 import threading
 from contextlib import contextmanager
@@ -79,7 +81,7 @@ import click
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived
-from .util import _parse_bool
+from .util import _parse_bool, _parse_optional_int, find_open_port
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
 """
@@ -116,15 +118,8 @@ For example,
 # CLick logger disabled by default in case nobody calls initialize_logging().
 TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(os.environ.get("TANGO_CLICK_LOGGER_ENABLED", False))
 
-_LOGGING_QUEUE: Optional[mp.Queue] = None
-"""
-Used to send log records from worker processes back to the main logging thread.
-"""
-
-_LOGGING_THREAD: Optional[threading.Thread] = None
-"""
-Thread used for logging records from worker processes.
-"""
+_LOGGING_HOST: str = os.environ.get("TANGO_LOGGING_HOST", "localhost")
+_LOGGING_PORT: Optional[int] = _parse_optional_int(os.environ.get("TANGO_LOGGING_PORT", None))
 
 
 class TangoLogger(logging.Logger):
@@ -173,6 +168,77 @@ class WorkerLogFilter(logging.Filter):
         return True
 
 
+class LogRecordStreamHandler(socketserver.StreamRequestHandler):
+    """Handler for a streaming logging request.
+
+    This basically logs the record using whatever logging policy is
+    configured locally.
+
+    Taken from
+    `the logging cookbook <https://docs.python.org/3.7/howto/logging-cookbook.html>`_.
+    """
+
+    def handle(self):
+        """
+        Handle multiple requests - each expected to be a 4-byte length,
+        followed by the LogRecord in pickle format. Logs the record
+        according to whatever policy is configured locally.
+        """
+        while True:
+            chunk = self.connection.recv(4)
+            if len(chunk) < 4:
+                break
+            slen = struct.unpack(">L", chunk)[0]
+            chunk = self.connection.recv(slen)
+            while len(chunk) < slen:
+                chunk = chunk + self.connection.recv(slen - len(chunk))
+            obj = self.unPickle(chunk)
+            record = logging.makeLogRecord(obj)
+            self.handleLogRecord(record)
+
+    def unPickle(self, data):
+        return pickle.loads(data)
+
+    def handleLogRecord(self, record):
+        name = record.name
+        logger = logging.getLogger(name)
+        # N.B. EVERY record gets logged. This is because Logger.handle
+        # is normally called AFTER logger-level filtering. If you want
+        # to do filtering, do it at the client end to save wasting
+        # cycles and network bandwidth!
+        logger.handle(record)
+
+
+class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
+    """
+    Simple TCP socket-based logging receiver.
+
+    Taken from
+    `the logging cookbook <https://docs.python.org/3.7/howto/logging-cookbook.html>`_.
+    """
+
+    allow_reuse_address = True
+
+    def __init__(self, host: str, port: int):
+        super().__init__((host, port), LogRecordStreamHandler)
+        self.abort = False
+        self.timeout = 0.1
+
+    def serve_until_stopped(self):
+        import select
+
+        while not self.abort:
+            rd, _, _ = select.select([self.socket.fileno()], [], [], self.timeout)
+            if rd:
+                self.handle_request()
+
+        #  print("aborting!")
+
+
+_LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
+_LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
+
+
 logging.setLoggerClass(TangoLogger)
 
 
@@ -200,34 +266,9 @@ click_logger.addHandler(ClickLoggerHandler())
 click_logger.disabled = TANGO_CLICK_LOGGER_ENABLED
 
 
-def get_formatter(prefix: Optional[str] = None) -> TangoFormatter:
+def get_formatter() -> TangoFormatter:
     log_format = "[%(process)d %(asctime)s %(levelname)s %(name)s] %(message)s"
-    if prefix is not None:
-        log_format = prefix + " " + log_format
     return TangoFormatter(log_format)
-
-
-def logger_thread(queue):
-    """
-    Receives log records from worker processes and handles them.
-    """
-    while True:
-        record = queue.get()
-        if record is None:
-            break
-        logger = logging.getLogger(record.name)
-        logger.handle(record)
-
-
-def get_logging_queue() -> mp.Queue:
-    """
-    Get the logging queue to pass to :func:`initialize_logging()` from worker processes.
-    """
-    if _LOGGING_QUEUE is None:
-        raise RuntimeError(
-            "logging queue has not been initialized, did you forget to call 'initialize_logging()'?"
-        )
-    return _LOGGING_QUEUE
 
 
 def initialize_logging(
@@ -235,9 +276,6 @@ def initialize_logging(
     log_level: Optional[str] = None,
     enable_click_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
-    prefix: Optional[str] = None,
-    queue: Optional[mp.Queue] = None,
-    worker_rank: Optional[int] = None,
 ):
     """
     Initialize logging, which includes setting the global log level, format, and configuring
@@ -261,24 +299,52 @@ def initialize_logging(
         Set to ``True`` to enable messages from the :data:`click_logger`.
     file_friendly_logging : :class:`bool`
         Enable or disable file friendly logging. Defaults to the value of :data:`FILE_FRIENDLY_LOGGING`.
-    prefix : :class:`str`
-        An optional prefix to prepend to log lines.
-    queue : :class:`multiprocessing.Queue`
-        This should only be used from worker threads/processes, and should be set to result
-        of :func:`get_logging_queue()`, but it's better to use :func:`initialize_worker_logging()`
-        from workers instead of this function.
-    worker_rank : :class:`int`
-        This should only be used from worker threads/processes, but it's better to use
-        :func:`initialize_worker_logging()` from workers instead of this function.
 
     """
-    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLICK_LOGGER_ENABLED, _LOGGING_THREAD, _LOGGING_QUEUE
+    import multiprocessing as mp
 
     is_main_process: bool
     if hasattr(mp, "parent_process"):  # python 3.8 or greater
         is_main_process = mp.parent_process() is None  # type: ignore
     else:
         is_main_process = mp.current_process().name == "MainProcess"
+    if not is_main_process:
+        raise RuntimeError(
+            "You can only call 'initialize_logging()' from the main process. "
+            "Use 'initialize_worker_logging()' for child/worker processes instead."
+        )
+
+    _initialize_logging(
+        log_level=log_level,
+        enable_click_logs=enable_click_logs,
+        file_friendly_logging=file_friendly_logging,
+        main_process=True,
+    )
+
+
+def initialize_worker_logging(worker_rank: Optional[int] = None):
+    """
+    Initialize logging in a worker thread/process.
+
+    Parameters
+    ----------
+    worker_rank : :class:`int`
+        The rank/ID of the worker.
+
+    """
+    return _initialize_logging(worker_rank=worker_rank, main_process=False)
+
+
+def _initialize_logging(
+    *,
+    log_level: Optional[str] = None,
+    enable_click_logs: Optional[bool] = None,
+    file_friendly_logging: Optional[bool] = None,
+    worker_rank: Optional[int] = None,
+    main_process: bool = True,
+):
+    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLICK_LOGGER_ENABLED
+    global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD
 
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
@@ -315,38 +381,8 @@ def initialize_logging(
     root_logger.setLevel(level)
     root_logger.handlers.clear()
 
-    if queue is not None:
-        if is_main_process:
-            raise ValueError("'queue' can only be given to initialize_logging() in child processes")
-
-        # Child process, set handler and level, no need to set formatting since only raw log records
-        # will be sent to the logging thread.
-
-        queue_handler = logging.handlers.QueueHandler(queue)
-        queue_handler.setLevel(level)
-        if worker_rank is not None:
-            queue_handler.addFilter(WorkerLogFilter(worker_rank))
-
-        from .tqdm import logger as tqdm_logger
-
-        for logger in (root_logger, click_logger, tqdm_logger):
-            logger.handlers.clear()
-            logger.addHandler(queue_handler)
-
-    # Write uncaught exceptions to the logs.
-    def excepthook(exctype, value, traceback):
-        # For interruptions, call the original exception handler.
-        if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
-            sys.__excepthook__(exctype, value, traceback)
-            return
-        root_logger.critical("Uncaught exception", exc_info=(exctype, value, traceback))
-
-    sys.excepthook = excepthook
-
-    if is_main_process:
-        # Main process, set formatter and handlers, start logging thread.
-
-        formatter = get_formatter(prefix)
+    if main_process:
+        formatter = get_formatter()
 
         # Create stdout and stderr handlers so that we can route DEBUG and INFO
         # messages to stdout, and WARNING and ERROR messages to stderr.
@@ -362,31 +398,45 @@ def initialize_logging(
         root_logger.addHandler(stdout_handler)
         root_logger.addHandler(stderr_handler)
 
-        # Set up logging queue and thread to emit log records from worker processes/threads.
+        # Main process: set formatter and handlers, initialize logging socket and server.
+        # Set up logging socket to emit log records from worker processes/threads.
         # Inspired by:
-        # https://docs.python.org/dev/howto/logging-cookbook.html#logging-to-a-single-file-from-multiple-processes
-        _LOGGING_QUEUE = mp.Queue()
-        _LOGGING_THREAD = threading.Thread(
-            target=logger_thread, args=(_LOGGING_QUEUE,), daemon=True
+        # https://docs.python.org/3.7/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
+        if _LOGGING_PORT is None:
+            _LOGGING_PORT = find_open_port()
+            os.environ["TANGO_LOGGING_PORT"] = str(_LOGGING_PORT)
+        _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, _LOGGING_PORT)
+        _LOGGING_SERVER_THREAD = threading.Thread(
+            target=_LOGGING_SERVER.serve_until_stopped, daemon=True
         )
-        _LOGGING_THREAD.start()
+        _LOGGING_SERVER_THREAD.start()
+    else:
+        # Child process: set handler and level, no need to set formatting since only raw log records
+        # will be sent to the logging socket.
+        if _LOGGING_PORT is None:
+            raise ValueError(
+                "missing logging socket configuration, "
+                "did you forget to call 'initialize_logging()' from the main process?"
+            )
+        socket_handler = logging.handlers.SocketHandler(_LOGGING_HOST, _LOGGING_PORT)
+        if worker_rank is not None:
+            socket_handler.addFilter(WorkerLogFilter(worker_rank))
 
+        from .tqdm import logger as tqdm_logger
 
-def initialize_worker_logging(worker_rank: int, queue: mp.Queue):
-    """
-    Initialize logging in a worker thread/process.
+        for logger in (root_logger, click_logger, tqdm_logger):
+            logger.handlers.clear()
+            logger.addHandler(socket_handler)
 
-    Parameters
-    ----------
-    worker_rank : :class:`int`
-        The rank/ID of the worker.
-    queue : :class:`multiprocessing.Queue`
-        The logging queue that sends records to the main logging thread. The ``queue`` itself
-        should be obtain from the :func:`get_logging_queue()` function **in the main thread/process**,
-        and then should be sent to the worker function as an argument.
+    # Write uncaught exceptions to the logs.
+    def excepthook(exctype, value, traceback):
+        # For interruptions, call the original exception handler.
+        if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
+            sys.__excepthook__(exctype, value, traceback)
+            return
+        root_logger.critical("Uncaught exception", exc_info=(exctype, value, traceback))
 
-    """
-    return initialize_logging(queue=queue, worker_rank=worker_rank)
+    sys.excepthook = excepthook
 
 
 def teardown_logging():
@@ -394,14 +444,17 @@ def teardown_logging():
     Cleanup any logging fixtures created from :func:`initialize_logging()`. Should
     be called at the end of your script.
     """
-    global _LOGGING_QUEUE
-    global _LOGGING_THREAD
+    global _LOGGING_SERVER, _LOGGING_SERVER_THREAD
 
-    if _LOGGING_QUEUE is not None:
-        _LOGGING_QUEUE.put(None)
+    if _LOGGING_SERVER is not None:
+        _LOGGING_SERVER.abort = True
 
-    if _LOGGING_THREAD is not None:
-        _LOGGING_THREAD.join()
+    if _LOGGING_SERVER_THREAD is not None:
+        _LOGGING_SERVER_THREAD.join()
+        _LOGGING_SERVER_THREAD = None
+
+    if _LOGGING_SERVER is not None:
+        _LOGGING_SERVER = None
 
 
 def add_file_handler(filepath: PathOrStr) -> logging.FileHandler:

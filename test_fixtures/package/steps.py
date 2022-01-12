@@ -50,9 +50,7 @@ class MultiprocessingStep(Step):
 
         workers = []
         for i in range(num_proc):
-            worker = mp.Process(
-                target=_worker_function, args=(i, common_logging.get_logging_queue())
-            )
+            worker = mp.Process(target=_worker_function, args=(i,))
             workers.append(worker)
             worker.start()
 
@@ -62,8 +60,8 @@ class MultiprocessingStep(Step):
         return True
 
 
-def _worker_function(worker_id: int, logging_queue: mp.Queue):
-    common_logging.initialize_worker_logging(worker_id, logging_queue)
+def _worker_function(worker_id: int):
+    common_logging.initialize_worker_logging(worker_id)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
     common_logging.click_logger.info("Hello from the click logger in worker %d!", worker_id)

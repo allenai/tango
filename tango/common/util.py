@@ -90,6 +90,12 @@ def _parse_bool(value: Union[bool, str]) -> bool:
     return False
 
 
+def _parse_optional_int(value: Optional[str]) -> Optional[int]:
+    if value is not None:
+        return int(value)
+    return None
+
+
 def find_submodules(
     module: Optional[str] = None,
     match: Optional[Set[str]] = None,
@@ -153,3 +159,16 @@ def could_be_class_name(name: str) -> bool:
 
 def _is_valid_python_name(name: str) -> bool:
     return bool(name and name[0].isalpha() and name.isalnum())
+
+
+def find_open_port() -> int:
+    """
+    Find a random open port on local host.
+    """
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        # Passes 0 means find any open port.
+        # See https://stackoverflow.com/questions/1365265/on-localhost-how-do-i-pick-a-free-port-number
+        sock.bind(("", 0))
+        return sock.getsockname()[1]
