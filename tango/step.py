@@ -390,6 +390,9 @@ class Step(Registrable, Generic[T]):
 
         return self.unique_id_cache
 
+    def __str__(self):
+        return self.unique_id
+
     def __hash__(self):
         """
         A step's hash is just its unique ID.
