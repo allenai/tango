@@ -103,9 +103,10 @@ def initialize_logging(
     )
     os.environ["TANGO_LOG_LEVEL"] = log_level
 
-    # filelock emits too many messages, so tell it to be quiet unless it has something
+    # These loggers emit too many messages, so we tell them to be quiet unless they have something
     # important to say.
-    logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+    for loud_logger in {"filelock", "sqlitedict"}:
+        logging.getLogger(loud_logger).setLevel(max(level, logging.WARNING))
 
     # We always want to see all click messages if we're running from the command line, and none otherwise.
     click_logger.setLevel(logging.DEBUG)
