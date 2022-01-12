@@ -6,7 +6,7 @@
 flake8
 
 # Static type checking
-mypy==0.930
+mypy==0.931
 types-PyYAML
 types-setuptools
 
@@ -30,11 +30,11 @@ codecov
 
 # Needed for packaging and uploading to PyPi
 twine>=1.11.0
-setuptools
+setuptools<=59.5.0   # PyTorch used some undocumented stuff from setuptools that broke when they removed it. We can get rid of this pin when PyTorch 1.10.2 is out.
 wheel
 
 # Building docs
-Sphinx==4.3.1
+Sphinx==4.3.2
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
 furo==2022.1.2
