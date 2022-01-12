@@ -30,6 +30,13 @@ local dataset_steps = std.foldl(
             "prompt_field": "inputs_pretokenized",
             "output_field": "generation",
             "splits": ["validation"]
+        },
+        ["eval_" + dataset_name]: {
+            "type": "rouge_score",
+            "input": {"ref": "generation_" + dataset_name},
+            "input_split": "validation",
+            "target_field": "targets_pretokenized",
+            "prediction_field": "generation"
         }
     },
     datasets,
@@ -45,5 +52,12 @@ local dataset_steps = std.foldl(
                 datasets
             )
         },
+        "all_evaluations": {
+            "type": "rouge_score",
+            "input": {"ref": "all_generations"},
+            "input_split": "validation",
+            "target_field": "targets_pretokenized",
+            "prediction_field": "generation"
+        }
     }
 }
