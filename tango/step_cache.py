@@ -217,7 +217,7 @@ class LocalStepCache(StepCache):
         if isinstance(step_or_unique_id, Step):
             if not step_or_unique_id.cache_results:
                 raise RuntimeError(
-                    f"Uncacheable steps (like {step_or_unique_id.name}) don't have step directories."
+                    f"Uncacheable steps (like '{step_or_unique_id.name}') don't have step directories."
                 )
             unique_id = step_or_unique_id.unique_id
         else:
