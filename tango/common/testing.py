@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 from tango.common.aliases import PathOrStr
-from tango.common.logging import initialize_logging
+from tango.common.logging import initialize_logging, teardown_logging
 
 
 class TangoTestCase:
@@ -104,3 +104,4 @@ def run_experiment(
         yield test_case.run(config, overrides=overrides)
     finally:
         test_case.teardown_method()
+        teardown_logging()

@@ -117,9 +117,6 @@ For example,
 # CLick logger disabled by default in case nobody calls initialize_logging().
 TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(os.environ.get("TANGO_CLICK_LOGGER_ENABLED", False))
 
-_LOGGING_HOST: str = os.environ.get("TANGO_LOGGING_HOST", "localhost")
-_LOGGING_PORT: Optional[int] = _parse_optional_int(os.environ.get("TANGO_LOGGING_PORT", None))
-
 
 class TangoLogger(logging.Logger):
     """
@@ -234,6 +231,8 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
         #  print("aborting!")
 
 
+_LOGGING_HOST: str = os.environ.get("TANGO_LOGGING_HOST", "localhost")
+_LOGGING_PORT: Optional[int] = _parse_optional_int(os.environ.get("TANGO_LOGGING_PORT", None))
 _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
@@ -443,7 +442,7 @@ def teardown_logging():
     Cleanup any logging fixtures created from :func:`initialize_logging()`. Should
     be called at the end of your script.
     """
-    global _LOGGING_SERVER, _LOGGING_SERVER_THREAD
+    global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD
 
     if _LOGGING_SERVER is not None:
         _LOGGING_SERVER.abort = True
