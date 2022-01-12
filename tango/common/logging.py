@@ -33,8 +33,7 @@ Logging from worker processes or threads
 If you have steps or other function that spawn workers, and you want to enable logging within
 those workers, you can call the :func:`initialize_worker_logging()` function to configure
 logging within each worker. This assumes that you've called :func:`initialize_logging()` from the
-main process (the tango CLI does this for you), and you've passed the logging queue
-as an argument to your worker functions. You can get this queue by calling :func:`get_logging_queue()`.
+main process (the tango CLI does this for you).
 
 For example,
 
@@ -44,14 +43,14 @@ For example,
     import multiprocessing as mp
 
     from tango import Step
-    from tango.common.logging import initialize_worker_logging, get_logging_queue
+    from tango.common.logging import initialize_worker_logging
 
     @Step.register("multiprocessing_step")
     class MultiprocessingStep(Step):
         def run(self, num_proc: int = 2) -> bool:  # type: ignore
             workers = []
             for i in range(num_proc):
-                worker = mp.Process(target=_worker_function, args=(i, get_logging_queue()))
+                worker = mp.Process(target=_worker_function, args=(i,))
                 workers.append(worker)
                 worker.start()
             for worker in workers:
@@ -59,8 +58,8 @@ For example,
             return True
 
 
-    def _worker_function(worker_id: int, logging_queue: mp.Queue):
-        initialize_worker_logging(worker_id, logging_queue)
+    def _worker_function(worker_id: int):
+        initialize_worker_logging(worker_rank=worker_id)
         logger = logging.getLogger(MultiprocessingStep.__name__)
         logger.info("Hello from worker %d!", worker_id)
 

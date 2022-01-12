@@ -20,6 +20,4 @@ Reference
 
 .. autofunction:: tango.common.logging.file_handler
 
-.. autofunction:: tango.common.logging.get_logging_queue
-
 .. autoclass:: tango.common.logging.TangoLogger
