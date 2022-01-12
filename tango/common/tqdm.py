@@ -79,6 +79,11 @@ class TqdmToLogsWriter:
 
 
 class Tqdm:
+    """
+    A `tqdm <https://tqdm.github.io/>`_ wrapper that respects
+    :data:`~tango.common.logging.FILE_FRIENDLY_LOGGING` and other Tango logging configurations.
+    """
+
     @staticmethod
     def tqdm(*args, **kwargs):
         new_kwargs = Tqdm.get_updated_kwargs(**kwargs)

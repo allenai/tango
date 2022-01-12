@@ -1,5 +1,18 @@
 """
-Tools for configuring logging.
+Tango makes heavy use of the :mod:`logging` module from the standard library to convey information to users.
+When you're writing your own :class:`~tango.step.Step` implementations we encourage you to also use standard
+Python logging as opposed to :func:`print` or other functions that write directly to ``stdout`` or ``stderr``.
+This is easy enough since each :class:`~tango.step.Step` class already comes with its own logger:
+:attr:`Step.logger <tango.step.Step.logger>`.
+
+When using the `Tango CLI <./commands.html>`_ you can set the log level in several different ways:
+
+1. Through a Tango `global settings <./commands.html#global-settings>`_ file.
+2. With the environment variable ``TANGO_LOG_LEVEL``.
+3. Or with the ``--log-level`` command-line option.
+
+In some cases (like when running on `Beaker <https://beaker.org>`_) you may also want
+to enable `"file friendly logging" <#tango.common.logging.FILE_FRIENDLY_LOGGING>`_.
 
 Configuring logging in your own CLI
 -----------------------------------
@@ -37,7 +50,7 @@ main process (the tango CLI does this for you).
 
 For example,
 
-.. code-block::
+.. testcode::
 
     import logging
     import multiprocessing as mp
@@ -85,8 +98,12 @@ from .util import _parse_bool, _parse_optional_int, find_open_port
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
 """
 If this flag is set to ``True``, we remove special styling characters from log messages,
-add newlines to tqdm output even on an interactive terminal, and we slow
-down tqdm's output to only once every 10 seconds.
+add newlines to :class:`~tango.common.tqdm.Tqdm` output even on an interactive terminal, and we slow
+down :class:`~tango.common.tqdm.Tqdm`'s output to only once every 10 seconds.
+
+.. attention::
+    Unfortunately this won't affect ``tqdm`` output from other libraries that don't use
+    Tango's :class:`~tango.common.tqdm.Tqdm` wrapper.
 
 By default, it is set to ``False``. It can be changed by setting the corresponding environment
 variable (``FILE_FRIENDLY_LOGGING``) or field in a :class:`~tango.__main__.TangoGlobalSettings`

@@ -177,6 +177,9 @@ class Step(Registrable, Generic[T]):
 
     @property
     def logger(self) -> logging.Logger:
+        """
+        A :class:`logging.Logger` that can be used within the :meth:`run()` method.
+        """
         return logging.getLogger(self.__class__.__name__)
 
     @classmethod
