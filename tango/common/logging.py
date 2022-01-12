@@ -221,7 +221,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
     def __init__(self, host: str, port: int):
         super().__init__((host, port), LogRecordStreamHandler)
         self.abort = False
-        self.timeout = 0.1
+        self.timeout = 0.2
 
     def serve_until_stopped(self):
         import select
