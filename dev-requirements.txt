@@ -6,7 +6,7 @@
 flake8
 
 # Static type checking
-mypy==0.930
+mypy==0.931
 types-PyYAML
 types-setuptools
 
