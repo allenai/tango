@@ -1,4 +1,4 @@
-local model = "gpt2";
+local model = "bigscience/T0_3B";
 local batch_size = 8;
 
 local datasets = [
