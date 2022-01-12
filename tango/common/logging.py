@@ -451,6 +451,9 @@ def _initialize_logging(
 
     sys.excepthook = excepthook
 
+    # Ensure warnings issued by the 'warnings' module will be redirected to the logging system.
+    logging.captureWarnings(True)
+
 
 def teardown_logging():
     """

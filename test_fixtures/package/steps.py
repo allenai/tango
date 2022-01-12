@@ -44,6 +44,10 @@ class RandomStringStep(Step):
 
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
+    """
+    Mainly used to test that logging works properly in child processes.
+    """
+
     def run(self, num_proc: int = 2) -> bool:  # type: ignore
         for _ in Tqdm.tqdm(list(range(10)), desc="progress from main process"):
             time.sleep(0.1)
