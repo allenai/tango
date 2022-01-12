@@ -228,8 +228,6 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
             if rd:
                 self.handle_request()
 
-        #  print("aborting!")
-
 
 _LOGGING_HOST: str = os.environ.get("TANGO_LOGGING_HOST", "localhost")
 _LOGGING_PORT: Optional[int] = _parse_optional_int(os.environ.get("TANGO_LOGGING_PORT", None))
