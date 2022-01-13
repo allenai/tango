@@ -321,17 +321,12 @@ def initialize_logging(
         is_main_process = mp.parent_process() is None  # type: ignore
     else:
         is_main_process = mp.current_process().name == "MainProcess"
-    if not is_main_process:
-        raise RuntimeError(
-            "You can only call 'initialize_logging()' from the main process. "
-            "Use 'initialize_worker_logging()' for child/worker processes instead."
-        )
 
     _initialize_logging(
         log_level=log_level,
         enable_click_logs=enable_click_logs,
         file_friendly_logging=file_friendly_logging,
-        main_process=True,
+        main_process=is_main_process,
     )
 
 
