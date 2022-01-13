@@ -43,7 +43,7 @@ If you want to have logs written to a file, you can use the :func:`file_handler`
 Logging from worker processes or threads
 ----------------------------------------
 
-If you have steps or other function that spawn workers, and you want to enable logging within
+If you have steps or other functions that spawn workers, and you want to enable logging within
 those workers, you can call the :func:`initialize_worker_logging()` function to configure
 logging within each worker. This assumes that you've called :func:`initialize_logging()` from the
 main process (the tango CLI does this for you).
@@ -131,7 +131,7 @@ For example,
 
 """
 
-# CLick logger disabled by default in case nobody calls initialize_logging().
+# Click logger disabled by default in case nobody calls initialize_logging().
 TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(os.environ.get("TANGO_CLICK_LOGGER_ENABLED", False))
 
 
