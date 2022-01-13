@@ -146,10 +146,36 @@ class TangoLogger(logging.Logger):
 
     def __init__(self, name):
         super().__init__(name)
+        self._seen_msgs = set()
 
     def log(self, level, msg, *args, **kwargs):
         msg = msg if not FILE_FRIENDLY_LOGGING else click.unstyle(msg)
         super().log(level, msg, *args, **kwargs)
+
+    def debug_once(self, msg, *args, **kwargs):
+        if msg not in self._seen_msgs:
+            self.debug(msg, *args, **kwargs)
+            self._seen_msgs.add(msg)
+
+    def info_once(self, msg, *args, **kwargs):
+        if msg not in self._seen_msgs:
+            self.info(msg, *args, **kwargs)
+            self._seen_msgs.add(msg)
+
+    def warning_once(self, msg, *args, **kwargs):
+        if msg not in self._seen_msgs:
+            self.warning(msg, *args, **kwargs)
+            self._seen_msgs.add(msg)
+
+    def error_once(self, msg, *args, **kwargs):
+        if msg not in self._seen_msgs:
+            self.error(msg, *args, **kwargs)
+            self._seen_msgs.add(msg)
+
+    def critical_once(self, msg, *args, **kwargs):
+        if msg not in self._seen_msgs:
+            self.critical(msg, *args, **kwargs)
+            self._seen_msgs.add(msg)
 
 
 class TangoFormatter(logging.Formatter):
