@@ -30,7 +30,7 @@ codecov
 
 # Needed for packaging and uploading to PyPi
 twine>=1.11.0
-setuptools<=59.5.0   # PyTorch used some undocumented stuff from setuptools that broke when they removed it. We can get rid of this pin when PyTorch 1.10.2 is out.
+setuptools<60.6.0   # PyTorch used some undocumented stuff from setuptools that broke when they removed it. We can get rid of this pin when PyTorch 1.10.2 is out.
 wheel
 
 # Building docs
