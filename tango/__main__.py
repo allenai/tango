@@ -76,9 +76,14 @@ from typing import List, Optional, Sequence, Union
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
+from tango.common.logging import (
+    click_logger,
+    file_handler,
+    initialize_logging,
+    teardown_logging,
+)
 from tango.common.params import Params
 from tango.common.util import import_extra_module
 from tango.version import VERSION
@@ -201,7 +206,7 @@ def main(
     if file_friendly_logging is not None:
         config.file_friendly_logging = file_friendly_logging
 
-    common_logging.initialize_logging(
+    initialize_logging(
         log_level=config.log_level,
         file_friendly_logging=config.file_friendly_logging,
         enable_click_logs=True,
@@ -212,7 +217,7 @@ def main(
 
 @main.result_callback()
 def cleanup(*args, **kwargs):
-    common_logging.teardown_logging()
+    teardown_logging()
 
 
 @main.command(
@@ -299,9 +304,7 @@ def server(workspace_dir: Union[str, os.PathLike]):
     workspace_dir = Path(workspace_dir)
     workspace = LocalWorkspace(workspace_dir)
     server = WorkspaceServer.on_free_port(workspace)
-    common_logging.click_logger.info(
-        "Server started at " + click.style(server.address_for_display(), bold=True)
-    )
+    click_logger.info("Server started at " + click.style(server.address_for_display(), bold=True))
     server.serve_forever()
 
 
@@ -320,18 +323,16 @@ def info(config: TangoGlobalSettings):
 
     from tango.common.util import find_integrations, import_module_and_submodules
 
-    common_logging.click_logger.info(
-        f"Tango version {VERSION} (python {platform.python_version()})"
-    )
+    click_logger.info(f"Tango version {VERSION} (python {platform.python_version()})")
 
     # Show info about config.
     if config.path is not None:
-        common_logging.click_logger.info("\nConfig:")
-        common_logging.click_logger.info(
+        click_logger.info("\nConfig:")
+        click_logger.info(
             click.style(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
         )
         if config.include_package:
-            common_logging.click_logger.info("\n   Included packages:")
+            click_logger.info("\n   Included packages:")
             for package in config.include_package:
                 is_found = True
                 try:
@@ -339,16 +340,14 @@ def info(config: TangoGlobalSettings):
                 except (ModuleNotFoundError, ImportError):
                     is_found = False
                 if is_found:
-                    common_logging.click_logger.info(
-                        click.style(f"   \N{check mark} {package}", fg="green")
-                    )
+                    click_logger.info(click.style(f"   \N{check mark} {package}", fg="green"))
                 else:
-                    common_logging.click_logger.info(
+                    click_logger.info(
                         click.style(f"   \N{ballot x} {package} (not found)", fg="red")
                     )
 
     # Show info about integrations.
-    common_logging.click_logger.info("\nIntegrations:")
+    click_logger.info("\nIntegrations:")
     for integration in find_integrations():
         name = integration.split(".")[-1]
         is_installed = True
@@ -357,11 +356,9 @@ def info(config: TangoGlobalSettings):
         except (ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
-            common_logging.click_logger.info(click.style(f" \N{check mark} {name}", fg="green"))
+            click_logger.info(click.style(f" \N{check mark} {name}", fg="green"))
         else:
-            common_logging.click_logger.info(
-                click.style(f" \N{ballot x} {name} (not installed)", fg="yellow")
-            )
+            click_logger.info(click.style(f" \N{ballot x} {name} (not installed)", fg="yellow"))
 
 
 def _run(
@@ -395,7 +392,7 @@ def _run(
         from tempfile import mkdtemp
 
         workspace_dir = mkdtemp(prefix="tango-")
-        common_logging.click_logger.info(
+        click_logger.info(
             "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
     workspace_dir = Path(workspace_dir)
@@ -408,16 +405,39 @@ def _run(
     run_dir = workspace.run_dir(run_name)
 
     # Capture logs to file.
-    with common_logging.file_handler(run_dir / "out.log"):
+    with file_handler(run_dir / "out.log"):
+        click_logger.info(
+            click.style("Starting new run ", fg="green")
+            + click.style(run_name, fg="green", bold=True)
+        )
+
         # Initialize server.
-        server = None
         if start_server:
             server = WorkspaceServer.on_free_port(workspace)
             server.serve_in_background()
+            click_logger.info(
+                "Server started at " + click.style(server.address_for_display(run_name), bold=True)
+            )
 
         # Initialize Executor and execute the step graph.
-        executor = Executor(workspace=workspace, include_package=include_package, server=server)
-        executor.execute_step_graph(step_graph, run_name=run_name)
+        executor = Executor(workspace=workspace, include_package=include_package)
+        executor.execute_step_graph(step_graph)
+
+        # Print everything that has been computed.
+        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+        for step in ordered_steps:
+            if step in workspace.step_cache:
+                info = workspace.step_info(step)
+                click_logger.info(
+                    click.style("\N{check mark} The output for ", fg="green")
+                    + click.style(f'"{step.name}"', bold=True, fg="green")
+                    + click.style(" is in ", fg="green")
+                    + click.style(f"{info.result_location}", bold=True, fg="green")
+                )
+
+        click_logger.info(
+            click.style("Finished run ", fg="green") + click.style(run_name, fg="green", bold=True)
+        )
 
     return run_dir
 
