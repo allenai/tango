@@ -59,7 +59,43 @@ class DatasetRemixStep(Step[DatasetDict]):
         random_seed: int = 1532637578,
     ) -> DatasetDict:
         """
-        Remix the dataset.
+        Remixes and shuffles a dataset. This is done lazily, so all operations are fast.
+
+        Parameters
+        ----------
+        input : :class:`tango.common.DatasetDict`
+            The input dataset that will be remixed.
+        new_splits : :class:`Dict[str, str]`
+            Specifies the new splits that the output dataset should have. Keys are the name of the new
+            splits. Values refer to the original splits. You can refer to original splits in the following ways:
+
+            * Mention the original split name to copy it to a new name.
+            * Mention the original split name with Python's slicing syntax to select part of the original
+              split's instances. For example, ``"train[:1000]"`` selects the first 1000 instances from the
+              ``"train"`` split.
+            * ``"instances + instances"`` concatenates the instances into one split.
+
+            You can combine these possibilities.
+        keep_old_splits : :class:`bool`
+            Whether to keep the splits from the input dataset in addition to the new ones given by
+            ``new_splits``.
+        shuffle_before : :class:`bool`
+            Whether to shuffle the input splits before creating the new ones.
+
+            If you need shuffled instances and you're not sure the input is properly shuffled, use this.
+        shuffle_after : :class:`bool`
+            Whether to shuffle the input splits after creating the new ones.
+
+            If you need shuffled instances and you're slicing or concatenating splits, use this.
+
+            If you want to be on the safe side, shuffle both before and after. Shuffling is a cheap operation.
+        random_seed : :class:`int`
+            Random seed, affects shuffling
+
+        Returns
+        -------
+        :class:`tango.common.DatasetDict`
+            Returns a new dataset that is appropriately remixed.
         """
         random.seed(random_seed)
 
