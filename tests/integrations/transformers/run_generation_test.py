@@ -6,7 +6,7 @@ from tango.integrations.transformers import RunGenerationDataset
 
 class TestRunGeneration(TangoTestCase):
     def test_run_generation(self):
-        step = Step.from_params( # type: ignore[assignment]
+        step = Step.from_params(  # type: ignore[assignment]
             {
                 "type": "transformers::run_generation",
                 "prompts": ["Tango is the future of", "Everybody should be using Tango to"],
@@ -37,4 +37,7 @@ class TestRunGeneration(TangoTestCase):
         assert len(train_split) == 2
         assert len(train_split[1]) == 2
         assert train_split[1]["prompt"] == "Everybody should be using Tango to"
-        assert all(g.startswith("Everybody should be using Tango to") for g in train_split[1]["prompt_generated"])
+        assert all(
+            g.startswith("Everybody should be using Tango to")
+            for g in train_split[1]["prompt_generated"]
+        )
