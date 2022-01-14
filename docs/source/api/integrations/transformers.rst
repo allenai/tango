@@ -1,5 +1,5 @@
 🤗 Transformers
-===========
+===============
 
 .. automodule:: tango.integrations.transformers
 
