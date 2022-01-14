@@ -19,6 +19,7 @@ def test_step_info_serde_with_custom_exception():
         step_class_name=None,
         version=None,
         dependencies=set(),
+        cacheable=True,
         error=CustomError("Oh no!", "foo", "bar"),
     )
     dump = step_info.serialize()
