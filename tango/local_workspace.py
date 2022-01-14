@@ -255,7 +255,24 @@ class LocalWorkspace(Workspace):
 
         step_dir = self.step_dir(unique_id)
         with SqliteDict(self.step_info_file) as d:
-            step_info = d[unique_id]
+            try:
+                step_info = d[unique_id]
+            except KeyError:
+                if not isinstance(step_or_unique_id, Step):
+                    raise
+                # TODO: do this with dependencies as well, until we find steps that are already in here
+                step = step_or_unique_id
+                step_info = StepInfo(
+                    step.unique_id,
+                    step.name if step.name != step.unique_id else None,
+                    step.__class__.__name__,
+                    step.VERSION,
+                    {dep.unique_id for dep in step.dependencies},
+                    step.cache_results,
+                )
+                d[unique_id] = step_info
+                d.commit()
+                del step
 
             # Perform some sanity checks. Sqlite and the file system can get out of sync
             # when a process dies suddenly.
