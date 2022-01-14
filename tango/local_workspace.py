@@ -222,6 +222,7 @@ class LocalWorkspace(Workspace):
     """
 
     def __init__(self, dir: PathOrStr):
+        super().__init__()
         self.dir = Path(dir)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.cache = LocalStepCache(self.dir / "cache")

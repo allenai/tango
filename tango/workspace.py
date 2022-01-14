@@ -178,6 +178,9 @@ class Workspace(Registrable):
     # do that.
     #
 
+    def __init__(self):
+        self._delayed_cleanup_temp_dirs: List[TemporaryDirectory] = []
+
     @property
     @abstractmethod
     def step_cache(self) -> StepCache:
@@ -194,8 +197,11 @@ class Workspace(Registrable):
         By default, the step dir is a temporary directory that gets cleaned up after every run.
         This effectively disables restartability of steps."""
 
-        # TemporaryDirectory cleans up the directory automatically when the process exits. Neat!
-        return Path(TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir").name)
+        # TemporaryDirectory cleans up the directory automatically when the TemporaryDirectory object
+        # gets garbage collected, so we hold on to it in the Workspace.
+        dir = TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir")
+        self._delayed_cleanup_temp_dirs.append(dir)
+        return Path(dir.name)
 
     @abstractmethod
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
@@ -282,6 +288,7 @@ class MemoryWorkspace(Workspace):
     """
 
     def __init__(self):
+        super().__init__()
         self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Set[Step]] = {}
 
