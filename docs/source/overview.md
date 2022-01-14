@@ -128,12 +128,10 @@ file `config.jsonnet`, so we're ready to actually run this experiment.
 For that, just use the `tango run` command:
 
 ```
-$ tango --no-logging run config.jsonnet -i components
+$ tango run config.jsonnet -i components
 ```
 
 ```{tip}
-- The `--no-logging` flag just suppresses logging, which is convenient for this example so we
-can clearly see everything printed to stdout.
 - The `-i` option is short for `--include-package`, which takes the name of a Python package which Tango will try to import.
 In this case our custom steps are in `components.py`, so we need Tango to import this module to find those steps.
 As long as `components.py` is in the current directory or somewhere else on the `PYTHONPATH`, Tango will be able to find and import
@@ -210,7 +208,7 @@ By default Tango assumes steps are non-deterministic, and it will warn you when 
 This time when we run the experiment we'll designate a specific directory for Tango to use:
 
 ```bash
-$ tango --no-logging run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d /tmp/add
 ```
 ```
 ● Starting run for "add_numbers"
@@ -232,7 +230,7 @@ $ cat /tmp/add/add_numbers/data.json
 Now look what happens when we run this step again:
 
 ```bash
-$ tango --no-logging run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d /tmp/add
 ```
 ```
 ✓ Found output for "add_numbers" in cache
@@ -256,7 +254,7 @@ But if we changed the inputs to the step in `config.jsonnet`:
 And ran it again:
 
 ```bash
-$ tango --no-logging run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d /tmp/add
 ```
 ```
 ● Starting run for "add_numbers"
