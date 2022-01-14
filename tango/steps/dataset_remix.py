@@ -40,9 +40,14 @@ class DatasetRemixStep(Step[DatasetDict]):
             "crossval_train": "train[0:5] + train[7:]",
             "crossval_test": "train[5:7]",
         }
-        remix = DatasetRemixStep("remix")
-        remix.run(input, new_splits)
+        remix_step = DatasetRemixStep(input=input, new_splits=new_splits)
+        remixed_dataset = remix_step.result()
 
+    .. testoutput::
+        :options: +ELLIPSIS
+
+        ● Starting step ...
+        ✓ Finished step ...
     """
 
     DETERMINISTIC = True
@@ -145,6 +150,42 @@ class DatasetRemixStep(Step[DatasetDict]):
 
 @Step.register("dataset_combine")
 class DatasetCombineStep(Step[DatasetDict]):
+    """
+    This step combines multiple :class:`~tango.common.dataset_dict.DatasetDict` s into one.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name "dataset_combine".
+
+    Examples
+    --------
+
+    .. testsetup::
+
+        from tango.common.dataset_dict import DatasetDict
+        from tango.steps import DatasetCombineStep
+
+    .. testcode::
+
+        input1 = DatasetDict({
+            "train": list(range(10)),
+            "dev": list(range(10, 15)),
+        })
+        input2 = DatasetDict({
+            "train": list(range(15, 25)),
+            "val": list(range(25, 30)),
+        })
+        combined = DatasetCombineStep(inputs=[input1, input2])
+        combined_dataset = combined.result()
+
+    .. testoutput::
+        :hide:
+        :options: +ELLIPSIS
+
+        ● Starting step ...
+        ✓ Finished step ...
+    """
+
     DETERMINISTIC = True
     CACHEABLE = False  # This is so fast it's not worth caching.
     VERSION = "001"
@@ -155,6 +196,28 @@ class DatasetCombineStep(Step[DatasetDict]):
         shuffle: bool = False,
         random_seed: int = 1532637578,
     ) -> DatasetDict:
+        """
+        Combines multiple datasets into one. This is done lazily, so all operations are fast.
+
+        If a split is present in more than one input dataset, the output dataset will have a split that's
+        the concatenation of the input splits.
+
+        Parameters
+        ----------
+        inputs : :class:`List[tango.common.DatasetDict]`
+            The list of input datasets that will be combined.
+        shuffle : :class:`bool`
+            Whether to shuffle the combined datasets. If you don't do this, the new splits will contain first
+            all the instances from one dataset, and then all the instances from another dataset.
+        random_seed : :class:`int`
+            Random seed, affects shuffling
+
+        Returns
+        -------
+        :class:`tango.common.DatasetDict`
+            Returns a new dataset that is the combination of the input datasets.
+        """
+
         split_to_datasets: Dict[str, List[Sequence]] = collections.defaultdict(lambda: [])
         for input in inputs:
             for split_name, sequence in input.items():
