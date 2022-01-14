@@ -56,6 +56,7 @@ source_suffix = [".rst", ".md"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "datasets": ("https://huggingface.co/docs/datasets", None),
+    "transformers": ("https://huggingface.co/docs/transformers", None),
     "torch": ("https://pytorch.org/docs/stable", None),
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
 }
