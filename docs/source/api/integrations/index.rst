@@ -9,5 +9,6 @@ Integrations
 
    torch
    datasets
+   transformers
    wandb
    pytorch_lightning
