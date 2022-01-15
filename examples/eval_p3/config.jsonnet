@@ -14,6 +14,10 @@ local datasets = [
     'xsum_summarize_this_DOC_summary'
 ];
 
+# This creates three steps for each of the datasets:
+# 1. Load the dataset.
+# 2. Generate output based on the dataset.
+# 3. Evaluate the output against the gold answers.
 local dataset_steps = std.foldl(
     function(x, dataset_name) x + {
         ["dataset_" + dataset_name]: {
@@ -43,6 +47,8 @@ local dataset_steps = std.foldl(
     {}
 );
 
+# In addition to the three steps per dataset, we also combine all the generations and
+# evaluate them all together.
 {
     "steps": dataset_steps + {
         "all_generations": {
