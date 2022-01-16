@@ -359,28 +359,33 @@ class LocalWorkspace(Workspace):
                 # for the return value.
                 result = self.step_cache[step]
 
+            # Save some metadata.
+            def replace_steps_with_unique_id(o: Any):
+                if isinstance(o, Step):
+                    return {"type": "ref", "ref": o.unique_id}
+                if isinstance(o, (list, tuple, set)):
+                    return o.__class__(replace_steps_with_unique_id(i) for i in o)
+                elif isinstance(o, dict):
+                    return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+                else:
+                    return o
+
+            try:
+                config = step.config
+            except ValueError:
+                config = None
+            metadata = ExecutorMetadata(
+                step=step.unique_id, config=replace_steps_with_unique_id(config)
+            )
+            # Finalize metadata and save to run directory.
+            metadata.save(self.step_dir(step))
+
+        # Mark the step as finished
         step_info.end_time = datetime.now()
         step_info.result_location = str(self.step_dir(step).absolute())
         with SqliteDict(self.step_info_file) as d:
             d[step.unique_id] = step_info
             d.commit()
-
-        # Initialize metadata.
-        def replace_steps_with_unique_id(o: Any):
-            if isinstance(o, Step):
-                return {"type": "ref", "ref": o.unique_id}
-            if isinstance(o, (list, tuple, set)):
-                return o.__class__(replace_steps_with_unique_id(i) for i in o)
-            elif isinstance(o, dict):
-                return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
-            else:
-                return o
-
-        metadata = ExecutorMetadata(
-            step=step.unique_id, config=replace_steps_with_unique_id(step.config)
-        )
-        # Finalize metadata and save to run directory.
-        metadata.save(self.step_dir(step))
 
         lock.release()
         del self.locks[step]
