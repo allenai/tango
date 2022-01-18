@@ -37,6 +37,17 @@ class TorchTrainStep(Step):
 
         Registered as a :class:`~tango.step.Step` under the name "torch::train".
 
+    .. important::
+
+        The training loop will use GPU(s) automatically when available, as long as at least
+        ``device_count`` CUDA devices are available.
+
+        Distributed data parallel training is activated when the ``device_count`` is greater than 1.
+
+        You can control which CUDA devices to use with the environment variable ``CUDA_VISIBLE_DEVICES``.
+        For example, to only use the GPUs with IDs 0 and 1, set ``CUDA_VISIBLE_DEVICES=0,1``
+        (and ``device_count`` to 2).
+
     .. warning::
 
         During validation, the validation metric (specified by the ``val_metric_name`` parameter)
@@ -79,7 +90,7 @@ class TorchTrainStep(Step):
         validate_every: int = 100,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
-        devices: Optional[List[int]] = None,
+        device_count: int = 1,
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
@@ -147,8 +158,8 @@ class TorchTrainStep(Step):
             Use automatic mixed precision. Default is ``False``.
         max_grad_norm : :class:`float`, optional
             If set, gradients will be clipped to have this max norm. Default is ``None``.
-        devices : ``List[int]``, optional
-            The IDs of the CUDA devices to train on.
+        device_count : :class:`int`, optional
+            The number of devices to train on, i.e. the number of distributed data parallel workers.
         distributed_port : :class:`str`
             The port of the distributed process group. Default = "54761".
         val_metric_name : :class:`str`
@@ -177,24 +188,19 @@ class TorchTrainStep(Step):
 
         """
         # Validate device(s).
-        if torch.cuda.is_available():
-            if devices is None:
-                print("CUDA is available")
-            elif all((x >= 0 for x in devices)):
-                if torch.cuda.device_count() < len(set(devices)):
-                    raise ConfigurationError(
-                        f"Only found {torch.cuda.device_count()} CUDA devices, "
-                        f"but you specified {len(set(devices))} device IDs"
-                    )
-            elif not all((x == -1 for x in devices)):
-                raise ConfigurationError("Invalid value for 'devices'")
+        if device_count <= 0:
+            raise ConfigurationError("Invalid value for 'device_count'. Must be at least 1.")
+        devices: List[int]
+        if torch.cuda.is_available() and torch.cuda.device_count() >= device_count:
+            devices = list(range(device_count))
+            self.logger.info("Training on %d GPU%s", device_count, "s" if device_count > 1 else "")
         else:
-            if devices and not all((x == -1 for x in devices)):
-                raise ConfigurationError(
-                    "CUDA not found, so only '-1' allowed for device IDs, found {devices}"
-                )
+            devices = [-1] * device_count
+            self.logger.info(
+                "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
+            )
             if amp:
-                raise ConfigurationError("AMP requires CUDA")
+                raise ConfigurationError("AMP requires training on CUDA devices")
 
         is_distributed = False
         num_workers = 1

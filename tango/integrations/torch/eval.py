@@ -1,6 +1,6 @@
 from collections import defaultdict
 from itertools import islice
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence
 
 import torch
 
@@ -25,6 +25,13 @@ class TorchEvalStep(Step):
     .. tip::
 
         Registered as a :class:`~tango.step.Step` under the name "torch::eval".
+
+    .. important::
+
+        The evaluation loop will use a GPU automatically if one is available.
+        You can control which GPU it uses with the environment variable ``CUDA_VISIBLE_DEVICES``.
+        For example, set ``CUDA_VISIBLE_DEVICES=1`` to force ``TorchEvalStep`` to only use
+        the GPU with ID 1.
 
     .. warning::
 
@@ -53,7 +60,6 @@ class TorchEvalStep(Step):
         seed: int = 42,
         eval_steps: Optional[int] = None,
         log_every: int = 1,
-        device: Optional[Union[int, str, torch.device]] = None,
         metric_names: Sequence[str] = ("loss",),
         auto_aggregate_metrics: bool = True,
         callbacks: Optional[List[Lazy[EvalCallback]]] = None,
@@ -82,9 +88,6 @@ class TorchEvalStep(Step):
             stop after a complete iteration through the ``dataloader``.
         log_every : :class:`int`, optional
             Log every this many steps. Default is ``1``.
-        device : ``Union[int, str, torch.device]``, optional
-            The device to evaluate on. Default to the first CUDA device if one is available,
-            otherwise CPU.
         metric_names : ``Sequence[str]``, optional
             The names of the metrics to track and aggregate. Default is ``("loss",)``.
         auto_aggregate_metrics : :class:`bool`, optional
@@ -102,7 +105,7 @@ class TorchEvalStep(Step):
         check_dataset(dataset_dict, test_split)
 
         # Resolve device.
-        device: torch.device = resolve_device(device)
+        device = resolve_device()
 
         # Prep model.
         model = model.eval().to(device)

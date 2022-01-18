@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Renamed `aggregate_val_metric` to `auto_aggregate_val_metric` in `TorchTrainStep`.
+- `devices` parameter to `TorchTrainStep` replaced with `device_count: int`.
 - Run name printed at the end of a run so it's easier to find.
 - Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
 
