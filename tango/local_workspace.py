@@ -1,4 +1,5 @@
 import getpass
+import json
 import logging
 import os
 import platform
@@ -231,6 +232,36 @@ class LocalWorkspace(Workspace):
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.step_info_file = self.dir / "stepinfo.sqlite"
 
+        # Check the version of the local workspace
+        try:
+            with open(self.dir / "settings.json", "r") as settings_file:
+                settings = json.load(settings_file)
+        except FileNotFoundError:
+            settings = {"version": 1}
+
+        # Upgrade to version 2
+        if settings["version"] == 1:
+            with SqliteDict(self.step_info_file) as d:
+                for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
+                    with stepinfo_file.open("rb") as f:
+                        stepinfo = StepInfo.deserialize(f.read())
+
+                    # The `StepInfo` class changed from one version to the next. The deserialized version
+                    # ends up being a `StepInfo` instance that is missing the `cacheable` member. This
+                    # hack adds it in.
+                    kwargs = stepinfo.__dict__
+                    kwargs[
+                        "cacheable"
+                    ] = True  # Only cacheable steps were saved in v1. That's what v2 fixes.
+                    d[stepinfo.unique_id] = StepInfo(**kwargs)
+                d.commit()
+            for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
+                stepinfo_file.unlink()
+
+            settings["version"] = 2
+            with open(self.dir / "settings.json", "w") as settings_file:
+                json.dump(settings, settings_file)
+
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
 
@@ -248,48 +279,55 @@ class LocalWorkspace(Workspace):
         return not any(True for _ in dir.iterdir())
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        if isinstance(step_or_unique_id, Step):
-            unique_id = step_or_unique_id.unique_id
-        else:
-            unique_id = step_or_unique_id
-
-        step_dir = self.step_dir(unique_id)
         with SqliteDict(self.step_info_file) as d:
-            try:
-                step_info = d[unique_id]
-            except KeyError:
-                if not isinstance(step_or_unique_id, Step):
-                    raise
-                # TODO: do this with dependencies as well, until we find steps that are already in here
-                step = step_or_unique_id
-                step_info = StepInfo(
-                    step.unique_id,
-                    step.name if step.name != step.unique_id else None,
-                    step.__class__.__name__,
-                    step.VERSION,
-                    {dep.unique_id for dep in step.dependencies},
-                    step.cache_results,
-                )
-                d[unique_id] = step_info
-                d.commit()
-                del step
 
-            # Perform some sanity checks. Sqlite and the file system can get out of sync
-            # when a process dies suddenly.
-            new_state = step_info.state
-            if not step_dir.exists() or self.dir_is_empty(step_dir):
-                new_state = StepState.INCOMPLETE
-            elif step_info.state == StepState.RUNNING and not self._step_lock_file_is_locked(
-                unique_id
-            ):
-                new_state = StepState.INCOMPLETE
-            if new_state != step_info.state:
-                step_info.start_time = None
-                step_info.end_time = None
-                d[unique_id] = step_info
-                d.commit()
+            def find_or_add_step_info(step_or_unique_id: Union[Step, str]) -> StepInfo:
+                if isinstance(step_or_unique_id, Step):
+                    unique_id = step_or_unique_id.unique_id
+                else:
+                    unique_id = step_or_unique_id
 
-            return step_info
+                try:
+                    step_info = d[unique_id]
+                except KeyError:
+                    if not isinstance(step_or_unique_id, Step):
+                        raise
+
+                    step = step_or_unique_id
+
+                    for dep in step.dependencies:
+                        find_or_add_step_info(dep)
+
+                    step_info = StepInfo(
+                        step.unique_id,
+                        step.name if step.name != step.unique_id else None,
+                        step.__class__.__name__,
+                        step.VERSION,
+                        {dep.unique_id for dep in step.dependencies},
+                        step.cache_results,
+                    )
+                    d[unique_id] = step_info
+                    del step
+
+                # Perform some sanity checks. Sqlite and the file system can get out of sync
+                # when a process dies suddenly.
+                step_dir = self.step_dir(unique_id)
+                new_state = step_info.state
+                if not step_dir.exists() or self.dir_is_empty(step_dir):
+                    new_state = StepState.INCOMPLETE
+                elif step_info.state == StepState.RUNNING and not self._step_lock_file_is_locked(
+                    unique_id
+                ):
+                    new_state = StepState.INCOMPLETE
+                if new_state != step_info.state:
+                    step_info.start_time = None
+                    step_info.end_time = None
+                    d[unique_id] = step_info
+                return step_info
+
+            result = find_or_add_step_info(step_or_unique_id)
+            d.commit()
+            return result
 
     def _step_lock_file(self, step_or_unique_id: Union[Step, str]) -> Path:
         step_dir = self.step_dir(step_or_unique_id)
