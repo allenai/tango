@@ -26,6 +26,7 @@ api/commands
 api/components/index
 api/integrations/index
 api/exceptions
+api/logging
 api/utilities
 ```
 

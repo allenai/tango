@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 import tempfile
@@ -181,7 +182,7 @@ class TorchTrainStep(Step):
         # Validate device(s).
         if torch.cuda.is_available():
             if devices is None:
-                print("CUDA is available")
+                self.logger.info("CUDA is available")
             elif all((x >= 0 for x in devices)):
                 if torch.cuda.device_count() < len(set(devices)):
                     raise ConfigurationError(
@@ -252,7 +253,7 @@ class TorchTrainStep(Step):
                 ),
                 nprocs=num_workers,
             )
-            print("Constructing final model")
+            self.logger.info("Constructing final model")
             final_model = model.construct()
         else:
             final_model = _train(  # type: ignore[assignment]
@@ -272,7 +273,7 @@ class TorchTrainStep(Step):
         # Load best checkpoint before returning model.
         best_state_path = self.work_dir / "state_worker0_best.pt"
         if best_state_path.is_file():
-            print(f"Loading best weights from {best_state_path.resolve().name}")
+            self.logger.info(f"Loading best weights from {best_state_path.resolve().name}")
             state = torch.load(best_state_path, map_location="cpu")
             final_model.load_state_dict(state["model"])
 
@@ -302,7 +303,8 @@ def _train(
     if config.is_distributed:
         import tango.common.logging as common_logging
 
-        common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
+        common_logging.initialize_worker_logging(config.worker_id)
+    logger = logging.getLogger(TorchTrainStep.__name__)
 
     # Resolve and set device.
     device = config.worker_local_default_device
@@ -366,7 +368,7 @@ def _train(
     initial_state: Optional[Dict[str, Any]] = None
     if config.state_path.is_file():
         if config.is_local_main_process:
-            print(f"Recovering from previous run at {str(config.state_path.name)}")
+            logger.info(f"Recovering from previous run at {str(config.state_path.name)}")
         initial_state = torch.load(config.state_path)
 
     # Prepare model.
@@ -726,7 +728,7 @@ def _train(
             callback.post_epoch(current_epoch)
     except StopEarly:
         if config.is_local_main_process:
-            print("Stopping early!")
+            logger.info("Stopping early!")
     finally:
         train_batch_iterator.close()
 
