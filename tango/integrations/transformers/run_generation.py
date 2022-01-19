@@ -26,12 +26,11 @@ from transformers import (
 
 from tango import Format, JsonFormat, SqliteDictFormat, Step
 from tango.common import DatasetDict
-from tango.common.logging import make_tqdm
 from tango.common.sequences import MappedSequence
 from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
+from tango.common.tqdm import Tqdm
 
 logger = logging.getLogger(__name__)
-tqdm = make_tqdm(logger)
 
 #
 # A lot of the code in this step is stolen from the run_generation.py script in transformers. Unfortunately their
@@ -171,11 +170,11 @@ def _generate(
     if num_prefix_tokens is None:
         num_prefix_tokens = len(tokenizer.tokenize(prefix))
 
-    batches = more_itertools.chunked(tqdm(prompts, desc="Pre-processing prompts"), batch_size)
+    batches = more_itertools.chunked(Tqdm.tqdm(prompts, desc="Pre-processing prompts"), batch_size)
     encoded_batches = map(prepare_batch_fn, batches)
     # encoded_batches = threaded_generator(encoded_batches)
 
-    for encoded_batch in tqdm(encoded_batches, desc="Processing batches"):
+    for encoded_batch in Tqdm.tqdm(encoded_batches, desc="Processing batches"):
         if seq2seq_model:
             length = max_length
         else:

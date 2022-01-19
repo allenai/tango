@@ -6,10 +6,9 @@ from torchmetrics.text.rouge import ROUGEScore
 
 from tango import Format, JsonFormat, Step
 from tango.common import DatasetDict
-from tango.common.logging import make_tqdm
+from tango.common.tqdm import Tqdm
 
 logger = logging.getLogger(__name__)
-tqdm = make_tqdm(logger)
 
 
 @Step.register("rouge_score")
@@ -32,7 +31,7 @@ class RougeScoreStep(Step[Dict[str, Tensor]]):
             accumulate="avg",
         )
 
-        for instance in tqdm(input[input_split], desc="Calculating scores"):
+        for instance in Tqdm.tqdm(input[input_split], desc="Calculating scores"):
             target = instance[target_field]
             for prediction in instance[prediction_field]:
                 metric.update(prediction, target)
