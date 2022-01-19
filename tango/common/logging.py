@@ -86,7 +86,6 @@ import socketserver
 import struct
 import sys
 import threading
-import time
 from contextlib import contextmanager
 from typing import Optional
 
@@ -94,7 +93,7 @@ import click
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived
-from .util import _parse_bool, _parse_optional_int, find_open_port
+from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
 """
@@ -259,7 +258,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
 
     allow_reuse_address = True
 
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int = 0):
         super().__init__((host, port), LogRecordStreamHandler)
         self.abort = False
         self.timeout = 0.2
@@ -437,25 +436,9 @@ def _initialize_logging(
         # Set up logging socket to emit log records from worker processes/threads.
         # Inspired by:
         # https://docs.python.org/3.7/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
-        _LOGGING_PORT = None
-        start_time = time.time()
-        while time.time() - start_time < 10:
-            # Try to find a free port.
-            # If we can't find a free port within 10 seconds, we give up.
-            port = find_open_port()
-            try:
-                _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, port)
-            except OSError as os_err:
-                if os_err.errno == 48:  # "address already in use"
-                    continue
-                else:
-                    raise
-            _LOGGING_PORT = port
-            os.environ["TANGO_LOGGING_PORT"] = str(_LOGGING_PORT)
-            break
-
-        if _LOGGING_PORT is None or _LOGGING_SERVER is None:
-            raise RuntimeError("Failed to find a free port for logging socket")
+        _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, 0)
+        _LOGGING_PORT = _LOGGING_SERVER.server_address[1]
+        os.environ["TANGO_LOGGING_PORT"] = str(_LOGGING_PORT)
         _LOGGING_SERVER_THREAD = threading.Thread(
             target=_LOGGING_SERVER.serve_until_stopped, daemon=True
         )
