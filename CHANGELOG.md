@@ -21,10 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unique id. This is useful for arguments that affect the execution of a step, but not the output.
 - `Step` now implements `__str__`, so steps look pretty in the debugger.
 - Added `DatasetCombineStep`, a step that combines multiple datasets into one.
+- Added `common.logging.initialize_worker_logging()` function for configuring logging from worker processes/threads.
+- Logs from `tango run ...` will be written to a file called `out.log` in the run directory.
 
 ### Fixed
 
 - Fixed torch `StepEarlyCallback` state not being recovered properly on restarts.
+- Fixed file friendly logging by removing special styling characters.
+- Ensured exceptions captured in logs.
 - `LocalWorkspace` now works properly with uncacheable steps.
 - When a Tango run got killed hard, with `kill -9`, or because the machine lost power, `LocalWorkspace` would
   sometimes keep a step marked as "running", preventing further executions. This still happens sometimes, but it

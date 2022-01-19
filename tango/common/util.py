@@ -90,6 +90,12 @@ def _parse_bool(value: Union[bool, str]) -> bool:
     return False
 
 
+def _parse_optional_int(value: Optional[str]) -> Optional[int]:
+    if value is not None:
+        return int(value)
+    return None
+
+
 def find_submodules(
     module: Optional[str] = None,
     match: Optional[Set[str]] = None,

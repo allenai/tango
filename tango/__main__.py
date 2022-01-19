@@ -26,6 +26,8 @@ You can see the the list of all available commands by running:
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
+      --start-method [fork|spawn|forkserver]
+                                      Set the multiprocessing start method.
       --help                          Show this message and exit.
 
     Commands:
@@ -65,6 +67,7 @@ The ``server`` command spins up a web server that watches a workspace. You can u
 progress of your runs while they are happening.
 
 """
+import multiprocessing as mp
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,9 +76,14 @@ from typing import List, Optional, Sequence, Union
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-import tango.common.logging as common_logging
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
+from tango.common.logging import (
+    click_logger,
+    file_handler,
+    initialize_logging,
+    teardown_logging,
+)
 from tango.common.params import Params
 from tango.common.util import import_extra_module
 from tango.version import VERSION
@@ -103,6 +111,14 @@ class TangoGlobalSettings(FromParams):
     down tqdm's output to only once every 10 seconds.
 
     By default, it is set to ``False``.
+    """
+
+    multiprocessing_start_method: str = "spawn"
+    """
+    The ``start_method`` to use when starting new multiprocessing workers. Can be "fork", "spawn",
+    or "forkserver". Default is "spawn".
+
+    See :func:`multiprocessing.set_start_method()` for more details.
     """
 
     _path: Optional[Path] = None
@@ -163,14 +179,26 @@ class TangoGlobalSettings(FromParams):
     is_flag=True,
     help="Outputs progress bar status on separate lines and slows refresh rate.",
 )
+@click.option(
+    "--start-method",
+    help="Set the multiprocessing start method.",
+    type=click.Choice(["fork", "spawn", "forkserver"], case_sensitive=True),
+    show_choices=True,
+)
 @click.pass_context
 def main(
     ctx,
-    config: Optional[str],
-    log_level: Optional[str],
+    config: Optional[str] = None,
+    log_level: Optional[str] = None,
     file_friendly_logging: bool = False,
+    start_method: Optional[str] = None,
 ):
     config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
+
+    if start_method is not None:
+        config.multiprocessing_start_method = start_method
+
+    mp.set_start_method(config.multiprocessing_start_method)
 
     if log_level is not None:
         config.log_level = log_level
@@ -178,13 +206,18 @@ def main(
     if file_friendly_logging is not None:
         config.file_friendly_logging = file_friendly_logging
 
-    common_logging.initialize_logging(
+    initialize_logging(
         log_level=config.log_level,
         file_friendly_logging=config.file_friendly_logging,
         enable_click_logs=True,
     )
 
     ctx.obj = config
+
+
+@main.result_callback()
+def cleanup(*args, **kwargs):
+    teardown_logging()
 
 
 @main.command(
@@ -271,9 +304,7 @@ def server(workspace_dir: Union[str, os.PathLike]):
     workspace_dir = Path(workspace_dir)
     workspace = LocalWorkspace(workspace_dir)
     server = WorkspaceServer.on_free_port(workspace)
-    common_logging.click_logger.info(
-        "Server started at " + click.style(server.address_for_display(), bold=True)
-    )
+    click_logger.info("Server started at " + click.style(server.address_for_display(), bold=True))
     server.serve_forever()
 
 
@@ -292,14 +323,16 @@ def info(config: TangoGlobalSettings):
 
     from tango.common.util import find_integrations, import_module_and_submodules
 
-    click.echo(f"Tango version {VERSION} (python {platform.python_version()})")
+    click_logger.info(f"Tango version {VERSION} (python {platform.python_version()})")
 
     # Show info about config.
     if config.path is not None:
-        click.echo("\nConfig:")
-        click.secho(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
+        click_logger.info("\nConfig:")
+        click_logger.info(
+            click.style(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
+        )
         if config.include_package:
-            click.echo("\n   Included packages:")
+            click_logger.info("\n   Included packages:")
             for package in config.include_package:
                 is_found = True
                 try:
@@ -307,12 +340,14 @@ def info(config: TangoGlobalSettings):
                 except (ModuleNotFoundError, ImportError):
                     is_found = False
                 if is_found:
-                    click.secho(f"   \N{check mark} {package}", fg="green")
+                    click_logger.info(click.style(f"   \N{check mark} {package}", fg="green"))
                 else:
-                    click.secho(f"   \N{ballot x} {package} (not found)", fg="red")
+                    click_logger.info(
+                        click.style(f"   \N{ballot x} {package} (not found)", fg="red")
+                    )
 
     # Show info about integrations.
-    click.echo("\nIntegrations:")
+    click_logger.info("\nIntegrations:")
     for integration in find_integrations():
         name = integration.split(".")[-1]
         is_installed = True
@@ -321,9 +356,9 @@ def info(config: TangoGlobalSettings):
         except (ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
-            click.secho(f" \N{check mark} {name}", fg="green")
+            click_logger.info(click.style(f" \N{check mark} {name}", fg="green"))
         else:
-            click.secho(f" \N{ballot x} {name} (not installed)", fg="yellow")
+            click_logger.info(click.style(f" \N{ballot x} {name} (not installed)", fg="yellow"))
 
 
 def _run(
@@ -357,25 +392,54 @@ def _run(
         from tempfile import mkdtemp
 
         workspace_dir = mkdtemp(prefix="tango-")
-        click.echo(
+        click_logger.info(
             "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
     workspace = LocalWorkspace(workspace_dir)
 
-    # Initialize step graph, server, and executor.
+    # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    server = None
-    if start_server:
-        server = WorkspaceServer.on_free_port(workspace)
-        server.serve_in_background()
+    run_name = workspace.register_run(step for step in step_graph.values() if step.cache_results)
+    run_dir = workspace.run_dir(run_name)
 
-    executor = Executor(workspace=workspace, include_package=include_package, server=server)
+    # Capture logs to file.
+    with file_handler(run_dir / "out.log"):
+        click_logger.info(
+            click.style("Starting new run ", fg="green")
+            + click.style(run_name, fg="green", bold=True)
+        )
 
-    # Now execute the step graph.
-    run_name = executor.execute_step_graph(step_graph)
-    return workspace.run_dir(run_name)
+        # Initialize server.
+        if start_server:
+            server = WorkspaceServer.on_free_port(workspace)
+            server.serve_in_background()
+            click_logger.info(
+                "Server started at " + click.style(server.address_for_display(run_name), bold=True)
+            )
+
+        # Initialize Executor and execute the step graph.
+        executor = Executor(workspace=workspace, include_package=include_package)
+        executor.execute_step_graph(step_graph)
+
+        # Print everything that has been computed.
+        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+        for step in ordered_steps:
+            if step in workspace.step_cache:
+                info = workspace.step_info(step)
+                click_logger.info(
+                    click.style("\N{check mark} The output for ", fg="green")
+                    + click.style(f'"{step.name}"', bold=True, fg="green")
+                    + click.style(" is in ", fg="green")
+                    + click.style(f"{info.result_location}", bold=True, fg="green")
+                )
+
+        click_logger.info(
+            click.style("Finished run ", fg="green") + click.style(run_name, fg="green", bold=True)
+        )
+
+    return run_dir
 
 
 if __name__ == "__main__":
