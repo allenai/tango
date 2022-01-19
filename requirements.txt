@@ -27,5 +27,6 @@ numpy                        # needed by: torch
 datasets>=1.12,<2            # needed by: datasets
 wandb>=0.12,<0.13            # needed by: wandb
 pytorch-lightning>=1.5,<1.6  # needed by: pytorch_lightning
+torchmetrics>=0.7.0          # needed by: examples
 transformers>=4.12.3         # needed by: transformers
 sentencepiece>=0.1.96        # needed by: transformers
