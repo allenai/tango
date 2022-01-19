@@ -45,6 +45,7 @@ integrations = set(
     for p in Path("tango/integrations").glob("*")
     if p.is_dir() and not p.name[0] in {".", "_"}
 )
+integrations.add("examples")
 
 # Load requirements.
 install_requirements, extras = parse_requirements_file(
