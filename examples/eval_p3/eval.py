@@ -26,7 +26,7 @@ class RougeScoreStep(Step[Dict[str, Tensor]]):
         use_stemmer: bool = True,
     ) -> Dict[str, Tensor]:
         metric = ROUGEScore(
-            use_stemmer=True,
+            use_stemmer=use_stemmer,
             rouge_keys=("rouge1", "rouge2", "rougeL"),
             compute_on_step=False,
             accumulate="avg",
