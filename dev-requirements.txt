@@ -34,7 +34,7 @@ setuptools<=59.5.0   # PyTorch used some undocumented stuff from setuptools that
 wheel
 
 # Building docs
-Sphinx==4.3.2
+Sphinx==4.4.0
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
 furo==2022.1.2
