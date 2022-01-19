@@ -184,3 +184,5 @@ def threaded_generator(g, queue_size: int = 16):
     thread.start()
 
     yield from iter(q.get, sentinel)
+
+    thread.join()

@@ -1,6 +1,13 @@
+import time
+
 import pytest
 
-from tango.common.util import could_be_class_name, find_integrations, find_submodules
+from tango.common.util import (
+    could_be_class_name,
+    find_integrations,
+    find_submodules,
+    threaded_generator,
+)
 
 
 def test_find_submodules():
@@ -29,3 +36,17 @@ def test_find_integrations():
 )
 def test_could_be_class_name(name: str, result: bool):
     assert could_be_class_name(name) is result
+
+
+def test_threaded_generator():
+    def generate_slowly():
+        for i in range(10):
+            yield i
+            time.sleep(0.1)
+
+    start = time.time()
+    for i in threaded_generator(generate_slowly()):
+        time.sleep(0.1)
+    end = time.time()
+
+    assert end - start < 11
