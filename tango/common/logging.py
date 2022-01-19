@@ -288,7 +288,7 @@ A logger that logs messages through
 `click <https://click.palletsprojects.com/>`_'s
 ``click.echo()`` function.
 
-This is provides a convenient way for command-line apps to log pretty, styled messages.
+This provides a convenient way for command-line apps to log pretty, styled messages.
 """
 
 click_logger.propagate = False
