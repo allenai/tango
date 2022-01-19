@@ -17,10 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `devices` parameter to `TorchTrainStep` replaced with `device_count: int`.
 - Run name printed at the end of a run so it's easier to find.
 - Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
+- Added `common.logging.initialize_worker_logging()` function for configuring logging from worker processes/threads.
+- Logs from `tango run ...` will be written to a file called `out.log` in the run directory.
 
 ### Fixed
 
 - Fixed torch `StopEarlyCallback` state not being recovered properly on restarts.
+- Fixed file friendly logging by removing special styling characters.
+- Ensured exceptions captured in logs.
 
 ## [v0.4.0rc4](https://github.com/allenai/tango/releases/tag/v0.4.0rc4) - 2021-12-20
 

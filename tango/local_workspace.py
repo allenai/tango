@@ -389,6 +389,8 @@ class LocalWorkspace(Workspace):
 
     def registered_run(self, name: str) -> Dict[str, StepInfo]:
         run_dir = self.runs_dir / name
+        if not run_dir.is_dir():
+            raise KeyError(name)
         steps_for_run = {}
         for step_symlink in run_dir.iterdir():
             if not step_symlink.is_symlink():
