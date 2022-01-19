@@ -57,13 +57,13 @@ class TestLocalWorkspace(TangoTestCase):
             assert step_info.state == StepState.COMPLETED
 
     def test_local_workspace_upgrade_v1_to_v2(self):
+        workspace_dir = self.TEST_DIR / "workspace"
         copytree(
             self.FIXTURES_ROOT / "v1_local_workspace",
-            self.TEST_DIR,
+            workspace_dir,
             symlinks=True,
-            dirs_exist_ok=True,
         )
-        workspace = LocalWorkspace(self.TEST_DIR)
+        workspace = LocalWorkspace(workspace_dir)
         step_info = workspace.step_info("SubtractionStep-YCdedqjmmd9GUFi96VzPXD5tAVho3CTz")
         assert step_info.state == StepState.COMPLETED
         dependencies = list(step_info.dependencies)
