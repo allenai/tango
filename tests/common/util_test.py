@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from flaky import flaky
 
 from tango.common.util import (
     could_be_class_name,
@@ -38,6 +39,7 @@ def test_could_be_class_name(name: str, result: bool):
     assert could_be_class_name(name) is result
 
 
+@flaky(max_runs=3)
 def test_threaded_generator():
     def generate_slowly():
         for i in range(10):
