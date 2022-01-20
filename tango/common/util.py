@@ -3,6 +3,7 @@ import pkgutil
 import signal
 import string
 import sys
+import traceback
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable, Optional, Set, Union
@@ -192,3 +193,7 @@ def threaded_generator(g, queue_size: int = 16):
     yield from iter(q.get, sentinel)
 
     thread.join()
+
+
+def exception_to_string(e: BaseException) -> str:
+    return "".join(traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__))
