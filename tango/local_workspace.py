@@ -520,7 +520,7 @@ class LocalWorkspace(Workspace):
                 step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
                 steps_for_run[step_name] = step_info
-            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_birthtime))
+            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
 
     def run_dir(self, name: str) -> Path:
         """
