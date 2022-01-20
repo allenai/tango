@@ -11,7 +11,7 @@ class TrainConfig:
     Encapsulates the parameters of :class:`TorchTrainStep`.
     """
 
-    step: str
+    step_id: str
     """
     The unique ID of the current step.
     """
@@ -113,7 +113,7 @@ class TrainConfig:
     Should be ``True`` when the validation metric being tracked should be minimized.
     """
 
-    aggregate_val_metric: bool = True
+    auto_aggregate_val_metric: bool = True
     """
     Controls automatic aggregation of validation metric.
     """

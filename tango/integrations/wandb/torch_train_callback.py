@@ -94,7 +94,7 @@ class WandbTrainCallback(TrainCallback):
         """
         Generate a run name for W&B based on the step unique ID.
         """
-        step_name, step_hash = self.train_config.step.split("-", maxsplit=1)
+        step_name, step_hash = self.step_id.split("-", maxsplit=1)
         return f"{step_name}-{step_hash[:6]}"
 
     def state_dict(self) -> Dict[str, Any]:
