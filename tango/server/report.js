@@ -161,19 +161,33 @@ const formatText = (label, value) => {
 
 // convert the data to a node
 const getTable = (data) => {
+  let mainBgColor = colors.B10;
+  switch (data.state) {
+    case states.COMPLETED:
+      mainBgColor = colors.B10;
+      break;
+    case states.FAILED:
+      mainBgColor = colors.R8;
+      break;
+    case states.RUNNING:
+    case states.INCOMPLETE:
+      mainBgColor = colors.O8;
+      break;
+  }
+
   const isOpen = state.openMap[data.unique_id];
   let ret = `label=<
         <table cellspacing="0" cellpadding="2" border="0" color="${
-          colors.B10
+          mainBgColor
         }" cellborder="0" bgcolor="${colors.white}">
           <tr>
-            <td align="left" bgcolor="${colors.B10}" id="expando;${
+            <td align="left" bgcolor="${mainBgColor}" id="expando;${
     data.unique_id
   }" href=" "><img src="${isOpen ? "/close.svg" : "/open.svg"}" /></td>
-            <td bgcolor="${colors.B10}" ><font point-size="16" color="${
+            <td bgcolor="${mainBgColor}" ><font point-size="16" color="${
     colors.N2
   }">${data.step_name}</font></td>
-        <td bgcolor="${colors.B10}">${"   "}</td>
+        <td bgcolor="${mainBgColor}">${"   "}</td>
           </tr>
           <!-- Some extra space at the top -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
@@ -261,7 +275,7 @@ const render = () => {
           }" fontsize="12" fontname="Helvetica"];
           edge [penwidth=2.0 color="${colors.N9}"]
           concentrate=True;
-          rankdir=TB;
+          rankdir=LR;
 
           ${convert(state.data)}
         }
