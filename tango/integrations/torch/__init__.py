@@ -138,6 +138,7 @@ needs to raise the :class:`StopEarly` exception.
 __all__ = [
     "TorchFormat",
     "TorchTrainStep",
+    "TorchEvalStep",
     "Optimizer",
     "LRScheduler",
     "Model",
@@ -146,12 +147,15 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "EvalCallback",
     "TrainConfig",
     "StopEarlyCallback",
     "StopEarly",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
+from .eval import TorchEvalStep
+from .eval_callback import EvalCallback
 from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model

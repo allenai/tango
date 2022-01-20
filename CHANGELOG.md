@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `TorchEvalStep` to torch integration, registered as "torch::eval".
+
+### Changed
+
+- Renamed `aggregate_val_metric` to `auto_aggregate_val_metric` in `TorchTrainStep`.
+- `devices` parameter to `TorchTrainStep` replaced with `device_count: int`.
 - Run name printed at the end of a run so it's easier to find.
 - Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
 - A new integration, `transformers`, with two new steps for running seq2seq models.
@@ -26,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed torch `StepEarlyCallback` state not being recovered properly on restarts.
+- Fixed torch `StopEarlyCallback` state not being recovered properly on restarts.
 - Fixed file friendly logging by removing special styling characters.
 - Ensured exceptions captured in logs.
 - `LocalWorkspace` now works properly with uncacheable steps.
