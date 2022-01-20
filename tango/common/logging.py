@@ -129,6 +129,10 @@ For example,
 
     $ tango --log-level info run ...
 
+.. note::
+    This does not affect the :data:`~tango.common.logging.click_logger`
+    or logs from :class:`~tango.common.Tqdm` progress bars.
+
 """
 
 # Click logger disabled by default in case nobody calls initialize_logging().
@@ -403,6 +407,8 @@ def _initialize_logging(
         TANGO_CLICK_LOGGER_ENABLED = enable_click_logs
         os.environ["TANGO_CLICK_LOGGER_ENABLED"] = str(enable_click_logs).lower()
 
+    from .tqdm import logger as tqdm_logger
+
     # Handle special cases for specific loggers:
     # These loggers emit too many messages, so we tell them to be quiet unless they have something
     # important to say.
@@ -411,6 +417,8 @@ def _initialize_logging(
     # We always want to see all click messages if we're running from the command line, and none otherwise.
     click_logger.setLevel(logging.DEBUG)
     click_logger.disabled = not enable_click_logs
+    # We also want to enable the tqdm logger so that the progress bar lines end up in the log file.
+    tqdm_logger.setLevel(logging.DEBUG)
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
@@ -455,8 +463,6 @@ def _initialize_logging(
         socket_handler = logging.handlers.SocketHandler(_LOGGING_HOST, _LOGGING_PORT)
         if worker_rank is not None:
             socket_handler.addFilter(WorkerLogFilter(worker_rank))
-
-        from .tqdm import logger as tqdm_logger
 
         for logger in (root_logger, click_logger, tqdm_logger):
             logger.handlers.clear()
