@@ -15,7 +15,8 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
 
     @classmethod
     def _run_map(cls, run_name: str, workspace: Workspace):
-        step_map = workspace.registered_run(run_name)
+        run = workspace.registered_run(run_name)
+        step_map = run.steps
         seen_unique_ids = set(step.unique_id for step in step_map.values())
         if len(step_map) > 0:
             unseen_unique_ids = set.union(
@@ -32,7 +33,10 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             unseen_unique_ids |= step_info.dependencies - seen_unique_ids
 
         return {
-            step_info.unique_id: cls._serialize_step_info(step_info) for step_info in step_infos
+            "start_date": run.start_date.isoformat(),
+            "steps": {
+                step_info.unique_id: cls._serialize_step_info(step_info) for step_info in step_infos
+            },
         }
 
     @classmethod

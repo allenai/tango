@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar, Union
 
 import petname
 from sqlitedict import SqliteDict
@@ -19,7 +19,7 @@ from tango.common.file_lock import FileLock
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
 from tango.version import VERSION
-from tango.workspace import StepInfo, StepState, Workspace
+from tango.workspace import Run, StepInfo, StepState, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +450,7 @@ class LocalWorkspace(Workspace):
             lock.release()
             del self.locks[step]
 
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         # sanity check targets
         targets = list(targets)
         for target in targets:
@@ -497,12 +497,16 @@ class LocalWorkspace(Workspace):
         for target in targets:
             (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
 
-        return name
+        return self.registered_run(name)
 
-    def registered_runs(self) -> List[str]:
-        return [str(run_dir.name) for run_dir in self.runs_dir.iterdir() if run_dir.is_dir()]
+    def registered_runs(self) -> Dict[str, Run]:
+        return {
+            str(run_dir.name): self.registered_run(run_dir.name)
+            for run_dir in self.runs_dir.iterdir()
+            if run_dir.is_dir()
+        }
 
-    def registered_run(self, name: str) -> Dict[str, StepInfo]:
+    def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name
         if not run_dir.is_dir():
             raise KeyError(name)
@@ -516,7 +520,7 @@ class LocalWorkspace(Workspace):
                 step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
                 steps_for_run[step_name] = step_info
-            return steps_for_run
+            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_birthtime))
 
     def run_dir(self, name: str) -> Path:
         """
