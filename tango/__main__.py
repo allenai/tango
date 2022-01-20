@@ -100,9 +100,14 @@ class TangoGlobalSettings(FromParams):
     An list of modules where custom registered steps or classes can be found.
     """
 
-    log_level: Optional[str] = "error"
+    log_level: Optional[str] = "warning"
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
+
+    .. note::
+        This does not affect the :data:`~tango.common.logging.click_logger`
+        or logs from :class:`~tango.common.Tqdm` progress bars.
+
     """
 
     file_friendly_logging: bool = False
