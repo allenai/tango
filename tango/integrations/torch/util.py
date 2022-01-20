@@ -62,7 +62,6 @@ def resolve_device(device: Optional[Union[int, str, torch.device]] = None) -> to
     if device is None:
         if torch.cuda.is_available():
             # TODO (epwalsh, dirkgr): automatically pick which GPU to use when there are multiple
-            print("CUDA is available")
             return torch.device("cuda")
         else:
             return torch.device("cpu")

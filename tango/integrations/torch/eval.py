@@ -82,7 +82,7 @@ class TorchEvalStep(Step):
             The name of the data split used for evaluation in the ``dataset_dict``.
             Default is "test".
         seed : :class:`int`, optional
-            Used to set the RNG states at the beginning of training.
+            Used to set the RNG states at the beginning of the evaluation loop.
         eval_steps : :class:`int`, optional
             The number of steps to evaluate for. If not specified evaluation will
             stop after a complete iteration through the ``dataloader``.
