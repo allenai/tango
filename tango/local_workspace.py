@@ -1,5 +1,4 @@
 import getpass
-import json
 import logging
 import os
 import platform
@@ -9,12 +8,22 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import petname
 from sqlitedict import SqliteDict
 
-from tango.common import FromParams, PathOrStr
+from tango.common import FromParams, Params, PathOrStr
 from tango.common.file_lock import FileLock
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
@@ -206,6 +215,20 @@ class ExecutorMetadata(FromParams):
         self.to_params().to_file(run_dir / "executor-metadata.json")
 
 
+@dataclass
+class WorkspaceMetadata(FromParams):
+    version: int
+
+    FILENAME: ClassVar[str] = ".workspace-metadata.json"
+
+    @classmethod
+    def read(cls, dir: PathOrStr) -> "WorkspaceMetadata":
+        return cls.from_params(Params.from_file(Path(dir) / cls.FILENAME))
+
+    def save(self, dir: PathOrStr):
+        self.to_params().to_file(Path(dir) / self.FILENAME)
+
+
 @Workspace.register("local")
 class LocalWorkspace(Workspace):
     """
@@ -234,13 +257,12 @@ class LocalWorkspace(Workspace):
 
         # Check the version of the local workspace
         try:
-            with open(self.dir / "settings.json", "r") as settings_file:
-                settings = json.load(settings_file)
+            workspace_metadata = WorkspaceMetadata.read(self.dir)
         except FileNotFoundError:
-            settings = {"version": 1}
+            workspace_metadata = WorkspaceMetadata(version=1)
 
         # Upgrade to version 2
-        if settings["version"] == 1:
+        if workspace_metadata.version == 1:
             with SqliteDict(self.step_info_file) as d:
                 for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
                     with stepinfo_file.open("rb") as f:
@@ -258,9 +280,8 @@ class LocalWorkspace(Workspace):
             for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
                 stepinfo_file.unlink()
 
-            settings["version"] = 2
-            with open(self.dir / "settings.json", "w") as settings_file:
-                json.dump(settings, settings_file)
+            workspace_metadata.version = 2
+            workspace_metadata.save(self.dir)
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
