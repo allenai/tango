@@ -1,4 +1,5 @@
 import getpass
+import json
 import logging
 import os
 import platform
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
 
 import petname
+from sqlitedict import SqliteDict
 
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
@@ -221,12 +223,44 @@ class LocalWorkspace(Workspace):
     """
 
     def __init__(self, dir: PathOrStr):
+        super().__init__()
         self.dir = Path(dir)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.cache = LocalStepCache(self.dir / "cache")
         self.locks: Dict[Step, FileLock] = {}
         self.runs_dir = self.dir / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
+        self.step_info_file = self.dir / "stepinfo.sqlite"
+
+        # Check the version of the local workspace
+        try:
+            with open(self.dir / "settings.json", "r") as settings_file:
+                settings = json.load(settings_file)
+        except FileNotFoundError:
+            settings = {"version": 1}
+
+        # Upgrade to version 2
+        if settings["version"] == 1:
+            with SqliteDict(self.step_info_file) as d:
+                for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
+                    with stepinfo_file.open("rb") as f:
+                        stepinfo = StepInfo.deserialize(f.read())
+
+                    # The `StepInfo` class changed from one version to the next. The deserialized version
+                    # ends up being a `StepInfo` instance that is missing the `cacheable` member. This
+                    # hack adds it in.
+                    kwargs = stepinfo.__dict__
+                    kwargs[
+                        "cacheable"
+                    ] = True  # Only cacheable steps were saved in v1. That's what v2 fixes.
+                    d[stepinfo.unique_id] = StepInfo(**kwargs)
+                d.commit()
+            for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
+                stepinfo_file.unlink()
+
+            settings["version"] = 2
+            with open(self.dir / "settings.json", "w") as settings_file:
+                json.dump(settings, settings_file)
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
@@ -240,72 +274,120 @@ class LocalWorkspace(Workspace):
         result.mkdir(parents=True, exist_ok=True)
         return result
 
-    def _step_info_file(self, step_or_unique_id: Union[Step, str]) -> Path:
-        return self.step_dir(step_or_unique_id) / "stepinfo.dill"
+    @staticmethod
+    def dir_is_empty(dir: Path):
+        return not any(True for _ in dir.iterdir())
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        return self._get_step_info(step_or_unique_id)
+        with SqliteDict(self.step_info_file) as d:
 
-    def _get_step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        try:
-            with self._step_info_file(step_or_unique_id).open("rb") as f:
-                return StepInfo.deserialize(f.read())
-        except FileNotFoundError:
-            if isinstance(step_or_unique_id, Step):
-                step = step_or_unique_id
-                return StepInfo(
-                    step.unique_id,
-                    step.name if step.name != step.unique_id else None,
-                    step.__class__.__name__,
-                    step.VERSION,
-                    {dep.unique_id for dep in step.dependencies},
-                )
-            else:
-                raise KeyError()
+            def find_or_add_step_info(step_or_unique_id: Union[Step, str]) -> StepInfo:
+                if isinstance(step_or_unique_id, Step):
+                    unique_id = step_or_unique_id.unique_id
+                else:
+                    unique_id = step_or_unique_id
 
-    def _put_step_info(self, step: Step, step_info: StepInfo) -> None:
-        path = self._step_info_file(step)
-        try:
-            path.parent.mkdir()
-        except FileExistsError:
-            pass
-        with path.open("wb") as f:
-            dump = step_info.serialize()
-            f.write(dump)
+                try:
+                    step_info = d[unique_id]
+                except KeyError:
+                    if not isinstance(step_or_unique_id, Step):
+                        raise
 
-    def _step_lock_file(self, step: Step) -> Path:
-        step_dir = self.step_dir(step)
+                    step = step_or_unique_id
+
+                    for dep in step.dependencies:
+                        find_or_add_step_info(dep)
+
+                    step_info = StepInfo(
+                        step.unique_id,
+                        step.name if step.name != step.unique_id else None,
+                        step.__class__.__name__,
+                        step.VERSION,
+                        {dep.unique_id for dep in step.dependencies},
+                        step.cache_results,
+                    )
+                    d[unique_id] = step_info
+                    del step
+
+                # Perform some sanity checks. Sqlite and the file system can get out of sync
+                # when a process dies suddenly.
+                step_dir = self.step_dir(unique_id)
+                new_state = step_info.state
+                if not step_dir.exists() or self.dir_is_empty(step_dir):
+                    new_state = StepState.INCOMPLETE
+                elif step_info.state == StepState.RUNNING and not self._step_lock_file_is_locked(
+                    unique_id
+                ):
+                    new_state = StepState.INCOMPLETE
+                if new_state != step_info.state:
+                    step_info.start_time = None
+                    step_info.end_time = None
+                    d[unique_id] = step_info
+                return step_info
+
+            result = find_or_add_step_info(step_or_unique_id)
+            d.commit()
+            return result
+
+    def _step_lock_file(self, step_or_unique_id: Union[Step, str]) -> Path:
+        step_dir = self.step_dir(step_or_unique_id)
         step_dir.mkdir(parents=True, exist_ok=True)
         return step_dir / "lock"
 
+    def _step_lock_file_is_locked(self, step_or_unique_id: Union[Step, str]) -> bool:
+        # FileLock.is_locked does not work, so we do this.
+        lock = FileLock(self._step_lock_file(step_or_unique_id))
+        try:
+            lock.acquire(0)
+            lock.release()
+            return False
+        except TimeoutError:
+            return True
+
     def step_starting(self, step: Step) -> None:
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return
+
+        # Gather the existing step info first. Step info automatically fixes itself if steps are
+        # marked as "running" but are not locked. This happens, for example, when a process
+        # gets killed. To make sure this works, we have to get the step info before we start
+        # messing with locks.
+        step_info = self.step_info(step)
+        if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED}:
+            raise RuntimeError(
+                f"Step '{step.name}' is trying to start, but it is already {step_info.state}. "
+                "If you are certain the step is not running somewhere else, delete the lock "
+                f"file at {self._step_lock_file(step)}."
+            )
+
         lock = FileLock(self._step_lock_file(step), read_only_ok=True)
-        lock.acquire_with_updates(desc=f"acquiring lock for {step.name}")
+        lock.acquire_with_updates(desc=f"acquiring lock for '{step.name}'")
         self.locks[step] = lock
 
         try:
-            step_info = self._get_step_info(step)
-            if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED}:
-                raise RuntimeError(
-                    f"Step {step.name} is trying to start, but it is already {step_info.state}."
-                )
-
             step_info.start_time = datetime.now()
             step_info.end_time = None
             step_info.error = None
             step_info.result_location = None
-            self._put_step_info(step, step_info)
+            with SqliteDict(self.step_info_file) as d:
+                d[step.unique_id] = step_info
+                d.commit()
         except:  # noqa: E722
             lock.release()
             del self.locks[step]
             raise
 
     def step_finished(self, step: Step, result: T) -> T:
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return result
+
         lock = self.locks[step]
 
-        step_info = self._get_step_info(step)
+        step_info = self.step_info(step)
         if step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is ending, but it never started.")
+            raise RuntimeError(f"Step '{step.name}' is ending, but it never started.")
 
         if step.cache_results:
             self.step_cache[step] = result
@@ -315,26 +397,33 @@ class LocalWorkspace(Workspace):
                 # for the return value.
                 result = self.step_cache[step]
 
+            # Save some metadata.
+            def replace_steps_with_unique_id(o: Any):
+                if isinstance(o, Step):
+                    return {"type": "ref", "ref": o.unique_id}
+                if isinstance(o, (list, tuple, set)):
+                    return o.__class__(replace_steps_with_unique_id(i) for i in o)
+                elif isinstance(o, dict):
+                    return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+                else:
+                    return o
+
+            try:
+                config = step.config
+            except ValueError:
+                config = None
+            metadata = ExecutorMetadata(
+                step=step.unique_id, config=replace_steps_with_unique_id(config)
+            )
+            # Finalize metadata and save to run directory.
+            metadata.save(self.step_dir(step))
+
+        # Mark the step as finished
         step_info.end_time = datetime.now()
         step_info.result_location = str(self.step_dir(step).absolute())
-        self._put_step_info(step, step_info)
-
-        # Initialize metadata.
-        def replace_steps_with_unique_id(o: Any):
-            if isinstance(o, Step):
-                return {"type": "ref", "ref": o.unique_id}
-            if isinstance(o, (list, tuple, set)):
-                return o.__class__(replace_steps_with_unique_id(i) for i in o)
-            elif isinstance(o, dict):
-                return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
-            else:
-                return o
-
-        metadata = ExecutorMetadata(
-            step=step.unique_id, config=replace_steps_with_unique_id(step.config)
-        )
-        # Finalize metadata and save to run directory.
-        metadata.save(self.step_dir(step))
+        with SqliteDict(self.step_info_file) as d:
+            d[step.unique_id] = step_info
+            d.commit()
 
         lock.release()
         del self.locks[step]
@@ -342,12 +431,24 @@ class LocalWorkspace(Workspace):
         return result
 
     def step_failed(self, step: Step, e: BaseException) -> None:
-        step_info = self._get_step_info(step)
-        if step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is failing, but it never started.")
-        step_info.end_time = datetime.now()
-        step_info.error = e
-        self._put_step_info(step, step_info)
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return
+
+        lock = self.locks[step]
+
+        try:
+            step_info = self.step_info(step)
+            if step_info.state != StepState.RUNNING:
+                raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
+            step_info.end_time = datetime.now()
+            step_info.error = e
+            with SqliteDict(self.step_info_file) as d:
+                d[step.unique_id] = step_info
+                d.commit()
+        finally:
+            lock.release()
+            del self.locks[step]
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
         # sanity check targets
@@ -374,9 +475,23 @@ class LocalWorkspace(Workspace):
         # write step info for all steps
         all_steps = set(targets)
         for step in targets:
-            all_steps.union(step.recursive_dependencies)
-        for step in all_steps:
-            self._put_step_info(step, self._get_step_info(step))
+            all_steps |= step.recursive_dependencies
+        with SqliteDict(self.step_info_file) as d:
+            for step in all_steps:
+                try:
+                    step_info = d[step.unique_id]
+                    step_info.name = step.name if step.name != step.unique_id else None
+                    d[step.unique_id] = step_info
+                except KeyError:
+                    d[step.unique_id] = StepInfo(
+                        step.unique_id,
+                        step.name if step.name != step.unique_id else None,
+                        step.__class__.__name__,
+                        step.VERSION,
+                        {dep.unique_id for dep in step.dependencies},
+                        step.cache_results,
+                    )
+                d.commit()
 
         # write targets
         for target in targets:
@@ -391,16 +506,17 @@ class LocalWorkspace(Workspace):
         run_dir = self.runs_dir / name
         if not run_dir.is_dir():
             raise KeyError(name)
-        steps_for_run = {}
-        for step_symlink in run_dir.iterdir():
-            if not step_symlink.is_symlink():
-                continue
-            step_name = str(step_symlink.name)
-            unique_id = str(step_symlink.resolve().name)
-            step_info = self._get_step_info(unique_id)
-            assert isinstance(step_info, StepInfo)
-            steps_for_run[step_name] = step_info
-        return steps_for_run
+        with SqliteDict(self.step_info_file, flag="r") as d:
+            steps_for_run = {}
+            for step_symlink in run_dir.iterdir():
+                if not step_symlink.is_symlink():
+                    continue
+                step_name = str(step_symlink.name)
+                unique_id = str(step_symlink.resolve().name)
+                step_info = d[unique_id]
+                assert isinstance(step_info, StepInfo)
+                steps_for_run[step_name] = step_info
+            return steps_for_run
 
     def run_dir(self, name: str) -> Path:
         """

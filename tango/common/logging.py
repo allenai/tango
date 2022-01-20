@@ -404,9 +404,10 @@ def _initialize_logging(
         os.environ["TANGO_CLICK_LOGGER_ENABLED"] = str(enable_click_logs).lower()
 
     # Handle special cases for specific loggers:
-    # filelock emits too many messages, so tell it to be quiet unless it has something
+    # These loggers emit too many messages, so we tell them to be quiet unless they have something
     # important to say.
-    logging.getLogger("filelock").setLevel(max(level, logging.WARNING))
+    for loud_logger in {"filelock", "sqlitedict"}:
+        logging.getLogger(loud_logger).setLevel(max(level, logging.WARNING))
     # We always want to see all click messages if we're running from the command line, and none otherwise.
     click_logger.setLevel(logging.DEBUG)
     click_logger.disabled = not enable_click_logs

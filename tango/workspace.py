@@ -32,6 +32,10 @@ class StepState(Enum):
     FAILED = "failed"
     """The step ran, but failed."""
 
+    UNCACHEABLE = "uncacheable"
+    """The step is uncacheable. It will be executed as many times as the results are needed,
+    so we don't keep track of the state."""
+
 
 @dataclass
 class StepInfo:
@@ -49,6 +53,9 @@ class StepInfo:
     step_name: Optional[str]
     """
     The name of the step, if it has one. Anonymous steps are identified only by their unique ID.
+
+    The same step can have different names in different runs. The last run wins, so don't rely
+    on this property in your code. It is just here to aid readability.
     """
 
     step_class_name: str
@@ -64,6 +71,11 @@ class StepInfo:
     dependencies: Set[str]
     """
     The unique ids of all the steps that this step depends on
+    """
+
+    cacheable: bool
+    """
+    Whether or not the step is cacheable.
     """
 
     start_time: Optional[datetime] = None
@@ -106,14 +118,17 @@ class StepInfo:
         """
         Returns the state of the step
         """
-        if self.start_time is None and self.end_time is None and self.error is None:
-            return StepState.INCOMPLETE
-        if self.start_time is not None and self.end_time is None and self.error is None:
-            return StepState.RUNNING
-        if self.start_time is not None and self.end_time is not None and self.error is None:
-            return StepState.COMPLETED
-        if self.start_time is not None and self.end_time is not None and self.error is not None:
-            return StepState.FAILED
+        if self.cacheable:
+            if self.start_time is None and self.end_time is None and self.error is None:
+                return StepState.INCOMPLETE
+            if self.start_time is not None and self.end_time is None and self.error is None:
+                return StepState.RUNNING
+            if self.start_time is not None and self.end_time is not None and self.error is None:
+                return StepState.COMPLETED
+            if self.start_time is not None and self.end_time is not None and self.error is not None:
+                return StepState.FAILED
+        else:
+            return StepState.UNCACHEABLE
         raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
 
     def serialize(self) -> bytes:
@@ -163,6 +178,9 @@ class Workspace(Registrable):
     # do that.
     #
 
+    def __init__(self):
+        self._delayed_cleanup_temp_dirs: List[TemporaryDirectory] = []
+
     @property
     @abstractmethod
     def step_cache(self) -> StepCache:
@@ -179,8 +197,11 @@ class Workspace(Registrable):
         By default, the step dir is a temporary directory that gets cleaned up after every run.
         This effectively disables restartability of steps."""
 
-        # TemporaryDirectory cleans up the directory automatically when the process exits. Neat!
-        return Path(TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir").name)
+        # TemporaryDirectory cleans up the directory automatically when the TemporaryDirectory object
+        # gets garbage collected, so we hold on to it in the Workspace.
+        dir = TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir")
+        self._delayed_cleanup_temp_dirs.append(dir)
+        return Path(dir.name)
 
     @abstractmethod
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
@@ -267,6 +288,7 @@ class MemoryWorkspace(Workspace):
     """
 
     def __init__(self):
+        super().__init__()
         self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Set[Step]] = {}
 
@@ -291,21 +313,31 @@ class MemoryWorkspace(Workspace):
                     step.__class__.__name__,
                     step.VERSION,
                     {dep.unique_id for dep in step.dependencies},
+                    step.cache_results,
                 )
             else:
                 raise KeyError()
 
     def step_starting(self, step: Step) -> None:
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return
+
         self.unique_id_to_info[step.unique_id] = StepInfo(
             step.unique_id,
             step.name if step.name != step.unique_id else None,
             step.__class__.__name__,
             step.VERSION,
             {dep.unique_id for dep in step.dependencies},
+            step.cache_results,
             datetime.now(),
         )
 
     def step_finished(self, step: Step, result: T) -> T:
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return result
+
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is ending, but it never started.")
@@ -321,6 +353,10 @@ class MemoryWorkspace(Workspace):
         return result
 
     def step_failed(self, step: Step, e: BaseException) -> None:
+        # We don't do anything with uncacheable steps.
+        if not step.cache_results:
+            return
+
         assert e is not None
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
@@ -339,6 +375,7 @@ class MemoryWorkspace(Workspace):
                 step.__class__.__name__,
                 step.VERSION,
                 {dep.unique_id for dep in step.dependencies},
+                step.cache_results,
             )
         return name
 

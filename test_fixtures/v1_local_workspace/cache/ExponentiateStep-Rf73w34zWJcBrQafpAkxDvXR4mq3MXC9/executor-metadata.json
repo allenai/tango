@@ -1,0 +1,30 @@
+{
+    "config": {
+        "type": "cexp",
+        "x": {
+            "type": "ref",
+            "ref": "MultiplyStep-4SRzHCCqYGs2PLeT8LeL5ukrCWGJoiae"
+        }
+    },
+    "duration": 0.0006,
+    "finished_at": 1642546361.347647,
+    "git": {
+        "commit": "8e09b66caffbff20fd0b1504c961932b97417e8d",
+        "remote": "https://github.com/allenai/tango.git"
+    },
+    "platform": {
+        "cpu_count": 16,
+        "executable": "/opt/miniconda3/envs/tango/bin/python",
+        "host": "ip-192-168-1-194.us-west-2.compute.internal",
+        "operating_system": "macOS-10.16-x86_64-i386-64bit",
+        "python": "3.8.12",
+        "root": "/Users/dirkg/Documents/tango/examples/euler",
+        "user": "dirkg"
+    },
+    "started_at": 1642546361.347095,
+    "step": "ExponentiateStep-Rf73w34zWJcBrQafpAkxDvXR4mq3MXC9",
+    "tango": {
+        "command": "/opt/miniconda3/envs/tango/bin/tango run euler_general.jsonnet -d workspace --include-package complex_arithmetic",
+        "version": "0.4.0rc4"
+    }
+}

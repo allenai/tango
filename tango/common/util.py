@@ -159,3 +159,36 @@ def could_be_class_name(name: str) -> bool:
 
 def _is_valid_python_name(name: str) -> bool:
     return bool(name and name[0].isalpha() and name.isalnum())
+
+
+def threaded_generator(g, queue_size: int = 16):
+    """
+    Puts the generating side of a generator into its own thread.
+
+    Let's say you have a generator that reads records from disk, and something that consumes the
+    generator that spends most of its time in PyTorch. Wouldn't it be great if you could read more
+    records while the PyTorch code runs? If you wrap your record-reading generator with
+    `threaded_generator(inner)`, that's exactly what happens. The reading code will run in a new thread,
+    while the consuming code runs in the main thread as normal. `threaded_generator()` uses a queue
+    to hand off items. You can specify the maximum queue size with the `queue_size` parameter.
+    """
+    from queue import Queue
+    from threading import Thread
+
+    q: Queue = Queue(maxsize=queue_size)
+
+    sentinel = object()
+
+    def fill_queue():
+        try:
+            for value in g:
+                q.put(value)
+        finally:
+            q.put(sentinel)
+
+    thread = Thread(name=repr(g), target=fill_queue, daemon=True)
+    thread.start()
+
+    yield from iter(q.get, sentinel)
+
+    thread.join()

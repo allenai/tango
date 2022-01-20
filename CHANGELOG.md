@@ -17,6 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `devices` parameter to `TorchTrainStep` replaced with `device_count: int`.
 - Run name printed at the end of a run so it's easier to find.
 - Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
+- A new integration, `transformers`, with two new steps for running seq2seq models.
+- Added `logging_tqdm`, if you don't want a progress bar, but you still want to see progress in the logs.
+- Added `threaded_generator()`, for wrapping generators so that they run in a separate thread from the generator's consumer.
+- Added a new example for evaluating the T0 model on XSum, a summarization task.
+- Added `MappedSequence` for functionally wrapping sequences.
+- Added `TextFormat`, in case you want to store the output of your steps in raw text instead of JSON.
+- Steps can now list arguments in `SKIP_ID_ARGUMENTS` to indicate that the argument should not affect a step's
+  unique id. This is useful for arguments that affect the execution of a step, but not the output.
+- `Step` now implements `__str__`, so steps look pretty in the debugger.
+- Added `DatasetCombineStep`, a step that combines multiple datasets into one.
 - Added `common.logging.initialize_worker_logging()` function for configuring logging from worker processes/threads.
 - Logs from `tango run ...` will be written to a file called `out.log` in the run directory.
 
@@ -25,12 +35,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed torch `StopEarlyCallback` state not being recovered properly on restarts.
 - Fixed file friendly logging by removing special styling characters.
 - Ensured exceptions captured in logs.
+- `LocalWorkspace` now works properly with uncacheable steps.
+- When a Tango run got killed hard, with `kill -9`, or because the machine lost power, `LocalWorkspace` would
+  sometimes keep a step marked as "running", preventing further executions. This still happens sometimes, but it
+  is now much less likely (and Tango gives you instructions for how to fix it).
+- To make all this happen, `LocalWorkspace` now saves step info in a Sqlite database. Unfortunately that means that
+  the workspace format changes and existing workspace directories won't work properly with it.
+- Fixed premature cleanup of temporary directories when using `MemoryWorkspace`
+
 
 ## [v0.4.0rc4](https://github.com/allenai/tango/releases/tag/v0.4.0rc4) - 2021-12-20
 
 ### Fixed
 
 - Fixed a bug where `StepInfo` fails to deserialize when `error` is an exception that can't be pickled.
+
 
 ## [v0.4.0rc3](https://github.com/allenai/tango/releases/tag/v0.4.0rc3) - 2021-12-15
 
@@ -51,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `WandbTrainCallback` now will use part of the step's unique ID as the name for the W&B run by default, to make
   it easier to indentify which tango step corresponds to each run in W&B.
 - `WandbTrainCallback` will save the entire `TrainConfig` object to the W&B config.
+
 
 ## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
 
