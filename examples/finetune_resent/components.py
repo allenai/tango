@@ -1,8 +1,8 @@
 import copy
 import imp
 import os
-from pickletools import optimize
 import time
+from pickletools import optimize
 from typing import Any, Dict, List
 
 import datasets
@@ -16,7 +16,6 @@ from torchvision import models, transforms
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
-
 
 Optimizer.register("torch_adam")(Adam)
 
