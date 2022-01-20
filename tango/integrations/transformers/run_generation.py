@@ -2,7 +2,6 @@ import logging
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Union
 
 import more_itertools
-import numpy as np
 import torch
 from datasets import Dataset
 from datasets import DatasetDict as HfDatasetDict
@@ -29,6 +28,7 @@ from tango.common import DatasetDict
 from tango.common.sequences import MappedSequence
 from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
 from tango.common.tqdm import Tqdm
+from tango.integrations.torch.util import resolve_device, set_seed_all
 
 logger = logging.getLogger(__name__)
 
@@ -94,15 +94,8 @@ def _generate(
     num_return_sequences: int = 1,
     fp16: bool = False,
 ) -> Iterable[List[str]]:
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    n_gpu = torch.cuda.device_count()
-
-    logger.info(f"device: {device}, n_gpu: {n_gpu}, 16-bits: {fp16}")
-
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if n_gpu > 0:
-        torch.cuda.manual_seed_all(seed)
+    device = resolve_device()
+    set_seed_all(seed)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer_kwargs: Dict[str, Any] = {}
@@ -189,7 +182,7 @@ def _generate(
                 repetition_penalty=repetition_penalty,
                 do_sample=True,
                 num_return_sequences=num_return_sequences,
-                synced_gpus=n_gpu > 1,
+                synced_gpus=False,  # Needs to be True if we have more than one GPU running.
             )
 
         generated_sequences = generated_sequences.view(
