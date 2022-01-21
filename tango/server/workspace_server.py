@@ -50,7 +50,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             "end_time": step_info.end_time.isoformat() if step_info.end_time else None,
             "error": step_info.error,
             "result_location": result_location,
-            "state": str(step_info.state),
+            "state": step_info.state.value,
         }
 
     def do_GET(self):
@@ -60,25 +60,35 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/run/"):
             self.path = "report.html"
         elif self.path == "/api/stepinfo":
+            try:
+                output_data = {
+                    sub: self._run_map(sub, self.server.workspace)
+                    for sub in list(self.server.workspace.registered_runs())
+                }
+                output_json = json.dumps(output_data)
+            except BaseException:
+                self.send_response(500)
+                self.end_headers()
+                raise
             self.send_response(200)
             self.send_header("Content-type", "text/json")
             self.end_headers()
-            output_data = {
-                sub: self._run_map(sub, self.server.workspace)
-                for sub in list(self.server.workspace.registered_runs())
-            }
-            output_json = json.dumps(output_data)
             self.wfile.write(output_json.encode("utf-8"))
             return
         elif self.path == "/api/runlist":
+            try:
+                output_data = [
+                    {"name": run.name, "start_date": run.start_date.isoformat()}
+                    for run in self.server.workspace.registered_runs().values()
+                ]
+                output_json = json.dumps(output_data)
+            except BaseException:
+                self.send_response(500)
+                self.end_headers()
+                raise
             self.send_response(200)
             self.send_header("Content-type", "text/json")
             self.end_headers()
-            output_data = [
-                {"name": run.name, "start_date": run.start_date.isoformat()}
-                for run in self.server.workspace.registered_runs().values()
-            ]
-            output_json = json.dumps(output_data)
             self.wfile.write(output_json.encode("utf-8"))
             return
         return SimpleHTTPRequestHandler.do_GET(self)

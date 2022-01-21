@@ -12,6 +12,7 @@ import petname
 
 from tango import step_cache
 from tango.common import Registrable
+from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import StepCache
 
@@ -89,7 +90,7 @@ class StepInfo:
     The time this step stopped running. This will be set whether the step succeeded or failed.
     """
 
-    error: Optional[Union[BaseException, str]] = None
+    error: Optional[str] = None
     """
     If the step failed, this is where the error goes.
 
@@ -388,7 +389,7 @@ class MemoryWorkspace(Workspace):
         if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
         existing_step_info.end_time = datetime.now()
-        existing_step_info.error = e
+        existing_step_info.error = exception_to_string(e)
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         if name is None:
