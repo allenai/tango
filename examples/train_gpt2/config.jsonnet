@@ -4,7 +4,7 @@ local warmup_steps = 20;
 local batch_size = 8;
 local validate_every = 20;
 local distributed = false;  # Set to `true` to train on 2 (or more) GPUs.
-local devices = if distributed then [0, 1] else null;
+local devices = if distributed then 2 else 1;
 local grad_accum = if distributed then 2 else 4;
 
 local distributed_dataloader = {
@@ -63,7 +63,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "validate_every": validate_every,
             "checkpoint_every": validate_every,
             "log_every": 1,
-            "devices": devices,
+            "device_count": devices,
         }
         "final_metrics": {
             "type": "torch::eval",
