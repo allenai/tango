@@ -196,4 +196,8 @@ def threaded_generator(g, queue_size: int = 16):
 
 
 def exception_to_string(e: BaseException) -> str:
-    return "".join(traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__))
+    if sys.version_info >= (3, 10):
+        formatted = traceback.format_exception(e)
+    else:
+        formatted = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
+    return "".join(formatted)
