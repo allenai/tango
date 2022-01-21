@@ -1,8 +1,4 @@
-import collections
-import copy
-import imp
 import os
-import time
 from collections import defaultdict
 from pickletools import optimize
 from typing import Any, Dict, List, Tuple
