@@ -9,17 +9,18 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar, Union
 
 import petname
 from sqlitedict import SqliteDict
 
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
+from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
 from tango.version import VERSION
-from tango.workspace import StepInfo, StepState, Workspace
+from tango.workspace import Run, StepInfo, StepState, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +279,17 @@ class LocalWorkspace(Workspace):
     def dir_is_empty(dir: Path):
         return not any(True for _ in dir.iterdir())
 
+    @staticmethod
+    def _fix_step_info(step_info: StepInfo) -> None:
+        """
+        Tragically we need to run a fix-up step over StepInfo objects that are freshly read from
+        the database. This is for backwards compatibility.
+
+        This function operates on the `step_info` object in place.
+        """
+        if isinstance(step_info.error, BaseException):
+            step_info.error = exception_to_string(step_info.error)
+
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         with SqliteDict(self.step_info_file) as d:
 
@@ -292,7 +304,6 @@ class LocalWorkspace(Workspace):
                 except KeyError:
                     if not isinstance(step_or_unique_id, Step):
                         raise
-
                     step = step_or_unique_id
 
                     for dep in step.dependencies:
@@ -327,6 +338,7 @@ class LocalWorkspace(Workspace):
 
             result = find_or_add_step_info(step_or_unique_id)
             d.commit()
+            self._fix_step_info(result)
             return result
 
     def _step_lock_file(self, step_or_unique_id: Union[Step, str]) -> Path:
@@ -442,7 +454,7 @@ class LocalWorkspace(Workspace):
             if step_info.state != StepState.RUNNING:
                 raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
             step_info.end_time = datetime.now()
-            step_info.error = e
+            step_info.error = exception_to_string(e)
             with SqliteDict(self.step_info_file) as d:
                 d[step.unique_id] = step_info
                 d.commit()
@@ -450,7 +462,7 @@ class LocalWorkspace(Workspace):
             lock.release()
             del self.locks[step]
 
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         # sanity check targets
         targets = list(targets)
         for target in targets:
@@ -497,12 +509,16 @@ class LocalWorkspace(Workspace):
         for target in targets:
             (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
 
-        return name
+        return self.registered_run(name)
 
-    def registered_runs(self) -> List[str]:
-        return [str(run_dir.name) for run_dir in self.runs_dir.iterdir() if run_dir.is_dir()]
+    def registered_runs(self) -> Dict[str, Run]:
+        return {
+            str(run_dir.name): self.registered_run(run_dir.name)
+            for run_dir in self.runs_dir.iterdir()
+            if run_dir.is_dir()
+        }
 
-    def registered_run(self, name: str) -> Dict[str, StepInfo]:
+    def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name
         if not run_dir.is_dir():
             raise KeyError(name)
@@ -515,8 +531,9 @@ class LocalWorkspace(Workspace):
                 unique_id = str(step_symlink.resolve().name)
                 step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
+                self._fix_step_info(step_info)
                 steps_for_run[step_name] = step_info
-            return steps_for_run
+            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
 
     def run_dir(self, name: str) -> Path:
         """
