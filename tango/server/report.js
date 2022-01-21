@@ -301,7 +301,7 @@ const getData = () => {
       const newData = out[runId];
       // this equality check assumes the data comes back in the same order
       if (JSON.stringify(newData) !== JSON.stringify(state.data)) {
-        state.data = out[Object.keys(out)[0]];
+        state.data = newData;
         render();
       }
     })
