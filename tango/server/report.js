@@ -38,6 +38,16 @@ const tempAlert = (msg, duration) => {
   document.body.appendChild(el);
 };
 
+function truncate( str, n, useWordBoundary ){
+  if (!n || str.length <= n) {
+    return str;
+  }
+  const subString = str.substr(0, n-1); // the original check
+  return (useWordBoundary
+    ? subString.substr(0, subString.lastIndexOf(" "))
+    : subString) + "&hellip;";
+};
+
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
   if (!data.state) {
@@ -118,16 +128,16 @@ const formatDateRange = (startDate, endDate) => {
 };
 
 // return a blue text with a href
-const formatLink = (label, url) => {
+const formatLink = (label, url, maxLen) => {
   if (!url) {
     return "";
   }
   return `
         <tr>
           <td></td>
-          <td align="left" href="${url}" target="_blank"><font color="${
+          <td ${maxLen ? 'tooltip="'+url+'"':''} align="left" href="${url}" target="_blank"><font color="${
     colors.N9
-  }">${label}:</font>${" "}<font color="${colors.B6}">${url}</font></td>
+  }">${label}:</font>${" "}<font color="${colors.B6}">${truncate(url, maxLen)}</font></td>
           <td></td>
         </tr>`;
 };
@@ -147,14 +157,14 @@ const formatKey = (value) => {
 };
 
 // return basic text
-const formatText = (label, value) => {
+const formatText = (label, value, maxLen) => {
   if (!value) {
     return "";
   }
   return `
         <tr>
           <td></td>
-          <td align="left">${label ? label + ": " : ""}${value}</td>
+          <td align="left" ${maxLen ? 'tooltip="'+value+'"':''}>${label ? label + ": " : ""}${truncate(value, maxLen)}</td>
           <td></td>
         </tr>`;
 };
@@ -198,10 +208,10 @@ const getTable = (data) => {
           ${isOpen ? formatDateRange(data.start_time, data.end_time) : null}
           ${
             isOpen && data.state !== states.FAILED
-              ? formatLink("Results", data.result_location)
+              ? formatLink("Results", data.result_location, 55)
               : null
           }
-          ${isOpen ? formatText("Error", data.error) : null}
+          ${isOpen ? formatText("Error", data.error, 55) : null}
           <!-- Some extra space at the bottom -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
         </table>
