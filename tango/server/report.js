@@ -10,6 +10,7 @@ const states = {
   FAILED: "failed",
   RUNNING: "running",
   INCOMPLETE: "incomplete",
+  UNCACHEABLE: "uncacheable"
 };
 
 // colors
@@ -24,6 +25,7 @@ const colors = {
   O8: "#FF9100",
   R6: "#F7605F",
   R8: "#D63F3F",
+  N6: "#AEB7C4",
   white: "#FFFFFF",
 };
 
@@ -182,6 +184,9 @@ const getTable = (data) => {
     case states.RUNNING:
     case states.INCOMPLETE:
       mainBgColor = colors.O8;
+      break;
+    case states.UNCACHEABLE:
+      mainBgColor = colors.N6;
       break;
   }
 
