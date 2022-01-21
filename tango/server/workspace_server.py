@@ -40,6 +40,9 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
         result_location = step_info.result_location
         if result_location is not None and "://" not in result_location:
             result_location = "file://" + result_location
+        error = step_info.error
+        if error is not None:
+            error = error.strip()
         return {
             "unique_id": step_info.unique_id,
             "step_name": step_info.step_name,
@@ -48,7 +51,7 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             "dependencies": list(step_info.dependencies),
             "start_time": step_info.start_time.isoformat() if step_info.start_time else None,
             "end_time": step_info.end_time.isoformat() if step_info.end_time else None,
-            "error": step_info.error,
+            "error": error,
             "result_location": result_location,
             "state": step_info.state.value,
         }
