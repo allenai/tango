@@ -50,6 +50,13 @@ function truncate( str, n, useWordBoundary ){
     : subString) + "&hellip;";
 }
 
+function openErrorInNewWindow(key){
+  const value = state.data[key].error;
+  var win = window.open("", "", "jsonFrame,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=600,top="+(screen.height-770)+",left="+(screen.width-700));
+  win.document.body.innerHTML = value.replace(/(?:\r\n|\r|\n)/g, '<br>');
+  win.document.title = `Error - key`;
+}
+
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
   if (!data.state) {
@@ -164,20 +171,34 @@ const formatKey = (value) => {
 };
 
 // return basic text
-const formatText = (label, value, maxLen) => {
+const formatText = (label, value) => {
   if (!value) {
     return "";
   }
   return `
         <tr>
           <td></td>
-          <td align="left" ${maxLen ? 'tooltip="'+value+'"':''}>${label ? label + ": " : ""}${truncate(value, maxLen)}</td>
+          <td align="left">${label ? label + ": " : ""}${value}</td>
+          <td></td>
+        </tr>`;
+};
+
+const formatError = (label, value, key, maxLen) => {
+  if (!value) {
+    return "";
+  }
+  return `
+        <tr>
+          <td></td>
+          <td href="javascript:openErrorInNewWindow(\'${key}\', )" align="left">${label ? label + ": " : ""}
+              ${truncate(value, maxLen)}
+          </td>
           <td></td>
         </tr>`;
 };
 
 // convert the data to a node
-const getTable = (data) => {
+const getTable = (key, data) => {
   let mainBgColor = colors.B10;
   switch (data.state) {
     case states.UNCACHEABLE:
@@ -223,7 +244,7 @@ const getTable = (data) => {
               ? formatLink("Results", data.result_location, 55)
               : null
           }
-          ${isOpen ? formatText("Error", data.error, 55) : null}
+          ${isOpen ? formatError("Error", data.error, key, 55) : null}
           <!-- Some extra space at the bottom -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
         </table>
@@ -236,7 +257,7 @@ const convert = (json) => {
   let nodes = [];
   let edges = [];
   Object.entries(json).forEach(([k, v]) => {
-    nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(v)}];`);
+    nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(k, v)}];`);
     v.dependencies.forEach((d) => {
       let tooltip = `${json[d] ? json[d].step_name : "?"} -> ${v.step_name}`;
       return edges.push(
