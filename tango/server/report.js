@@ -48,7 +48,7 @@ function truncate( str, n, useWordBoundary ){
   return (useWordBoundary
     ? subString.substr(0, subString.lastIndexOf(" "))
     : subString) + "&hellip;";
-};
+}
 
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
@@ -58,6 +58,9 @@ const formatState = (data, showDuration) => {
   let color = colors.N9;
   let sep = " - after ";
   switch (data.state) {
+    case states.UNCACHEABLE:
+      color = colors.N9;
+      break;
     case states.COMPLETED:
       color = colors.G8;
       break;
@@ -65,6 +68,8 @@ const formatState = (data, showDuration) => {
       color = colors.R8;
       break;
     case states.RUNNING:
+      color = colors.B6;
+      break;
     case states.INCOMPLETE:
       color = colors.O8;
       sep = " - so far ";
@@ -175,6 +180,9 @@ const formatText = (label, value, maxLen) => {
 const getTable = (data) => {
   let mainBgColor = colors.B10;
   switch (data.state) {
+    case states.UNCACHEABLE:
+      mainBgColor = colors.N9;
+      break;
     case states.COMPLETED:
       mainBgColor = colors.B10;
       break;
@@ -182,11 +190,10 @@ const getTable = (data) => {
       mainBgColor = colors.R8;
       break;
     case states.RUNNING:
+      mainBgColor = colors.B6;
+      break;
     case states.INCOMPLETE:
       mainBgColor = colors.O8;
-      break;
-    case states.UNCACHEABLE:
-      mainBgColor = colors.N6;
       break;
   }
 
