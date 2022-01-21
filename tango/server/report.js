@@ -22,6 +22,7 @@ const colors = {
   G8: "#0A8F6B",
   N2: "#F8F9FA",
   N9: "#47515C",
+  O5: "#FFC72E",
   O8: "#FF9100",
   R6: "#F7605F",
   R8: "#D63F3F",
@@ -40,7 +41,7 @@ const tempAlert = (msg, duration) => {
   document.body.appendChild(el);
 };
 
-function truncate( str, n, useWordBoundary ){
+function truncate(str, n, useWordBoundary){
   if (!n || str.length <= n) {
     return str;
   }
@@ -48,6 +49,16 @@ function truncate( str, n, useWordBoundary ){
   return (useWordBoundary
     ? subString.substr(0, subString.lastIndexOf(" "))
     : subString) + "&hellip;";
+}
+
+function getLastLine(str) {
+  const token = '<br>';
+  const newStr = str.replace(/(?:\r\n|\r|\n)/g, token);
+  let pos = newStr.lastIndexOf(token);
+  if(pos===-1) {
+    return str;
+  }
+  return `&hellip;${newStr.substr(pos+token.length)}`;
 }
 
 function openErrorInNewWindow(key){
@@ -190,9 +201,7 @@ const formatError = (label, value, key, maxLen) => {
   return `
         <tr>
           <td></td>
-          <td href="javascript:openErrorInNewWindow(\'${key}\', )" align="left">${label ? label + ": " : ""}
-              ${truncate(value, maxLen)}
-          </td>
+          <td href="javascript:openErrorInNewWindow(\'${key}\', )" align="left">${label ? label + ": " : ""}<font color="${colors.B6}">${truncate(getLastLine(value), maxLen)}</font></td>
           <td></td>
         </tr>`;
 };
@@ -200,6 +209,7 @@ const formatError = (label, value, key, maxLen) => {
 // convert the data to a node
 const getTable = (key, data) => {
   let mainBgColor = colors.B10;
+  let titleColor = colors.N2;
   switch (data.state) {
     case states.UNCACHEABLE:
       mainBgColor = colors.N9;
@@ -228,7 +238,7 @@ const getTable = (key, data) => {
     data.unique_id
   }" href=" "><img src="${isOpen ? "/close.svg" : "/open.svg"}" /></td>
             <td bgcolor="${mainBgColor}" ><font point-size="16" color="${
-    colors.N2
+    titleColor
   }">${data.step_name}</font></td>
         <td bgcolor="${mainBgColor}">${"   "}</td>
           </tr>
