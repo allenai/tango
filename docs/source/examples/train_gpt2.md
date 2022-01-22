@@ -21,5 +21,5 @@ Then create the experiment configuration file, `config.jsonnet`:
 Now we can run the experiment with:
 
 ```bash
-tango run config.jsonnet -i components -d /tmp/results
+tango run config.jsonnet -i components -d /tmp/workspace
 ```
