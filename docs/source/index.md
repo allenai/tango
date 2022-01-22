@@ -39,6 +39,10 @@ License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```
 
+To learn about Tango in 5 minutes, head over to the [First Steps section](first_steps).
+
+If you'd rather learn from examples, check out the [Examples section](examples/index).
+
 ## Team
 
 ```{include} ../../README.md
