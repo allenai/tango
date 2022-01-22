@@ -1,6 +1,6 @@
-# Overview
+# First Steps
 
-## Steps
+## What is a Step?
 
 Tango is a Python library for choreographing machine learning research experiments by executing
 a series of steps.

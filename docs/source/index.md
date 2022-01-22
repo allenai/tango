@@ -11,7 +11,7 @@
 :caption: Getting started
 
 installation
-overview
+first_steps
 examples/index
 faq
 CHANGELOG
