@@ -80,7 +80,6 @@ html_css_files = ["css/custom.css"]
 html_favicon = "_static/favicon.ico"
 
 html_theme_options = {
-    "announcement": "ai2-tango is currently under rapid development. Use at your own risk!",
     "light_css_variables": {
         "color-announcement-background": "#1B4596",
         "color-announcement-text": "#FFFFFF",
