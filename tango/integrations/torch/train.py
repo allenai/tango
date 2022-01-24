@@ -203,6 +203,12 @@ class TorchTrainStep(Step):
             if amp:
                 raise ConfigurationError("AMP requires training on CUDA devices")
 
+        if validate_every is not None and validation_split is None:
+            raise ConfigurationError(
+                "You chave set a validation interval, but no invalidation split. "
+                "That's probably unintentional."
+            )
+
         is_distributed = False
         num_workers = 1
         if devices and len(devices) > 1:
