@@ -232,6 +232,7 @@ class TorchTrainStep(Step):
             log_every=log_every,
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
+            validation_steps=validation_steps,
             amp=amp,
             max_grad_norm=max_grad_norm,
             is_distributed=is_distributed,
