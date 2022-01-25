@@ -67,7 +67,14 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "callbacks": [{"type": "torch::cuda_mem_stats"}],
             "accelerator": {
                 "type": "deepspeed",
-                "deepspeed_config": {},
+                "deepspeed_config": {
+                    "fp16": {
+                        "enabled": true,
+                    },
+                    "zero_optimization": {
+                        "stage": 3,
+                    },
+                },
             },
         },
         "final_metrics": {
