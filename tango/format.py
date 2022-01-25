@@ -451,6 +451,7 @@ class SqliteDictFormat(Format[DatasetDict]):
     This works because when you re-run the step, the work directory will still be there, so ``output_split`` is
     not empty when you open it.
     """
+
     VERSION = 3
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
