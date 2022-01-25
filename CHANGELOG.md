@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web UI now renders the step graph left-to-right.
 - The web UI now shows runs by date, with the most recent run at the top.
 - The web UI now shows steps in a color-coded way.
+- The `tango run` command now prints user-friendly paths if possible.
 
 ### Fixed
 
