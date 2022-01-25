@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 from tango.common.aliases import PathOrStr
-from tango.common.logging import initialize_logging
+from tango.common.logging import initialize_logging, teardown_logging
 
 
 class TangoTestCase:
@@ -82,22 +82,26 @@ class TangoTestCase:
             workspace_dir=str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
+            start_server=False,
         )
 
 
 @contextmanager
 def run_experiment(
-    config: Union[PathOrStr, Dict[str, Any]], overrides: Optional[Union[Dict[str, Any], str]] = None
+    config: Union[PathOrStr, Dict[str, Any]],
+    overrides: Optional[Union[Dict[str, Any], str]] = None,
+    file_friendly_logging: bool = True,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the cache directory, a temporary directory that will be
     cleaned up on ``__exit__``.
     """
-    initialize_logging(enable_click_logs=True)
+    initialize_logging(enable_click_logs=True, file_friendly_logging=file_friendly_logging)
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
         yield test_case.run(config, overrides=overrides)
     finally:
         test_case.teardown_method()
+        teardown_logging()

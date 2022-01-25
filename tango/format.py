@@ -5,7 +5,7 @@ import importlib
 import json
 import logging
 import lzma
-import mmap
+import pathlib
 from abc import abstractmethod
 from os import PathLike
 from pathlib import Path
@@ -25,12 +25,13 @@ from typing import (
 )
 
 import dill
-import xxhash
 
+from tango.common import DatasetDict, filename_is_safe
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
+from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
 
 T = TypeVar("T")
 
@@ -62,32 +63,6 @@ class Format(Registrable, Generic[T]):
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
 
-    @abstractmethod
-    def checksum(self, dir: PathOrStr) -> str:
-        """
-        Produces a checksum of the serialized artifact.
-
-        Should raise :class:`FileNotFoundError` if the artifact can't be found.
-        """
-        raise NotImplementedError()
-
-    @staticmethod
-    def _checksum_artifact(path: PathOrStr) -> str:
-        """
-        A helper method that can be used to compute the checksum of an artifact.
-
-        This can make implementing :meth:`checksum()` easier.
-        """
-        filepath = Path(path)
-        if not filepath.is_file():
-            raise FileNotFoundError(str(filepath))
-
-        h = xxhash.xxh128()
-        with filepath.open("rb") as f:
-            with mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ) as m:
-                h.update(m)
-        return h.hexdigest()
-
 
 _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
     None: open,
@@ -96,10 +71,10 @@ _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
     "null": open,
     "gz": gzip.open,  # type: ignore
     "gzip": gzip.open,  # type: ignore
-    "bz": bz2.open,
-    "bz2": bz2.open,
-    "bzip": bz2.open,
-    "bzip2": bz2.open,
+    "bz": bz2.open,  # type: ignore
+    "bz2": bz2.open,  # type: ignore
+    "bzip": bz2.open,  # type: ignore
+    "bzip2": bz2.open,  # type: ignore
     "lzma": lzma.open,
 }
 
@@ -171,10 +146,6 @@ class DillFormat(Format[T], Generic[T]):
                 return DillFormatIterator(filename)  # type: ignore
             else:
                 return unpickler.load()
-
-    def checksum(self, dir: PathOrStr) -> str:
-        path = self._get_artifact_path(dir)
-        return self._checksum_artifact(path)
 
     def _get_artifact_path(self, dir: PathOrStr) -> Path:
         return Path(dir) / ("data.dill" + _SUFFIXES[self.open])
@@ -311,14 +282,6 @@ class JsonFormat(Format[T], Generic[T]):
         else:
             raise RuntimeError("This should be impossible.")
 
-    def checksum(self, dir: PathOrStr) -> str:
-        iterator_filename = self._get_artifact_path(dir, iterator=True)
-        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
-        if iterator_filename.exists():
-            return self._checksum_artifact(iterator_filename)
-        else:
-            return self._checksum_artifact(non_iterator_filename)
-
     def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
         return Path(dir) / (("data.jsonl" if iterator else "data.json") + _SUFFIXES[self.open])
 
@@ -346,3 +309,127 @@ class JsonFormatIterator(Iterator[T], Generic[T]):
             self.f.close()
             self.f = None
             raise StopIteration()
+
+
+@Format.register("text")
+class TextFormat(Format[Union[str, Iterable[str]]]):
+    """This format writes the artifact as a single file in text format.
+    Optionally, it can compress the data. This is very flexible, but not always the fastest.
+
+    This format can only write strings, or iterable of strings.
+
+    .. tip::
+        This format has special support for iterables. If you write an iterator, it will consume the
+        iterator. If you read an iterator, it will read the iterator lazily.
+
+        Be aware that if your strings contain newlines, you will read out more strings than you wrote.
+        For this reason, it's often advisable to use `JsonFormat` instead. With `JsonFormat`, all special
+        characters are escaped, strings are quoted, but it's all still human-readable.
+    """
+
+    VERSION = 1
+
+    def __init__(self, compress: Optional[str] = None):
+        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        try:
+            self.open = _OPEN_FUNCTIONS[compress]
+        except KeyError:
+            raise ConfigurationError(f"The {compress} compression format does not exist.")
+
+    def write(self, artifact: Union[str, Iterable[str]], dir: PathOrStr):
+        if hasattr(artifact, "__next__"):
+            filename = self._get_artifact_path(dir, iterator=True)
+            with self.open(filename, "wt") as f:
+                for item in cast(Iterable, artifact):
+                    f.write(str(item))
+                    f.write("\n")
+        else:
+            filename = self._get_artifact_path(dir, iterator=False)
+            with self.open(filename, "wt") as f:
+                f.write(str(artifact))
+
+    def read(self, dir: PathOrStr) -> Union[str, Iterable[str]]:
+        iterator_filename = self._get_artifact_path(dir, iterator=True)
+        iterator_exists = iterator_filename.exists()
+        non_iterator_filename = self._get_artifact_path(dir, iterator=False)
+        non_iterator_exists = non_iterator_filename.exists()
+
+        if iterator_exists and non_iterator_exists:
+            self.logger.warning(
+                "Both %s and %s exist. Ignoring %s.",
+                iterator_filename,
+                non_iterator_filename,
+                iterator_filename,
+            )
+            iterator_exists = False
+
+        if not iterator_exists and not non_iterator_exists:
+            raise IOError("Attempting to read non-existing data from %s", dir)
+        if iterator_exists and not non_iterator_exists:
+            return TextFormatIterator(iterator_filename)  # type: ignore
+        elif not iterator_exists and non_iterator_exists:
+            with self.open(non_iterator_filename, "rt") as f:
+                return f.read()
+        else:
+            raise RuntimeError("This should be impossible.")
+
+    def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
+        return Path(dir) / (("texts.txt" if iterator else "text.txt") + _SUFFIXES[self.open])
+
+
+class TextFormatIterator(Iterator[str]):
+    """
+    An ``Iterator`` class that is used so we can return an iterator from ``TextFormat.read()``.
+    """
+
+    def __init__(self, filename: PathOrStr):
+        self.f: Optional[IO[Any]] = _open_compressed(filename, "rt")
+
+    def __iter__(self) -> Iterator[str]:
+        return self
+
+    def __next__(self) -> str:
+        if self.f is None:
+            raise StopIteration()
+        try:
+            line = self.f.readline()
+            if len(line) <= 0:
+                raise EOFError()
+            return line
+        except EOFError:
+            self.f.close()
+            self.f = None
+            raise StopIteration()
+
+
+@Format.register("sqlite")
+class SqliteDictFormat(Format[DatasetDict]):
+    VERSION = 3
+
+    def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
+        dir = pathlib.Path(dir)
+        with gzip.open(dir / "metadata.dill.gz", "wb") as f:
+            dill.dump(artifact.metadata, f)
+        for split_name, split in artifact.splits.items():
+            filename = f"{split_name}.sqlite"
+            if not filename_is_safe(filename):
+                raise ValueError(f"{split_name} is not a valid name for a split.")
+            try:
+                (dir / filename).unlink()
+            except FileNotFoundError:
+                pass
+            if isinstance(split, SqliteSparseSequence):
+                split.copy_to(dir / filename)
+            else:
+                sqlite = SqliteSparseSequence(dir / filename)
+                sqlite.extend(split)
+
+    def read(self, dir: Union[str, PathLike]) -> DatasetDict:
+        dir = pathlib.Path(dir)
+        with gzip.open(dir / "metadata.dill.gz", "rb") as f:
+            metadata = dill.load(f)
+        splits = {
+            filename.stem: SqliteSparseSequence(filename, read_only=True)
+            for filename in dir.glob("*.sqlite")
+        }
+        return DatasetDict(metadata=metadata, splits=splits)

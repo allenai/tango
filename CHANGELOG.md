@@ -9,12 +9,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Default log level is `WARNING` instead of `ERROR`.
+- The web UI now renders the step graph left-to-right.
+- The web UI now shows runs by date, with the most recent run at the top.
+- The web UI now shows steps in a color-coded way.
+
+### Fixed
+
+- Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
+
+## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19
+
+### Added
+
+- Added `TorchEvalStep` to torch integration, registered as "torch::eval".
+
+### Changed
+
+- Renamed `aggregate_val_metric` to `auto_aggregate_val_metric` in `TorchTrainStep`.
+- `devices` parameter to `TorchTrainStep` replaced with `device_count: int`.
+- Run name printed at the end of a run so it's easier to find.
+- Type information added to package data. See [PEP 561](https://www.python.org/dev/peps/pep-0561) for more information.
+- A new integration, `transformers`, with two new steps for running seq2seq models.
+- Added `logging_tqdm`, if you don't want a progress bar, but you still want to see progress in the logs.
+- Added `threaded_generator()`, for wrapping generators so that they run in a separate thread from the generator's consumer.
+- Added a new example for evaluating the T0 model on XSum, a summarization task.
+- Added `MappedSequence` for functionally wrapping sequences.
+- Added `TextFormat`, in case you want to store the output of your steps in raw text instead of JSON.
+- Steps can now list arguments in `SKIP_ID_ARGUMENTS` to indicate that the argument should not affect a step's
+  unique id. This is useful for arguments that affect the execution of a step, but not the output.
+- `Step` now implements `__str__`, so steps look pretty in the debugger.
+- Added `DatasetCombineStep`, a step that combines multiple datasets into one.
+- Added `common.logging.initialize_worker_logging()` function for configuring logging from worker processes/threads.
+- Logs from `tango run ...` will be written to a file called `out.log` in the run directory.
+
+### Fixed
+
+- Fixed torch `StopEarlyCallback` state not being recovered properly on restarts.
+- Fixed file friendly logging by removing special styling characters.
+- Ensured exceptions captured in logs.
+- `LocalWorkspace` now works properly with uncacheable steps.
+- When a Tango run got killed hard, with `kill -9`, or because the machine lost power, `LocalWorkspace` would
+  sometimes keep a step marked as "running", preventing further executions. This still happens sometimes, but it
+  is now much less likely (and Tango gives you instructions for how to fix it).
+- To make all this happen, `LocalWorkspace` now saves step info in a Sqlite database. Unfortunately that means that
+  the workspace format changes and existing workspace directories won't work properly with it.
+- Fixed premature cleanup of temporary directories when using `MemoryWorkspace`
+
+
+## [v0.4.0rc4](https://github.com/allenai/tango/releases/tag/v0.4.0rc4) - 2021-12-20
+
+### Fixed
+
+- Fixed a bug where `StepInfo` fails to deserialize when `error` is an exception that can't be pickled.
+
+
+## [v0.4.0rc3](https://github.com/allenai/tango/releases/tag/v0.4.0rc3) - 2021-12-15
+
+### Added
+
+- Added `DatasetsFormat` format and `LoadStreamingDataset` step to `datasets` integration.
+- `SqliteDictFormat` for datasets.
+- Added `pre_epoch()` and `post_epoch()` callback methods to PyTorch `TrainCallback`.
+
+### Changed
+
+- `LoadDataset` step from `datasets` integration is now cacheable, using the `DatasetsFormat` format by default.
+  But this only works with non-streaming datasets. For streaming datasets, you should use the `LoadStreamingDataset` step instead.
+
+### Fixed
+
+- Fixed bug where `KeyboardInterrupt` exceptions were not handled properly by steps and workspaces.
+- `WandbTrainCallback` now will use part of the step's unique ID as the name for the W&B run by default, to make
+  it easier to indentify which tango step corresponds to each run in W&B.
+- `WandbTrainCallback` will save the entire `TrainConfig` object to the W&B config.
+
+
+## [v0.4.0rc2](https://github.com/allenai/tango/releases/tag/v0.4.0rc2) - 2021-12-13
+
+### Added
+
+- Sample experiment configurations that prove Euler's identity
+
+### Changed
+
 - Loosened `Click` dependency to include v7.0.
+- Loosened `datasets` dependency.
+- Tightened `petname` dependency to exclude next major release for safety.
 
 ### Fixed
 
 - `Workspace`, `MemoryWorkspace`, and `LocalWorkspace` can now be imported directly from the `tango`
   base module.
+- Uncacheable leaf steps would never get executed. This is now fixed.
+- We were treating failed steps as if they were completed by accident.
+- The visualization had a problem with showing steps that never executed because a dependency failed.
+- Fixed a bug where `Lazy` inputs to a `Step` would fail to resolve arguments that come from the result
+  of another step.
+- Fixed a bug in `TorchTrainStep` where some arguments for distributed training (`devices`, `distributed_port`) weren't being set properly.
+
 
 ## [v0.4.0rc1](https://github.com/allenai/tango/releases/tag/v0.4.0rc1) - 2021-11-30
 
@@ -23,6 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced the concept of the `Workspace`, with `LocalWorkspace` and `MemoryWorkspace` as initial implementations.
 - Added a stub of a webserver that will be able to visualize runs as they happen.
 - Added separate classes for `LightningTrainingTypePlugin`, `LightningPrecisionPlugin`, `LightningClusterEnvironmentPlugin`, `LightningCheckpointPlugin` for compatibility with `pytorch-lightning>=1.5.0`.
+- Added a visualization of workspaces that can show step graphs while they're executing.
 
 ### Removed
 

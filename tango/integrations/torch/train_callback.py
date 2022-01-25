@@ -51,6 +51,13 @@ class TrainCallback(Registrable):
         self.validation_dataloader = validation_dataloader
 
     @property
+    def step_id(self) -> str:
+        """
+        The unique ID of the current :class:`~tango.Step`.
+        """
+        return self.train_config.step_id
+
+    @property
     def work_dir(self) -> Path:
         """
         The working directory of the current train step.
@@ -87,6 +94,30 @@ class TrainCallback(Registrable):
         Called after the training loop completes.
 
         This is the last method that is called, so any cleanup can be done in this method.
+        """
+        pass
+
+    def pre_epoch(self, epoch: int) -> None:
+        """
+        Called right before the start of an epoch. Epochs start at 0.
+        """
+        pass
+
+    def post_epoch(self, epoch: int) -> None:
+        """
+        Called after an epoch is completed. Epochs start at 0.
+        """
+        pass
+
+    def pre_checkpoint(self, checkpoint_state: Dict[str, Any]) -> None:
+        """
+        Called directly before the checkpoint is saved.
+        """
+        pass
+
+    def post_checkpoint(self, checkpoint_path: Path) -> None:
+        """
+        Called directly after a checkpoint is saved.
         """
         pass
 
@@ -137,6 +168,13 @@ class TrainCallback(Registrable):
     def post_val_batch(self, step: int, val_step: int, val_batch_outputs: Dict[str, Any]) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
+
+        .. tip::
+            This method can be used to modify ``val_batch_outputs`` in place, which is useful
+            in scenarios like distributed training where you might need to aggregate metrics
+            in a special way other than a simple average. If that's the case, make sure
+            to set ``auto_aggregate_val_metric`` to ``False`` in :class:`TorchTrainStep`.
+
         """
         pass
 
@@ -168,3 +206,16 @@ class StopEarlyCallback(TrainCallback):
             self.best_step = step
         elif step > self.best_step + self.patience:
             raise StopEarly
+
+    def state_dict(self) -> Dict[str, Any]:
+        """
+        Return any state that needs to be kept after a restart.
+        """
+        return {"patience": self.patience, "best_step": self.best_step}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        """
+        Load the state on a restart.
+        """
+        self.patience = state_dict["patience"]
+        self.best_step = state_dict["best_step"]

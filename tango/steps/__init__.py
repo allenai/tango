@@ -3,7 +3,7 @@ Built-in :class:`~tango.step.Step` implementations that are not tied to any part
 integration.
 """
 
-__all__ = ["DatasetRemixStep", "PrintStep"]
+__all__ = ["DatasetCombineStep", "DatasetRemixStep", "PrintStep"]
 
-from .dataset_remix import DatasetRemixStep
+from .dataset_remix import DatasetCombineStep, DatasetRemixStep
 from .print import PrintStep

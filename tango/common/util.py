@@ -1,7 +1,9 @@
 import importlib
 import pkgutil
 import signal
+import string
 import sys
+import traceback
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable, Optional, Set, Union
@@ -89,6 +91,12 @@ def _parse_bool(value: Union[bool, str]) -> bool:
     return False
 
 
+def _parse_optional_int(value: Optional[str]) -> Optional[int]:
+    if value is not None:
+        return int(value)
+    return None
+
+
 def find_submodules(
     module: Optional[str] = None,
     match: Optional[Set[str]] = None,
@@ -134,3 +142,62 @@ def find_integrations() -> Iterable[str]:
     Find all tango integration modules.
     """
     yield from find_submodules("tango.integrations", recursive=False)
+
+
+SAFE_FILENAME_CHARS = frozenset("-_.%s%s" % (string.ascii_letters, string.digits))
+
+
+def filename_is_safe(filename: str) -> bool:
+    return all(c in SAFE_FILENAME_CHARS for c in filename)
+
+
+def could_be_class_name(name: str) -> bool:
+    if "." in name and not name.endswith("."):
+        return all([_is_valid_python_name(part) for part in name.split(".")])
+    else:
+        return False
+
+
+def _is_valid_python_name(name: str) -> bool:
+    return bool(name and name[0].isalpha() and name.isalnum())
+
+
+def threaded_generator(g, queue_size: int = 16):
+    """
+    Puts the generating side of a generator into its own thread.
+
+    Let's say you have a generator that reads records from disk, and something that consumes the
+    generator that spends most of its time in PyTorch. Wouldn't it be great if you could read more
+    records while the PyTorch code runs? If you wrap your record-reading generator with
+    `threaded_generator(inner)`, that's exactly what happens. The reading code will run in a new thread,
+    while the consuming code runs in the main thread as normal. `threaded_generator()` uses a queue
+    to hand off items. You can specify the maximum queue size with the `queue_size` parameter.
+    """
+    from queue import Queue
+    from threading import Thread
+
+    q: Queue = Queue(maxsize=queue_size)
+
+    sentinel = object()
+
+    def fill_queue():
+        try:
+            for value in g:
+                q.put(value)
+        finally:
+            q.put(sentinel)
+
+    thread = Thread(name=repr(g), target=fill_queue, daemon=True)
+    thread.start()
+
+    yield from iter(q.get, sentinel)
+
+    thread.join()
+
+
+def exception_to_string(e: BaseException) -> str:
+    if sys.version_info >= (3, 10):
+        formatted = traceback.format_exception(e)
+    else:
+        formatted = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
+    return "".join(formatted)

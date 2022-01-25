@@ -36,7 +36,7 @@
             "validate_every": 10,
             "checkpoint_every": 10,
             "log_every": 1,
-            "devices": [-1, -1],
+            "device_count": 2,
         }
     }
 }

@@ -41,6 +41,8 @@ extensions = [
     "sphinx_copybutton",
 ]
 
+suppress_warnings = ["myst.header"]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
@@ -67,7 +69,7 @@ intersphinx_mapping = {
 #
 html_theme = "furo"
 
-html_title = "ai2-tango"
+html_title = f"ai2-tango v{VERSION}"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -85,6 +87,8 @@ html_theme_options = {
         "color-announcement-text": "#FFFFFF",
     },
     "dark_css_variables": {},
+    "light_logo": "tango_final_squareish.png",
+    "dark_logo": "tango_final_squareish.png",
 }
 
 python_use_unqualified_type_names = True

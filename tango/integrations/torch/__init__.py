@@ -106,7 +106,6 @@ would produce the following output:
 .. testoutput::
     :options: +ELLIPSIS
 
-    Server started at ...
     Starting new run ...
     ● Starting step "data" (needed by "train") ...
     ✓ Finished step "data"
@@ -114,6 +113,7 @@ would produce the following output:
     Loading best weights...
     ✓ Finished step "train"
     ✓ The output for "train" is in ...
+    Finished run ...
 
 Tips
 ----
@@ -140,6 +140,7 @@ __all__ = [
     "DefaultAccelerator",
     "TorchFormat",
     "TorchTrainStep",
+    "TorchEvalStep",
     "Optimizer",
     "LRScheduler",
     "Model",
@@ -148,6 +149,7 @@ __all__ = [
     "Sampler",
     "ConcatTensorDictsCollator",
     "TrainCallback",
+    "EvalCallback",
     "TrainConfig",
     "StopEarlyCallback",
     "StopEarly",
@@ -155,6 +157,8 @@ __all__ = [
 
 from .accelerator import Accelerator
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
+from .eval import TorchEvalStep
+from .eval_callback import EvalCallback
 from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model

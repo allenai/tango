@@ -50,7 +50,7 @@ def replace_cr_with_newline(message: str) -> str:
     return message
 
 
-class TqdmToLogsWriter(object):
+class TqdmToLogsWriter:
     def __init__(self):
         self.last_message_written_time = 0.0
 
@@ -79,6 +79,11 @@ class TqdmToLogsWriter(object):
 
 
 class Tqdm:
+    """
+    A `tqdm <https://tqdm.github.io/>`_ wrapper that respects
+    :data:`~tango.common.logging.FILE_FRIENDLY_LOGGING` and other Tango logging configurations.
+    """
+
     @staticmethod
     def tqdm(*args, **kwargs):
         new_kwargs = Tqdm.get_updated_kwargs(**kwargs)

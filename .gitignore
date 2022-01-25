@@ -6,7 +6,8 @@ ai2_tango.egg-info/
 build/
 dist/
 pip-wheel-metadata/
-
+runs/
+workspace/
 
 # dev tools
 

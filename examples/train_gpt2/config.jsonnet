@@ -4,10 +4,10 @@ local warmup_steps = 20;
 local batch_size = 8;
 local validate_every = 20;
 local distributed = false;  # Set to `true` to train on 2 (or more) GPUs.
-local devices = if distributed then [0, 1] else null;
+local devices = if distributed then 2 else 1;
 local grad_accum = if distributed then 2 else 4;
 
-local dataloader = if distributed then {
+local distributed_dataloader = {
     "batch_size": batch_size,
     "collate_fn": {"type": "transformers_default"},
     "sampler": {
@@ -15,11 +15,15 @@ local dataloader = if distributed then {
         "shuffle": true,
         "drop_last": true,
     }
-} else {
+};
+
+local single_device_dataloader = {
     "shuffle": true,
     "batch_size": batch_size,
     "collate_fn": {"type": "transformers_default"},
 };
+
+local dataloader = if distributed then distributed_dataloader else single_device_dataloader;
 
 {
     "steps": {
@@ -59,7 +63,14 @@ local dataloader = if distributed then {
             "validate_every": validate_every,
             "checkpoint_every": validate_every,
             "log_every": 1,
-            "devices": devices,
+            "device_count": devices,
         }
+        "final_metrics": {
+            "type": "torch::eval",
+            "model": {"type": "ref", "ref": "trained_model"},
+            "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
+            "dataloader": single_device_dataloader,
+            "test_split": "test",
+        },
     }
 }

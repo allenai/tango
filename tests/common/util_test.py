@@ -1,4 +1,14 @@
-from tango.common.util import find_integrations, find_submodules
+import time
+
+import pytest
+from flaky import flaky
+
+from tango.common.util import (
+    could_be_class_name,
+    find_integrations,
+    find_submodules,
+    threaded_generator,
+)
 
 
 def test_find_submodules():
@@ -14,3 +24,31 @@ def test_find_integrations():
     integrations = set(find_integrations())
     assert "tango.integrations.torch" in integrations
     assert "tango.integrations.torch.format" not in integrations
+
+
+@pytest.mark.parametrize(
+    "name, result",
+    [
+        ("", False),
+        ("foo.Bar", True),
+        ("foo.Bar.", False),
+        ("1foo.Bar", False),
+    ],
+)
+def test_could_be_class_name(name: str, result: bool):
+    assert could_be_class_name(name) is result
+
+
+@flaky(max_runs=3)
+def test_threaded_generator():
+    def generate_slowly():
+        for i in range(10):
+            yield i
+            time.sleep(0.1)
+
+    start = time.time()
+    for i in threaded_generator(generate_slowly()):
+        time.sleep(0.1)
+    end = time.time()
+
+    assert end - start < 11

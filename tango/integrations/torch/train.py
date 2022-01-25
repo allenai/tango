@@ -1,14 +1,12 @@
-import random
+import logging
 import shutil
-import warnings
 from itertools import islice
 from typing import Any, Dict, List, Optional, Set, cast
 
-import numpy as np
 import torch
 import torch.distributed as dist
 from more_itertools import chunked
-from torch.utils.data import DistributedSampler, IterableDataset
+from torch.utils.data import DistributedSampler
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
@@ -26,6 +24,7 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
+from .util import check_dataloader, check_dataset, set_seed_all
 
 
 @Step.register("torch::train")
@@ -38,24 +37,35 @@ class TorchTrainStep(Step):
 
         Registered as a :class:`~tango.step.Step` under the name "torch::train".
 
+    .. important::
+
+        The training loop will use GPU(s) automatically when available, as long as at least
+        ``device_count`` CUDA devices are available.
+
+        Distributed data parallel training is activated when the ``device_count`` is greater than 1.
+
+        You can control which CUDA devices to use with the environment variable ``CUDA_VISIBLE_DEVICES``.
+        For example, to only use the GPUs with IDs 0 and 1, set ``CUDA_VISIBLE_DEVICES=0,1``
+        (and ``device_count`` to 2).
+
     .. warning::
 
         During validation, the validation metric (specified by the ``val_metric_name`` parameter)
         is aggregated by simply averaging across validation batches and distributed processes.
         This behavior is usually correct when your validation metric is "loss" or "accuracy",
-        for example, but may not be correct for other metrics such as F1.
+        for example, but may not be correct for other metrics like "F1".
 
         If this is not correct for your metric you will need to handle the aggregation
-        internally in your model so that the metric returned from :meth:`torch.nn.Module.forward()`
-        is already aggregated correctly. Then set the parameter ``aggregate_val_metric`` to
-        ``False``.
+        internally in your model or with a :class:`TrainCallback`
+        using the :meth:`TrainCallback.post_val_batch()` method.
+        Then set the parameter ``auto_aggregate_val_metric`` to ``False``.
 
         Note that correctly aggregating your metric during distributed training will
         involve distributed communication.
 
     """
 
-    DETERMINISTIC: bool = True
+    DETERMINISTIC = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
 
@@ -72,6 +82,7 @@ class TorchTrainStep(Step):
         validation_dataloader: Optional[Lazy[DataLoader]] = None,
         seed: int = 42,
         train_steps: Optional[int] = None,
+        train_epochs: Optional[int] = None,
         validation_steps: Optional[int] = None,
         grad_accum: int = 1,
         log_every: int = 10,
@@ -79,11 +90,11 @@ class TorchTrainStep(Step):
         validate_every: int = 100,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
-        devices: Optional[List[int]] = None,
+        device_count: int = 1,
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
-        aggregate_val_metric: bool = True,
+        auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
         accelerator: Lazy[Accelerator] = Lazy(DefaultAccelerator),
         remove_stale_checkpoints: bool = True,
@@ -96,7 +107,7 @@ class TorchTrainStep(Step):
 
         model : :class:`Model`
             The model to train. It should return a ``dict`` that includes the ``loss``
-            during training and validation.
+            during training and the ``val_metric_name`` during validation.
         dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
             The train and optional validation data.
         train_dataloader : :class:`DataLoader`
@@ -124,6 +135,9 @@ class TorchTrainStep(Step):
         train_steps : :class:`int`, optional
             The number of steps to train for. If not specified training will
             stop after a complete iteration through the `train_dataloader`.
+        train_epochs : :class:`int`, optionsl
+            The number of epochs to train for. You cannot specify `train_steps` and `train_epochs`
+            at the same time.
         validation_steps : :class:`int`, optional
             The number of steps to validate for. If not specified validation
             will stop after a complete iteration through the `validation_dataloader`.
@@ -141,8 +155,12 @@ class TorchTrainStep(Step):
             Save a checkpoint every this many steps.
         validate_every : :class:`int`, optional
             Run the validation loop every this many steps.
-        devices : ``List[int]``, optional
-            The IDs of the CUDA devices to train on.
+        amp : :class:`bool`, optional
+            Use automatic mixed precision. Default is ``False``.
+        max_grad_norm : :class:`float`, optional
+            If set, gradients will be clipped to have this max norm. Default is ``None``.
+        device_count : :class:`int`, optional
+            The number of devices to train on, i.e. the number of distributed data parallel workers.
         distributed_port : :class:`str`
             The port of the distributed process group. Default = "54761".
         val_metric_name : :class:`str`
@@ -152,11 +170,12 @@ class TorchTrainStep(Step):
             Whether the validation metric is meant to be minimized (such as the loss).
             Default is ``True``. When using a metric such as accuracy, you should set
             this to ``False``.
-        aggregate_val_metric : :class:`bool`
+        auto_aggregate_val_metric : :class:`bool`
             If ``True`` (the default), the validation metric will be averaged across
             validation batches and distributed processes. This may not be the correct
             behavior for some metrics (such as F1), in which you should set this to
-            ``False`` and handle the aggregation internally in your model.
+            ``False`` and handle the aggregation internally in your model
+            or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
         accelerator : :class:`Accelerator`
@@ -172,24 +191,19 @@ class TorchTrainStep(Step):
 
         """
         # Validate device(s).
-        if torch.cuda.is_available():
-            if devices is None:
-                print("CUDA is available")
-            elif all((x >= 0 for x in devices)):
-                if torch.cuda.device_count() < len(set(devices)):
-                    raise ConfigurationError(
-                        f"Only found {torch.cuda.device_count()} CUDA devices, "
-                        f"but you specified {len(set(devices))} device IDs"
-                    )
-            elif not all((x == -1 for x in devices)):
-                raise ConfigurationError("Invalid value for 'devices'")
+        if device_count <= 0:
+            raise ConfigurationError("Invalid value for 'device_count'. Must be at least 1.")
+        devices: List[int]
+        if torch.cuda.is_available() and torch.cuda.device_count() >= device_count:
+            devices = list(range(device_count))
+            self.logger.info("Training on %d GPU%s", device_count, "s" if device_count > 1 else "")
         else:
-            if devices and not all((x == -1 for x in devices)):
-                raise ConfigurationError(
-                    "CUDA not found, so only '-1' allowed for device IDs, found {devices}"
-                )
+            devices = [-1] * device_count
+            self.logger.info(
+                "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
+            )
             if amp:
-                raise ConfigurationError("AMP requires CUDA")
+                raise ConfigurationError("AMP requires training on CUDA devices")
 
         is_distributed = False
         num_workers = 1
@@ -197,21 +211,29 @@ class TorchTrainStep(Step):
             is_distributed = True
             num_workers = len(devices)
 
+        if (train_steps is not None) == (train_epochs is not None):
+            raise ConfigurationError(
+                "One of 'train_steps' or 'train_epochs' needs to be specified, but not both."
+            )
+
         config = TrainConfig(
+            self.unique_id,
             self.work_dir,
             train_split=train_split,
             validation_split=validation_split,
             seed=seed,
             train_steps=train_steps,
+            train_epochs=train_epochs,
             grad_accum=grad_accum,
             log_every=log_every,
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
             is_distributed=is_distributed,
             devices=devices,
+            distributed_port=distributed_port,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
-            aggregate_val_metric=aggregate_val_metric,
+            auto_aggregate_val_metric=auto_aggregate_val_metric,
             remove_stale_checkpoints=remove_stale_checkpoints,
             world_size=num_workers,
         )
@@ -236,7 +258,7 @@ class TorchTrainStep(Step):
                 ),
                 nprocs=num_workers,
             )
-            print("Constructing final model")
+            self.logger.info("Constructing final model")
             final_model = model.construct()
         else:
             final_model = _train(  # type: ignore[assignment]
@@ -256,7 +278,9 @@ class TorchTrainStep(Step):
 
         # Load best checkpoint before returning model.
         if config.final_weights_path.is_file():
-            print(f"Loading best weights from {str(config.final_weights_path.resolve())}")
+            self.logger.info(
+                f"Loading best weights from {str(config.final_weights_path.resolve())}"
+            )
             state = torch.load(config.final_weights_path, map_location="cpu")
             if isinstance(final_model, Model):
                 final_model.load_final_state_dict(state)
@@ -290,7 +314,8 @@ def _train(
     if config.is_distributed:
         import tango.common.logging as common_logging
 
-        common_logging.initialize_logging(prefix=f"[worker {worker_id}]")
+        common_logging.initialize_worker_logging(config.worker_id)
+    logger = logging.getLogger(TorchTrainStep.__name__)
 
     accelerator: Accelerator = accelerator.construct(
         train_config=config,
@@ -303,7 +328,7 @@ def _train(
     initial_state: Optional[Dict[str, Any]] = None
     if config.state_path.exists():
         if config.is_local_main_process:
-            print(f"Recovering from previous run at {str(config.state_path.resolve())}")
+            logger.info(f"Recovering from previous run at {str(config.state_path.resolve())}")
         initial_state = accelerator.load_checkpoint(config.state_path)
     device = config.worker_local_default_device
 
@@ -311,22 +336,26 @@ def _train(
     validation_dataloader_: Optional[DataLoader] = None
     if config.validation_split is not None:
         validation_dataset = dataset_dict[config.validation_split]
-        _check_dataset(validation_dataset, config.validation_split)
+        check_dataset(validation_dataset, config.validation_split)
         if validation_dataloader is not None:
             validation_dataloader_ = validation_dataloader.construct(dataset=validation_dataset)
         else:
             validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
     validation_dataloader: Optional[DataLoader] = validation_dataloader_
     train_dataset = dataset_dict[config.train_split]
-    _check_dataset(train_dataset, config.train_split)
+    check_dataset(train_dataset, config.train_split)
     train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)
 
     if config.train_steps is None:
+        assert config.train_epochs is not None
         try:
-            config.train_steps = len(train_dataloader)
+            steps_per_epoch = len(train_dataloader)
         except TypeError:
-            raise ConfigurationError("You must sest 'train_steps' for streaming/iterable datasets")
+            raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
+        config.train_steps = steps_per_epoch * (config.train_epochs or 1)
+
     assert config.train_steps is not None  # for mypy
+
     if validation_dataloader is not None:
         if config.validation_steps is None:
             try:
@@ -338,16 +367,12 @@ def _train(
 
     # Make sure we're using a DistributedSampler during distributed training.
     if config.is_distributed:
-        _check_dataloader(train_dataloader)
+        check_dataloader(train_dataloader)
         if validation_dataloader is not None:
-            _check_dataloader(validation_dataloader)
+            check_dataloader(validation_dataloader)
 
     # Set random seeds.
-    random.seed(config.seed)
-    np.random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(config.seed)
+    set_seed_all(config.seed)
 
     batch_loss: float = 0.0
     best_batch_loss: Optional[float] = None
@@ -380,9 +405,7 @@ def _train(
     accelerator.model.train()
     training_batches = enumerate(
         islice(
-            chunked(
-                _cycle_through_epochs(train_dataloader, config.is_distributed), config.grad_accum
-            ),
+            _cycle_through_epochs(train_dataloader, config.is_distributed, config.grad_accum),
             config.train_steps,
         )
     )
@@ -453,6 +476,7 @@ def _train(
             dist.barrier()
 
     # Catch data loader up to where we left off before.
+    current_epoch: int = -1
     if start_step > 0:
         with Tqdm.tqdm(
             training_batches,
@@ -460,7 +484,7 @@ def _train(
             total=start_step - 1,
             disable=not config.is_local_main_process,
         ) as batch_iter:
-            for step, batch in batch_iter:
+            for step, (current_epoch, batch) in batch_iter:
                 del batch
                 if step >= start_step - 1:
                     break
@@ -479,7 +503,18 @@ def _train(
         disable=not config.is_local_main_process,
     )
     try:
-        for step, batch in train_batch_iterator:
+        for step, (epoch, batch) in train_batch_iterator:
+            if epoch != current_epoch:
+                # Start of new epoch.
+                if epoch > 0:
+                    # Call post-epoch callbacks for the last epoch.
+                    for callback in callbacks:
+                        callback.post_epoch(current_epoch)
+                for callback in callbacks:
+                    callback.pre_epoch(epoch)
+                current_epoch = epoch
+
+            # Pre-batch callback.
             for callback in callbacks:
                 callback.pre_batch(step, batch)
             batch_loss = 0.0
@@ -499,6 +534,7 @@ def _train(
                 del micro_batch
                 del micro_batch_loss
 
+            # Post-batch callback.
             for callback in callbacks:
                 callback.post_batch(step, batch_loss)
 
@@ -550,6 +586,7 @@ def _train(
                     for val_step, val_batch in enumerate(val_batch_iterator):
                         for callback in callbacks:
                             callback.pre_val_batch(step, val_step, val_batch)
+
                         # Get metric.
                         outputs = accelerator.forward_eval(val_batch)
 
@@ -557,7 +594,7 @@ def _train(
                             callback.post_val_batch(step, val_step, outputs)
                         metric = outputs[config.val_metric_name]
 
-                        if config.aggregate_val_metric:
+                        if config.auto_aggregate_val_metric:
                             running_metric += metric if isinstance(metric, float) else metric.item()
                             val_metric = running_metric / (val_step + 1)
                         else:
@@ -567,7 +604,7 @@ def _train(
                         if (
                             config.is_distributed
                             and config.should_log_this_val_step(val_step)
-                            and config.aggregate_val_metric
+                            and config.auto_aggregate_val_metric
                         ):
                             val_metric_tensor = torch.tensor(val_metric, device=device)
                             dist.all_reduce(val_metric_tensor)
@@ -596,6 +633,7 @@ def _train(
                 elif not config.minimize_val_metric and val_metric >= best_val_metric:
                     best_val_metric = val_metric
 
+                # Post validation callback.
                 for callback in callbacks:
                     callback.post_val_loop(step, val_metric, best_val_metric)
 
@@ -611,9 +649,15 @@ def _train(
             # Checkpoint.
             if config.should_checkpoint_this_step(step):
                 save_state(step)
+
+        # End train loop
+
+        # Final post-epoch callback.
+        for callback in callbacks:
+            callback.post_epoch(current_epoch)
     except StopEarly:
         if config.is_local_main_process:
-            print("Stopping early!")
+            logger.info("Stopping early!")
     finally:
         train_batch_iterator.close()
 
@@ -634,37 +678,11 @@ def _train(
         return None
 
 
-def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool):
+def _cycle_through_epochs(dataloader: DataLoader, is_distributed: bool, grad_accum: int):
     epoch = 0
     while True:
         if is_distributed and isinstance(dataloader.sampler, DistributedSampler):
             dataloader.sampler.set_epoch(epoch)
-        for batch in dataloader:
-            yield batch
+        for batch in chunked(dataloader, grad_accum):
+            yield epoch, batch
         epoch += 1
-
-
-def _check_dataset(dataset, split: str):
-    try:
-        len(dataset)
-    except TypeError:
-        if not isinstance(dataset, IterableDataset):
-            warnings.warn(
-                f"Dataset for {split} split appears to be a streaming/iterable dataset, "
-                "but is not an instance of 'torch.utils.data.IterableDataset'. This could cause issues "
-                "within the DataLoader.",
-                UserWarning,
-            )
-
-
-def _check_dataloader(dataloader: DataLoader):
-    # If using a regular dataset and not streaming/iterable dataset, we
-    # should probably be using a `DistributedSampler`.
-    if not isinstance(dataloader.dataset, IterableDataset) and not isinstance(
-        dataloader.sampler, DistributedSampler
-    ):
-        warnings.warn(
-            "DistributedSampler is required for dataloader during distributed training, "
-            f"found {type(dataloader.sampler)} instead.",
-            UserWarning,
-        )

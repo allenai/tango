@@ -2,6 +2,7 @@ import itertools
 import logging
 import random
 import re
+import warnings
 from abc import abstractmethod
 from copy import deepcopy
 from pathlib import Path
@@ -41,15 +42,14 @@ from tango.common.from_params import (
     infer_method_params,
     pop_and_construct_arg,
 )
-from tango.common.logging import TangoLogger, click_logger
+from tango.common.lazy import Lazy
+from tango.common.logging import click_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
     from tango.workspace import Workspace
-
-logger = logging.getLogger(__name__)
 
 _version_re = re.compile("""^[a-zA-Z0-9]+$""")
 
@@ -101,6 +101,15 @@ class Step(Registrable, Generic[T]):
     """This specifies the format the results of this step will be serialized in. See the documentation
     for :class:`~tango.format.Format` for details."""
 
+    SKIP_ID_ARGUMENTS: Set[str] = set()
+    """If your :meth:`run()` method takes some arguments that don't affect the results, list them here.
+    Arguments listed here will not be used to calculate this step's unique ID, and thus changing those
+    arguments does not invalidate the cache.
+
+    For example, you might use this for the batch size in an inference step, where you only care about
+    the model output, not about how many outputs you can produce at the same time.
+    """
+
     def __init__(
         self,
         step_name: Optional[str] = None,
@@ -109,8 +118,6 @@ class Step(Registrable, Generic[T]):
         step_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-
         if self.VERSION is not None:
             assert _version_re.match(
                 self.VERSION
@@ -129,6 +136,9 @@ class Step(Registrable, Generic[T]):
             self.name = self.unique_id
         else:
             self.name = step_name
+        # TODO: It is bad design to have the step_name in the Step class. The same step can be part of multiple
+        # runs at the same time, and they can have different names in different runs. Step names are
+        # a property of the run, not of the step.
 
         if cache_results is True:
             if not self.CACHEABLE:
@@ -136,8 +146,9 @@ class Step(Registrable, Generic[T]):
                     f"Step {self.name} is configured to use the cache, but it's not a cacheable step."
                 )
             if not self.DETERMINISTIC:
-                logger.warning(
-                    f"Step {self.name} is going to be cached despite not being deterministic."
+                warnings.warn(
+                    f"Step {self.name} is going to be cached despite not being deterministic.",
+                    UserWarning,
                 )
             self.cache_results = True
         elif cache_results is False:
@@ -153,8 +164,9 @@ class Step(Registrable, Generic[T]):
             elif c == (True, False):
                 self.cache_results = False
             elif c == (False, True):
-                logger.warning(
-                    f"Step {self.name} is set to be cacheable despite not being deterministic."
+                warnings.warn(
+                    f"Step {self.name} is set to be cacheable despite not being deterministic.",
+                    UserWarning,
                 )
                 self.cache_results = True
             elif c == (True, True):
@@ -171,6 +183,13 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
 
         self._config = step_config
+
+    @property
+    def logger(self) -> logging.Logger:
+        """
+        A :class:`logging.Logger` that can be used within the :meth:`run()` method.
+        """
+        return logging.getLogger(self.__class__.__name__)
 
     @classmethod
     def from_params(  # type: ignore[override]
@@ -282,8 +301,6 @@ class Step(Registrable, Generic[T]):
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
-        logger.info("Starting run for step %s of type %s", self.name, self.__class__.__name__)
-
         if self.DETERMINISTIC:
             random.seed(784507111)
 
@@ -302,7 +319,9 @@ class Step(Registrable, Generic[T]):
                 if self.cache_results:
                     result = workspace.step_finished(self, result)
                 return result
-            except Exception as e:
+            except BaseException as e:
+                # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
+                # Maybe have a `workspace.step_interrupted()` method?
                 if self.cache_results:
                     workspace.step_failed(self, e)
                 raise
@@ -356,11 +375,16 @@ class Step(Registrable, Generic[T]):
 
             self.unique_id_cache += "-"
             if self.DETERMINISTIC:
+                hash_kwargs = {
+                    key: value
+                    for key, value in self.kwargs.items()
+                    if key not in self.SKIP_ID_ARGUMENTS
+                }
                 self.unique_id_cache += det_hash(
                     (
                         (self.format.__class__.__module__, self.format.__class__.__qualname__),
                         self.format.VERSION,
-                        self.kwargs,
+                        hash_kwargs,
                     )
                 )[:32]
             else:
@@ -369,6 +393,9 @@ class Step(Registrable, Generic[T]):
                 )[:32]
 
         return self.unique_id_cache
+
+    def __str__(self):
+        return self.unique_id
 
     def __hash__(self):
         """
@@ -389,6 +416,16 @@ class Step(Registrable, Generic[T]):
     def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
         if isinstance(o, Step):
             return o.result(workspace, self)
+        elif isinstance(o, Lazy):
+            return Lazy(
+                o._constructor,
+                params=Params(
+                    self._replace_steps_with_results(o._params.as_dict(quiet=True), workspace)
+                ),
+                constructor_extras=self._replace_steps_with_results(
+                    o._constructor_extras, workspace
+                ),
+            )
         elif isinstance(o, WithUnresolvedSteps):
             return o.construct(workspace)
         elif isinstance(o, (list, tuple, set)):
@@ -458,6 +495,8 @@ class Step(Registrable, Generic[T]):
         def dependencies_internal(o: Any) -> Iterable[Step]:
             if isinstance(o, Step):
                 yield o
+            elif isinstance(o, Lazy):
+                yield from dependencies_internal(o._params.as_dict(quiet=True))
             elif isinstance(o, WithUnresolvedSteps):
                 yield from dependencies_internal(o.args)
                 yield from dependencies_internal(o.kwargs)
@@ -590,6 +629,12 @@ class WithUnresolvedSteps(CustomDetHash):
         """
         if isinstance(o, Step):
             return o.result(workspace)
+        elif isinstance(o, Lazy):
+            return Lazy(
+                o._constructor,
+                params=Params(cls.with_resolved_steps(o._params.as_dict(quiet=True), workspace)),
+                constructor_extras=cls.with_resolved_steps(o._constructor_extras, workspace),
+            )
         elif isinstance(o, cls):
             return o.construct(workspace)
         elif isinstance(o, (dict, Params)):

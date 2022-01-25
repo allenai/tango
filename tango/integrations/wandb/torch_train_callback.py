@@ -1,5 +1,5 @@
 import os
-import sys
+import warnings
 from typing import Any, Dict, List, Optional
 
 from tango.integrations.torch.train_callback import TrainCallback
@@ -65,10 +65,15 @@ class WandbTrainCallback(TrainCallback):
         super().__init__(*args, **kwargs)
 
         if self.is_local_main_process and "WANDB_API_KEY" not in os.environ:
-            print(
+            warnings.warn(
                 "Missing environment variable 'WANDB_API_KEY' required to authenticate to Weights & Biases.",
-                file=sys.stderr,
+                UserWarning,
             )
+
+        _wandb_config = self.train_config.as_dict()
+        _wandb_config["work_dir"] = str(self.train_config.work_dir.resolve())
+        if wandb_config is not None:
+            _wandb_config.update(wandb_config)
 
         self._watch_model = watch_model
         self._run_id: Optional[str] = None
@@ -77,13 +82,20 @@ class WandbTrainCallback(TrainCallback):
             project=project,
             entity=entity,
             group=group,
-            name=name,
+            name=name or self._get_run_name_from_step(),
             notes=notes,
-            config=wandb_config,
+            config=_wandb_config,
             tags=tags,
             anonymous="allow",
             **(wandb_kwargs or {}),
         )
+
+    def _get_run_name_from_step(self) -> str:
+        """
+        Generate a run name for W&B based on the step unique ID.
+        """
+        step_name, step_hash = self.step_id.split("-", maxsplit=1)
+        return f"{step_name}-{step_hash[:6]}"
 
     def state_dict(self) -> Dict[str, Any]:
         if self.is_local_main_process:

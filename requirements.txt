@@ -1,18 +1,20 @@
 ################################
 ###### Core dependencies #######
 ################################
-cached-path>=1.0.0,<1.1.0
-jsonnet>=0.10.0 ; sys.platform != 'win32'
+cached-path>=1.0,<1.1
+jsonnet>=0.10 ; sys.platform != 'win32'
 PyYAML>=5.4.1,<6.1
 dill
 base58
 xxhash
 filelock>=3.4,<3.5
 click>=7.0,<9.0
-click-help-colors>=0.9.1,<0.10.0
+click-help-colors>=0.9.1,<0.10
 tqdm>=4.62,<4.63
 more-itertools>=8.0,<9.0
-petname>=2.6
+sqlitedict
+glob2>=0.7
+petname>=2.6,<3.0
 
 ##################################################
 ###### Extra dependencies for integrations #######
@@ -20,9 +22,11 @@ petname>=2.6
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
-torch>=1.9.0,<1.11.0             # needed by: torch,pytorch_lightning,deepspeed
-numpy                            # needed by: torch
-datasets>=1.12,<1.17             # needed by: datasets
-wandb>=0.12,<0.13                # needed by: wandb
-pytorch-lightning>=1.5.0,<1.6.0  # needed by: pytorch_lightning
-deepspeed==0.5.6                 # needed by: deepspeed
+torch>=1.9,<1.11             # needed by: torch,pytorch_lightning,deepspeed
+numpy                        # needed by: torch
+datasets>=1.12,<2            # needed by: datasets
+wandb>=0.12,<0.13            # needed by: wandb
+pytorch-lightning>=1.5,<1.6  # needed by: pytorch_lightning
+transformers>=4.12.3         # needed by: transformers
+sentencepiece>=0.1.96        # needed by: transformers
+deepspeed==0.5.6             # needed by: deepspeed

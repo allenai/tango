@@ -1,0 +1,36 @@
+.selectruns {
+  margin: var(--spacing-md);
+}
+
+.table {
+	width:100%;
+  max-width: var(--breakpoints-lg);
+	border: 1px solid var(--color-n3);
+}
+
+.table-header {
+	display: flex;
+	width: 100%;
+	background: var(--color-b10);
+  color: var(--color-n1);
+	padding: var(--spacing-md);
+}
+
+.table-row {
+	display: flex;
+	width: 100%;
+	padding: var(--spacing-md);
+}
+
+.table-row:nth-of-type(odd) {
+	background: var(--color-n3);
+}
+
+.table-data, .header__item {
+	flex: 1 1 20%;
+  text-align: left;
+}
+
+.header__item {
+	text-transform: uppercase;
+}

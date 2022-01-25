@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 
@@ -9,6 +9,11 @@ import torch
 class TrainConfig:
     """
     Encapsulates the parameters of :class:`TorchTrainStep`.
+    """
+
+    step_id: str
+    """
+    The unique ID of the current step.
     """
 
     work_dir: Path
@@ -39,6 +44,13 @@ class TrainConfig:
     train_steps: Optional[int] = None
     """
     The number of steps to train for.
+    """
+
+    train_epochs: Optional[int] = None
+    """
+    The number of epochs to train for.
+
+    You cannot specify `train_steps` and `train_epochs` at the same time.
     """
 
     validation_steps: Optional[int] = None
@@ -96,7 +108,7 @@ class TrainConfig:
     Should be ``True`` when the validation metric being tracked should be minimized.
     """
 
-    aggregate_val_metric: bool = True
+    auto_aggregate_val_metric: bool = True
     """
     Controls automatic aggregation of validation metric.
     """
@@ -180,3 +192,6 @@ class TrainConfig:
     def should_log_this_val_step(self, val_step: int) -> bool:
         assert self.validation_steps is not None
         return val_step % self.log_every == 0 or val_step == self.validation_steps - 1
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in asdict(self).items() if not k.startswith("_")}

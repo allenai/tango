@@ -43,7 +43,7 @@ When you're ready to contribute code to address an open issue, please follow the
 
         git clone https://github.com/USERNAME/tango.git
 
-    or 
+    or
 
         git clone git@github.com:USERNAME/tango.git
 

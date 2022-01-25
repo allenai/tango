@@ -6,12 +6,12 @@
 flake8
 
 # Static type checking
-mypy==0.910
+mypy==0.931
 types-PyYAML
 types-setuptools
 
 # Automatic code formatting
-black==21.11b1
+black==21.12b0
 isort==5.10.1
 
 # Running tests
@@ -30,17 +30,17 @@ codecov
 
 # Needed for packaging and uploading to PyPi
 twine>=1.11.0
-setuptools
+setuptools<=59.5.0   # PyTorch used some undocumented stuff from setuptools that broke when they removed it. We can get rid of this pin when PyTorch 1.10.2 is out.
 wheel
 
 # Building docs
-Sphinx==4.3.1
+Sphinx==4.4.0
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
-furo==2021.11.23
+furo==2022.1.2
 
 # Lets Sphinx parse markdown files in addition to rst.
-myst-parser==0.15.2
+myst-parser==0.16.1
 
 # Adds a copy button to code examples in the docs.
 sphinx-copybutton==0.4.0
@@ -48,7 +48,11 @@ sphinx-copybutton==0.4.0
 # Live rebuilding and reloading of docs for developing locally.
 sphinx-autobuild==2021.3.14
 
+# For working with version numbers.
+packaging
+
 ##################################################
 ###### Extra dev dependencies for examples #######
 ##################################################
 transformers  # needed by: examples
+torchmetrics>=0.7.0          # needed by: examples
