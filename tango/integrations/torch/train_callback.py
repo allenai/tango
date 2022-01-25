@@ -246,7 +246,7 @@ class CudaMemStatsCallback(TrainCallback):
         )
 
     def pre_train_loop(self) -> None:
-        torch.cuda.reset_max_memory_allocated()
+        torch.cuda.reset_peak_memory_stats()
         self.log_memory_stats("Training start")
 
     def post_epoch(self, epoch: int) -> None:
