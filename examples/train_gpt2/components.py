@@ -21,9 +21,10 @@ Optimizer.register("transformers_adamw")(AdamW)
 # We could just use the GPT2LMHeadModel from HF directly by registering it as a Model
 # just like how we registered AdamW as an optimizer above, but we also want to add a new
 # constructor `new_random_from_pretrained()` and override how the final weights are loaded to
-# ignore errors from missing keys in the state dict due to weight tied weights.
+# ignore errors from missing keys in the state dict due to tied weights.
 # So we're just going to create a new class that inherits from GPT2LMHeadModel and register that as a Model.
 @Model.register("gpt2", constructor="from_pretrained")
+@Model.register("gpt2-random", constructor="new_random_from_pretrained")
 class GPT2Model(GPT2LMHeadModel, Model):
     @classmethod
     def new_random_from_pretrained(cls, pretrained_model_name_or_path: str) -> "GPT2Model":
@@ -37,11 +38,6 @@ class GPT2Model(GPT2LMHeadModel, Model):
             raise RuntimeError(f"Error loading state dict, missing keys: {missing_keys}")
         elif unexpected_keys:
             raise RuntimeError(f"Error loading state dict, unexpected keys: {unexpected_keys}")
-
-
-# The default constructor will use `from_pretrained()`, so we also have to register
-# the `new_random_from_pretrained()` method.
-Model.register("gpt2-random", constructor="new_random_from_pretrained")(GPT2Model)
 
 
 # We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
