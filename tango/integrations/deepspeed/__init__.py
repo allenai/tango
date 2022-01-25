@@ -12,6 +12,9 @@
 Components for Tango integration with `DeepSpeed <https://www.deepspeed.ai/>`_.
 """
 
-__all__ = ["DeepSpeedAccelerator"]
+__all__ = [
+    "DeepSpeedAccelerator",
+]
 
 from .accelerator import DeepSpeedAccelerator
+from .optim import *  # noqa: F403
