@@ -28,6 +28,7 @@ api/integrations/index
 api/exceptions
 api/logging
 api/utilities
+api/sequences
 ```
 
 ```{toctree}

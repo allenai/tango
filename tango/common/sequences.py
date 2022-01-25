@@ -10,6 +10,40 @@ class ShuffledSequence(abc.Sequence):
 
     This assumes that the inner sequence never changes. If it does, the results
     are undefined.
+
+    :param inner_sequence: the inner sequence that's being shuffled
+    :param indices: Optionally, you can specify a list of indices here. If you don't, we'll just shuffle the
+                    inner sequence randomly. If you do specify indices, element ``n`` of the output sequence
+                    will be ``inner_sequence[indices[n]]``. This gives you great flexibility. You can repeat
+                    elements, leave them out completely, or slice the list. A Python :class:`slice` object is
+                    an acceptable input for this parameter, and so are other sequences from this module.
+
+    Example:
+
+    .. testcode::
+        :hide:
+
+        import random
+        random.seed(42)
+
+    .. testcode::
+
+        from tango.common.sequences import ShuffledSequence
+        l = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        shuffled_l = ShuffledSequence(l)
+
+        print(shuffled_l[0])
+        print(shuffled_l[1])
+        print(shuffled_l[2])
+        assert len(shuffled_l) == len(l)
+
+    This will print something like the following:
+
+    .. testoutput::
+
+        4
+        7
+        8
     """
 
     def __init__(self, inner_sequence: Sequence, indices: Optional[Sequence[int]] = None):
@@ -43,6 +77,31 @@ class SlicedSequence(ShuffledSequence):
 
     This assumes that the inner sequence never changes. If it does, the results
     are undefined.
+
+    :param inner_sequence: the inner sequence that's being shuffled
+    :param s: the :class:`~slice` to slice the input with.
+
+    Example:
+
+    .. testcode::
+
+        from tango.common.sequences import SlicedSequence
+        l = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        sliced_l = SlicedSequence(l, slice(1, 4))
+
+        print(sliced_l[0])
+        print(sliced_l[1])
+        print(sliced_l[2])
+        assert len(sliced_l) == 3
+
+    This will print the following:
+
+    .. testoutput::
+
+        2
+        3
+        4
+
     """
 
     def __init__(self, inner_sequence: Sequence, s: slice):
@@ -51,11 +110,37 @@ class SlicedSequence(ShuffledSequence):
 
 class ConcatenatedSequence(abc.Sequence):
     """
-    Produces a sequence that's the concatenation of multiple other sequences, without
-    copying the elements.
+    Produces a sequence that's the lazy concatenation of multiple other sequences. It does not copy
+    any of the elements of the original sequences.
 
-    This assumes that the inner sequence never changes. If it does, the results
-    are undefined.
+    This assumes that the inner sequences never change. If they do, the results are undefined.
+
+    :param sequences: the inner sequences to concatenate
+
+    Example:
+
+    .. testcode::
+
+        from tango.common.sequences import ConcatenatedSequence
+        l1 = [1, 2, 3]
+        l2 = [4, 5]
+        l3 = [6]
+        cat_l = ConcatenatedSequence(l1, l2, l3)
+
+        assert len(cat_l) == 6
+        for i in cat_l:
+            print(i)
+
+    This will print the following:
+
+    .. testoutput::
+
+        1
+        2
+        3
+        4
+        5
+        6
     """
 
     def __init__(self, *sequences: Sequence):
@@ -86,6 +171,42 @@ class ConcatenatedSequence(abc.Sequence):
 
 
 class MappedSequence(abc.Sequence):
+    """
+    Produces a sequence that applies a function to every element of another sequence.
+
+    This is similar to Python's :func:`map`, but it returns a sequence instead of a :class:`map` object.
+
+    :param fn: the function to apply to every element of the inner sequence. The function should take
+               one argument.
+    :param inner_sequence: the inner sequence to map over
+
+    Example:
+
+    .. testcode::
+
+        from tango.common.sequences import MappedSequence
+
+        def square(x):
+            return x * x
+
+        l = [1, 2, 3, 4]
+        map_l = MappedSequence(square, l)
+
+        assert len(map_l) == len(l)
+        for i in map_l:
+            print(i)
+
+    This will print the following:
+
+    .. testoutput::
+
+        1
+        4
+        9
+        16
+
+    """
+
     def __init__(self, fn: Callable, inner_sequence: Sequence):
         self.inner = inner_sequence
         self.fn = fn
