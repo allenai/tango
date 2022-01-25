@@ -17,4 +17,3 @@ __all__ = [
 ]
 
 from .accelerator import DeepSpeedAccelerator
-from .optim import *  # noqa: F403
