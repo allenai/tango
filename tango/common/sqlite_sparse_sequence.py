@@ -9,6 +9,45 @@ from tango.common.sequences import SlicedSequence
 
 
 class SqliteSparseSequence(MutableSequence[Any]):
+    """
+    This is a sparse sequence that pickles elements to a Sqlite database.
+
+    When you read from the sequence, elements are retrieved and unpickled lazily. That means creating/opening
+    a sequence is very fast and does not depend on the length of the sequence.
+
+    This is a "sparse sequence" because you can set element ``n`` before you set element ``n-1``:
+
+    .. testcode::
+        :hide:
+
+        from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
+        import tempfile
+        dir = tempfile.TemporaryDirectory()
+        from pathlib import Path
+        filename = Path(dir.name) / "test.sqlite"
+
+    .. testcode::
+
+        s = SqliteSparseSequence(filename)
+        element = "Big number, small database."
+        s[2**32] = element
+        assert len(s) == 2**32 + 1
+        assert s[2**32] == element
+        assert s[1000] is None
+        s.close()
+
+    .. testcode::
+        :hide:
+
+        dir.cleanup()
+
+    You can use a ``SqliteSparseSequence`` from multiple processes at the same time. This is useful, for example,
+    if you're filling out a sequence and you are partitioning ranges to processes.
+
+    :param filename: the filename at which to store the data
+    :param read_only: Set this to ``True`` if you only want to read.
+    """
+
     def __init__(self, filename: Union[str, PathLike], read_only: bool = False):
         self.table = SqliteDict(filename, "sparse_sequence", flag="r" if read_only else "c")
 
@@ -38,7 +77,7 @@ class SqliteSparseSequence(MutableSequence[Any]):
             if i < 0:
                 i %= current_length
             self.table[str(i)] = value
-            self.table["_len"] = max(i, current_length)
+            self.table["_len"] = max(i + 1, current_length)
             self.table.commit()
         else:
             raise TypeError(f"list indices must be integers, not {i.__class__.__name__}")
@@ -77,7 +116,7 @@ class SqliteSparseSequence(MutableSequence[Any]):
         for index in reversed(range(i, current_length)):
             self.table[str(index + 1)] = self.table.get(str(index))
         self.table[str(i)] = value
-        self.table["_len"] = current_length + 1
+        self.table["_len"] = max(i + 1, current_length + 1)
         self.table.commit()
 
     def __len__(self) -> int:
@@ -87,15 +126,33 @@ class SqliteSparseSequence(MutableSequence[Any]):
             return 0
 
     def clear(self) -> None:
+        """
+        Clears the entire sequence
+        """
         self.table.clear()
         self.table.commit()
 
     def close(self) -> None:
+        """
+        Closes the underlying Sqlite table. Do not use this sequence afterwards!
+        """
         if self.table is not None:
             self.table.close()
             self.table = None
 
     def copy_to(self, target: Union[str, PathLike]):
+        """
+        Make a copy of this sequence at a new location.
+
+        :param target: the location of the copy
+
+        This will attempt to make a hardlink, which is very fast, but only works on Linux and if ``target`` is
+        on the same drive. If making a hardlink fails, it falls back to making a regular copy. As a result,
+        there is no guarantee whether you will get a hardlink or a copy. If you get a hardlink, future edits
+        in the source sequence will also appear in the target sequence. This is why we recommend to not use
+        :meth:`copy_to()` until you are done with the sequence. This is not ideal, but it is a compromise we make
+        for performance.
+        """
         try:
             os.link(self.table.filename, target)
         except OSError as e:
