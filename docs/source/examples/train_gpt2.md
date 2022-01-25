@@ -1,7 +1,7 @@
 ```{include} ../../../examples/train_gpt2/README.md
 ```
 
-You can see this example on GitHub at https://github.com/allenai/tango/tree/main/examples/train_gpt2.
+[You can see this example on GitHub.](https://github.com/allenai/tango/tree/main/examples/train_gpt2)
 
 ## Components
 
