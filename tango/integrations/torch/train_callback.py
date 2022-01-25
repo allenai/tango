@@ -1,5 +1,8 @@
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+import torch
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
@@ -49,6 +52,7 @@ class TrainCallback(Registrable):
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def step_id(self) -> str:
@@ -219,3 +223,25 @@ class StopEarlyCallback(TrainCallback):
         """
         self.patience = state_dict["patience"]
         self.best_step = state_dict["best_step"]
+
+
+@TrainCallback.register("torch::cuda_mem_stats")
+class CudaMemStatsCallback(TrainCallback):
+    """
+    A :class:`TrainCallback` that logs CUDA memory statistics throughout training at the INFO level.
+
+    .. tip::
+
+        Registered as a :class:`TrainCallback` under the name "torch::cuda_mem_stats".
+    """
+
+    def log_memory_stats(self) -> None:
+        mem_allocated_mb = torch.cuda.memory_allocated() // (1024 * 1024)
+        max_mem_allocated_mb = torch.cuda.max_memory_allocated() // (1024 * 1024)
+        self.logger.info(
+            "CUDA memory used: %dMiB, max so far: %dMiB", mem_allocated_mb, max_mem_allocated_mb
+        )
+
+    def pre_train_loop(self) -> None:
+        torch.cuda.reset_max_memory_allocated()
+        self.log_memory_stats()
