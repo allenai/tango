@@ -235,13 +235,19 @@ class CudaMemStatsCallback(TrainCallback):
         Registered as a :class:`TrainCallback` under the name "torch::cuda_mem_stats".
     """
 
-    def log_memory_stats(self) -> None:
+    def log_memory_stats(self, state: str) -> None:
         mem_allocated_mb = torch.cuda.memory_allocated() // (1024 * 1024)
         max_mem_allocated_mb = torch.cuda.max_memory_allocated() // (1024 * 1024)
         self.logger.info(
-            "CUDA memory used: %dMiB, max so far: %dMiB", mem_allocated_mb, max_mem_allocated_mb
+            "%s - CUDA memory used: %dMiB, max so far: %dMiB",
+            state,
+            mem_allocated_mb,
+            max_mem_allocated_mb,
         )
 
     def pre_train_loop(self) -> None:
         torch.cuda.reset_max_memory_allocated()
-        self.log_memory_stats()
+        self.log_memory_stats("Training start")
+
+    def post_epoch(self, epoch: int) -> None:
+        self.log_memory_stats(f"Epoch {epoch}")
