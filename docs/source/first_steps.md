@@ -21,7 +21,7 @@ Well, we don't know yet, but we can say at least that Tango is **Tango-complete*
 Experiments themselves are defined through JSON, [Jsonnet](https://jsonnet.org/), or YAML configuration files.
 At a minimum, these files must contain the "steps" field, which should be a mapping of arbitrary (yet unique) step names to the configuration of the corresponding step.
 
-For example, let's create a config file called `config.jsonnet` with following contents:
+For example, let's create a config file called `config.jsonnet` with the following contents:
 
 ```json
 {
@@ -141,13 +141,14 @@ this module when you pass `-i components` (note the lack of the `.py` at the end
 You should see something like this in the output:
 
 ```
-● Starting run for "random_name"
-✓ Finished run for "random_name"
-● Starting run for "say_hello"
-✓ Finished run for "say_hello"
-● Starting run for "print"
+Starting new run cute-kitten
+● Starting step "random_name"
+✓ Finished step "random_name"
+● Starting step "say_hello"
+✓ Finished step "say_hello"
+● Starting step "print"
 Hello, Tango
-✓ Finished run for "print"
+✓ Finished step "print"
 ```
 
 ## Step caching
@@ -217,9 +218,10 @@ This time when we run the experiment we'll designate a specific directory for Ta
 $ tango run config.jsonnet -i components -d workspace/
 ```
 ```
-● Starting run for "add_numbers"
+Starting new run live-tarpon
+● Starting step "add_numbers"
 Computing...: 100%|##########| 100/100 [00:05<00:00, 18.99it/s]
-✓ Finished run for "add_numbers"
+✓ Finished step "add_numbers"
 ✓ The output for "add_numbers" is in workspace/runs/live-tarpon/add_numbers
 ```
 
@@ -241,12 +243,13 @@ Now look what happens when we run this step again:
 $ tango run config.jsonnet -i components -d workspace/
 ```
 ```
+Starting new run modest-shrimp
 ✓ Found output for "add_numbers" in cache
 ✓ The output for "add_numbers" is in workspace/runs/modest-shrimp/add_numbers
 ```
 
 Tango didn't have to run our really inefficient addition step this time because it found the previous cached
-result. It put the results in the result directory for a different run (In our case, the `modest-shrimp` run.),
+result. It put the results in the result directory for a different run (in our case, the `modest-shrimp` run),
 but once again it is a symlink that links to the same results from our first run.
 
 If we changed the inputs to the step in `config.jsonnet`:
@@ -268,9 +271,10 @@ And ran it again:
 $ tango run config.jsonnet -i components -d workspace/
 ```
 ```
-● Starting run for "add_numbers"
+Starting new run true-parrot
+● Starting step "add_numbers"
 Computing...: 100%|##########| 100/100 [00:05<00:00, 19.13it/s]
-✓ Finished run for "add_numbers"
+✓ Finished step "add_numbers"
 ✓ The output for "add_numbers" is in workspace/runs/true-parrot/add_numbers
 ```
 
