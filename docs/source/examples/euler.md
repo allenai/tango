@@ -60,7 +60,7 @@ tango server -d workspace
 This command will start up a web server that visualizes workspace directories. It first presents you with a list
 of runs. Click through to your run, and you see a graph of the steps that you just ran:
 
-![Step Graph](../../_static/step_graph.png)
+![Step Graph](/_static/step_graph.png)
 
 You can click on the arrow next to each step to see more information.
 
