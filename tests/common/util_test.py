@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import pytest
 from flaky import flaky
@@ -7,8 +8,32 @@ from tango.common.util import (
     could_be_class_name,
     find_integrations,
     find_submodules,
+    resolve_module_name,
     threaded_generator,
 )
+
+
+@pytest.mark.parametrize(
+    "package_name, resolved_package_name, resolved_base_path",
+    [
+        (
+            "tango/integrations/datasets/__init__.py",
+            "tango.integrations.datasets",
+            Path("."),
+        ),
+        (
+            "tango/__init__.py",
+            "tango",
+            Path("."),
+        ),
+        ("tango/steps/dataset_remix.py", "tango.steps.dataset_remix", Path(".")),
+        ("examples/train_gpt2/components.py", "components", Path("examples/train_gpt2/")),
+    ],
+)
+def test_resolve_module_name(
+    package_name: str, resolved_package_name: str, resolved_base_path: Path
+):
+    assert resolve_module_name(package_name) == (resolved_package_name, resolved_base_path)
 
 
 def test_find_submodules():
