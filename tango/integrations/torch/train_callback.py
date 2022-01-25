@@ -236,18 +236,18 @@ class CudaMemStatsCallback(TrainCallback):
     """
 
     def log_memory_stats(self, state: str) -> None:
-        mem_allocated_mb = torch.cuda.memory_allocated() // (1024 * 1024)
         max_mem_allocated_mb = torch.cuda.max_memory_allocated() // (1024 * 1024)
         self.logger.info(
-            "%s - CUDA memory used: %dMiB, max so far: %dMiB",
+            "%s - CUDA max memory used: %dMiB",
             state,
-            mem_allocated_mb,
             max_mem_allocated_mb,
         )
 
     def pre_train_loop(self) -> None:
         torch.cuda.reset_peak_memory_stats()
-        self.log_memory_stats("Training start")
 
     def post_epoch(self, epoch: int) -> None:
         self.log_memory_stats(f"Epoch {epoch}")
+
+    def post_train_loop(self) -> None:
+        self.log_memory_stats(f"Train end")
