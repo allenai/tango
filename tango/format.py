@@ -403,7 +403,7 @@ class TextFormatIterator(Iterator[str]):
 
 @Format.register("sqlite")
 class SqliteDictFormat(Format[DatasetDict]):
-    """This format works specifically on results of type :class:`~tango.DatasetDict`. It writes those
+    """This format works specifically on results of type :class:`~tango.common.DatasetDict`. It writes those
     datasets into Sqlite databases.
 
     During reading, the advantage is that the dataset can be read lazily. Reading a result that is stored
@@ -412,8 +412,8 @@ class SqliteDictFormat(Format[DatasetDict]):
 
     During writing, you have to take some care to take advantage of the same trick. Recall that
     :class:`~tango.DatasetDict` is basically a map, mapping split names to lists of instances. If you ensure
-    that those lists of instances are of type :class:`SqliteSparseSequence`, then writing the results in
-    ``SqliteDictFormat`` can in many cases be instantaneous.
+    that those lists of instances are of type :class:`~tango.common.SqliteSparseSequence`, then writing the results
+    in ``SqliteDictFormat`` can in many cases be instantaneous.
 
     Here is an example of the pattern to use to make writing fast:
 
@@ -438,13 +438,13 @@ class SqliteDictFormat(Format[DatasetDict]):
 
     Observe how for each split, we create a :class:`SqliteSparseSequence` in the step's work directory (accessible
     with :meth:`~tango.step.Step.work_dir`). This has the added advantage that if the step fails and you have to
-    re-run it, the previous results that were already written to the :class:`SqliteSparseSequence` are still
-    there. You could replace the inner ``for`` loop like this to take advantage:
+    re-run it, the previous results that were already written to the :class:`~tango.common.SqliteSparseSequence`
+    are still there. You could replace the inner ``for`` loop like this to take advantage:
 
     .. code-block:: Python
-    
+
         output_split = SqliteSparseSequence(self.work_dir / f"{split_name}.sqlite")
-        for instance in instances[len(output_split):]:
+        for instance in instances[len(output_split):]:      # <-- here is the difference
             output_split.append(instance)
         result[split_name] = output_split
 
