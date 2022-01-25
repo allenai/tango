@@ -153,7 +153,7 @@ class DillFormat(Format[T], Generic[T]):
 
 class DillFormatIterator(Iterator[T], Generic[T]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``DillFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.DillFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
@@ -190,7 +190,6 @@ class JsonFormat(Format[T], Generic[T]):
     .. tip::
         This format has special support for iterables. If you write an iterator, it will consume the
         iterator. If you read an iterator, it will read the iterator lazily.
-
     """
 
     VERSION = 2
@@ -288,7 +287,7 @@ class JsonFormat(Format[T], Generic[T]):
 
 class JsonFormatIterator(Iterator[T], Generic[T]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``JsonFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.JsonFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
@@ -323,8 +322,8 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         iterator. If you read an iterator, it will read the iterator lazily.
 
         Be aware that if your strings contain newlines, you will read out more strings than you wrote.
-        For this reason, it's often advisable to use `JsonFormat` instead. With `JsonFormat`, all special
-        characters are escaped, strings are quoted, but it's all still human-readable.
+        For this reason, it's often advisable to use :class:`JsonFormat` instead. With :class:`JsonFormat`,
+        all special characters are escaped, strings are quoted, but it's all still human-readable.
     """
 
     VERSION = 1
@@ -379,7 +378,7 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
 
 class TextFormatIterator(Iterator[str]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``TextFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.TextFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
