@@ -37,6 +37,8 @@ class FairScaleAccelerator(TorchAccelerator):
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
         reshard_after_forward: bool = True,
+        move_params_to_cpu: bool = False,
+        move_grads_to_cpu: Optional[bool] = None,
     ) -> None:
         if not train_config.is_distributed:
             raise ConfigurationError(
@@ -44,6 +46,8 @@ class FairScaleAccelerator(TorchAccelerator):
             )
         self.reshard_after_forward = reshard_after_forward
         self.mixed_precision = amp
+        self.move_params_to_cpu = move_params_to_cpu
+        self.move_grads_to_cpu = move_grads_to_cpu
         super().__init__(
             train_config,
             model,
@@ -60,6 +64,8 @@ class FairScaleAccelerator(TorchAccelerator):
             model,
             reshard_after_forward=self.reshard_after_forward,
             mixed_precision=self.mixed_precision,
+            move_params_to_cpu=self.move_params_to_cpu,
+            move_grads_to_cpu=self.move_grads_to_cpu,
         )
 
     def clip_grad_norm(self) -> None:

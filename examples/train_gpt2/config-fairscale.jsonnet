@@ -7,6 +7,11 @@ local distributed = true;  # Set to `true` to train on 2 (or more) GPUs.
 local devices = if distributed then 4 else 1;
 local grad_accum = if distributed then 2;
 
+// FairScale FSDP settings.
+local reshard_after_forward = true;
+local move_params_to_cpu = true;
+local move_grads_to_cpu = true;
+
 local distributed_dataloader = {
     "batch_size": batch_size,
     "collate_fn": {"type": "transformers_default"},
@@ -43,6 +48,9 @@ local dataloader = if distributed then distributed_dataloader else single_device
                 "type": "gpt2-random",
                 "pretrained_model_name_or_path": pretrained_model,
                 "fsdp": true,
+                "reshard_after_forward": reshard_after_forward,
+                "move_params_to_cpu": move_params_to_cpu,
+                "move_grads_to_cpu": move_grads_to_cpu,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
             "train_dataloader": dataloader,
@@ -68,6 +76,9 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "callbacks": [{"type": "torch::cuda_mem_stats"}],
             "accelerator": {
                 "type": "fairscale",
+                "reshard_after_forward": reshard_after_forward,
+                "move_params_to_cpu": move_params_to_cpu,
+                "move_grads_to_cpu": move_grads_to_cpu,
             },
         },
         "final_metrics": {
