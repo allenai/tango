@@ -112,7 +112,7 @@ class TorchTrainStep(Step):
             The train and optional validation data.
         train_dataloader : :class:`DataLoader`
             The data loader that generates training batches. The batches should be :class:`dict`
-            objects.
+            objects that will be used as ``kwargs`` for the model's ``forward()`` method.
         optimizer : :class:`Optimizer`
             A PyTorch :class:`~torch.optim.Optimizer`.
         train_split : :class:`str`, optional
