@@ -61,7 +61,11 @@ local single_device_dataloader = {
             "dataset_dict": {"type": "ref", "ref": "transform_data"},
             "dataloader": single_device_dataloader,
             "test_split": "val",
-        },      
+        },
+        "prediction": {
+            "type": "prediction",
+            "model": {"type": "ref", "ref": "trained_model"},
+        },
     },
 }
  
