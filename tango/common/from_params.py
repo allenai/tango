@@ -166,7 +166,10 @@ def infer_method_params(
 
 
 def create_kwargs(
-    constructor: Callable[..., T], cls: Type[T], params: Params, **extras
+    constructor: Callable[..., T],
+    cls: Type[T],
+    params: Params,
+    extras: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Given some class, a ``Params`` object, and potentially other keyword arguments,
@@ -211,7 +214,7 @@ def create_kwargs(
 
         explicitly_set = param_name in params
         constructed_arg = pop_and_construct_arg(
-            cls.__name__, param_name, annotation, param.default, params, **extras
+            cls.__name__, param_name, annotation, param.default, params, extras
         )
 
         # If the param wasn't explicitly set in `params` and we just ended up constructing
@@ -261,7 +264,12 @@ def create_extras(cls: Type[T], extras: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def pop_and_construct_arg(
-    class_name: str, argument_name: str, annotation: Type, default: Any, params: Params, **extras
+    class_name: str,
+    argument_name: str,
+    annotation: Type,
+    default: Any,
+    params: Params,
+    extras: Dict[str, Any],
 ) -> Any:
     """
     Does the work of actually constructing an individual argument for
@@ -574,7 +582,7 @@ def construct_arg(
         constructor_to_inspect = arbitrary_class.__init__
         constructor_to_call = arbitrary_class
         params_contain_step = _params_contain_step(popped_params)
-        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, **subextras)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, subextras)
         from tango.step import WithUnresolvedSteps
 
         if origin != Step and params_contain_step:
@@ -701,9 +709,8 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                #  return constructor_to_call(**params, **create_extras(constructor_to_call, extras))  # type: ignore
-                kwargs = create_kwargs(constructor_to_call, cls, params, **extras)
-                return constructor_to_call(**kwargs)
+                kwargs = create_kwargs(constructor_to_call, cls, params, extras)  # type: ignore
+                return constructor_to_call(**kwargs)  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 
@@ -717,12 +724,12 @@ class FromParams(CustomDetHash):
                 # This class does not have an explicit constructor, so don't give it any kwargs.
                 # Without this logic, create_kwargs will look at object.__init__ and see that
                 # it takes *args and **kwargs and look for those.
-                kwargs: Dict[str, Any] = {}
+                kwargs: Dict[str, Any] = {}  # type: ignore[no-redef]
                 params.assert_empty(cls.__name__)
             else:
                 # This class has a constructor, so create kwargs for it.
                 constructor_to_inspect = cast(Callable[..., T], constructor_to_inspect)
-                kwargs = create_kwargs(constructor_to_inspect, cls, params, **extras)
+                kwargs = create_kwargs(constructor_to_inspect, cls, params, extras)
 
             return constructor_to_call(**kwargs)  # type: ignore
 

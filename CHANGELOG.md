@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug in `Registrable` and `FromParams` where registered function constructors would not properly construct
   arguments that were classes.
+- Fixed a bug in `FromParams` when an argument to the constructor had the name `params`.
 - Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
 
 ## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19
