@@ -59,6 +59,7 @@ intersphinx_mapping = {
     "torch": ("https://pytorch.org/docs/stable", None),
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
     "deepspeed": ("https://deepspeed.readthedocs.io/en/latest/", None),
+    "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
 }
 
 

@@ -2,7 +2,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 import torch
 import torch.distributed as dist
@@ -14,9 +14,12 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
 
+if TYPE_CHECKING:
+    from collections import OrderedDict  # noqa: F401
+
 
 class Accelerator(Registrable):
-    default_implementation = "torch::default"
+    default_implementation = "torch"
 
     def __init__(
         self,
@@ -91,10 +94,10 @@ class Accelerator(Registrable):
         raise NotImplementedError
 
 
-@Accelerator.register("torch::default")
-class DefaultAccelerator(Accelerator):
+@Accelerator.register("torch")
+class TorchAccelerator(Accelerator):
     """
-    The default accelerator only uses native PyTorch functionality to provide
+    This accelerator only uses native PyTorch functionality to provide
     vanilla distributed data parallel training and AMP.
 
     Parameters
@@ -143,7 +146,7 @@ class DefaultAccelerator(Accelerator):
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
     ) -> torch.Tensor:
         if micro_batch_idx == 0:
-            self.optimizer.zero_grad()
+            self.optimizer.zero_grad(set_to_none=True)
 
         # Move tensors to right device.
         micro_batch = self._move_to_device(micro_batch, self.device)
@@ -170,14 +173,17 @@ class DefaultAccelerator(Accelerator):
         else:
             loss.backward()
 
+    def clip_grad_norm(self) -> None:
+        if self.max_grad_norm is not None:
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+
     def step(self) -> None:
         # Unscale gradients.
         if self.grad_scaler is not None:
             self.grad_scaler.unscale_(self.optimizer)
 
         # Clip gradients.
-        if self.max_grad_norm is not None:
-            nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+        self.clip_grad_norm()
 
         # Take optimizer step.
         if self.grad_scaler is not None:
@@ -189,6 +195,18 @@ class DefaultAccelerator(Accelerator):
         # Adjust LR schedule.
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
+
+    def get_model_state(self) -> "OrderedDict[str, torch.Tensor]":
+        if self.train_config.is_distributed:
+            return self.model.module.state_dict()  # type: ignore[union-attr]
+        else:
+            return self.model.state_dict()
+
+    def load_model_state(self, state_dict: "OrderedDict[str, torch.Tensor]") -> None:
+        if self.train_config.is_distributed:
+            self.model.module.load_state_dict(state_dict)  # type: ignore[union-attr]
+        else:
+            self.model.load_state_dict(state_dict)  # type: ignore[union-attr]
 
     def save_checkpoint(self, path: Path, client_state: Dict[str, Any]) -> None:
         path.mkdir(exist_ok=True)
@@ -214,24 +232,14 @@ class DefaultAccelerator(Accelerator):
                 if os.path.exists(temp_state_file.name):
                     os.remove(temp_state_file.name)
 
-        save_state(
-            self.model.module.state_dict()  # type: ignore[union-attr]
-            if self.train_config.is_distributed
-            else self.model.state_dict(),
-            "model",
-        )
+        save_state(self.get_model_state(), "model")
         save_state(self.optimizer.state_dict(), "optimizer"),
         if self.lr_scheduler is not None:
             save_state(self.lr_scheduler.state_dict(), "lr_scheduler")
         save_state(client_state, "trainer")
 
     def load_checkpoint(self, path: Path) -> Dict[str, Any]:
-        model_state = torch.load(path / f"worker{self.train_config.worker_id}_model.pt")
-        if self.train_config.is_distributed:
-            self.model.module.load_state_dict(model_state)  # type: ignore[union-attr]
-        else:
-            self.model.load_state_dict(model_state)  # type: ignore[union-attr]
-        del model_state
+        self.load_model_state(torch.load(path / f"worker{self.train_config.worker_id}_model.pt"))
         self.optimizer.load_state_dict(
             torch.load(path / f"worker{self.train_config.worker_id}_optimizer.pt")
         )

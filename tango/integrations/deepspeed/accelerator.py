@@ -67,6 +67,7 @@ class DeepSpeedAccelerator(Accelerator):
         )
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
+        # TODO: only use the zero.Init if using ZeRO optimizations.
         with deepspeed.zero.Init(config_dict_or_path=self.deepspeed_config):
             model: Model = model.construct()  # type: ignore[no-redef]
         return model.to(self.train_config.worker_local_default_device)  # type: ignore[attr-defined]

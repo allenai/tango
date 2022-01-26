@@ -250,4 +250,4 @@ class CudaMemStatsCallback(TrainCallback):
         self.log_memory_stats(f"Epoch {epoch}")
 
     def post_train_loop(self) -> None:
-        self.log_memory_stats(f"Train end")
+        self.log_memory_stats("Train end")

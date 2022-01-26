@@ -16,7 +16,7 @@ from tango.common.util import get_extra_imported_modules, import_extra_module
 from tango.format import Format
 from tango.step import Step
 
-from .accelerator import Accelerator, DefaultAccelerator
+from .accelerator import Accelerator, TorchAccelerator
 from .data import DataLoader
 from .exceptions import StopEarly
 from .format import TorchFormat
@@ -96,7 +96,7 @@ class TorchTrainStep(Step):
         minimize_val_metric: bool = True,
         auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-        accelerator: Lazy[Accelerator] = Lazy(DefaultAccelerator),
+        accelerator: Lazy[Accelerator] = Lazy(TorchAccelerator),
         remove_stale_checkpoints: bool = True,
     ) -> Model:
         """
@@ -179,7 +179,7 @@ class TorchTrainStep(Step):
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
         accelerator : :class:`Accelerator`
-            An :class:`Accelerator` to use. By default :class:`DefaultAccelerator` is used.
+            An :class:`Accelerator` to use. By default :class:`TorchAccelerator` is used.
         remove_stale_checkpoints : :class:`bool`
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
@@ -300,7 +300,7 @@ def _train(
     lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-    accelerator: Lazy[Accelerator] = Lazy(DefaultAccelerator),
+    accelerator: Lazy[Accelerator] = Lazy(TorchAccelerator),
     include_package: Optional[Set[str]] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
