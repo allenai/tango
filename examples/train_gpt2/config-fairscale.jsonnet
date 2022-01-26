@@ -51,8 +51,9 @@ local dataloader = if distributed then distributed_dataloader else single_device
         trained_model: {
             type: "torch::train",
             model: {
-                type: "lm_fresh",
+                type: "lm_pretrained",
                 pretrained_model_name_or_path: pretrained_model,
+                low_cpu_mem_usage: true,
                 activation_checkpointing: activation_checkpointing,
                 fsdp_config: fsdp_config,
             },
