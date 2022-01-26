@@ -52,6 +52,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
                 "reshard_after_forward": reshard_after_forward,
                 "move_params_to_cpu": move_params_to_cpu,
                 "move_grads_to_cpu": move_grads_to_cpu,
+                "mixed_precision": amp,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
             "train_dataloader": dataloader,

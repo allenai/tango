@@ -34,6 +34,7 @@ class GPT2Model(GPT2LMHeadModel, Model):
         reshard_after_forward: bool = True,
         move_params_to_cpu: bool = False,
         move_grads_to_cpu: Optional[bool] = None,
+        mixed_precision: bool = False,
     ) -> "GPT2Model":
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
         model = cls(config)  # type: ignore
@@ -46,6 +47,7 @@ class GPT2Model(GPT2LMHeadModel, Model):
                 reshard_after_forward=reshard_after_forward,
                 move_params_to_cpu=move_params_to_cpu,
                 move_grads_to_cpu=move_grads_to_cpu,
+                mixed_precision=mixed_precision,
             ):
                 for block_idx in range(len(model.transformer.h)):
                     model.transformer.h[block_idx] = wrap(model.transformer.h[block_idx])
