@@ -3,6 +3,7 @@ import json
 import pytest
 import torch.distributed as dist
 
+from tango.common.logging import initialize_logging
 from tango.common.testing import TangoTestCase
 
 
@@ -56,6 +57,7 @@ class TestTrainStep(TangoTestCase):
         assert (result_dir / "train" / "data.pt").is_file()
 
     def test_train_distributed(self):
+        initialize_logging()
         result_dir = self.run(
             self.FIXTURES_ROOT / "integrations/torch/train_dist.jsonnet",
             include_package=[
