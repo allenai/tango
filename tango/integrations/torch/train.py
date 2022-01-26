@@ -448,29 +448,30 @@ def _train(
         # NOTE: While hard linking would be preferable to creating symlinks, some accelerators
         # require a whole directory to save their state instead of a single file, which
         # means state_path_for_step will be a directory, so a hard link won't work.
-        if config.state_path.is_symlink():
-            config.state_path.unlink()
-        config.state_path.symlink_to(config.state_path_for_step(step))
+        if config.is_local_main_process:
+            if config.state_path.is_symlink():
+                config.state_path.unlink()
+            config.state_path.symlink_to(config.state_path_for_step(step))
 
-        # Link to best state path.
-        if is_best_checkpoint():
-            if config.best_state_path.is_symlink():
-                config.best_state_path.unlink()
-            config.best_state_path.symlink_to(config.state_path_for_step(step))
+            # Link to best state path.
+            if is_best_checkpoint():
+                if config.best_state_path.is_symlink():
+                    config.best_state_path.unlink()
+                config.best_state_path.symlink_to(config.state_path_for_step(step))
 
-        # Clean up stale checkpoints.
-        if config.remove_stale_checkpoints and config.is_local_main_process:
-            checkpoints_to_keep = {
-                config.best_state_path.resolve(),
-                config.state_path.resolve(),
-            }
-            for path in config.work_dir.glob("checkpoint_state_step*"):
-                path = path.resolve()
-                if path not in checkpoints_to_keep:
-                    if path.is_file():
-                        path.unlink()
-                    else:
-                        shutil.rmtree(path)
+            # Clean up stale checkpoints.
+            if config.remove_stale_checkpoints:
+                checkpoints_to_keep = {
+                    config.best_state_path.resolve(),
+                    config.state_path.resolve(),
+                }
+                for path in config.work_dir.glob("checkpoint_state_step*"):
+                    path = path.resolve()
+                    if path not in checkpoints_to_keep:
+                        if path.is_file():
+                            path.unlink()
+                        else:
+                            shutil.rmtree(path)
 
         if config.is_distributed:
             dist.barrier()
