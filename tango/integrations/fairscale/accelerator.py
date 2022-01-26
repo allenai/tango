@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import torch
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
@@ -14,9 +14,6 @@ from tango.integrations.torch import (
     TorchAccelerator,
     TrainConfig,
 )
-
-if TYPE_CHECKING:
-    from collections import OrderedDict  # noqa: F401
 
 
 @Accelerator.register("fairscale")
@@ -69,11 +66,14 @@ class FairScaleAccelerator(TorchAccelerator):
         if self.max_grad_norm is not None:
             self.model.clip_grad_norm_(self.max_grad_norm)  # type: ignore
 
-    def get_model_state(self) -> "OrderedDict[str, torch.Tensor]":
-        return self.model.local_state_dict()  # type: ignore
+    def get_model_state(self) -> Dict[str, torch.Tensor]:
+        return {
+            "weights": self.model.local_state_dict(),  # type: ignore
+            "metadata": self.model.local_metadata_dict(),  # type: ignore
+        }
 
-    def load_model_state(self, state_dict: "OrderedDict[str, torch.Tensor]") -> None:
-        self.model.load_local_state_dict(state_dict)  # type: ignore
+    def load_model_state(self, state_dict: Dict[str, torch.Tensor]) -> None:
+        self.model.load_local_state_dict(state_dict["weights"])  # type: ignore
 
     def save_complete_weights_from_checkpoint(
         self, checkpoint_path: Path, weights_path: Path

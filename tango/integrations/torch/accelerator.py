@@ -2,7 +2,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, cast
 
 import torch
 import torch.distributed as dist
@@ -13,9 +13,6 @@ from tango.common import Lazy, Registrable, Tqdm
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
-
-if TYPE_CHECKING:
-    from collections import OrderedDict  # noqa: F401
 
 
 class Accelerator(Registrable):
@@ -203,17 +200,17 @@ class TorchAccelerator(Accelerator):
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 
-    def get_model_state(self) -> "OrderedDict[str, torch.Tensor]":
+    def get_model_state(self) -> Dict[str, torch.Tensor]:
         if self.train_config.is_distributed:
             return self.model.module.state_dict()  # type: ignore[union-attr]
         else:
             return self.model.state_dict()
 
-    def load_model_state(self, state_dict: "OrderedDict[str, torch.Tensor]") -> None:
+    def load_model_state(self, state_dict: Dict[str, torch.Tensor]) -> None:
         if self.train_config.is_distributed:
-            self.model.module.load_state_dict(state_dict)  # type: ignore[union-attr]
+            self.model.module.load_state_dict(state_dict)  # type: ignore
         else:
-            self.model.load_state_dict(state_dict)  # type: ignore[union-attr]
+            self.model.load_state_dict(state_dict)  # type: ignore
 
     def save_checkpoint(self, path: Path, client_state: Dict[str, Any]) -> None:
         path.mkdir(exist_ok=True)
