@@ -9,7 +9,6 @@ Integrations
 
    torch
    datasets
-   deepspeed
    fairscale
    transformers
    wandb
