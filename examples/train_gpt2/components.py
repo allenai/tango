@@ -32,7 +32,7 @@ class GPT2Model(GPT2LMHeadModel, Model):
     ) -> "GPT2Model":
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
         model = cls(config)  # type: ignore
-        if fsdp:
+        if fsdp and torch.distributed.is_initialized():
             from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
             from fairscale.nn.wrap import enable_wrap, wrap
 
