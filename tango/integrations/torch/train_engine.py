@@ -15,8 +15,23 @@ from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
 
 
-class Accelerator(Registrable):
+class TrainEngine(Registrable):
+    """
+    A :class:`TrainEngine` defines and drives the strategy for training a model
+    in :class:`TorchTrainStep`.
+
+    Attributes
+    ----------
+    train_config : :class:`TrainConfig`
+    model : :class:`Model`
+    optimizer : :class:`Optimizer`
+    lr_scheduler : :class:`LRScheduler`, optional
+    """
+
     default_implementation = "torch"
+    """
+    The default implementation is :class:`TorchTrainEngine`.
+    """
 
     def __init__(
         self,
@@ -62,40 +77,71 @@ class Accelerator(Registrable):
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
     ) -> torch.Tensor:
+        """
+        Run a forward training pass on the model.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def forward_eval(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Run a forward evaluation pass on the model.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def backward(self, loss: torch.Tensor) -> None:
+        """
+        Run a backwards pass on the model. This will always be called after :meth:`forward_train()`.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def step(self) -> None:
+        """
+        Take an optimization step. This will always be called after :meth:`backward()`.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def save_checkpoint(self, path: Path, client_state: Dict[str, Any]) -> None:
+    def save_checkpoint(self, checkpoint_dir: Path, client_state: Dict[str, Any]) -> None:
+        """
+        Save a training checkpoint with model state, optimizer state, etc., as well
+        as the arbitrary ``client_state`` to the given ``checkpoint_dir``.
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def load_checkpoint(self, path: Path) -> Dict[str, Any]:
+    def load_checkpoint(self, checkpoint_dir: Path) -> Dict[str, Any]:
+        """
+        Load a checkpoint to resume training. Should return the same ``client_state`` saved
+        in :meth:`save_checkpoint()`.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def save_complete_weights_from_checkpoint(
-        self, checkpoint_path: Path, weights_path: Path
+        self, checkpoint_dir: Path, weights_path: Path
     ) -> None:
+        """
+        Gather the final weights from the best checkpoint and save to the file at ``weights_path``.
+        """
         raise NotImplementedError
 
 
-@Accelerator.register("torch")
-class TorchAccelerator(Accelerator):
+@TrainEngine.register("torch")
+class TorchTrainEngine(TrainEngine):
     """
-    This accelerator only uses native PyTorch functionality to provide
+    This train engine only uses native PyTorch functionality to provide
     vanilla distributed data parallel training and AMP.
+
+    .. tip::
+        Registered as a :class:`TrainEngine` under the name "torch".
+
+    .. important::
+        Only the parameters listed below should be defined in a configuration
+        file. The other parameters will be automatically passed to the constructor
+        within :class:`TorchTrainStep`.
 
     Parameters
     ----------
@@ -212,12 +258,12 @@ class TorchAccelerator(Accelerator):
         else:
             self.model.load_state_dict(state_dict)  # type: ignore
 
-    def save_checkpoint(self, path: Path, client_state: Dict[str, Any]) -> None:
-        path.mkdir(exist_ok=True)
+    def save_checkpoint(self, checkpoint_dir: Path, client_state: Dict[str, Any]) -> None:
+        checkpoint_dir.mkdir(exist_ok=True)
 
         def save_state(state: Dict[str, Any], name: str):
             temp_state_file = tempfile.NamedTemporaryFile(
-                "w+b", dir=path, delete=False, suffix=".pt"
+                "w+b", dir=checkpoint_dir, delete=False, suffix=".pt"
             )
             try:
                 with Tqdm.wrapattr(
@@ -230,7 +276,8 @@ class TorchAccelerator(Accelerator):
                     torch.save(state, f)
                 temp_state_file.close()
                 os.replace(
-                    temp_state_file.name, path / f"worker{self.train_config.worker_id}_{name}.pt"
+                    temp_state_file.name,
+                    checkpoint_dir / f"worker{self.train_config.worker_id}_{name}.pt",
                 )
             finally:
                 if os.path.exists(temp_state_file.name):
@@ -242,18 +289,20 @@ class TorchAccelerator(Accelerator):
             save_state(self.lr_scheduler.state_dict(), "lr_scheduler")
         save_state(client_state, "trainer")
 
-    def load_checkpoint(self, path: Path) -> Dict[str, Any]:
-        self.load_model_state(torch.load(path / f"worker{self.train_config.worker_id}_model.pt"))
+    def load_checkpoint(self, checkpoint_dir: Path) -> Dict[str, Any]:
+        self.load_model_state(
+            torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_model.pt")
+        )
         self.optimizer.load_state_dict(
-            torch.load(path / f"worker{self.train_config.worker_id}_optimizer.pt")
+            torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_optimizer.pt")
         )
         if self.lr_scheduler is not None:
             self.lr_scheduler.load_state_dict(
-                torch.load(path / f"worker{self.train_config.worker_id}_lr_scheduler.pt")
+                torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_lr_scheduler.pt")
             )
-        return torch.load(path / f"worker{self.train_config.worker_id}_trainer.pt")
+        return torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_trainer.pt")
 
     def save_complete_weights_from_checkpoint(
-        self, checkpoint_path: Path, weights_path: Path
+        self, checkpoint_dir: Path, weights_path: Path
     ) -> None:
-        os.link(checkpoint_path.resolve() / "worker0_model.pt", weights_path)
+        os.link(checkpoint_dir.resolve() / "worker0_model.pt", weights_path)

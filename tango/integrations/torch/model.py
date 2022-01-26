@@ -1,8 +1,11 @@
-from typing import OrderedDict
+from typing import TYPE_CHECKING
 
 import torch
 
 from tango.common.registrable import Registrable
+
+if TYPE_CHECKING:
+    from collections import OrderedDict
 
 
 class Model(torch.nn.Module, Registrable):
@@ -13,7 +16,7 @@ class Model(torch.nn.Module, Registrable):
     includes the ``loss`` during training and any tracked metrics during validation.
     """
 
-    def load_final_state_dict(self, state_dict: OrderedDict[str, torch.Tensor]):
+    def load_final_state_dict(self, state_dict: "OrderedDict[str, torch.Tensor]"):
         """
         You can override this method to customize how the state dict from the best
         training checkpoint is loaded after training completes.

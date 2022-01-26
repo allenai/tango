@@ -51,10 +51,10 @@ local dataloader = if distributed then distributed_dataloader else single_device
                 "pretrained_model_name_or_path": pretrained_model,
                 "activation_checkpointing": activation_checkpointing,
                 "fsdp": true,
-                "reshard_after_forward": reshard_after_forward,
-                "move_params_to_cpu": move_params_to_cpu,
-                "move_grads_to_cpu": move_grads_to_cpu,
-                "mixed_precision": amp,
+                "fsdp_reshard_after_forward": reshard_after_forward,
+                "fsdp_move_params_to_cpu": move_params_to_cpu,
+                "fsdp_move_grads_to_cpu": move_grads_to_cpu,
+                "fsdp_mixed_precision": amp,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
             "train_dataloader": dataloader,
@@ -78,7 +78,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "log_every": 1,
             "device_count": devices,
             "callbacks": [{"type": "torch::cuda_mem_stats"}],
-            "accelerator": {
+            "train_engine": {
                 "type": "fairscale",
                 "amp": amp,
                 "reshard_after_forward": reshard_after_forward,

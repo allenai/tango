@@ -8,24 +8,50 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 from tango.common import Lazy
 from tango.common.exceptions import ConfigurationError
 from tango.integrations.torch import (
-    Accelerator,
     LRScheduler,
     Model,
     Optimizer,
-    TorchAccelerator,
+    TorchTrainEngine,
     TrainConfig,
+    TrainEngine,
 )
 
 
-@Accelerator.register("fairscale")
-class FairScaleAccelerator(TorchAccelerator):
+@TrainEngine.register("fairscale")
+class FairScaleTrainEngine(TorchTrainEngine):
     """
-    An :class:`~tango.integrations.torch.Accelerator` that leverages FairScale's
-    :class:`~fairscale.nn.FullyShardedDataParallel`.
+    A :class:`~tango.integrations.torch.TrainEngine` that leverages FairScale's
+    :class:`~fairscale.nn.FullyShardedDataParallel` for use within
+    :class:`~tango.integrations.torch.TorchTrainStep`.
 
     .. tip::
-        Registered as an :class:`~tango.integrations.torch.Accelerator` under the name
+        Registered as an :class:`~tango.integrations.torch.TrainEngine` under the name
         "fairscale".
+
+    .. tip::
+        To get the best performance out of :class:`FairScaleTrainEngine` you should
+        wrap individual layers of your model with :class:`~fairscale.nn.FullyShardedDataParallel`
+        while instantiating them, such as in the example in the FairScale docs and in the
+        `GPT2 example </examples/train_gpt2.html>`_.
+
+    .. important::
+        Only the parameters listed below should be defined in a configuration
+        file. The other parameters will be automatically passed to the constructor
+        within :class:`~tango.integrations.torch.TorchTrainStep`.
+
+    Parameters
+    ----------
+    amp : :class:`bool`, optional
+        Use automatic mixed precision. Default is ``False``.
+    max_grad_norm : :class:`float`, optional
+        If set, gradients will be clipped to have this max norm. Default is ``None``.
+    reshard_after_forward : :class:`bool`
+        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+    move_params_to_cpu : :class:`bool`
+        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+    move_grads_to_cpu : :class:`bool`
+        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+
     """
 
     def __init__(
@@ -86,11 +112,11 @@ class FairScaleAccelerator(TorchAccelerator):
         self.model.load_local_state_dict(state_dict["weights"])  # type: ignore
 
     def save_complete_weights_from_checkpoint(
-        self, checkpoint_path: Path, weights_path: Path
+        self, checkpoint_dir: Path, weights_path: Path
     ) -> None:
         sharded_weights: List[Dict[str, torch.Tensor]] = []
         sharded_metadata: List[Dict[str, Any]] = []
-        for path in checkpoint_path.resolve().glob("worker*_model.pt"):
+        for path in checkpoint_dir.resolve().glob("worker*_model.pt"):
             sharded_state = torch.load(path, map_location="cpu")
             sharded_weights.append(sharded_state["weights"])
             sharded_metadata.append(sharded_state["metadata"])

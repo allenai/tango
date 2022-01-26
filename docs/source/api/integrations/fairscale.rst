@@ -2,4 +2,5 @@ FairScale
 =========
 
 .. automodule:: tango.integrations.fairscale
-   :members:
+
+.. autoclass:: tango.integrations.fairscale.FairScaleTrainEngine

@@ -7,10 +7,10 @@ import torch
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
-from .accelerator import Accelerator
 from .data import DataLoader
 from .exceptions import StopEarly
 from .train_config import TrainConfig
+from .train_engine import TrainEngine
 
 
 class TrainCallback(Registrable):
@@ -30,7 +30,7 @@ class TrainCallback(Registrable):
     Attributes
     ----------
     train_config : :class:`TrainConfig`
-    model : :class:`Model`
+    train_engine : :class:`TrainEngine`
     optimizer : :class:`Optimizer`
     dataset_dict : :class:`tango.common.DatasetDictBase`
     train_dataloader : :class:`DataLoader`
@@ -42,13 +42,13 @@ class TrainCallback(Registrable):
     def __init__(
         self,
         train_config: TrainConfig,
-        accelerator: Accelerator,
+        train_engine: TrainEngine,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
     ) -> None:
         self.train_config = train_config
-        self.accelerator = accelerator
+        self.train_engine = train_engine
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader

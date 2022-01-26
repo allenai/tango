@@ -12,7 +12,7 @@ Components for Tango integration with `FairScale <https://github.com/facebookres
 """
 
 __all__ = [
-    "FairScaleAccelerator",
+    "FairScaleTrainEngine",
 ]
 
-from .accelerator import FairScaleAccelerator
+from .train_engine import FairScaleTrainEngine

@@ -135,8 +135,6 @@ needs to raise the :class:`StopEarly` exception.
 """
 
 __all__ = [
-    "Accelerator",
-    "TorchAccelerator",
     "TorchFormat",
     "TorchTrainStep",
     "TorchEvalStep",
@@ -153,9 +151,10 @@ __all__ = [
     "StopEarlyCallback",
     "CudaMemStatsCallback",
     "StopEarly",
+    "TrainEngine",
+    "TorchTrainEngine",
 ]
 
-from .accelerator import Accelerator, TorchAccelerator
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
 from .eval import TorchEvalStep
 from .eval_callback import EvalCallback
@@ -166,3 +165,4 @@ from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
 from .train_callback import CudaMemStatsCallback, StopEarlyCallback, TrainCallback
 from .train_config import TrainConfig
+from .train_engine import TorchTrainEngine, TrainEngine

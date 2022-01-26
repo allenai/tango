@@ -9,16 +9,16 @@ from deepspeed.utils.zero_to_fp32 import convert_zero_checkpoint_to_fp32_state_d
 
 from tango.common import Lazy
 from tango.integrations.torch import (
-    Accelerator,
     LRScheduler,
     Model,
     Optimizer,
     TrainConfig,
+    TrainEngine,
 )
 
 
-@Accelerator.register("deepspeed")
-class DeepSpeedAccelerator(Accelerator):
+@TrainEngine.register("deepspeed")
+class DeepSpeedTrainEngine(TrainEngine):
     def __init__(
         self,
         train_config: TrainConfig,
