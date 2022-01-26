@@ -67,13 +67,13 @@ class FairScaleAccelerator(TorchAccelerator):
 
     def clip_grad_norm(self) -> None:
         if self.max_grad_norm is not None:
-            self.model.clip_grad_norm_(self.max_grad_norm)
+            self.model.clip_grad_norm_(self.max_grad_norm)  # type: ignore
 
     def get_model_state(self) -> "OrderedDict[str, torch.Tensor]":
-        return self.model.local_state_dict()
+        return self.model.local_state_dict()  # type: ignore
 
     def load_model_state(self, state_dict: "OrderedDict[str, torch.Tensor]") -> None:
-        self.model.load_local_state_dict(state_dict)
+        self.model.load_local_state_dict(state_dict)  # type: ignore
 
     def save_complete_weights_from_checkpoint(
         self, checkpoint_path: Path, weights_path: Path
