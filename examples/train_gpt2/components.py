@@ -12,56 +12,41 @@ from transformers.optimization import AdamW, get_linear_schedule_with_warmup
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
+from tango.integrations.fairscale import FSDPConfig
 from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
 Optimizer.register("transformers_adamw")(AdamW)
 
 
-@Model.register("lm-pretrained")
+@Model.register("lm_pretrained")
 def from_pretrained(
     pretrained_model_name_or_path: str,
     *args,
-    fsdp: bool = False,
-    fsdp_reshard_after_forward: bool = True,
-    fsdp_move_params_to_cpu: bool = False,
-    fsdp_move_grads_to_cpu: Optional[bool] = None,
-    fsdp_mixed_precision: bool = False,
+    fsdp_config: Optional[FSDPConfig] = None,
     activation_checkpointing: bool = False,
     **kwargs,
 ) -> Model:
     model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
     _fairscale_wrap_layers(
         model,
-        fsdp=fsdp,
-        fsdp_reshard_after_forward=fsdp_reshard_after_forward,
-        fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
-        fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
-        fsdp_mixed_precision=fsdp_mixed_precision,
+        fsdp_config=fsdp_config,
         activation_checkpointing=activation_checkpointing,
     )
     return model
 
 
-@Model.register("lm-fresh")
+@Model.register("lm_fresh")
 def new_random_from_config(
     pretrained_model_name_or_path: str,
-    fsdp: bool = False,
-    fsdp_reshard_after_forward: bool = True,
-    fsdp_move_params_to_cpu: bool = False,
-    fsdp_move_grads_to_cpu: Optional[bool] = None,
-    fsdp_mixed_precision: bool = False,
+    fsdp_config: Optional[FSDPConfig] = None,
     activation_checkpointing: bool = False,
 ) -> Model:
     config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
     model = AutoModelForCausalLM.from_config(config)  # type: ignore
     _fairscale_wrap_layers(
         model,
-        fsdp=fsdp,
-        fsdp_reshard_after_forward=fsdp_reshard_after_forward,
-        fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
-        fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
-        fsdp_mixed_precision=fsdp_mixed_precision,
+        fsdp_config=fsdp_config,
         activation_checkpointing=activation_checkpointing,
     )
     return model
@@ -69,11 +54,7 @@ def new_random_from_config(
 
 def _fairscale_wrap_layers(
     model,
-    fsdp: bool = False,
-    fsdp_reshard_after_forward: bool = True,
-    fsdp_move_params_to_cpu: bool = False,
-    fsdp_move_grads_to_cpu: Optional[bool] = None,
-    fsdp_mixed_precision: bool = False,
+    fsdp_config: Optional[FSDPConfig] = None,
     activation_checkpointing: bool = False,
 ) -> None:
     if activation_checkpointing:
@@ -84,30 +65,10 @@ def _fairscale_wrap_layers(
                 model.transformer.h[block_idx], offload_to_cpu=True
             )
 
-    if fsdp and torch.distributed.is_initialized():
-        from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
-        from fairscale.nn.wrap import enable_wrap, wrap
-
-        with enable_wrap(
-            wrapper_cls=FSDP,
-            reshard_after_forward=fsdp_reshard_after_forward,
-            move_params_to_cpu=fsdp_move_params_to_cpu,
-            move_grads_to_cpu=fsdp_move_grads_to_cpu,
-            mixed_precision=fsdp_mixed_precision,
-        ):
+    if fsdp_config is not None and torch.distributed.is_initialized():
+        with fsdp_config.enable_wrap():
             for block_idx in range(len(model.transformer.h)):
-                model.transformer.h[block_idx] = wrap(model.transformer.h[block_idx])
-
-    #  def load_final_state_dict(self, state_dict: "OrderedDict[str, torch.Tensor]"):
-    #      """
-    #      Due to weight tying, `lm_head.weight` might be missing from the state dictionary.
-    #      """
-    #      missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
-    #      if missing_keys and set(missing_keys) != {"lm_head.weight"}:
-    #          missing_keys.remove("lm_head.weight")
-    #          raise RuntimeError(f"Error loading state dict, missing keys: {missing_keys}")
-    #      elif unexpected_keys:
-    #          raise RuntimeError(f"Error loading state dict, unexpected keys: {unexpected_keys}")
+                model.transformer.h[block_idx] = fsdp_config.wrap(model.transformer.h[block_idx])
 
 
 # We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class

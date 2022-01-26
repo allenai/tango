@@ -16,6 +16,8 @@ from tango.integrations.torch import (
     TrainEngine,
 )
 
+from .fsdp_config import FSDPConfig
+
 
 @TrainEngine.register("fairscale")
 class FairScaleTrainEngine(TorchTrainEngine):
@@ -45,12 +47,8 @@ class FairScaleTrainEngine(TorchTrainEngine):
         Use automatic mixed precision. Default is ``False``.
     max_grad_norm : :class:`float`, optional
         If set, gradients will be clipped to have this max norm. Default is ``None``.
-    reshard_after_forward : :class:`bool`
-        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
-    move_params_to_cpu : :class:`bool`
-        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
-    move_grads_to_cpu : :class:`bool`
-        See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+    fsdp_config : :class:`FSDPConfig`
+        The options for :class:`~fairscale.nn.FullyShardedDataParallel`.
 
     """
 
@@ -63,18 +61,16 @@ class FairScaleTrainEngine(TorchTrainEngine):
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
-        reshard_after_forward: bool = True,
-        move_params_to_cpu: bool = False,
-        move_grads_to_cpu: Optional[bool] = None,
+        fsdp_config: Optional[FSDPConfig] = None,
     ) -> None:
         if not train_config.is_distributed:
             raise ConfigurationError(
                 f"{self.__class__.__name__} can only be used with distributed training"
             )
-        self.reshard_after_forward = reshard_after_forward
-        self.mixed_precision = amp
-        self.move_params_to_cpu = move_params_to_cpu
-        self.move_grads_to_cpu = move_grads_to_cpu
+
+        self.fsdp_config = fsdp_config or FSDPConfig()
+        self.fsdp_config.mixed_precision = amp
+
         super().__init__(
             train_config,
             model,
@@ -88,15 +84,9 @@ class FairScaleTrainEngine(TorchTrainEngine):
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
         model: Model = model.construct()
-        if not self.move_params_to_cpu:
+        if not self.fsdp_config.move_params_to_cpu:
             model.to(self.train_config.worker_local_default_device)
-        return FSDP(
-            model,
-            reshard_after_forward=self.reshard_after_forward,
-            mixed_precision=self.mixed_precision,
-            move_params_to_cpu=self.move_params_to_cpu,
-            move_grads_to_cpu=self.move_grads_to_cpu,
-        )
+        return FSDP(model, **self.fsdp_config.as_kwargs())
 
     def clip_grad_norm(self) -> None:
         if self.max_grad_norm is not None:

@@ -40,7 +40,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
         "trained_model": {
             "type": "torch::train",
             "model": {
-                "type": "gpt2",
+                "type": "lm_pretrained",
                 "pretrained_model_name_or_path": pretrained_model,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
