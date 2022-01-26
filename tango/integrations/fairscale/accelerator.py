@@ -45,6 +45,8 @@ class FairScaleAccelerator(TorchAccelerator):
             raise ConfigurationError(
                 f"{self.__class__.__name__} can only be used with distributed training"
             )
+        self.reshard_after_forward = reshard_after_forward
+        self.mixed_precision = amp
         super().__init__(
             train_config,
             model,
@@ -53,8 +55,6 @@ class FairScaleAccelerator(TorchAccelerator):
             amp=amp,
             max_grad_norm=max_grad_norm,
         )
-        self.reshard_after_forward = reshard_after_forward
-        self.mixed_precision = amp
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
         model: Model = model.construct()

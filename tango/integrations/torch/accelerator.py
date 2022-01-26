@@ -123,8 +123,8 @@ class TorchAccelerator(Accelerator):
         self.grad_scaler: Optional[torch.cuda.amp.GradScaler] = (
             None if not amp else torch.cuda.amp.GradScaler()
         )
-        self.device = self.train_config.worker_local_default_device
-        if self.train_config.is_distributed:
+        self.device = train_config.worker_local_default_device
+        if train_config.is_distributed:
             # Initialize distributed process group.
             backend: str
             if self.device != torch.device("cpu"):
@@ -134,9 +134,9 @@ class TorchAccelerator(Accelerator):
                 backend = "gloo"
             dist.init_process_group(
                 backend=backend,
-                init_method=f"tcp://{self.train_config.distributed_address}:{self.train_config.distributed_port}",
-                world_size=self.train_config.world_size,
-                rank=self.train_config.worker_id,
+                init_method=f"tcp://{train_config.distributed_address}:{self.train_config.distributed_port}",
+                world_size=train_config.world_size,
+                rank=train_config.worker_id,
             )
 
         super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
