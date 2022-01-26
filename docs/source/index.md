@@ -27,8 +27,9 @@ api/components/index
 api/integrations/index
 api/exceptions
 api/logging
-api/utilities
 api/sequences
+api/det_hash
+api/utilities
 ```
 
 ```{toctree}

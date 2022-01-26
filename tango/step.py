@@ -35,7 +35,7 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common._det_hash import CustomDetHash, det_hash
+from tango.common.det_hash import CustomDetHash, det_hash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,
