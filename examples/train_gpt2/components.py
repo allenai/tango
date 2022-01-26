@@ -19,7 +19,7 @@ from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 Optimizer.register("transformers_adamw")(AdamW)
 
 
-@Model.register("lm_pretrained")
+@Model.register("lm_pretrained")  # type: ignore
 def from_pretrained(
     pretrained_model_name_or_path: str,
     *args,
@@ -36,7 +36,7 @@ def from_pretrained(
     return model
 
 
-@Model.register("lm_fresh", exist_ok=True)
+@Model.register("lm_fresh", exist_ok=True)  # type: ignore
 def new_random_from_config(
     pretrained_model_name_or_path: str,
     fsdp_config: Optional[FSDPConfig] = None,
