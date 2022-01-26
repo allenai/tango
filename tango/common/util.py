@@ -199,14 +199,16 @@ def _is_valid_python_name(name: str) -> bool:
 
 def threaded_generator(g, queue_size: int = 16):
     """
-    Puts the generating side of a generator into its own thread.
+    Puts the generating side of a generator into its own thread
 
     Let's say you have a generator that reads records from disk, and something that consumes the
     generator that spends most of its time in PyTorch. Wouldn't it be great if you could read more
     records while the PyTorch code runs? If you wrap your record-reading generator with
-    `threaded_generator(inner)`, that's exactly what happens. The reading code will run in a new thread,
-    while the consuming code runs in the main thread as normal. `threaded_generator()` uses a queue
-    to hand off items. You can specify the maximum queue size with the `queue_size` parameter.
+    ``threaded_generator(inner)``, that's exactly what happens. The reading code will run in a new thread,
+    while the consuming code runs in the main thread as normal. ``threaded_generator()`` uses a queue
+    to hand off items.
+
+    :param queue_size: the maximum queue size for hand-offs between the main thread and the generator thread
     """
     from queue import Queue
     from threading import Thread
