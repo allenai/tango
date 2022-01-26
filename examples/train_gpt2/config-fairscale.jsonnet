@@ -47,7 +47,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
         "trained_model": {
             "type": "torch::train",
             "model": {
-                "type": "gpt2-random",
+                "type": "lm-fresh",
                 "pretrained_model_name_or_path": pretrained_model,
                 "activation_checkpointing": activation_checkpointing,
                 "fsdp": true,

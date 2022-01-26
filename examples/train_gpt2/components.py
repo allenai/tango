@@ -1,11 +1,11 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import datasets
 import torch
 from transformers import (
-    GPT2Config,
-    GPT2LMHeadModel,
-    GPT2Tokenizer,
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
     default_data_collator,
 )
 from transformers.optimization import AdamW, get_linear_schedule_with_warmup
@@ -14,108 +14,100 @@ from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 
-if TYPE_CHECKING:
-    from collections import OrderedDict
-
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
 Optimizer.register("transformers_adamw")(AdamW)
 
 
-# We could just use the GPT2LMHeadModel from HF directly by registering it as a Model
-# just like how we registered AdamW as an optimizer above, but we want to add some
-# additional arguments to the `from_pretrained` classmethod to enable FairScale features,
-# and also add new constructor `new_random_from_config()`.
-@Model.register("gpt2", constructor="from_pretrained")
-@Model.register("gpt2-random", constructor="new_random_from_config")
-class GPT2Model(GPT2LMHeadModel, Model):
-    @classmethod
-    def from_pretrained(  # type: ignore[override]
-        cls,
-        pretrained_model_name_or_path: str,
-        *args,
-        fsdp: bool = False,
-        fsdp_reshard_after_forward: bool = True,
-        fsdp_move_params_to_cpu: bool = False,
-        fsdp_move_grads_to_cpu: Optional[bool] = None,
-        fsdp_mixed_precision: bool = False,
-        activation_checkpointing: bool = False,
-        **kwargs,
-    ) -> "GPT2Model":
-        model = super().from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
-        model._fairscale_wrap_layers(
-            fsdp=fsdp,
-            fsdp_reshard_after_forward=fsdp_reshard_after_forward,
-            fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
-            fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
-            fsdp_mixed_precision=fsdp_mixed_precision,
-            activation_checkpointing=activation_checkpointing,
-        )
-        return model
+@Model.register("lm-pretrained")
+def from_pretrained(
+    pretrained_model_name_or_path: str,
+    *args,
+    fsdp: bool = False,
+    fsdp_reshard_after_forward: bool = True,
+    fsdp_move_params_to_cpu: bool = False,
+    fsdp_move_grads_to_cpu: Optional[bool] = None,
+    fsdp_mixed_precision: bool = False,
+    activation_checkpointing: bool = False,
+    **kwargs,
+) -> Model:
+    model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
+    _fairscale_wrap_layers(
+        model,
+        fsdp=fsdp,
+        fsdp_reshard_after_forward=fsdp_reshard_after_forward,
+        fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
+        fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
+        fsdp_mixed_precision=fsdp_mixed_precision,
+        activation_checkpointing=activation_checkpointing,
+    )
+    return model
 
-    @classmethod
-    def new_random_from_config(
-        cls,
-        pretrained_model_name_or_path: str,
-        fsdp: bool = False,
-        fsdp_reshard_after_forward: bool = True,
-        fsdp_move_params_to_cpu: bool = False,
-        fsdp_move_grads_to_cpu: Optional[bool] = None,
-        fsdp_mixed_precision: bool = False,
-        activation_checkpointing: bool = False,
-    ) -> "GPT2Model":
-        config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
-        model = cls(config)  # type: ignore
-        model._fairscale_wrap_layers(
-            fsdp=fsdp,
-            fsdp_reshard_after_forward=fsdp_reshard_after_forward,
-            fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
-            fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
-            fsdp_mixed_precision=fsdp_mixed_precision,
-            activation_checkpointing=activation_checkpointing,
-        )
-        return model
 
-    def _fairscale_wrap_layers(
-        self,
-        fsdp: bool = False,
-        fsdp_reshard_after_forward: bool = True,
-        fsdp_move_params_to_cpu: bool = False,
-        fsdp_move_grads_to_cpu: Optional[bool] = None,
-        fsdp_mixed_precision: bool = False,
-        activation_checkpointing: bool = False,
-    ) -> None:
-        if activation_checkpointing:
-            from fairscale.nn.checkpoint import checkpoint_wrapper
+@Model.register("lm-fresh")
+def new_random_from_config(
+    pretrained_model_name_or_path: str,
+    fsdp: bool = False,
+    fsdp_reshard_after_forward: bool = True,
+    fsdp_move_params_to_cpu: bool = False,
+    fsdp_move_grads_to_cpu: Optional[bool] = None,
+    fsdp_mixed_precision: bool = False,
+    activation_checkpointing: bool = False,
+) -> Model:
+    config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
+    model = AutoModelForCausalLM.from_config(config)  # type: ignore
+    _fairscale_wrap_layers(
+        model,
+        fsdp=fsdp,
+        fsdp_reshard_after_forward=fsdp_reshard_after_forward,
+        fsdp_move_params_to_cpu=fsdp_move_params_to_cpu,
+        fsdp_move_grads_to_cpu=fsdp_move_grads_to_cpu,
+        fsdp_mixed_precision=fsdp_mixed_precision,
+        activation_checkpointing=activation_checkpointing,
+    )
+    return model
 
-            for block_idx in range(len(self.transformer.h)):
-                self.transformer.h[block_idx] = checkpoint_wrapper(
-                    self.transformer.h[block_idx], offload_to_cpu=True
-                )
 
-        if fsdp and torch.distributed.is_initialized():
-            from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
-            from fairscale.nn.wrap import enable_wrap, wrap
+def _fairscale_wrap_layers(
+    model,
+    fsdp: bool = False,
+    fsdp_reshard_after_forward: bool = True,
+    fsdp_move_params_to_cpu: bool = False,
+    fsdp_move_grads_to_cpu: Optional[bool] = None,
+    fsdp_mixed_precision: bool = False,
+    activation_checkpointing: bool = False,
+) -> None:
+    if activation_checkpointing:
+        from fairscale.nn.checkpoint import checkpoint_wrapper
 
-            with enable_wrap(
-                wrapper_cls=FSDP,
-                reshard_after_forward=fsdp_reshard_after_forward,
-                move_params_to_cpu=fsdp_move_params_to_cpu,
-                move_grads_to_cpu=fsdp_move_grads_to_cpu,
-                mixed_precision=fsdp_mixed_precision,
-            ):
-                for block_idx in range(len(self.transformer.h)):
-                    self.transformer.h[block_idx] = wrap(self.transformer.h[block_idx])
+        for block_idx in range(len(model.transformer.h)):
+            model.transformer.h[block_idx] = checkpoint_wrapper(
+                model.transformer.h[block_idx], offload_to_cpu=True
+            )
 
-    def load_final_state_dict(self, state_dict: "OrderedDict[str, torch.Tensor]"):
-        """
-        Due to weight tying, `lm_head.weight` might be missing from the state dictionary.
-        """
-        missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
-        if missing_keys and set(missing_keys) != {"lm_head.weight"}:
-            missing_keys.remove("lm_head.weight")
-            raise RuntimeError(f"Error loading state dict, missing keys: {missing_keys}")
-        elif unexpected_keys:
-            raise RuntimeError(f"Error loading state dict, unexpected keys: {unexpected_keys}")
+    if fsdp and torch.distributed.is_initialized():
+        from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
+        from fairscale.nn.wrap import enable_wrap, wrap
+
+        with enable_wrap(
+            wrapper_cls=FSDP,
+            reshard_after_forward=fsdp_reshard_after_forward,
+            move_params_to_cpu=fsdp_move_params_to_cpu,
+            move_grads_to_cpu=fsdp_move_grads_to_cpu,
+            mixed_precision=fsdp_mixed_precision,
+        ):
+            for block_idx in range(len(model.transformer.h)):
+                model.transformer.h[block_idx] = wrap(model.transformer.h[block_idx])
+
+    #  def load_final_state_dict(self, state_dict: "OrderedDict[str, torch.Tensor]"):
+    #      """
+    #      Due to weight tying, `lm_head.weight` might be missing from the state dictionary.
+    #      """
+    #      missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
+    #      if missing_keys and set(missing_keys) != {"lm_head.weight"}:
+    #          missing_keys.remove("lm_head.weight")
+    #          raise RuntimeError(f"Error loading state dict, missing keys: {missing_keys}")
+    #      elif unexpected_keys:
+    #          raise RuntimeError(f"Error loading state dict, unexpected keys: {unexpected_keys}")
 
 
 # We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
@@ -151,7 +143,7 @@ class TokenizeData(Step):
         block_size: int = 1024,
         num_workers: int = 1,
     ) -> datasets.DatasetDict:
-        tokenizer = GPT2Tokenizer.from_pretrained(pretrained_model_name)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
 
         def tokenize_function(example):
             return tokenizer(example["text"])
