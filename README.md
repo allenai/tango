@@ -90,13 +90,19 @@ cd tango
 Then run
 
 ```bash
-pip install -e .
+pip install -e .[all]
 ```
 
 To install with a specific integration, such as `torch` for example, run
 
 ```bash
 pip install -e .[torch]
+```
+
+Or to install just the base tango library, you can run
+
+```bash
+pip install -e .
 ```
 
 ### Checking your installation
