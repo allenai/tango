@@ -118,7 +118,6 @@ class TorchAccelerator(Accelerator):
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
     ) -> None:
-        super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
         self.amp = amp
         self.max_grad_norm = max_grad_norm
         self.grad_scaler: Optional[torch.cuda.amp.GradScaler] = (
@@ -139,8 +138,16 @@ class TorchAccelerator(Accelerator):
                 world_size=self.train_config.world_size,
                 rank=self.train_config.worker_id,
             )
-            # Wrap model with DDP wrapper.
-            self.model = cast(Model, nn.parallel.DistributedDataParallel(self.model))
+
+        super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
+
+    def _construct_model(self, model: Lazy[Model]) -> Model:
+        model: Model = model.construct()
+        model.to(self.train_config.worker_local_default_device)
+        # Wrap model with DDP wrapper.
+        if self.train_config.is_distributed:
+            model = cast(Model, nn.parallel.DistributedDataParallel(model))
+        return model
 
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
