@@ -464,7 +464,7 @@ def _train(
                 config.best_state_path.resolve(),
                 config.state_path.resolve(),
             }
-            for path in config.work_dir.glob("checkpoint_state*"):
+            for path in config.work_dir.glob("checkpoint_state_step*"):
                 path = path.resolve()
                 if path not in checkpoints_to_keep:
                     if path.is_file():
