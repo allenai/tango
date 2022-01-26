@@ -78,12 +78,6 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
-          - name: GPT2 example
-            extras: dev,examples,datasets,torch
-            run: |
-              cd examples/train_gpt2
-              pytest -v --color=yes test.py
-
         include:
           # Run the core tests on other Python versions as well.
           - task:

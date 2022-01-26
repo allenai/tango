@@ -18,7 +18,9 @@ from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
 Optimizer.register("transformers_adamw")(AdamW)
 
-
+# Normally we register classes directly, but here it's more convenient to register our own little
+# factory function that will initialize a model with `AutoModelForCausalLM.from_pretrained` and then
+# wrap the layers with FairScale's `FullyShardedDataParallel` and `checkpoint_wrapper()` if needed.
 @Model.register("lm_pretrained")  # type: ignore
 def from_pretrained(
     pretrained_model_name_or_path: str,
@@ -36,6 +38,8 @@ def from_pretrained(
     return model
 
 
+# Same thing as above, except this won't load the pretrained state dictionary, so you get a randomly initialized
+# model that you can train from scratch.
 @Model.register("lm_fresh", exist_ok=True)  # type: ignore
 def new_random_from_config(
     pretrained_model_name_or_path: str,

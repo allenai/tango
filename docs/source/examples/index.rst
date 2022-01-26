@@ -8,4 +8,4 @@ You can find all of these `on GitHub <https://github.com/allenai/tango/tree/main
    :maxdepth: 2
    :caption: Examples
 
-   train_gpt2
+   train_lm

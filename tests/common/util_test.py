@@ -27,7 +27,7 @@ from tango.common.util import (
             Path("."),
         ),
         ("tango/steps/dataset_remix.py", "tango.steps.dataset_remix", Path(".")),
-        ("examples/train_gpt2/components.py", "components", Path("examples/train_gpt2/")),
+        ("examples/train_lm/components.py", "components", Path("examples/train_lm/")),
     ],
 )
 def test_resolve_module_name(

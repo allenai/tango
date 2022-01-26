@@ -34,7 +34,7 @@ class FairScaleTrainEngine(TorchTrainEngine):
         To get the best performance out of :class:`FairScaleTrainEngine` you should
         wrap individual layers of your model with :class:`~fairscale.nn.FullyShardedDataParallel`
         while instantiating them, such as in the example in the FairScale docs and in the
-        `GPT2 example </examples/train_gpt2.html>`_.
+        `language model example </examples/train_lm.html>`_.
 
     .. important::
         Only the parameters listed below should be defined in a configuration
