@@ -1,4 +1,4 @@
-local pretrained_model = "gpt2";
+local pretrained_model = "EleutherAI/gpt-j-6B";
 local training_steps = 200;
 local warmup_steps = 20;
 local batch_size = 8;
