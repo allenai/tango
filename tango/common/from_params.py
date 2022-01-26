@@ -701,7 +701,9 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                return constructor_to_call(**params, **create_extras(constructor_to_call, extras))  # type: ignore
+                #  return constructor_to_call(**params, **create_extras(constructor_to_call, extras))  # type: ignore
+                kwargs = create_kwargs(constructor_to_call, cls, params, **extras)
+                return constructor_to_call(**kwargs)
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 

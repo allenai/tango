@@ -6,16 +6,17 @@ local validate_every = 20;
 local distributed = true;  # Set to `true` to train on 2 (or more) GPUs.
 local devices = if distributed then 4 else 1;
 local grad_accum = if distributed then 2;
+local amp = true;
 
 // FairScale FSDP settings.
 local fsdp_config = {
     reshard_after_forward: true,
     move_params_to_cpu: false,
     move_grads_to_cpu: false,
+    mixed_precision: amp,
 };
 
 local activation_checkpointing = true;
-local amp = true;
 
 local distributed_dataloader = {
     batch_size: batch_size,

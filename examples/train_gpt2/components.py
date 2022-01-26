@@ -36,12 +36,13 @@ def from_pretrained(
     return model
 
 
-@Model.register("lm_fresh")
+@Model.register("lm_fresh", exist_ok=True)
 def new_random_from_config(
     pretrained_model_name_or_path: str,
     fsdp_config: Optional[FSDPConfig] = None,
     activation_checkpointing: bool = False,
 ) -> Model:
+    assert isinstance(fsdp_config, FSDPConfig)
     config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
     model = AutoModelForCausalLM.from_config(config)  # type: ignore
     _fairscale_wrap_layers(

@@ -1078,6 +1078,29 @@ class TestFromParams(TangoTestCase):
         o = ClassWithUnionType.from_params({"x": {"a": 1}})
         assert isinstance(o.x, Item)
 
+    def test_from_params_with_function(self):
+        """
+        Tests that a function registered as a constructor for a registrable class
+        will properly construct arguments.
+        """
+
+        class MyRegistrableClass(Registrable):
+            def __init__(self, a: int, b: int):
+                self.a = a
+                self.b = b
+
+        @dataclass
+        class OptionsClass(FromParams):
+            a: int
+            b: int
+
+        @MyRegistrableClass.register("func_constructor")  # type: ignore
+        def constructor(options: OptionsClass) -> MyRegistrableClass:
+            assert isinstance(options, OptionsClass)
+            return MyRegistrableClass(options.a, options.b)
+
+        MyRegistrableClass.from_params({"type": "func_constructor", "options": {"a": 1, "b": 2}})
+
 
 class MyClass(FromParams):
     def __init__(self, my_int: int, my_bool: bool = False) -> None:
