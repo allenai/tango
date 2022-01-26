@@ -134,7 +134,7 @@ class TorchAccelerator(Accelerator):
                 backend = "gloo"
             dist.init_process_group(
                 backend=backend,
-                init_method=f"tcp://{train_config.distributed_address}:{self.train_config.distributed_port}",
+                init_method=f"tcp://{train_config.distributed_address}:{train_config.distributed_port}",
                 world_size=train_config.world_size,
                 rank=train_config.worker_id,
             )
