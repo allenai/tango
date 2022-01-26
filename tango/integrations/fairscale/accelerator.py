@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import torch
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
+from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from tango.common import Lazy
 from tango.common.exceptions import ConfigurationError
@@ -56,6 +57,8 @@ class FairScaleAccelerator(TorchAccelerator):
             amp=amp,
             max_grad_norm=max_grad_norm,
         )
+        if amp:
+            self.grad_scaler = ShardedGradScaler()
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
         model: Model = model.construct()

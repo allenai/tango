@@ -9,8 +9,9 @@ local grad_accum = if distributed then 2;
 
 // FairScale FSDP settings.
 local reshard_after_forward = true;
-local move_params_to_cpu = true;
-local move_grads_to_cpu = true;
+local amp = true;
+local move_params_to_cpu = false;
+local move_grads_to_cpu = false;
 
 local distributed_dataloader = {
     "batch_size": batch_size,
@@ -76,6 +77,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "callbacks": [{"type": "torch::cuda_mem_stats"}],
             "accelerator": {
                 "type": "fairscale",
+                "amp": amp,
                 "reshard_after_forward": reshard_after_forward,
                 "move_params_to_cpu": move_params_to_cpu,
                 "move_grads_to_cpu": move_grads_to_cpu,
