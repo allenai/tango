@@ -20,7 +20,7 @@ from .util import check_dataset, move_to_device, resolve_device, set_seed_all
 @Step.register("torch::eval")
 class TorchEvalStep(Step):
     """
-    A basic PyTorch evaluation loop that pairs well with :class:`TorchTrainStep`.
+    A PyTorch evaluation loop that pairs well with :class:`TorchTrainStep`.
 
     .. tip::
 

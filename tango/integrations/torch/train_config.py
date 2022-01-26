@@ -8,7 +8,8 @@ import torch
 @dataclass
 class TrainConfig:
     """
-    Encapsulates the parameters of :class:`TorchTrainStep`.
+    Encapsulates the parameters of :class:`TorchTrainStep`. This is used to pass all the training
+    options to :class:`TrainCallback`.
     """
 
     step_id: str
