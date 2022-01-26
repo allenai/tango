@@ -9,9 +9,9 @@ local grad_accum = if distributed then 2;
 
 // FairScale FSDP settings.
 local fsdp_config = {
-    reshard_after_forward: true;
-    move_params_to_cpu: false;
-    move_grads_to_cpu: false;
+    reshard_after_forward: true,
+    move_params_to_cpu: false,
+    move_grads_to_cpu: false,
 };
 
 local activation_checkpointing = true;
