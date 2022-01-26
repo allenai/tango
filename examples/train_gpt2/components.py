@@ -37,8 +37,8 @@ class GPT2Model(GPT2LMHeadModel, Model):
             from fairscale.nn.wrap import enable_wrap, wrap
 
             with enable_wrap(wrapper_cls=FSDP, reshard_after_forward=True):
-                for block_idx in range(len(model.h)):
-                    model.h[block_idx] = wrap(model.h[block_idx])
+                for block_idx in range(len(model.transformer.h)):
+                    model.transformer.h[block_idx] = wrap(model.transformer.h[block_idx])
         return model
 
     def load_final_state_dict(self, state_dict: OrderedDict[str, torch.Tensor]):
