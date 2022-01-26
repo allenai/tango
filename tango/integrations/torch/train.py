@@ -31,7 +31,7 @@ from .util import check_dataloader, check_dataset, move_to_device, set_seed_all
 @Step.register("torch::train")
 class TorchTrainStep(Step):
     """
-    A basic PyTorch training loop step that supports gradient accumulation, distributed training,
+    A PyTorch training loop step that supports gradient accumulation, distributed training,
     and AMP, with configurable dataloaders, callbacks, optimizer, and LR scheduler.
 
     .. tip::
