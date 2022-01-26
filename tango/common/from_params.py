@@ -169,7 +169,7 @@ def create_kwargs(
     constructor: Callable[..., T],
     cls: Type[T],
     params: Params,
-    extras: Dict[str, Any],
+    extras: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Given some class, a ``Params`` object, and potentially other keyword arguments,
@@ -214,7 +214,7 @@ def create_kwargs(
 
         explicitly_set = param_name in params
         constructed_arg = pop_and_construct_arg(
-            cls.__name__, param_name, annotation, param.default, params, extras
+            cls.__name__, param_name, annotation, param.default, params, extras or {}
         )
 
         # If the param wasn't explicitly set in `params` and we just ended up constructing
@@ -229,8 +229,9 @@ def create_kwargs(
     if accepts_kwargs:
         for key in list(params):
             kwargs[key] = params.pop(key, keep_as_dict=True)
-        for key, value in extras.items():
-            kwargs[key] = value
+        if extras:
+            for key, value in extras.items():
+                kwargs[key] = value
     params.assert_empty(cls.__name__)
     return kwargs
 
@@ -709,8 +710,9 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                kwargs = create_kwargs(constructor_to_call, cls, params, extras)  # type: ignore
-                return constructor_to_call(**kwargs)  # type: ignore
+                kwargs = create_kwargs(constructor_to_call, cls, params)  # type: ignore
+                extras = create_extras(constructor_to_call, extras)
+                return constructor_to_call(**kwargs, **extras)  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 
