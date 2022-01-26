@@ -42,6 +42,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "model": {
                 "type": "gpt2-random",
                 "pretrained_model_name_or_path": pretrained_model,
+                "fsdp": true,
             },
             "dataset_dict": {"type": "ref", "ref": "tokenized_data"},
             "train_dataloader": dataloader,

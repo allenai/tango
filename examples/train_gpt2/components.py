@@ -27,9 +27,19 @@ Optimizer.register("transformers_adamw")(AdamW)
 @Model.register("gpt2-random", constructor="new_random_from_pretrained")
 class GPT2Model(GPT2LMHeadModel, Model):
     @classmethod
-    def new_random_from_pretrained(cls, pretrained_model_name_or_path: str) -> "GPT2Model":
+    def new_random_from_pretrained(
+        cls, pretrained_model_name_or_path: str, fsdp: bool = False
+    ) -> "GPT2Model":
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
-        return cls(config)  # type: ignore
+        model = cls(config)  # type: ignore
+        if fsdp:
+            from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
+            from fairscale.nn.wrap import enable_wrap, wrap
+
+            with enable_wrap(wrapper_cls=FSDP, reshard_after_forward=True):
+                for block_idx in range(len(model.h)):
+                    model.h[block_idx] = wrap(model.h[block_idx])
+        return model
 
     def load_final_state_dict(self, state_dict: OrderedDict[str, torch.Tensor]):
         missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
