@@ -59,7 +59,8 @@ class FairScaleAccelerator(TorchAccelerator):
 
     def _construct_model(self, model: Lazy[Model]) -> Model:
         model: Model = model.construct()
-        model.to(self.train_config.worker_local_default_device)
+        if not self.move_params_to_cpu:
+            model.to(self.train_config.worker_local_default_device)
         return FSDP(
             model,
             reshard_after_forward=self.reshard_after_forward,
