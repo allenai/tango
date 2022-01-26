@@ -153,10 +153,11 @@ def infer_method_params(
     # first superclass, and so on. We take the first superclass we find that inherits from
     # FromParams.
     super_class = None
-    for super_class_candidate in cls.mro()[1:]:
-        if issubclass(super_class_candidate, FromParams):
-            super_class = super_class_candidate
-            break
+    if hasattr(cls, "mro"):
+        for super_class_candidate in cls.mro()[1:]:
+            if issubclass(super_class_candidate, FromParams):
+                super_class = super_class_candidate
+                break
     if super_class:
         super_parameters = infer_params(super_class)
     else:
@@ -355,7 +356,7 @@ def construct_arg(
                 could_be_step=False,
                 **extras,
             )
-        except (ValueError, TypeError, ConfigurationError, AttributeError):
+        except (ValueError, TypeError, ConfigurationError, AttributeError, IndexError):
             popped_params = backup_params
 
     origin = getattr(annotation, "__origin__", None)
@@ -671,6 +672,7 @@ class FromParams(CustomDetHash):
             if "type" in params and params["type"] not in as_registrable.list_available():
                 as_registrable.search_modules(params["type"])
 
+            # Resolve the subclass and constructor.
             if is_base_registrable(cls) or "type" in params:
                 default_to_first_choice = as_registrable.default_implementation is not None
                 choice = params.pop_choice(
@@ -678,19 +680,35 @@ class FromParams(CustomDetHash):
                     choices=as_registrable.list_available(),
                     default_to_first_choice=default_to_first_choice,
                 )
-                subclass, constructor_name = as_registrable.resolve_class_name(choice)
+                # We allow users to register methods and functions, not just classes.
+                # So we have to handle both here.
+                subclass_or_factory_func, constructor_name = as_registrable.resolve_class_name(
+                    choice
+                )
+                if inspect.isclass(subclass_or_factory_func):
+                    subclass = subclass_or_factory_func
+                    if constructor_name is not None:
+                        constructor_to_inspect = cast(
+                            Callable[..., T], getattr(subclass, constructor_name)
+                        )
+                        constructor_to_call = constructor_to_inspect
+                    else:
+                        constructor_to_inspect = subclass.__init__
+                        constructor_to_call = subclass
+                else:
+                    factory_func = cast(Callable[..., T], subclass_or_factory_func)
+                    return_type = inspect.signature(factory_func).return_annotation
+                    if return_type == inspect.Signature.empty:
+                        subclass = cls
+                    else:
+                        subclass = return_type
+                    constructor_to_inspect = factory_func
+                    constructor_to_call = factory_func
             else:
                 # Must be trying to instantiate the given class directly.
                 subclass = cls
-                constructor_name = None
-
-            # See the docstring for an explanation of what's going on here.
-            if not constructor_name:
-                constructor_to_inspect = subclass.__init__
-                constructor_to_call = subclass  # type: ignore
-            else:
-                constructor_to_inspect = cast(Callable[..., T], getattr(subclass, constructor_name))
-                constructor_to_call = constructor_to_inspect
+                constructor_to_inspect = cls.__init__
+                constructor_to_call = cast(Callable[..., T], cls)
 
             if hasattr(subclass, "from_params"):
                 # We want to call subclass.from_params.
@@ -710,7 +728,7 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                kwargs = create_kwargs(constructor_to_call, cls, params, extras)  # type: ignore
+                kwargs = create_kwargs(constructor_to_inspect, subclass, params, extras)  # type: ignore
                 return constructor_to_call(**kwargs)  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
