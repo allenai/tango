@@ -25,8 +25,7 @@ from transformers import (
 
 from tango import Format, JsonFormat, SqliteDictFormat, Step
 from tango.common import DatasetDict
-from tango.common.sequences import MappedSequence
-from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
+from tango.common.sequences import MappedSequence, SqliteSparseSequence
 from tango.common.tqdm import Tqdm
 from tango.integrations.torch.util import resolve_device, set_seed_all
 

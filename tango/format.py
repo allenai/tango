@@ -31,7 +31,7 @@ from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
-from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
+from tango.common.sequences import SqliteSparseSequence
 
 T = TypeVar("T")
 
@@ -407,13 +407,13 @@ class SqliteDictFormat(Format[DatasetDict]):
     datasets into Sqlite databases.
 
     During reading, the advantage is that the dataset can be read lazily. Reading a result that is stored
-    in ``SqliteDictFormat`` takes milliseconds. No actual reading takes place until you access individual
+    in :class:`SqliteDictFormat` takes milliseconds. No actual reading takes place until you access individual
     instances.
 
     During writing, you have to take some care to take advantage of the same trick. Recall that
     :class:`~tango.DatasetDict` is basically a map, mapping split names to lists of instances. If you ensure
-    that those lists of instances are of type :class:`~tango.common.SqliteSparseSequence`, then writing the results
-    in ``SqliteDictFormat`` can in many cases be instantaneous.
+    that those lists of instances are of type :class:`~tango.common.sequences.SqliteSparseSequence`, then writing
+    the results in :class:`SqliteDictFormat` can in many cases be instantaneous.
 
     Here is an example of the pattern to use to make writing fast:
 
@@ -436,10 +436,11 @@ class SqliteDictFormat(Format[DatasetDict]):
                 metadata = {}
                 return DatasetDict(result, metadata)
 
-    Observe how for each split, we create a :class:`SqliteSparseSequence` in the step's work directory (accessible
-    with :meth:`~tango.step.Step.work_dir`). This has the added advantage that if the step fails and you have to
-    re-run it, the previous results that were already written to the :class:`~tango.common.SqliteSparseSequence`
-    are still there. You could replace the inner ``for`` loop like this to take advantage:
+    Observe how for each split, we create a :class:`~tango.common.sequences.SqliteSparseSequence` in the step's
+    work directory (accessible with :meth:`~tango.step.Step.work_dir`). This has the added advantage that if the
+    step fails and you have to re-run it, the previous results that were already written to the
+    :class:`~tango.common.sequences.SqliteSparseSequence` are still there. You could replace the inner ``for``
+    loop like this to take advantage:
 
     .. code-block:: Python
 

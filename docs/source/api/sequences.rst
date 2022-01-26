@@ -10,6 +10,3 @@ This module is not dependent on other Tango modules and can be used in isolation
 
 .. automodule:: tango.common.sequences
    :members:
-
-.. automodule:: tango.common.sqlite_sparse_sequence
-   :members:
