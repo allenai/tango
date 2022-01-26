@@ -8,6 +8,7 @@ local devices = if distributed then 4 else 1;
 local grad_accum = if distributed then 2;
 
 // FairScale FSDP settings.
+local activation_checkpointing = true;
 local reshard_after_forward = true;
 local amp = true;
 local move_params_to_cpu = false;
@@ -48,6 +49,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             "model": {
                 "type": "gpt2-random",
                 "pretrained_model_name_or_path": pretrained_model,
+                "activation_checkpointing": activation_checkpointing,
                 "fsdp": true,
                 "reshard_after_forward": reshard_after_forward,
                 "move_params_to_cpu": move_params_to_cpu,

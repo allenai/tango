@@ -35,9 +35,19 @@ class GPT2Model(GPT2LMHeadModel, Model):
         move_params_to_cpu: bool = False,
         move_grads_to_cpu: Optional[bool] = None,
         mixed_precision: bool = False,
+        activation_checkpointing: bool = False,
     ) -> "GPT2Model":
         config = GPT2Config.from_pretrained(pretrained_model_name_or_path)
         model = cls(config)  # type: ignore
+
+        if activation_checkpointing:
+            from fairscale.nn.checkpoint import checkpoint_wrapper
+
+            for block_idx in range(len(model.transformer.h)):
+                model.transformer.h[block_idx] = checkpoint_wrapper(
+                    model.transformer.h[block_idx], offload_to_cpu=True
+                )
+
         if fsdp and torch.distributed.is_initialized():
             from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
             from fairscale.nn.wrap import enable_wrap, wrap
