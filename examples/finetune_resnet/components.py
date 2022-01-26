@@ -8,33 +8,36 @@ import torch.nn as nn
 from torch.optim import Adam
 from torchvision import datasets, models, transforms
 
-from tango import Step, step
-from tango.integrations.torch import DataCollator, Model, Optimizer, model
+from tango import Step
+from tango.integrations.torch import DataCollator, Model, Optimizer
 
+# Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
 
-
-def set_parameter_requires_grad(model, feature_extracting):
-    if feature_extracting:
-        for param in model.parameters():
-            param.requires_grad = False
-
+# Wrapper class around the pre-trained ResNet-18 model that modifies the final layer.
 @Model.register("resnet_ft")
 class ResNetWrapper(Model):
+
     def __init__(self, num_classes: int, feature_extract: bool, use_pretrained: bool):
         super().__init__()
         self.model_ft = models.resnet18(pretrained=use_pretrained)
-        set_parameter_requires_grad(self.model_ft, feature_extract)
+        self.set_parameter_requires_grad(self.model_ft, feature_extract)
         num_features = self.model_ft.fc.in_features
         self.model_ft.fc = nn.Linear(num_features, num_classes)
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, image, label) -> Dict[str, torch.Tensor]:
+    def set_parameter_requires_grad(self, model: models, feature_extracting: bool):
+        if feature_extracting:
+            for param in model.parameters():
+                param.requires_grad = False
+
+    def forward(self, image: torch.Tensor, label: torch.Tensor) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)  # tensor
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
-
+# Custom data collator for images, that takes in a batch of images and labels and
+# reformats the data so that it is suitable for the model.
 @DataCollator.register("image_collator")
 class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
     def __call__(self, batch: List[Tuple[torch.Tensor]]) -> Dict[str, Any]:
@@ -43,7 +46,7 @@ class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
             "label": torch.tensor([item[1] for item in batch]),
         }
 
-
+# Function that returns an image transformations dict with the appropriate image size.
 def get_data_transforms(input_size: int):
     data_transforms = {
         "train": transforms.Compose(
@@ -65,7 +68,7 @@ def get_data_transforms(input_size: int):
     }
     return data_transforms
     
-
+# This step takes in raw image data and transforms and tokenizes it.
 @Step.register("transform_data")
 class TransformData(Step):
     DETERMINISTIC = True
