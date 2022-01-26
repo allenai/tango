@@ -136,11 +136,11 @@ class TorchTrainStep(Step):
             The number of steps to train for. If not specified training will
             stop after a complete iteration through the `train_dataloader`.
         train_epochs : :class:`int`, optionsl
-            The number of epochs to train for. You cannot specify `train_steps` and `train_epochs`
+            The number of epochs to train for. You cannot specify ``train_steps`` and ``train_epochs``
             at the same time.
         validation_steps : :class:`int`, optional
             The number of steps to validate for. If not specified validation
-            will stop after a complete iteration through the `validation_dataloader`.
+            will stop after a complete iteration through the ``validation_dataloader``.
         grad_accum : :class:`int`, optional
             The number of gradient accumulation steps. Defaults to 1.
 
