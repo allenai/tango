@@ -9,7 +9,7 @@ local grad_accum = 2;
 # FairScaleTrainEngine settings:
 local amp = true;
 local activation_checkpointing = true;
-local cpu_offloading = false;
+local cpu_offloading = true;
 
 # FullyShardedDataParallel config:
 local fsdp_config = {
@@ -77,13 +77,6 @@ local dataloader = {
                 amp: amp,
                 fsdp_config: fsdp_config,
             },
-        },
-        final_metrics: {
-            type: "torch::eval",
-            model: {type: "ref", ref: "trained_model"},
-            dataset_dict: {type: "ref", ref: "tokenized_data"},
-            dataloader: single_device_dataloader,
-            test_split: "test",
         },
     }
 }
