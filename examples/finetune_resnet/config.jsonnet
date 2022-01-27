@@ -38,7 +38,7 @@ local single_device_dataloader = {
         "trained_model": {
             "type": "torch::train",
             "model": {
-                "type": "resnet_ft",
+                "type": pretrained_model,
                 "num_classes": num_classes,
                 "feature_extract": true,
                 "use_pretrained": true,
