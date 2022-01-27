@@ -5,7 +5,7 @@ local batch_size = 8;
 local validate_every = 20;
 local distributed = true;  # Set to `true` to train on 4 (or more) GPUs.
 local devices = if distributed then 4 else 1;
-local grad_accum = if distributed then 2;
+local grad_accum = 2;
 
 # FairScaleTrainEngine settings:
 local amp = true;
