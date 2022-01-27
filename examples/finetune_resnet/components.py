@@ -1,7 +1,8 @@
+import imp
 import os
 from collections import defaultdict
 from pickletools import optimize
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -10,6 +11,10 @@ from torchvision import datasets, models, transforms
 
 from tango import Step
 from tango.integrations.torch import DataCollator, Model, Optimizer
+from cached_path import cached_path
+
+from PIL import Image
+
 
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
@@ -31,8 +36,10 @@ class ResNetWrapper(Model):
             for param in model.parameters():
                 param.requires_grad = False
 
-    def forward(self, image: torch.Tensor, label: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(self, image: torch.Tensor, label: Optional[torch.Tensor]) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)  # tensor
+        if not label:
+            return output
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
@@ -89,11 +96,13 @@ class TransformData(Step):
 
 @Step.register("prediction")
 class Prediction(Step):
-
-    def run(self, img_url: str, input_size: int) -> torch.Tensor:
-        # download and store imag
-        image = "x"
+    def run(self, image_url: str, input_size: int, model: models) -> torch.Tensor:
+        # download and store image
+        image_path = cached_path(image_url)
+        raw_image = Image.open(image_path)
+        
         # pass image through transform
         transform = get_data_transforms(input_size=input_size)["val"]
-        transformed_image = transform(image)
-        pass
+        transformed_image = transform(raw_image)
+        prediction = model(transformed_image)
+        return prediction

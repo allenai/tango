@@ -62,10 +62,10 @@ local single_device_dataloader = {
             "dataloader": single_device_dataloader,
             "test_split": "val",
         },
-        // "prediction": {
-        //     "type": "prediction",
-        //     "model": {"type": "ref", "ref": "trained_model"},
-        // },
+        "prediction": {
+            "type": "prediction",
+            "model": {"type": "ref", "ref": "trained_model"},
+        },
     },
 }
  
