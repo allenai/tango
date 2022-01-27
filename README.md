@@ -93,7 +93,7 @@ Then run
 pip install -e .[all]
 ```
 
-To install with a specific integration, such as `torch` for example, run
+To install with only a specific integration, such as `torch` for example, run
 
 ```bash
 pip install -e .[torch]
