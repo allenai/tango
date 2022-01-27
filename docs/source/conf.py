@@ -39,6 +39,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
     "sphinx_copybutton",
+    "sphinx_design",
 ]
 
 suppress_warnings = ["myst.header"]
