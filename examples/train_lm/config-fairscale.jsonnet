@@ -3,17 +3,20 @@ local training_steps = 200;
 local warmup_steps = 20;
 local batch_size = 8;
 local validate_every = 20;
-local distributed = true;  # Set to `true` to train on 2 (or more) GPUs.
+local distributed = true;  # Set to `true` to train on 4 (or more) GPUs.
 local devices = if distributed then 4 else 1;
 local grad_accum = if distributed then 2;
 
 # FairScaleTrainEngine settings:
 local amp = true;
 local activation_checkpointing = true;
-local fsdp_config = {  # FullyShardedDataParallel config:
+local cpu_offloading = false;
+
+# FullyShardedDataParallel config:
+local fsdp_config = {
     reshard_after_forward: true,
-    move_params_to_cpu: false,
-    move_grads_to_cpu: false,
+    move_params_to_cpu: cpu_offloading,
+    move_grads_to_cpu: cpu_offloading,
     mixed_precision: amp,
 };
 
@@ -61,7 +64,7 @@ local dataloader = if distributed then distributed_dataloader else single_device
             validation_split: "validation",
             optimizer: {
                 type: "transformers_adamw",
-                lr: 0.0007,
+                lr: 0.00005,
                 betas: [0.9, 0.95],
                 eps: 1e-6,
                 correct_bias: false,
