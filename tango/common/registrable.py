@@ -133,7 +133,7 @@ class Registrable(FromParams):
                 if exist_ok:
                     message = (
                         f"{name} has already been registered as {registry[name][0].__name__}, but "
-                        f"exist_ok=True, so overwriting with {cls.__name__}"
+                        f"exist_ok=True, so overwriting with {subclass.__name__}"
                     )
                     logger.info(message)
                 else:
