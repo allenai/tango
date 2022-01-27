@@ -275,9 +275,38 @@ class LocalWorkspace(Workspace):
         result.mkdir(parents=True, exist_ok=True)
         return result
 
-    @staticmethod
-    def dir_is_empty(dir: Path):
-        return not any(True for _ in dir.iterdir())
+    @classmethod
+    def guess_step_dir_state(cls, dir: Path) -> Optional[StepState]:
+        """
+        Returns the status of a given step dir, to the best of our knowledge.
+
+        :param dir: the step dir to example
+        :return: our best guess at the state of the step, or ``None`` if we don't know
+        """
+
+        # If the directory doesn't exist, the step is incomplete.
+        if not dir.exists():
+            return StepState.INCOMPLETE
+
+        # If the lock file exists and is locked, the step is running.
+        lock_file = dir / "lock"
+        if lock_file.exists():
+            lock = FileLock(lock_file)
+            try:
+                lock.acquire(0)
+                lock.release()
+            except TimeoutError:
+                return StepState.RUNNING
+
+        # If the directory is empty except for the work dir, the step is incomplete.
+        for dir_entry in dir.iterdir():
+            if dir_entry.name == "work" and dir_entry.is_dir():
+                continue
+            break
+        else:
+            return StepState.INCOMPLETE
+
+        return None
 
     @staticmethod
     def _fix_step_info(step_info: StepInfo) -> None:
@@ -323,17 +352,21 @@ class LocalWorkspace(Workspace):
                 # Perform some sanity checks. Sqlite and the file system can get out of sync
                 # when a process dies suddenly.
                 step_dir = self.step_dir(unique_id)
-                new_state = step_info.state
-                if not step_dir.exists() or self.dir_is_empty(step_dir):
-                    new_state = StepState.INCOMPLETE
-                elif step_info.state == StepState.RUNNING and not self._step_lock_file_is_locked(
-                    unique_id
+                step_state_guess = self.guess_step_dir_state(step_dir) or step_info.state
+                if (
+                    step_state_guess == StepState.INCOMPLETE
+                    and step_info.state != StepState.INCOMPLETE
                 ):
-                    new_state = StepState.INCOMPLETE
-                if new_state != step_info.state:
                     step_info.start_time = None
                     step_info.end_time = None
                     d[unique_id] = step_info
+                elif step_state_guess == StepState.RUNNING and step_info.state != StepState.RUNNING:
+                    raise IOError(
+                        f"The step '{unique_id}' is locked with the lock file in '{step_dir / 'lock'}', "
+                        "but we don't seem to think it's running. If you are positive the step is not "
+                        "running, please delete the lock file and try again."
+                    )
+
                 return step_info
 
             result = find_or_add_step_info(step_or_unique_id)
