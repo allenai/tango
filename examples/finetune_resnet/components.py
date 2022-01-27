@@ -47,7 +47,7 @@ class ResNetWrapper(Model):
 # reformats the data so that it is suitable for the model.
 @DataCollator.register("image_collator")
 class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
-    def __call__(self, batch: List[Tuple[torch.Tensor]]) -> Dict[str, Any]:
+    def __call__(self, batch: List[Tuple[torch.Tensor, int]]) -> Dict[str, Any]:
         return {
             "image": torch.cat([item[0].unsqueeze(0) for item in batch], dim=0),
             "label": torch.tensor([item[1] for item in batch]),
