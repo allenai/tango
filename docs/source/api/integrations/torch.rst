@@ -33,7 +33,7 @@ Model
    :members:
 
 TrainingEngine
-~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 .. autoclass:: tango.integrations.torch.TrainingEngine
    :members:
