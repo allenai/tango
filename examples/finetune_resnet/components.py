@@ -1,3 +1,4 @@
+from cProfile import label
 import imp
 import os
 from collections import defaultdict
@@ -100,9 +101,12 @@ class Prediction(Step):
         # download and store image
         image_path = cached_path(image_url)
         raw_image = Image.open(image_path)
-        
+
         # pass image through transform
         transform = get_data_transforms(input_size=input_size)["val"]
         transformed_image = transform(raw_image)
-        prediction = model(transformed_image)
+        transformed_image = transformed_image.unsqueeze(0)
+        
+        # pass image through model and get the prediction
+        prediction = model(image=transformed_image, label=None)
         return prediction

@@ -9,6 +9,7 @@ local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
 local training_steps = 31;
 local validate_every = 20;
+local image_url = "https://bit.ly/33Pv54E";
 
 local distributed_dataloader = {
     "batch_size": batch_size,
@@ -64,6 +65,8 @@ local single_device_dataloader = {
         },
         "prediction": {
             "type": "prediction",
+            "image_url": image_url,
+            "input_size": input_size,
             "model": {"type": "ref", "ref": "trained_model"},
         },
     },
