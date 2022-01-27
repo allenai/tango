@@ -74,7 +74,7 @@ local dataloader = {
             device_count: devices,
             callbacks: [{type: "torch::cuda_mem_stats"}],
             train_engine: {
-                type: if fsdp then "fairscale" else null,
+                type: if fsdp then "fairscale" else "torch",
                 amp: amp,
                 [if fsdp then "fsdp_config" else null]: fsdp_config,
             },
