@@ -1,21 +1,19 @@
-from cProfile import label
 import imp
 import os
 from collections import defaultdict
+from cProfile import label
 from pickletools import optimize
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
-import torch.nn as nn
+from cached_path import cached_path
+from PIL import Image
+from torch import nn
 from torch.optim import Adam
 from torchvision import datasets, models, transforms
 
 from tango import Step
 from tango.integrations.torch import DataCollator, Model, Optimizer
-from cached_path import cached_path
-
-from PIL import Image
-
 
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
@@ -37,7 +35,9 @@ class ResNetWrapper(Model):
             for param in model.parameters():
                 param.requires_grad = False
 
-    def forward(self, image: torch.Tensor, label: Optional[torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, image: torch.Tensor, label: Optional[torch.Tensor]
+    ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)  # tensor
         if not label:
             return output
@@ -75,7 +75,7 @@ def get_data_transforms(input_size: int):
         ),
     }
     return data_transforms
-    
+
 # This step takes in raw image data and transforms and tokenizes it.
 @Step.register("transform_data")
 class TransformData(Step):
@@ -89,7 +89,7 @@ class TransformData(Step):
         # Create training and validation datasets
         image_datasets = {
             x: datasets.ImageFolder(
-                os.path.join(data_dir, x), 
+                os.path.join(data_dir, x),
                 get_data_transforms(input_size=input_size)[x])
             for x in ["train", "val"]
         }
@@ -106,7 +106,7 @@ class Prediction(Step):
         transform = get_data_transforms(input_size=input_size)["val"]
         transformed_image = transform(raw_image)
         transformed_image = transformed_image.unsqueeze(0)
-        
+
         # pass image through model and get the prediction
         prediction = model(image=transformed_image, label=None)
         return prediction
