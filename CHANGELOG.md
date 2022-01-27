@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in `Registrable` and `FromParams` where registered function constructors would not properly construct
   arguments that were classes.
 - Fixed a bug in `FromParams` when an argument to the constructor had the name `params`.
+- Fixed bug where `Executor` would crash if `git` command could not be found.
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
 

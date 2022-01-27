@@ -2,14 +2,18 @@ from typing import Any, Dict, List, Optional
 
 import datasets
 import torch
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    default_data_collator,
+)
+from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.fairscale import FSDPConfig
-from tango.integrations.torch import (DataCollator, LRScheduler, Model,
-                                      Optimizer)
-from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-                          default_data_collator)
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
 
 # Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
 Optimizer.register("transformers_adamw")(AdamW)
@@ -26,9 +30,7 @@ def from_pretrained(
     activation_checkpointing: bool = False,
     **kwargs,
 ) -> Model:
-    model = AutoModelForCausalLM.from_pretrained(
-        pretrained_model_name_or_path, *args, **kwargs
-    )
+    model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
     _fairscale_wrap_layers(
         model,
         fsdp_config=fsdp_config,
@@ -71,9 +73,7 @@ def _fairscale_wrap_layers(
 
     if fsdp_config is not None and torch.distributed.is_initialized():
         for block_idx in range(len(model.transformer.h)):
-            model.transformer.h[block_idx] = fsdp_config.wrap(
-                model.transformer.h[block_idx]
-            )
+            model.transformer.h[block_idx] = fsdp_config.wrap(model.transformer.h[block_idx])
 
 
 # We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
