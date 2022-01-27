@@ -11,27 +11,27 @@ from tango.integrations.torch import (
     LRScheduler,
     Model,
     Optimizer,
-    TorchTrainEngine,
+    TorchTrainingEngine,
     TrainConfig,
-    TrainEngine,
+    TrainingEngine,
 )
 
 from .fsdp_config import FSDPConfig
 
 
-@TrainEngine.register("fairscale")
-class FairScaleTrainEngine(TorchTrainEngine):
+@TrainingEngine.register("fairscale")
+class FairScaleTrainingEngine(TorchTrainingEngine):
     """
-    A :class:`~tango.integrations.torch.TrainEngine` that leverages FairScale's
+    A :class:`~tango.integrations.torch.TrainingEngine` that leverages FairScale's
     :class:`~fairscale.nn.FullyShardedDataParallel` for use within
     :class:`~tango.integrations.torch.TorchTrainStep`.
 
     .. tip::
-        Registered as an :class:`~tango.integrations.torch.TrainEngine` under the name
+        Registered as an :class:`~tango.integrations.torch.TrainingEngine` under the name
         "fairscale".
 
     .. tip::
-        To get the best performance out of :class:`FairScaleTrainEngine` you should
+        To get the best performance out of :class:`FairScaleTrainingEngine` you should
         wrap individual layers of your model with :class:`~fairscale.nn.FullyShardedDataParallel`
         while instantiating them, such as in the example in the FairScale docs and in the
         `language model example </examples/train_lm.html>`_.
@@ -47,6 +47,10 @@ class FairScaleTrainEngine(TorchTrainEngine):
         Use automatic mixed precision. Default is ``False``.
     max_grad_norm : :class:`float`, optional
         If set, gradients will be clipped to have this max norm. Default is ``None``.
+    amp_use_bfloat16 : ``Optional[bool]``
+        Set to ``True`` to force using the ``bfloat16`` datatype in mixed precision training.
+        Only applicable when ``amp=True``. If not specified, the default behavior will be
+        to use ``bfloat16`` when training with AMP on CPU, otherwise not.
     fsdp_config : :class:`FSDPConfig`
         The options for :class:`~fairscale.nn.FullyShardedDataParallel`.
 
@@ -61,6 +65,7 @@ class FairScaleTrainEngine(TorchTrainEngine):
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
+        amp_use_bfloat16: Optional[bool] = None,
         fsdp_config: Optional[FSDPConfig] = None,
     ) -> None:
         if not train_config.is_distributed:
@@ -78,6 +83,7 @@ class FairScaleTrainEngine(TorchTrainEngine):
             lr_scheduler=lr_scheduler,
             amp=amp,
             max_grad_norm=max_grad_norm,
+            amp_use_bfloat16=amp_use_bfloat16,
         )
         if amp:
             self.grad_scaler = ShardedGradScaler()

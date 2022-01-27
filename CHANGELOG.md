@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `TrainingEngine` abstraction to torch integration.
+- Added [FairScale](https://fairscale.readthedocs.io/en/latest/) with a `FairScaleTrainingEngine`
+  that leverages FairScale's `FullyShardedDataParallel`. This is meant to be used within the `TorchTrainStep`.
+
 ### Changed
 
 - Default log level is `WARNING` instead of `ERROR`.

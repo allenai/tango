@@ -151,8 +151,8 @@ __all__ = [
     "StopEarlyCallback",
     "CudaMemStatsCallback",
     "StopEarly",
-    "TrainEngine",
-    "TorchTrainEngine",
+    "TrainingEngine",
+    "TorchTrainingEngine",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
@@ -165,4 +165,4 @@ from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
 from .train_callback import CudaMemStatsCallback, StopEarlyCallback, TrainCallback
 from .train_config import TrainConfig
-from .train_engine import TorchTrainEngine, TrainEngine
+from .training_engine import TorchTrainingEngine, TrainingEngine

@@ -10,7 +10,7 @@ from tango.common.registrable import Registrable
 from .data import DataLoader
 from .exceptions import StopEarly
 from .train_config import TrainConfig
-from .train_engine import TrainEngine
+from .training_engine import TrainingEngine
 
 
 class TrainCallback(Registrable):
@@ -30,7 +30,7 @@ class TrainCallback(Registrable):
     Attributes
     ----------
     train_config : :class:`TrainConfig`
-    train_engine : :class:`TrainEngine`
+    training_engine : :class:`TrainingEngine`
     optimizer : :class:`Optimizer`
     dataset_dict : :class:`tango.common.DatasetDictBase`
     train_dataloader : :class:`DataLoader`
@@ -42,13 +42,13 @@ class TrainCallback(Registrable):
     def __init__(
         self,
         train_config: TrainConfig,
-        train_engine: TrainEngine,
+        training_engine: TrainingEngine,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
     ) -> None:
         self.train_config = train_config
-        self.train_engine = train_engine
+        self.training_engine = training_engine
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader

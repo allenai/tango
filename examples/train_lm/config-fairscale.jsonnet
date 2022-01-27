@@ -6,7 +6,7 @@ local validate_every = 20;
 local devices = 4;
 local grad_accum = 2;
 
-# FairScaleTrainEngine settings:
+# FairScaleTrainingEngine settings:
 local fsdp = true;
 local amp = true;
 local activation_checkpointing = true;
@@ -73,7 +73,7 @@ local dataloader = {
             log_every: 1,
             device_count: devices,
             callbacks: [{type: "torch::cuda_mem_stats"}],
-            train_engine: {
+            training_engine: {
                 type: if fsdp then "fairscale" else "torch",
                 amp: amp,
                 [if fsdp then "fsdp_config" else null]: fsdp_config,

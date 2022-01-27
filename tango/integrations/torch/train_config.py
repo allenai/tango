@@ -125,6 +125,8 @@ class TrainConfig:
 
     _worker_local_default_device: Optional[torch.device] = None
 
+    _device_type: Optional[str] = None  # either "cuda" or "cpu"
+
     @property
     def worker_local_default_device(self) -> torch.device:
         """
@@ -145,6 +147,17 @@ class TrainConfig:
                 device = torch.device("cpu")
             self._worker_local_default_device = device
             return device
+
+    @property
+    def device_type(self) -> str:
+        if self._device_type is None:
+            device_type = (
+                "cpu" if self.worker_local_default_device == torch.device("cpu") else "cuda"
+            )
+            self._device_type = device_type
+            return device_type
+        else:
+            return self._device_type
 
     @property
     def is_local_main_process(self) -> bool:

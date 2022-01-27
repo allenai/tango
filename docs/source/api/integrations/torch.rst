@@ -32,13 +32,13 @@ Model
 .. autoclass:: tango.integrations.torch.Model
    :members:
 
-TrainEngine
+TrainingEngine
 ~~~~~~~~~~~
 
-.. autoclass:: tango.integrations.torch.TrainEngine
+.. autoclass:: tango.integrations.torch.TrainingEngine
    :members:
 
-.. autoclass:: tango.integrations.torch.TorchTrainEngine
+.. autoclass:: tango.integrations.torch.TorchTrainingEngine
 
 Optim
 ~~~~~

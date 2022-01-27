@@ -23,7 +23,7 @@ from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
-from .train_engine import TorchTrainEngine, TrainEngine
+from .training_engine import TorchTrainingEngine, TrainingEngine
 from .util import check_dataloader, check_dataset, set_seed_all
 
 
@@ -96,7 +96,7 @@ class TorchTrainStep(Step):
         minimize_val_metric: bool = True,
         auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-        train_engine: Lazy[TrainEngine] = Lazy(TorchTrainEngine),
+        training_engine: Lazy[TrainingEngine] = Lazy(TorchTrainingEngine),
         remove_stale_checkpoints: bool = True,
     ) -> Model:
         """
@@ -178,8 +178,8 @@ class TorchTrainStep(Step):
             or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
-        train_engine : :class:`TrainEngine`
-            A :class:`TrainEngine` to use. By default :class:`TorchTrainEngine` is used.
+        training_engine : :class:`TrainingEngine`
+            A :class:`TrainingEngine` to use. By default :class:`TorchTrainingEngine` is used.
         remove_stale_checkpoints : :class:`bool`
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
@@ -253,7 +253,7 @@ class TorchTrainStep(Step):
                     lr_scheduler,
                     validation_dataloader,
                     callbacks,
-                    train_engine,
+                    training_engine,
                     get_extra_imported_modules(),
                 ),
                 nprocs=num_workers,
@@ -271,7 +271,7 @@ class TorchTrainStep(Step):
                 lr_scheduler=lr_scheduler,
                 validation_dataloader=validation_dataloader,
                 callbacks=callbacks,
-                train_engine=train_engine,
+                training_engine=training_engine,
             )
             assert final_model is not None
             final_model = final_model.cpu()
@@ -298,7 +298,7 @@ def _train(
     lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-    train_engine: Lazy[TrainEngine] = Lazy(TorchTrainEngine),
+    training_engine: Lazy[TrainingEngine] = Lazy(TorchTrainingEngine),
     include_package: Optional[Set[str]] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
@@ -315,7 +315,7 @@ def _train(
         common_logging.initialize_worker_logging(config.worker_id)
     logger = logging.getLogger(TorchTrainStep.__name__)
 
-    train_engine: TrainEngine = train_engine.construct(
+    training_engine: TrainingEngine = training_engine.construct(
         train_config=config,
         model=model,
         optimizer=optimizer,
@@ -327,7 +327,7 @@ def _train(
     if config.state_path.exists():
         if config.is_local_main_process:
             logger.info(f"Recovering from previous run at {str(config.state_path.resolve())}")
-        initial_state = train_engine.load_checkpoint(config.state_path)
+        initial_state = training_engine.load_checkpoint(config.state_path)
     device = config.worker_local_default_device
 
     # Construct data loaders.
@@ -387,7 +387,7 @@ def _train(
     callbacks: List[TrainCallback] = [
         callback.construct(
             train_config=config,
-            train_engine=train_engine,
+            training_engine=training_engine,
             dataset_dict=dataset_dict,
             train_dataloader=train_dataloader,
             validation_dataloader=validation_dataloader,
@@ -400,7 +400,7 @@ def _train(
 
     del initial_state
 
-    train_engine.model.train()
+    training_engine.model.train()
     training_batches = enumerate(
         islice(
             _cycle_through_epochs(train_dataloader, config.is_distributed, config.grad_accum),
@@ -436,9 +436,9 @@ def _train(
                 callback.state_dict() for callback in callbacks  # type: ignore[union-attr]
             ],
         }
-        # For reason mypy can't figure out that `train_engine` is a `TrainEngine` in this closure,
-        # and not a `Lazy[TrainEngine]`.
-        cast(TrainEngine, train_engine).save_checkpoint(
+        # For reason mypy can't figure out that `training_engine` is a `TrainingEngine` in this closure,
+        # and not a `Lazy[TrainingEngine]`.
+        cast(TrainingEngine, training_engine).save_checkpoint(
             config.state_path_for_step(step), train_state
         )
 
@@ -519,7 +519,7 @@ def _train(
             batch_loss = 0.0
             for micro_batch_idx, micro_batch in enumerate(batch):
                 # Get loss.
-                micro_batch_loss = train_engine.forward_train(
+                micro_batch_loss = training_engine.forward_train(
                     micro_batch, micro_batch_idx, len(batch)
                 )
                 if torch.isnan(micro_batch_loss):
@@ -527,7 +527,7 @@ def _train(
                 batch_loss += micro_batch_loss.detach().item()
 
                 # Calculate gradients.
-                train_engine.backward(micro_batch_loss)
+                training_engine.backward(micro_batch_loss)
 
                 # Clean up in case it saves memory.
                 del micro_batch
@@ -542,7 +542,7 @@ def _train(
 
             del batch
 
-            train_engine.step()
+            training_engine.step()
 
             # Gather average loss across all workers.
             if (
@@ -572,7 +572,7 @@ def _train(
                 assert config.validation_steps is not None
 
                 # Prepare model for validation.
-                train_engine.model.eval()
+                training_engine.model.eval()
 
                 running_metric = 0.0
                 with Tqdm.tqdm(
@@ -587,7 +587,7 @@ def _train(
                             callback.pre_val_batch(step, val_step, val_batch)
 
                         # Get metric.
-                        outputs = train_engine.forward_eval(val_batch)
+                        outputs = training_engine.forward_eval(val_batch)
 
                         for callback in callbacks:
                             callback.post_val_batch(step, val_step, outputs)
@@ -623,7 +623,7 @@ def _train(
                 assert val_metric is not None
 
                 # Reset model to train mode.
-                train_engine.model.train()
+                training_engine.model.train()
 
                 if best_val_metric is None:
                     best_val_metric = val_metric
@@ -667,12 +667,12 @@ def _train(
         callback.post_train_loop()
 
     if config.is_local_main_process:
-        train_engine.save_complete_weights_from_checkpoint(
+        training_engine.save_complete_weights_from_checkpoint(
             config.best_state_path, config.final_weights_path
         )
 
     if not config.is_distributed:
-        return train_engine.model
+        return training_engine.model
     else:
         return None
 

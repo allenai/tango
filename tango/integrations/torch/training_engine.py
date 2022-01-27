@@ -15,9 +15,9 @@ from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
 
 
-class TrainEngine(Registrable):
+class TrainingEngine(Registrable):
     """
-    A :class:`TrainEngine` defines and drives the strategy for training a model
+    A :class:`TrainingEngine` defines and drives the strategy for training a model
     in :class:`TorchTrainStep`.
 
     Attributes
@@ -30,7 +30,7 @@ class TrainEngine(Registrable):
 
     default_implementation = "torch"
     """
-    The default implementation is :class:`TorchTrainEngine`.
+    The default implementation is :class:`TorchTrainingEngine`.
     """
 
     def __init__(
@@ -129,14 +129,14 @@ class TrainEngine(Registrable):
         raise NotImplementedError
 
 
-@TrainEngine.register("torch")
-class TorchTrainEngine(TrainEngine):
+@TrainingEngine.register("torch")
+class TorchTrainingEngine(TrainingEngine):
     """
     This train engine only uses native PyTorch functionality to provide
     vanilla distributed data parallel training and AMP.
 
     .. tip::
-        Registered as a :class:`TrainEngine` under the name "torch".
+        Registered as a :class:`TrainingEngine` under the name "torch".
 
     .. important::
         Only the parameters listed below should be defined in a configuration
@@ -149,6 +149,10 @@ class TorchTrainEngine(TrainEngine):
         Use automatic mixed precision. Default is ``False``.
     max_grad_norm : :class:`float`, optional
         If set, gradients will be clipped to have this max norm. Default is ``None``.
+    amp_use_bfloat16 : ``Optional[bool]``
+        Set to ``True`` to force using the ``bfloat16`` datatype in mixed precision training.
+        Only applicable when ``amp=True``. If not specified, the default behavior will be
+        to use ``bfloat16`` when training with AMP on CPU, otherwise not.
     """
 
     def __init__(
@@ -160,17 +164,23 @@ class TorchTrainEngine(TrainEngine):
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
+        amp_use_bfloat16: Optional[bool] = None,
     ) -> None:
+        self.device = train_config.worker_local_default_device
+        if amp_use_bfloat16 is None:
+            amp_use_bfloat16 = True if train_config.device_type == "cpu" else False
+
         self.amp = amp
+        self.amp_dtype = torch.bfloat16 if amp_use_bfloat16 else torch.float16
         self.max_grad_norm = max_grad_norm
         self.grad_scaler: Optional[torch.cuda.amp.GradScaler] = (
             None if not amp else torch.cuda.amp.GradScaler()
         )
-        self.device = train_config.worker_local_default_device
+
         if train_config.is_distributed:
             # Initialize distributed process group.
             backend: str
-            if self.device != torch.device("cpu"):
+            if train_config.device_type != "cpu":
                 torch.cuda.set_device(self.device)
                 backend = "nccl"
             else:
@@ -201,7 +211,7 @@ class TorchTrainEngine(TrainEngine):
         # Move tensors to right device.
         micro_batch = self._move_to_device(micro_batch, self.device)
 
-        with torch.cuda.amp.autocast(enabled=self.amp):
+        with torch.autocast(self.train_config.device_type, enabled=self.amp, dtype=self.amp_dtype):
             outputs = self.model(**micro_batch)
             micro_batch_loss = outputs["loss"] / num_micro_batches
 
@@ -211,7 +221,7 @@ class TorchTrainEngine(TrainEngine):
         # Move tensors to right device.
         batch = self._move_to_device(batch, self.device)
 
-        with torch.cuda.amp.autocast(enabled=self.amp):
+        with torch.autocast(self.train_config.device_type, enabled=self.amp, dtype=self.amp_dtype):
             with torch.inference_mode():
                 outputs = self.model(**batch)
 
