@@ -7,17 +7,18 @@ local devices = 4;
 local grad_accum = 2;
 
 # FairScaleTrainEngine settings:
+local fsdp = true;
 local amp = true;
 local activation_checkpointing = true;
-local cpu_offloading = true;
+local cpu_offloading = false;
 
 # FullyShardedDataParallel config:
-local fsdp_config = {
+local fsdp_config = if fsdp then {
     reshard_after_forward: true,
     move_params_to_cpu: cpu_offloading,
     move_grads_to_cpu: cpu_offloading,
     mixed_precision: amp,
-};
+} else null;
 
 local dataloader = {
     batch_size: batch_size,
@@ -73,9 +74,9 @@ local dataloader = {
             device_count: devices,
             callbacks: [{type: "torch::cuda_mem_stats"}],
             train_engine: {
-                type: "fairscale",
+                type: if fsdp then "fairscale" else null,
                 amp: amp,
-                fsdp_config: fsdp_config,
+                [if fsdp then "fsdp_config" else null]: fsdp_config,
             },
         },
     }
