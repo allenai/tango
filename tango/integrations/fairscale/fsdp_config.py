@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 
 import torch
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
-from fairscale.nn.wrap import enable_wrap, wrap
 
 from tango.common import FromParams
 
@@ -40,15 +39,9 @@ class FSDPConfig(FromParams):
         """
         return asdict(self)
 
-    def enable_wrap(self):
-        """
-        A convenience wrapper around FairScale's ``enable_wrap()`` context manager.
-        """
-        return enable_wrap(wrapper_cls=FSDP, **self.as_kwargs())
-
     def wrap(self, module: torch.nn.Module):
         """
-        A convenience wrapper around FairScale's ``wrap()`` function. Should be used within
-        the context of :meth:`enable_wrap()`.
+        A convenience method for wrapping a module in :class:`~fairscale.nn.FullyShardedDataParallel`
+        with all of the options defined in this class.
         """
-        return wrap(module)
+        return FSDP(module, **self.as_kwargs())
