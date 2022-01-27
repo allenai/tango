@@ -3,8 +3,7 @@ local training_steps = 200;
 local warmup_steps = 20;
 local batch_size = 8;
 local validate_every = 20;
-local distributed = true;  # Set to `true` to train on 4 (or more) GPUs.
-local devices = if distributed then 4 else 1;
+local devices = 4;
 local grad_accum = 2;
 
 # FairScaleTrainEngine settings:
@@ -20,7 +19,7 @@ local fsdp_config = {
     mixed_precision: amp,
 };
 
-local distributed_dataloader = {
+local dataloader = {
     batch_size: batch_size,
     collate_fn: {type: "transformers_default"},
     sampler: {
@@ -29,14 +28,6 @@ local distributed_dataloader = {
         drop_last: true,
     }
 };
-
-local single_device_dataloader = {
-    shuffle: true,
-    batch_size: batch_size,
-    collate_fn: {type: "transformers_default"},
-};
-
-local dataloader = if distributed then distributed_dataloader else single_device_dataloader;
 
 {
     steps: {
