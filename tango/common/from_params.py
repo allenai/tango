@@ -141,7 +141,21 @@ def infer_method_params(
             # `from __future__ import annotation`, the annotation will be a str,
             # so we need to resolve it using `get_type_hints` from the typing module.
             # See https://www.python.org/dev/peps/pep-0563/ for more info.
-            parameters[param_name] = param.replace(annotation=get_type_hints(method)[param_name])
+            try:
+                parameters[param_name] = param.replace(
+                    annotation=get_type_hints(method)[param_name]
+                )
+            except TypeError as e:
+                if "'type' object is not subscriptable" in str(e):
+                    new_e = TypeError(
+                        f"Could not determine the type annotations for `{method.__qualname__}`. Did you use the "
+                        "lowercase `dict`, `list`, `set`, or `tuple` in the type annotations instead of the "
+                        "uppercase `Dict`, `List`, `Set`, `Tuple`?"
+                    )
+                    new_e.__cause__ = e
+                    raise new_e
+                else:
+                    raise
 
     if var_positional_key:
         del parameters[var_positional_key]
