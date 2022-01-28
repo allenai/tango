@@ -45,6 +45,8 @@ class ConcatTensorDictsCollator(DataCollator[Dict[str, Any]]):
         for key in keys:
             if isinstance(items[0][key], torch.Tensor):
                 out[key] = torch.cat([item[key].unsqueeze(0) for item in items])
+            elif isinstance(items[0][key], (int, float)):
+                out[key] = torch.tensor([item[key] for item in items])
             else:
                 out[key] = [item[key] for item in items]  # type: ignore[assignment]
         return out
