@@ -28,47 +28,52 @@ local single_device_dataloader = {
 };
 
 {
-    "steps": {
-        "transform_data": {
-            "type": "transform_data",
-            "data_dir": data_dir,
-            "input_size": input_size,
-            "batch_size": batch_size,
+    steps: {
+        raw_data: {
+            type: "datasets::load",
+            path: "nateraw/auto-cats-and-dogs",
+            name: "cats_and_dogs",
         },
-        "trained_model": {
-            "type": "torch::train",
-            "model": {
-                "type": pretrained_model,
-                "num_classes": num_classes,
-                "feature_extract": true,
-                "use_pretrained": true,
-            },
-            "dataset_dict": {"type": "ref", "ref": "transform_data"},
-            "train_dataloader": single_device_dataloader,
-            "validation_split": "val",
-            "optimizer": {
-                "type": "torch_adam",
-                "lr": 0.001,
-            },
-            "train_steps": training_steps,
-            "validate_every": validate_every,
-            "checkpoint_every": validate_every,
-            "log_every": 1,
-            "device_count": devices,
+        transform_data: {
+            type: "transform_data",
+            dataset: { type: 'ref', ref: 'raw_data' },
+            input_size: input_size,
+            batch_size: batch_size,
         },
-        "final_metrics": {
-            "type": "torch::eval",
-            "model": {"type": "ref", "ref": "trained_model"},
-            "dataset_dict": {"type": "ref", "ref": "transform_data"},
-            "dataloader": single_device_dataloader,
-            "test_split": "val",
-        },
-        "prediction": {
-            "type": "prediction",
-            "image_url": image_url,
-            "input_size": input_size,
-            "model": {"type": "ref", "ref": "trained_model"},
-        },
+        // "trained_model": {
+        //     "type": "torch::train",
+        //     "model": {
+        //         "type": pretrained_model,
+        //         "num_classes": num_classes,
+        //         "feature_extract": true,
+        //         "use_pretrained": true,
+        //     },
+        //     "dataset_dict": {"type": "ref", "ref": "transform_data"},
+        //     "train_dataloader": single_device_dataloader,
+        //     "validation_split": "val",
+        //     "optimizer": {
+        //         "type": "torch_adam",
+        //         "lr": 0.001,
+        //     },
+        //     "train_steps": training_steps,
+        //     "validate_every": validate_every,
+        //     "checkpoint_every": validate_every,
+        //     "log_every": 1,
+        //     "device_count": devices,
+        // },
+        // "final_metrics": {
+        //     "type": "torch::eval",
+        //     "model": {"type": "ref", "ref": "trained_model"},
+        //     "dataset_dict": {"type": "ref", "ref": "transform_data"},
+        //     "dataloader": single_device_dataloader,
+        //     "test_split": "val",
+        // },
+        // "prediction": {
+        //     "type": "prediction",
+        //     "image_url": image_url,
+        //     "input_size": input_size,
+        //     "model": {"type": "ref", "ref": "trained_model"},
+        // },
     },
 }
  

@@ -1,16 +1,13 @@
-import imp
 import os
-from collections import defaultdict
-from cProfile import label
-from pickletools import optimize
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
+import datasets
 from cached_path import cached_path
 from PIL import Image
 from torch import nn
 from torch.optim import Adam
-from torchvision import datasets, models, transforms
+from torchvision import models, transforms
 
 from tango import Step
 from tango.integrations.torch import DataCollator, Model, Optimizer
@@ -46,12 +43,19 @@ class ResNetWrapper(Model):
 
 # Custom data collator for images, that takes in a batch of images and labels and
 # reformats the data so that it is suitable for the model.
+# @DataCollator.register("image_collator")
+# class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
+#     def __call__(self, batch: List[Tuple[torch.Tensor, int]]) -> Dict[str, Any]:
+#         return {
+#             "image": torch.cat([item[0].unsqueeze(0) for item in batch], dim=0),
+#             "label": torch.tensor([item[1] for item in batch]),
+#         }
 @DataCollator.register("image_collator")
 class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
-    def __call__(self, batch: List[Tuple[torch.Tensor, int]]) -> Dict[str, Any]:
+    def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "image": torch.cat([item[0].unsqueeze(0) for item in batch], dim=0),
-            "label": torch.tensor([item[1] for item in batch]),
+            "image": torch.cat([item.unsqueeze(0) for item in batch.keys()], dim=0),
+            "label": torch.tensor([item for item in batch.values()]),
         }
 
 # Function that returns an image transformations dict with the appropriate image size.
@@ -76,24 +80,31 @@ def get_data_transforms(input_size: int):
     }
     return data_transforms
 
+
 # This step takes in raw image data and transforms and tokenizes it.
 @Step.register("transform_data")
 class TransformData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run(
-        self, data_dir: str, input_size: int, batch_size: int
-    ) -> Dict[str, torch.utils.data.Dataset]:
+    def pil_loader(self, path: str):
+        with open(path, 'rb') as f:
+            im = Image.open(f)
+            return im.convert('RGB')
 
-        # Create training and validation datasets
-        image_datasets = {
-            x: datasets.ImageFolder(
-                os.path.join(data_dir, x),
-                get_data_transforms(input_size=input_size)[x])
-            for x in ["train", "val"]
-        }
-        return image_datasets
+    def image_loader(self, example_batch):
+        example_batch['image'] = [
+            self.pil_loader(f) for f in example_batch['file']
+        ]
+        return example_batch
+
+    def run(
+        self, dataset: datasets, input_size: int, batch_size: int
+    ) -> Dict[str, torch.utils.data.Dataset]:
+        dataset = dataset.with_transform(self.image_loader)
+        print(len(dataset["train"]))
+        return dataset
+
 
 @Step.register("prediction")
 class Prediction(Step):
