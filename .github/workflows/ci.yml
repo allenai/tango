@@ -191,6 +191,20 @@ jobs:
           . .venv/bin/activate
           pip uninstall -y ai2-tango
 
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t tango .
+
+      - name: Test Docker image
+        run: |
+          docker run --rm tango info
+
   release:
     name: Release
     runs-on: ubuntu-latest
