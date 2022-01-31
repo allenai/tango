@@ -200,6 +200,7 @@ jobs:
         cuda: ['11.5.1']
     env:
       IMAGE_NAME: ghcr.io/allenai/tango
+      DOCKER_BUILDKIT: 1
     steps:
       - uses: actions/checkout@v2
 
@@ -212,12 +213,12 @@ jobs:
           docker run --rm "${IMAGE_NAME}:cuda${{ matrix.cuda }}" info
 
       - name: Log in to ghcr.io
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Push latest to ghcr.io
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         run: |
           docker push "${IMAGE_NAME}:cuda${{ matrix.cuda }}"
 
