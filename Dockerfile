@@ -5,7 +5,8 @@
 # image accordingly and also potentially adjust the PyTorch install line below.
 # See https://hub.docker.com/r/nvidia/cuda/tags for a list of available base images.
 # Generally the "runtime" images are best suited for tango projects.
-FROM nvidia/cuda:11.5.1-cudnn8-runtime-ubuntu20.04
+ARG cuda=11.5.1
+FROM nvidia/cuda:${cuda}-cudnn8-runtime-ubuntu20.04
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
