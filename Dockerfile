@@ -18,10 +18,15 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     python3-pip \
     python3-setuptools \
+    python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Create and activate a virtual environment so we don't mess with system packages.
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv /opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN pip install --upgrade pip setuptools wheel
 
 # Install torch ecosystem before everything else since this is the most time-consuming.
 # If you need a different version of CUDA, change this instruction according to the official
