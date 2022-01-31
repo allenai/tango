@@ -99,7 +99,7 @@ class GitMetadata(FromParams):
                     remote = line.split(" ")[0]
                     break
             return cls(commit=commit, remote=remote)
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             return None
 
 

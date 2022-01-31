@@ -7,5 +7,5 @@ otherwise Tango will fall back to CPU-only and it will be extremely slow.
 You can kick off a training job with the following command:
 
 ```
-$ tango run config.jsonnet
+$ tango run config.jsonnet -i components
 ```
