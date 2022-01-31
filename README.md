@@ -116,6 +116,21 @@ tango info
 
 to check your installation.
 
+### Docker image
+
+You can build a Docker image suitable for tango projects by using [the official Dockerfile](https://github.com/allenai/tango/blob/main/Dockerfile) as a starting point for your own Dockerfile, or you can simply use one of our [prebuilt images](https://github.com/allenai/tango/pkgs/container/tango) as a base image in your Dockerfile. For example:
+
+```Dockerfile
+FROM ghcr.io/allenai/tango:cuda11.5.1
+
+# Install your project's additional requirements.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install source code.
+COPY . .
+```
+
 <!-- end install -->
 
 ## FAQ
