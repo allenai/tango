@@ -47,4 +47,4 @@ RUN pip install --no-cache-dir --no-deps .[all]
 WORKDIR /app/
 RUN rm -rf /stage/
 
-ENTRYPOINT ["/usr/local/bin/tango"]
+ENTRYPOINT ["/opt/venv/bin/tango"]
