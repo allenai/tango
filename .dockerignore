@@ -1,0 +1,14 @@
+.dockerignore
+**.pyc
+**/__pycache__
+.gitignore
+.git
+.coverage
+.mypy_cache
+docs
+examples
+scripts
+tests
+test_fixtures
+dist
+*.egg-info
