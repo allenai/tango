@@ -107,7 +107,7 @@ class WandbTrainCallback(TrainCallback):
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         if self.is_local_main_process:
-            self._wandb_kwargs["resume"] = "auto"
+            self._wandb_kwargs["resume"] = "allow"
             self._run_id = state_dict["run_id"]
 
     def pre_train_loop(self) -> None:
