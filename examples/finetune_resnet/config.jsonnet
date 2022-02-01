@@ -1,4 +1,3 @@
-local data_dir = "./data/hymenoptera_data/";
 local input_size = 224;
 local batch_size = 32;
 local num_classes = 2;
@@ -10,7 +9,7 @@ local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
 local training_steps = 500;
 local validate_every = 50;
-local image_url = "https://bit.ly/33Pv54E";
+local image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.countryliving.com%2Flife%2Fkids-pets%2Fa28423224%2Fdog-instagram-captions%2F&psig=AOvVaw1GHVmz_Ftm9Q0wiOWv8RUh&ust=1643836699366000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCKCarIa33_UCFQAAAAAdAAAAABAF";
 
 local distributed_dataloader = {
     batch_size: batch_size,
@@ -38,8 +37,8 @@ local single_device_dataloader = {
         transform_data: {
             type: "transform_data",
             dataset: { type: 'ref', ref: 'raw_data' },
-            //input_size: input_size,
-            test_size: 0.2,
+            input_size: input_size,
+            test_size: test_size,
         },
         trained_model: {
             type: "torch::train",
