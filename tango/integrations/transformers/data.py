@@ -28,7 +28,7 @@ for name, cls in transformers_data_collator.__dict__.items():
         for field in fields(cls):
             if field.name == "tokenizer":
                 factory_func = data_collator_with_tokenizer_factory(cls)
-                DataCollator.register("transformers::" + name)(factory_func)
+                DataCollator.register("transformers::" + name)(factory_func)  # type: ignore
                 break
         else:
             DataCollator.register("transformers::" + name)(cls)
