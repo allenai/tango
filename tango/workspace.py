@@ -1,3 +1,4 @@
+import copy
 from abc import abstractmethod
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
@@ -11,6 +12,7 @@ import petname
 
 from tango import step_cache
 from tango.common import Registrable
+from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import StepCache
 
@@ -88,7 +90,7 @@ class StepInfo:
     The time this step stopped running. This will be set whether the step succeeded or failed.
     """
 
-    error: Optional[Union[BaseException, str]] = None
+    error: Optional[str] = None
     """
     If the step failed, this is where the error goes.
 
@@ -155,6 +157,31 @@ class StepInfo:
         Deserialize the result of :meth:`serialize()` into a ``StepInfo`` instance.
         """
         return dill.loads(data)
+
+
+@dataclass
+class Run:
+    """
+    Stores information about a single Tango run.
+    """
+
+    name: str
+    """
+    The name of the run
+    """
+
+    steps: Dict[str, StepInfo]
+    """
+    A mapping from step names to :class:`StepInfo`, for all the target steps in the run.
+
+    This only contains the targets of a run. Usually, that means it contains all named steps.
+    Un-named dependencies (or dependencies that are not targets) are not contained in ``steps``.
+    """
+
+    start_date: datetime
+    """
+    The time at which the run was registered in the workspace.
+    """
 
 
 class Workspace(Registrable):
@@ -244,34 +271,34 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         """
         Register a run in the workspace. A run is a set of target steps that a user wants to execute.
 
         :param targets: The steps that the user wants to execute. This could come from a :class:`.StepGraph`.
         :param name: A name for the run. Runs must have unique names. If not given, this method invents a name and
                      returns it.
-        :return: The name for the run
+        :return: The run object
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def registered_runs(self) -> List[str]:
+    def registered_runs(self) -> Dict[str, Run]:
         """
         Returns all runs in the workspace
 
-        :return: A list of run names that are registered in the workspace
+        :return: A dictionary mapping run names to :class:`Run` objects
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def registered_run(self, name: str) -> Dict[str, StepInfo]:
+    def registered_run(self, name: str) -> Run:
         """
         Returns the run with the given name
 
-        :return: A run, represented as a mapping from step name to :class:`.StepInfo`.
+        :return: A :class:`Run` object representing the named run
 
-        Note that this dictionary only contains the targets of a run. Usually, that means it
+        Note that the :class:`Run` object only contains the targets of a run. Usually, that means it
         contains all named steps. Un-named dependencies (or dependencies that are not targets)
         are not contained in the result.
 
@@ -290,7 +317,7 @@ class MemoryWorkspace(Workspace):
     def __init__(self):
         super().__init__()
         self.unique_id_to_info: Dict[str, StepInfo] = {}
-        self.runs: Dict[str, Set[Step]] = {}
+        self.runs: Dict[str, Run] = {}
 
     @property
     def step_cache(self) -> StepCache:
@@ -362,14 +389,14 @@ class MemoryWorkspace(Workspace):
         if existing_step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step {step.name} is failing, but it never started.")
         existing_step_info.end_time = datetime.now()
-        existing_step_info.error = e
+        existing_step_info.error = exception_to_string(e)
 
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> str:
+    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         if name is None:
             name = petname.generate()
-        self.runs[name] = set(targets)
-        for step in self.runs[name]:
-            self.unique_id_to_info[step.unique_id] = StepInfo(
+        steps: Dict[str, StepInfo] = {}
+        for step in targets:
+            step_info = StepInfo(
                 step.unique_id,
                 step.name if step.name != step.unique_id else None,
                 step.__class__.__name__,
@@ -377,13 +404,17 @@ class MemoryWorkspace(Workspace):
                 {dep.unique_id for dep in step.dependencies},
                 step.cache_results,
             )
-        return name
+            self.unique_id_to_info[step.unique_id] = step_info
+            steps[step.unique_id] = step_info
+        run = Run(name, steps, datetime.now())
+        self.runs[name] = run
+        return run
 
-    def registered_runs(self) -> List[str]:
-        return list(self.runs.keys())
+    def registered_runs(self) -> Dict[str, Run]:
+        return copy.deepcopy(self.runs)
 
-    def registered_run(self, name: str) -> Dict[str, StepInfo]:
-        return {step.unique_id: self.unique_id_to_info[step.unique_id] for step in self.runs[name]}
+    def registered_run(self, name: str) -> Run:
+        return copy.deepcopy(self.runs[name])
 
 
 default_workspace = MemoryWorkspace()

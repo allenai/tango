@@ -406,14 +406,14 @@ def _run(
 
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    run_name = workspace.register_run(step for step in step_graph.values() if step.cache_results)
-    run_dir = workspace.run_dir(run_name)
+    run = workspace.register_run(step for step in step_graph.values() if step.cache_results)
+    run_dir = workspace.run_dir(run.name)
 
     # Capture logs to file.
     with file_handler(run_dir / "out.log"):
         click_logger.info(
             click.style("Starting new run ", fg="green")
-            + click.style(run_name, fg="green", bold=True)
+            + click.style(run.name, fg="green", bold=True)
         )
 
         # Initialize server.
@@ -421,7 +421,7 @@ def _run(
             server = WorkspaceServer.on_free_port(workspace)
             server.serve_in_background()
             click_logger.info(
-                "Server started at " + click.style(server.address_for_display(run_name), bold=True)
+                "Server started at " + click.style(server.address_for_display(run.name), bold=True)
             )
 
         # Initialize Executor and execute the step graph.
@@ -441,7 +441,7 @@ def _run(
                 )
 
         click_logger.info(
-            click.style("Finished run ", fg="green") + click.style(run_name, fg="green", bold=True)
+            click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
         )
 
     return run_dir

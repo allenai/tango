@@ -10,6 +10,7 @@ const states = {
   FAILED: "failed",
   RUNNING: "running",
   INCOMPLETE: "incomplete",
+  UNCACHEABLE: "uncacheable"
 };
 
 // colors
@@ -21,9 +22,11 @@ const colors = {
   G8: "#0A8F6B",
   N2: "#F8F9FA",
   N9: "#47515C",
+  O5: "#FFC72E",
   O8: "#FF9100",
   R6: "#F7605F",
   R8: "#D63F3F",
+  N6: "#AEB7C4",
   white: "#FFFFFF",
 };
 
@@ -38,6 +41,33 @@ const tempAlert = (msg, duration) => {
   document.body.appendChild(el);
 };
 
+function truncate(str, n, useWordBoundary){
+  if (!n || str.length <= n) {
+    return str;
+  }
+  const subString = str.substr(0, n-1); // the original check
+  return (useWordBoundary
+    ? subString.substr(0, subString.lastIndexOf(" "))
+    : subString) + "&hellip;";
+}
+
+function getLastLine(str) {
+  const token = '<br>';
+  const newStr = str.replace(/(?:\r\n|\r|\n)/g, token);
+  let pos = newStr.lastIndexOf(token);
+  if(pos===-1) {
+    return str;
+  }
+  return `&hellip;${newStr.substr(pos+token.length)}`;
+}
+
+function openErrorInNewWindow(key){
+  const value = state.data[key].error;
+  var win = window.open("", "", "jsonFrame,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=600,top="+(screen.height-770)+",left="+(screen.width-700));
+  win.document.body.innerHTML = value.replace(/(?:\r\n|\r|\n)/g, '<br>');
+  win.document.title = `Error - key`;
+}
+
 // return the state in correct color and the duration if we have space
 const formatState = (data, showDuration) => {
   if (!data.state) {
@@ -46,6 +76,9 @@ const formatState = (data, showDuration) => {
   let color = colors.N9;
   let sep = " - after ";
   switch (data.state) {
+    case states.UNCACHEABLE:
+      color = colors.N9;
+      break;
     case states.COMPLETED:
       color = colors.G8;
       break;
@@ -53,6 +86,8 @@ const formatState = (data, showDuration) => {
       color = colors.R8;
       break;
     case states.RUNNING:
+      color = colors.B6;
+      break;
     case states.INCOMPLETE:
       color = colors.O8;
       sep = " - so far ";
@@ -118,16 +153,16 @@ const formatDateRange = (startDate, endDate) => {
 };
 
 // return a blue text with a href
-const formatLink = (label, url) => {
+const formatLink = (label, url, maxLen) => {
   if (!url) {
     return "";
   }
   return `
         <tr>
           <td></td>
-          <td align="left" href="${url}" target="_blank"><font color="${
+          <td ${maxLen ? 'tooltip="'+url+'"':''} align="left" href="${url}" target="_blank"><font color="${
     colors.N9
-  }">${label}:</font>${" "}<font color="${colors.B6}">${url}</font></td>
+  }">${label}:</font>${" "}<font color="${colors.B6}">${truncate(url, maxLen)}</font></td>
           <td></td>
         </tr>`;
 };
@@ -159,21 +194,53 @@ const formatText = (label, value) => {
         </tr>`;
 };
 
+const formatError = (label, value, key, maxLen) => {
+  if (!value) {
+    return "";
+  }
+  return `
+        <tr>
+          <td></td>
+          <td href="javascript:openErrorInNewWindow(\'${key}\', )" align="left">${label ? label + ": " : ""}<font color="${colors.B6}">${truncate(getLastLine(value), maxLen)}</font></td>
+          <td></td>
+        </tr>`;
+};
+
 // convert the data to a node
-const getTable = (data) => {
+const getTable = (key, data) => {
+  let mainBgColor = colors.B10;
+  let titleColor = colors.N2;
+  switch (data.state) {
+    case states.UNCACHEABLE:
+      mainBgColor = colors.N9;
+      break;
+    case states.COMPLETED:
+      mainBgColor = colors.B10;
+      break;
+    case states.FAILED:
+      mainBgColor = colors.R8;
+      break;
+    case states.RUNNING:
+      mainBgColor = colors.B6;
+      break;
+    case states.INCOMPLETE:
+      mainBgColor = colors.O8;
+      break;
+  }
+
   const isOpen = state.openMap[data.unique_id];
   let ret = `label=<
         <table cellspacing="0" cellpadding="2" border="0" color="${
-          colors.B10
+          mainBgColor
         }" cellborder="0" bgcolor="${colors.white}">
           <tr>
-            <td align="left" bgcolor="${colors.B10}" id="expando;${
+            <td align="left" bgcolor="${mainBgColor}" id="expando;${
     data.unique_id
   }" href=" "><img src="${isOpen ? "/close.svg" : "/open.svg"}" /></td>
-            <td bgcolor="${colors.B10}" ><font point-size="16" color="${
-    colors.N2
+            <td bgcolor="${mainBgColor}" ><font point-size="16" color="${
+    titleColor
   }">${data.step_name}</font></td>
-        <td bgcolor="${colors.B10}">${"   "}</td>
+        <td bgcolor="${mainBgColor}">${"   "}</td>
           </tr>
           <!-- Some extra space at the top -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
@@ -184,10 +251,10 @@ const getTable = (data) => {
           ${isOpen ? formatDateRange(data.start_time, data.end_time) : null}
           ${
             isOpen && data.state !== states.FAILED
-              ? formatLink("Results", data.result_location)
+              ? formatLink("Results", data.result_location, 55)
               : null
           }
-          ${isOpen ? formatText("Error", data.error) : null}
+          ${isOpen ? formatError("Error", data.error, key, 55) : null}
           <!-- Some extra space at the bottom -->
           ${isOpen ? `<tr><td>${" "}</td></tr>` : null}
         </table>
@@ -200,7 +267,7 @@ const convert = (json) => {
   let nodes = [];
   let edges = [];
   Object.entries(json).forEach(([k, v]) => {
-    nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(v)}];`);
+    nodes.push(`"${k}" [id="${k}" tooltip="${v.step_name}" ${getTable(k, v)}];`);
     v.dependencies.forEach((d) => {
       let tooltip = `${json[d] ? json[d].step_name : "?"} -> ${v.step_name}`;
       return edges.push(
@@ -261,7 +328,7 @@ const render = () => {
           }" fontsize="12" fontname="Helvetica"];
           edge [penwidth=2.0 color="${colors.N9}"]
           concentrate=True;
-          rankdir=TB;
+          rankdir=LR;
 
           ${convert(state.data)}
         }
@@ -287,7 +354,7 @@ const getData = () => {
       const newData = out[runId];
       // this equality check assumes the data comes back in the same order
       if (JSON.stringify(newData) !== JSON.stringify(state.data)) {
-        state.data = out[Object.keys(out)[0]];
+        state.data = newData;
         render();
       }
     })
