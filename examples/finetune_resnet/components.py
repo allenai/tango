@@ -1,8 +1,7 @@
-import os
 from typing import Any, Dict, List, Optional, Tuple
 
-import torch
 import datasets
+import torch
 from cached_path import cached_path
 from PIL import Image
 from torch import nn
@@ -35,27 +34,20 @@ class ResNetWrapper(Model):
     def forward(
         self, image: torch.Tensor, label: Optional[torch.Tensor]
     ) -> Dict[str, torch.Tensor]:
-        output = self.model_ft(image)  # tensor
-        if not label:
+        output = self.model_ft(image)
+        if label is None:
             return output
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
 # Custom data collator for images, that takes in a batch of images and labels and
 # reformats the data so that it is suitable for the model.
-# @DataCollator.register("image_collator")
-# class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
-#     def __call__(self, batch: List[Tuple[torch.Tensor, int]]) -> Dict[str, Any]:
-#         return {
-#             "image": torch.cat([item[0].unsqueeze(0) for item in batch], dim=0),
-#             "label": torch.tensor([item[1] for item in batch]),
-#         }
 @DataCollator.register("image_collator")
 class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
     def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "image": torch.cat([item.unsqueeze(0) for item in batch.keys()], dim=0),
-            "label": torch.tensor([item for item in batch.values()]),
+            "image": torch.cat([item["image"].unsqueeze(0) for item in batch], dim=0),
+            "label": torch.tensor([item["labels"] for item in batch]),
         }
 
 # Function that returns an image transformations dict with the appropriate image size.
@@ -69,7 +61,7 @@ def get_data_transforms(input_size: int):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         ),
-        "val": transforms.Compose(
+        "test": transforms.Compose(
             [
                 transforms.Resize(input_size),
                 transforms.CenterCrop(input_size),
@@ -89,8 +81,12 @@ class TransformData(Step):
 
     def pil_loader(self, path: str):
         with open(path, 'rb') as f:
-            im = Image.open(f)
-            return im.convert('RGB')
+            image = Image.open(f)
+            image = image.convert('RGB')
+            transform = get_data_transforms(input_size=224)["train"]
+            transformed_image = transform(image)
+            return transformed_image
+
 
     def image_loader(self, example_batch):
         example_batch['image'] = [
@@ -98,12 +94,10 @@ class TransformData(Step):
         ]
         return example_batch
 
-    def run(
-        self, dataset: datasets, input_size: int, batch_size: int
-    ) -> Dict[str, torch.utils.data.Dataset]:
+    def run(self, dataset: datasets, test_size: int) -> Dict[str, torch.utils.data.Dataset]:
         dataset = dataset.with_transform(self.image_loader)
-        print(len(dataset["train"]))
-        return dataset
+        train_test = dataset["train"].train_test_split(test_size=test_size)
+        return train_test
 
 
 @Step.register("prediction")
@@ -114,7 +108,7 @@ class Prediction(Step):
         raw_image = Image.open(image_path)
 
         # pass image through transform
-        transform = get_data_transforms(input_size=input_size)["val"]
+        transform = get_data_transforms(input_size=input_size)["test"]
         transformed_image = transform(raw_image)
         transformed_image = transformed_image.unsqueeze(0)
 
