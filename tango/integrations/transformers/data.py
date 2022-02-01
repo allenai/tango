@@ -11,7 +11,7 @@ from .tokenizer import Tokenizer
 # Some data collators take a tokenizer, so in order to instantiate those collators from params,
 # we need to use a factory function that takes our registrable version of a tokenizer as
 # an argument.
-def data_collator_with_tokenizer_factory(cls) -> Callable[[Tokenizer, ...], DataCollator]:
+def data_collator_with_tokenizer_factory(cls) -> Callable[..., DataCollator]:
     def factory(tokenizer: Tokenizer, **kwargs) -> DataCollator:
         return cls(tokenizer=tokenizer, **kwargs)
 
