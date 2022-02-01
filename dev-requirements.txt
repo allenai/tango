@@ -48,9 +48,6 @@ sphinx-copybutton==0.4.0
 # Live rebuilding and reloading of docs for developing locally.
 sphinx-autobuild==2021.3.14
 
-# Provides a bunch of nice looking responsive web-components.
-sphinx-design==0.0.13
-
 # For working with version numbers.
 packaging
 
