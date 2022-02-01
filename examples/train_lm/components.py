@@ -8,15 +8,12 @@ from transformers import (
     AutoTokenizer,
     default_data_collator,
 )
-from transformers.optimization import AdamW, get_linear_schedule_with_warmup
+from transformers.optimization import get_linear_schedule_with_warmup
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.fairscale import FSDPConfig
 from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
-
-# Register the AdamW optimizer from HF as an `Optimizer` so we can use it in the train step.
-Optimizer.register("transformers_adamw")(AdamW)
 
 
 # Normally we register classes directly, but here it's more convenient to register our own little

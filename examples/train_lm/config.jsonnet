@@ -1,11 +1,35 @@
-local pretrained_model = 'gpt2';
+local pretrained_model = "gpt2";
+# With 'fsdp' and 'activation_checkpointing' (see constants below), you should be able to train
+# a 6B model on 4x ~40GB GPUs:
+# local pretrained_model = "EleutherAI/gpt-j-6B";
+
+# Trainer settings, adjust to your use-case.
 local training_steps = 200;
 local warmup_steps = 20;
 local batch_size = 8;
 local validate_every = 20;
-local distributed = false;  # Set to `true` to train on 2 (or more) GPUs.
-local devices = if distributed then 2 else 1;
-local grad_accum = if distributed then 2 else 4;
+local devices = 4;  # number of devices to train on
+local grad_accum = 2;
+local activation_checkpointing = true;
+local amp = true;
+local fsdp = true;  # Use FairScale's FullyShardedDataParallel
+local cpu_offloading = false;  # Can only be used with 'fsdp' - saves a lot of GPU memory but is very slow.
+
+assert fsdp == true || cpu_offloading == false : "cpu_offloading only available with fsdp";
+
+# FullyShardedDataParallel config:
+local fsdp_config = if fsdp then {
+    reshard_after_forward: true,
+    move_params_to_cpu: cpu_offloading,
+    move_grads_to_cpu: cpu_offloading,
+    mixed_precision: amp,
+} else null;
+
+local training_engine = {
+    type: if fsdp then "fairscale" else "torch",
+    amp: amp,
+    [if fsdp then "fsdp_config" else null]: fsdp_config,
+};
 
 local distributed_dataloader = {
   batch_size: batch_size,
@@ -23,7 +47,7 @@ local single_device_dataloader = {
   collate_fn: { type: 'transformers_default' },
 };
 
-local dataloader = if distributed then distributed_dataloader else single_device_dataloader;
+local dataloader = if devices > 1 then distributed_dataloader else single_device_dataloader;
 
 {
     steps: {
@@ -42,16 +66,18 @@ local dataloader = if distributed then distributed_dataloader else single_device
             model: {
                 type: "lm_pretrained",
                 pretrained_model_name_or_path: pretrained_model,
+                low_cpu_mem_usage: true,
+                activation_checkpointing: activation_checkpointing,
+                fsdp_config: fsdp_config,
             },
             dataset_dict: {type: "ref", ref: "tokenized_data"},
             train_dataloader: dataloader,
             validation_split: "validation",
             optimizer: {
-                type: "transformers_adamw",
-                lr: 0.0007,
+                type: "torch::AdamW",
+                lr: 0.00005,
                 betas: [0.9, 0.95],
                 eps: 1e-6,
-                correct_bias: false,
             },
             lr_scheduler: {
                 type: "linear_with_warmup",
@@ -64,6 +90,12 @@ local dataloader = if distributed then distributed_dataloader else single_device
             checkpoint_every: validate_every,
             log_every: 1,
             device_count: devices,
+            callbacks: [{type: "torch::cuda_mem_stats"}],
+            training_engine: {
+                type: if fsdp then "fairscale" else "torch",
+                amp: amp,
+                [if fsdp then "fsdp_config" else null]: fsdp_config,
+            },
         },
         final_metrics: {
             type: "torch::eval",
