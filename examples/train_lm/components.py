@@ -8,12 +8,11 @@ from transformers import (
     AutoTokenizer,
     default_data_collator,
 )
-from transformers.optimization import get_linear_schedule_with_warmup
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.fairscale import FSDPConfig
-from tango.integrations.torch import DataCollator, LRScheduler, Model, Optimizer
+from tango.integrations.torch import DataCollator, Model
 
 
 # Normally we register classes directly, but here it's more convenient to register our own little
@@ -71,16 +70,6 @@ def _fairscale_wrap_layers(
     if fsdp_config is not None and torch.distributed.is_initialized():
         for block_idx in range(len(model.transformer.h)):
             model.transformer.h[block_idx] = fsdp_config.wrap(model.transformer.h[block_idx])
-
-
-# We also want to use `get_linear_schedule_with_warmup()` from HF, but we need a class
-# to work with, so we just create this dummy class with a classmethod that will call
-# `get_linear_schedule_with_warmup()`.
-@LRScheduler.register("linear_with_warmup", constructor="linear_with_warmup")
-class TransformersLambdaLR(LRScheduler):
-    @classmethod
-    def linear_with_warmup(cls, optimizer: Optimizer, **kwargs) -> LRScheduler:
-        return get_linear_schedule_with_warmup(optimizer, **kwargs)
 
 
 # And we also want to use the `default_data_collator()` function from HF as a `DataCollator`,

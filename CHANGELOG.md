@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `TrainingEngine` abstraction to torch integration.
 - Added [FairScale](https://fairscale.readthedocs.io/en/latest/) with a `FairScaleTrainingEngine`
   that leverages FairScale's `FullyShardedDataParallel`. This is meant to be used within the `TorchTrainStep`.
+- All PyTorch components (such as learning rate schedulers, optimizers, data collators, etc) from the
+  transformers library and now registered under the corresponding class in the torch integration.
+  For example, transformers `Adafactor` optimizer is registered as an `Optimizer` under the name
+  "transformers::Adafactor". More details can be found in the documentation for the transformers integration.
 
 ### Fixed
 

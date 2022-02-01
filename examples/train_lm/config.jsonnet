@@ -80,7 +80,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
                 eps: 1e-6,
             },
             lr_scheduler: {
-                type: "linear_with_warmup",
+                type: "transformers::linear",
                 num_warmup_steps: warmup_steps,
                 num_training_steps: training_steps,
             },
