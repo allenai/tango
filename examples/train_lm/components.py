@@ -80,7 +80,6 @@ class TokenizeData(Step):
         self,
         dataset: datasets.DatasetDict,
         tokenizer: Tokenizer,
-        pretrained_model_name: str,
         block_size: int = 1024,
         num_workers: int = 1,
     ) -> datasets.DatasetDict:
