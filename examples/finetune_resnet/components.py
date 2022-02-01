@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import datasets
 import torch
@@ -14,10 +14,10 @@ from tango.integrations.torch import DataCollator, Model, Optimizer
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
 
+
 # Wrapper class around the pre-trained ResNet-18 model that modifies the final layer.
 @Model.register("resnet_ft")
 class ResNetWrapper(Model):
-
     def __init__(self, num_classes: int, feature_extract: bool, use_pretrained: bool):
         super().__init__()
         self.model_ft = models.resnet18(pretrained=use_pretrained)
@@ -40,15 +40,17 @@ class ResNetWrapper(Model):
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
+
 # Custom data collator for images, that takes in a batch of images and labels and
 # reformats the data so that it is suitable for the model.
 @DataCollator.register("image_collator")
-class ImageCollator(DataCollator[Tuple[torch.Tensor]]):
-    def __call__(self, batch: Dict[str, Any]) -> Dict[str, Any]:
+class ImageCollator(DataCollator[Dict[str, Any]]):
+    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {
             "image": torch.cat([item["image"].unsqueeze(0) for item in batch], dim=0),
             "label": torch.tensor([item["labels"] for item in batch]),
         }
+
 
 # Function that returns an image transformations dict with the appropriate image size.
 def get_data_transforms(input_size: int):
@@ -79,30 +81,32 @@ class TransformData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def pil_loader(self, path: str):
-        with open(path, 'rb') as f:
+    def pil_loader(self, path: str, input_size: int):
+        with open(path, "rb") as f:
             image = Image.open(f)
-            image = image.convert('RGB')
-            transform = get_data_transforms(input_size=224)["train"]
+            image = image.convert("RGB")
+            transform = get_data_transforms(input_size=input_size)["train"]
             transformed_image = transform(image)
             return transformed_image
 
-
-    def image_loader(self, example_batch):
-        example_batch['image'] = [
-            self.pil_loader(f) for f in example_batch['file']
-        ]
+    def image_loader(self, example_batch, input_size: int):
+        example_batch["image"] = [self.pil_loader(f, input_size) for f in example_batch["file"]]
         return example_batch
 
-    def run(self, dataset: datasets, test_size: int) -> Dict[str, torch.utils.data.Dataset]:
-        dataset = dataset.with_transform(self.image_loader)
+    def run(  # type: ignore
+        self, dataset: datasets.DatasetDict, test_size: float, input_size: int
+    ) -> datasets.DatasetDict:
+        def image_loader(example_batch):
+            return self.image_loader(example_batch, input_size=input_size)
+
+        dataset = dataset.with_transform(image_loader)
         train_test = dataset["train"].train_test_split(test_size=test_size)
         return train_test
 
 
 @Step.register("prediction")
 class Prediction(Step):
-    def run(self, image_url: str, input_size: int, model: models) -> torch.Tensor:
+    def run(self, image_url: str, input_size: int, model: models) -> torch.Tensor:  # type: ignore
         # download and store image
         image_path = cached_path(image_url)
         raw_image = Image.open(image_path)
