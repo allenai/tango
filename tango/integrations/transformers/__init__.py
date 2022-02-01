@@ -9,7 +9,31 @@ Components for Tango integration with `🤗 Transformers <https://huggingface.co
 This integration provides some useful steps and also registers PyTorch components from the transformers
 library under the corresponding class from the `torch <torch.html>`_ integration, such as:
 
-- :class:`~tango.integrations.torch.Model`
+- :class:`~tango.integrations.torch.Model`: You can instantiate any transformer model with the
+  "transformers::from_pretrained" or "transformers::from_config" registered
+  :class:`~tango.integrations.torch.Model` constructors.
+
+  For example, to instantiate a pretrained transformer model from params:
+
+  .. testcode::
+
+      from tango.integrations.torch import Model
+
+      model = Model.from_params({
+          "type": "transformers::from_pretrained",
+          "pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy",
+      })
+
+  Or to instantiate a transformer model from params without loading pretrained weights:
+
+  .. testcode::
+
+      from tango.integrations.torch import Model
+
+      model = Model.from_params({
+          "type": "transformers::from_config",
+          "config": {"pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy"},
+      })
 
 - :class:`~tango.integrations.torch.Optimizer`: All optimizers from transformers are registered according
   to their class names (e.g. "transformers::AdaFactor").
@@ -96,9 +120,11 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
 """
 
-__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer"]
+__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer", "TransformerModel", "Config"]
 
+from .config import Config
 from .data import *  # noqa: F403
+from .model import TransformerModel
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
 from .tokenizer import Tokenizer
