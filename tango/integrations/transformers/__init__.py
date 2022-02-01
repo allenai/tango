@@ -16,7 +16,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
   .. tip::
 
-        You can see a list of all of the available optimizers from transformers by running
+        You can see a list of all of the available optimizers from transformers by running:
 
         .. testcode::
 
@@ -38,7 +38,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
   .. tip::
 
-        You can see a list of all of the available scheduler functions from transformers by running
+        You can see a list of all of the available scheduler functions from transformers by running:
 
         .. testcode::
 
@@ -60,9 +60,22 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 - :class:`~tango.integrations.torch.DataCollator`: All data collators from transformers
   are registered according to their class name (e.g. "transformers::DefaultDataCollator").
 
+  You can instantiate any of these from a config / params like so:
+
+  .. testcode::
+
+      from tango.integrations.torch import DataCollator
+
+      collator = DataCollator.from_params({
+          "type": "transformers::DataCollatorWithPadding",
+          "tokenizer": {
+              "pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy",
+          },
+      })
+
   .. tip::
 
-        You can see a list of all of the available data collators from transformers by running
+        You can see a list of all of the available data collators from transformers by running:
 
         .. testcode::
 
@@ -83,8 +96,9 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
 """
 
-__all__ = ["RunGeneration", "RunGenerationDataset"]
+__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer"]
 
 from .data import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
+from .tokenizer import Tokenizer

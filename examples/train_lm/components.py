@@ -2,12 +2,13 @@ from typing import Optional
 
 import datasets
 import torch
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.fairscale import FSDPConfig
 from tango.integrations.torch import Model
+from tango.integrations.transformers import Tokenizer
 
 
 # Normally we register classes directly, but here it's more convenient to register our own little
@@ -78,12 +79,11 @@ class TokenizeData(Step):
     def run(  # type: ignore[override]
         self,
         dataset: datasets.DatasetDict,
+        tokenizer: Tokenizer,
         pretrained_model_name: str,
         block_size: int = 1024,
         num_workers: int = 1,
     ) -> datasets.DatasetDict:
-        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name)
-
         def tokenize_function(example):
             return tokenizer(example["text"])
 

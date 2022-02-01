@@ -33,9 +33,9 @@ local training_engine = {
 
 local distributed_dataloader = {
   batch_size: batch_size,
-  collate_fn: { type: 'transformers::DefaultDataCollator' },
+  collate_fn: { type: "transformers::DefaultDataCollator" },
   sampler: {
-    type: 'torch::DistributedSampler',
+    type: "torch::DistributedSampler",
     shuffle: true,
     drop_last: true,
   },
@@ -44,7 +44,7 @@ local distributed_dataloader = {
 local single_device_dataloader = {
   shuffle: true,
   batch_size: batch_size,
-  collate_fn: { type: 'transformers::DefaultDataCollator' },
+  collate_fn: { type: "transformers::DefaultDataCollator" },
 };
 
 local dataloader = if devices > 1 then distributed_dataloader else single_device_dataloader;
@@ -58,8 +58,8 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         },
         tokenized_data: {
             type: "tokenize_data",
-            dataset: {type: "ref", ref: "raw_data"},
-            pretrained_model_name: pretrained_model,
+            dataset: { type: "ref", ref: "raw_data" },
+            tokenizer: { pretrained_model_name_or_path: pretrained_model }
         },
         trained_model: {
             type: "torch::train",
@@ -70,7 +70,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
                 activation_checkpointing: activation_checkpointing,
                 fsdp_config: fsdp_config,
             },
-            dataset_dict: {type: "ref", ref: "tokenized_data"},
+            dataset_dict: { type: "ref", ref: "tokenized_data" },
             train_dataloader: dataloader,
             validation_split: "validation",
             optimizer: {
@@ -90,7 +90,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             checkpoint_every: validate_every,
             log_every: 1,
             device_count: devices,
-            callbacks: [{type: "torch::cuda_mem_stats"}],
+            callbacks: [{ type: "torch::cuda_mem_stats" }],
             training_engine: {
                 type: if fsdp then "fairscale" else "torch",
                 amp: amp,
@@ -99,8 +99,8 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         },
         final_metrics: {
             type: "torch::eval",
-            model: {type: "ref", ref: "trained_model"},
-            dataset_dict: {type: "ref", ref: "tokenized_data"},
+            model: { type: "ref", ref: "trained_model" },
+            dataset_dict: { type: "ref", ref: "tokenized_data" },
             dataloader: single_device_dataloader,
             test_split: "test",
         },

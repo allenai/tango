@@ -60,6 +60,9 @@ intersphinx_mapping = {
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
     #  "deepspeed": ("https://deepspeed.readthedocs.io/en/latest/", None),
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
+    # TODO: HF's new doc-builder project doesn't seem to generate the "object.inv" file needed by intersphinx.
+    # Tracking issue here: https://github.com/huggingface/doc-builder/issues/81
+    #  "transformers": ("https://huggingface.co/docs/transformers", None),
 }
 
 
