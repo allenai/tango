@@ -13,19 +13,19 @@ local validate_every = 50;
 local image_url = "https://bit.ly/33Pv54E";
 
 local distributed_dataloader = {
-    "batch_size": batch_size,
-    "sampler": {
-        "type": "torch::DistributedSampler",
-        "shuffle": true,
-        "drop_last": true,
+    batch_size: batch_size,
+    sampler: {
+        type: "torch::DistributedSampler",
+        shuffle: true,
+        drop_last: true,
     },
-    "collate_fn": {"type": "image_collator"},
+    collate_fn: {"type": "image_collator"},
 };
 
 local single_device_dataloader = {
-    "shuffle": true,
-    "batch_size": batch_size,
-    "collate_fn": {"type": "image_collator"},
+    shuffle: true,
+    batch_size: batch_size,
+    collate_fn: {"type": "image_collator"},
 };
 
 {
