@@ -88,8 +88,6 @@ class TorchTrainStep(Step):
         log_every: int = 10,
         checkpoint_every: int = 100,
         validate_every: int = 100,
-        amp: bool = False,
-        max_grad_norm: Optional[float] = None,
         device_count: int = 1,
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
@@ -155,10 +153,6 @@ class TorchTrainStep(Step):
             Save a checkpoint every this many steps.
         validate_every : :class:`int`, optional
             Run the validation loop every this many steps.
-        amp : :class:`bool`, optional
-            Use automatic mixed precision. Default is ``False``.
-        max_grad_norm : :class:`float`, optional
-            If set, gradients will be clipped to have this max norm. Default is ``None``.
         device_count : :class:`int`, optional
             The number of devices to train on, i.e. the number of distributed data parallel workers.
         distributed_port : :class:`str`
@@ -202,8 +196,6 @@ class TorchTrainStep(Step):
             self.logger.info(
                 "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
             )
-            if amp:
-                raise ConfigurationError("AMP requires training on CUDA devices")
 
         is_distributed = False
         num_workers = 1
