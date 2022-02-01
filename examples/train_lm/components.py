@@ -1,18 +1,13 @@
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import datasets
 import torch
-from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    default_data_collator,
-)
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.fairscale import FSDPConfig
-from tango.integrations.torch import DataCollator, Model
+from tango.integrations.torch import Model
 
 
 # Normally we register classes directly, but here it's more convenient to register our own little
@@ -70,14 +65,6 @@ def _fairscale_wrap_layers(
     if fsdp_config is not None and torch.distributed.is_initialized():
         for block_idx in range(len(model.transformer.h)):
             model.transformer.h[block_idx] = fsdp_config.wrap(model.transformer.h[block_idx])
-
-
-# And we also want to use the `default_data_collator()` function from HF as a `DataCollator`,
-# so we create simple wrapper class around that function and register it.
-@DataCollator.register("transformers_default")
-class TransformerDefaultCollator(DataCollator[Any]):
-    def __call__(self, items: List[Any]) -> Dict[str, Any]:
-        return default_data_collator(items)
 
 
 # Lastly, we need a step to tokenize the raw data. The result of this step will be passed

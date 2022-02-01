@@ -57,9 +57,34 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::cosine
             ...
 
+- :class:`~tango.integrations.torch.DataCollator`: All data collators from transformers
+  are registered according to their class name (e.g. "transformers::DefaultDataCollator").
+
+  .. tip::
+
+        You can see a list of all of the available data collators from transformers by running
+
+        .. testcode::
+
+            from tango.integrations.torch import DataCollator
+            from tango.integrations.transformers import *
+
+            for name in sorted(DataCollator.list_available()):
+                if name.startswith("transformers::"):
+                    print(name)
+
+        .. testoutput::
+            :options: +ELLIPSIS
+
+            transformers::DataCollatorForLanguageModeling
+            transformers::DataCollatorForPermutationLanguageModeling
+            transformers::DataCollatorForSOP
+            ...
+
 """
 
 __all__ = ["RunGeneration", "RunGenerationDataset"]
 
+from .data import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
