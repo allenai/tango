@@ -72,10 +72,6 @@ def with_wrapped_modules(
         else:
             parent_module = model
         module = parent_module.get_submodule(module_name)
-        if isinstance(module, (nn.ModuleList, nn.Sequential)):
-            for i in range(len(module)):
-                module[i] = wrap_module(module[i])
-        else:
-            module = wrap_module(module)
+        parent_module.add_module(module_name, module)
 
     return model
