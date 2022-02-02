@@ -14,7 +14,9 @@ Components for Tango integration with `FairScale <https://github.com/facebookres
 __all__ = [
     "FairScaleTrainingEngine",
     "FSDPConfig",
+    "with_wrapped_modules",
 ]
 
 from .fsdp_config import FSDPConfig
+from .module_wrapper import with_wrapped_modules
 from .training_engine import FairScaleTrainingEngine

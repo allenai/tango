@@ -1,51 +1,33 @@
-from transformers import AutoModel
+from typing import Optional
+
+from transformers.models.auto import modeling_auto
 
 from tango.integrations.torch.model import Model
 
 from .config import Config
 
 
-@Model.register("transformers::from_pretrained", constructor="from_pretrained")
-@Model.register("transformers::from_config", constructor="from_config")
-class TransformerModel(AutoModel, Model):
-    """
-    A :class:`~tango.common.Registrable` version of transformers'
-    :class:`~transformers.AutoModel`.
+def auto_model_wrapper_factory(cls) -> Model:
+    class AutoModelWrapper(cls, Model):
+        @classmethod
+        def from_pretrained(
+            cls, pretrained_model_name_or_path: str, config: Optional[Config] = None, **kwargs
+        ) -> Model:
+            return super().from_pretrained(pretrained_model_name_or_path, config=config, **kwargs)
 
-    .. tip::
+        @classmethod
+        def from_config(cls, config: Config, **kwargs) -> Model:
+            return super().from_config(config, **kwargs)
 
-        Registered as a :class:`~tango.integrations.torch.Model` under the names
-        "transformers::from_pretrained" and "transformers::from_config", which use the
-        :meth:`~transformers.AutoModel.from_pretrained()` and :meth:`~transformers.AutoModel.from_config()`
-        methods respectively.
+    return AutoModelWrapper
 
-    Examples
-    --------
 
-    Instantiate a pretrained transformer model from params:
-
-    .. testcode::
-
-        from tango.integrations.torch import Model
-
-        model = Model.from_params({
-            "type": "transformers::from_pretrained",
-            "pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy",
-        })
-
-    Instantiate a transformer model from params without loading pretrained weights:
-
-    .. testcode::
-
-        from tango.integrations.torch import Model
-
-        model = Model.from_params({
-            "type": "transformers::from_config",
-            "config": {"pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy"},
-        })
-
-    """
-
-    @classmethod
-    def from_config(cls, config: Config, **kwargs) -> "TransformerModel":
-        return super().from_config(config, **kwargs)
+for name, cls in modeling_auto.__dict__.items():
+    if isinstance(cls, type) and name.startswith("AutoModel"):
+        wrapped_cls = auto_model_wrapper_factory(cls)
+        Model.register(
+            "transformers::" + name + "::from_pretrained", constructor="from_pretrained"
+        )(wrapped_cls)
+        Model.register("transformers::" + name + "::from_config", constructor="from_config")(
+            wrapped_cls
+        )

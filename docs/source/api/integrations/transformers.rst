@@ -6,8 +6,6 @@
 Reference
 ---------
 
-.. autoclass:: tango.integrations.transformers.TransformerModel
-
 .. autoclass:: tango.integrations.transformers.Tokenizer
     :members:
 

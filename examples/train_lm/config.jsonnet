@@ -64,11 +64,15 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         trained_model: {
             type: "torch::train",
             model: {
-                type: "lm_pretrained",
-                pretrained_model_name_or_path: pretrained_model,
-                low_cpu_mem_usage: true,
-                activation_checkpointing: activation_checkpointing,
+                type: "fairscale::with_wrapped_modules",
+                model: {
+                    type: "transformers::AutoModelForCausalLM::from_pretrained",
+                    pretrained_model_name_or_path: pretrained_model,
+                    low_cpu_mem_usage: true,
+                },
+                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],
                 fsdp_config: fsdp_config,
+                activation_checkpointing: activation_checkpointing,
             },
             dataset_dict: { type: "ref", ref: "tokenized_data" },
             train_dataloader: dataloader,

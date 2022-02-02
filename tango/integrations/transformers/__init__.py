@@ -9,9 +9,9 @@ Components for Tango integration with `🤗 Transformers <https://huggingface.co
 This integration provides some useful steps and also registers PyTorch components from the transformers
 library under the corresponding class from the `torch <torch.html>`_ integration, such as:
 
-- :class:`~tango.integrations.torch.Model`: You can instantiate any transformer model with the
-  "transformers::from_pretrained" or "transformers::from_config" registered
-  :class:`~tango.integrations.torch.Model` constructors.
+- :class:`~tango.integrations.torch.Model`: All transformers "auto" model classes are registered
+  according to their class names (e.g. "transformers::AutoModelForCausalLM::from_pretrained"
+  or "transformers::AutoModelForCausalLM::from_config").
 
   For example, to instantiate a pretrained transformer model from params:
 
@@ -20,7 +20,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
       from tango.integrations.torch import Model
 
       model = Model.from_params({
-          "type": "transformers::from_pretrained",
+          "type": "transformers::AutoModel::from_pretrained",
           "pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy",
       })
 
@@ -31,9 +31,31 @@ library under the corresponding class from the `torch <torch.html>`_ integration
       from tango.integrations.torch import Model
 
       model = Model.from_params({
-          "type": "transformers::from_config",
+          "type": "transformers::AutoModel::from_config",
           "config": {"pretrained_model_name_or_path": "epwalsh/bert-xsmall-dummy"},
       })
+
+  .. tip::
+
+        You can see a list of all of the available auto model constructors from transformers by running:
+
+        .. testcode::
+
+            from tango.integrations.torch import Model
+            from tango.integrations.transformers import *
+
+            for name in sorted(Model.list_available()):
+                if name.startswith("transformers::AutoModel"):
+                    print(name)
+
+        .. testoutput::
+            :options: +ELLIPSIS
+
+            transformers::AutoModel::from_config
+            transformers::AutoModel::from_pretrained
+            transformers::AutoModelForAudioClassification::from_config
+            transformers::AutoModelForAudioClassification::from_pretrained
+            ...
 
 - :class:`~tango.integrations.torch.Optimizer`: All optimizers from transformers are registered according
   to their class names (e.g. "transformers::AdaFactor").
@@ -120,11 +142,11 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
 """
 
-__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer", "TransformerModel", "Config"]
+__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer", "Config"]
 
 from .config import Config
 from .data import *  # noqa: F403
-from .model import TransformerModel
+from .model import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
 from .tokenizer import Tokenizer

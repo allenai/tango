@@ -1,74 +1,11 @@
-from typing import Optional
-
 import datasets
-import torch
-from transformers import AutoConfig, AutoModelForCausalLM
 
 from tango import Step
 from tango.integrations.datasets import DatasetsFormat
-from tango.integrations.fairscale import FSDPConfig
-from tango.integrations.torch import Model
 from tango.integrations.transformers import Tokenizer
 
 
-# Normally we register classes directly, but here it's more convenient to register our own little
-# factory function that will initialize a model with `AutoModelForCausalLM.from_pretrained` and then
-# wrap the layers with FairScale's `FullyShardedDataParallel` and `checkpoint_wrapper()` if needed.
-@Model.register("lm_pretrained")  # type: ignore
-def from_pretrained(
-    pretrained_model_name_or_path: str,
-    *args,
-    fsdp_config: Optional[FSDPConfig] = None,
-    activation_checkpointing: bool = False,
-    **kwargs,
-) -> Model:
-    model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
-    _fairscale_wrap_layers(
-        model,
-        fsdp_config=fsdp_config,
-        activation_checkpointing=activation_checkpointing,
-    )
-    return model
-
-
-# Same thing as above, except this won't load the pretrained state dictionary, so you get a randomly initialized
-# model that you can train from scratch.
-@Model.register("lm_fresh", exist_ok=True)  # type: ignore
-def new_random_from_config(
-    pretrained_model_name_or_path: str,
-    fsdp_config: Optional[FSDPConfig] = None,
-    activation_checkpointing: bool = False,
-) -> Model:
-    assert isinstance(fsdp_config, FSDPConfig)
-    config = AutoConfig.from_pretrained(pretrained_model_name_or_path)
-    model = AutoModelForCausalLM.from_config(config)  # type: ignore
-    _fairscale_wrap_layers(
-        model,
-        fsdp_config=fsdp_config,
-        activation_checkpointing=activation_checkpointing,
-    )
-    return model
-
-
-def _fairscale_wrap_layers(
-    model,
-    fsdp_config: Optional[FSDPConfig] = None,
-    activation_checkpointing: bool = False,
-) -> None:
-    if activation_checkpointing:
-        from fairscale.nn.checkpoint import checkpoint_wrapper
-
-        for block_idx in range(len(model.transformer.h)):
-            model.transformer.h[block_idx] = checkpoint_wrapper(
-                model.transformer.h[block_idx], offload_to_cpu=True
-            )
-
-    if fsdp_config is not None and torch.distributed.is_initialized():
-        for block_idx in range(len(model.transformer.h)):
-            model.transformer.h[block_idx] = fsdp_config.wrap(model.transformer.h[block_idx])
-
-
-# Lastly, we need a step to tokenize the raw data. The result of this step will be passed
+# We need a step to tokenize the raw data. The result of this step will be passed
 # directly into the "torch::train" step.
 @Step.register("tokenize_data")
 class TokenizeData(Step):

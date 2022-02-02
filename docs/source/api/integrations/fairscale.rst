@@ -7,3 +7,5 @@ FairScale
 
 .. autoclass:: tango.integrations.fairscale.FSDPConfig
     :members:
+
+.. autofunction:: tango.integrations.fairscale.with_wrapped_modules
