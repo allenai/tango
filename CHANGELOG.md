@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- The waiting message for `FileLock` is now clear about which file it's waiting for.
+
 ### Fixed
 
 - Fixed bug where `Executor` would crash if `git` command could not be found.
