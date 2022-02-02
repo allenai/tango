@@ -72,6 +72,7 @@ def with_wrapped_modules(
         else:
             parent_module = model
         module = parent_module.get_submodule(module_name)
+        module = wrap_module(module)
         parent_module.add_module(module_name, module)
 
     return model
