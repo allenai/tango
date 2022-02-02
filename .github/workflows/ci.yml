@@ -69,14 +69,19 @@ jobs:
               pytest -v --color=yes --doctest-modules tango/integrations/datasets tests/integrations/datasets
 
           - name: PyTorch integration
-            extras: dev,torch
+            extras: dev,all
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
           - name: PyTorch Lightning integration
-            extras: dev,torch,pytorch_lightning
+            extras: dev,all
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
+
+          - name: Transformers integration
+            extras: dev,all
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
 
           - name: Example - train_lm
             extras: dev,all
