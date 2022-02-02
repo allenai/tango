@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added an easier way to get the default Tango global config
+
 ### Fixed
 
 - Fixed bug where `Executor` would crash if `git` command could not be found.
+
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
 
