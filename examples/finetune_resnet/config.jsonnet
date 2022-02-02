@@ -9,7 +9,7 @@ local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
 local training_steps = 500;
 local validate_every = 50;
-local image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.countryliving.com%2Flife%2Fkids-pets%2Fa28423224%2Fdog-instagram-captions%2F&psig=AOvVaw1GHVmz_Ftm9Q0wiOWv8RUh&ust=1643836699366000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCKCarIa33_UCFQAAAAAdAAAAABAF";
+local image_url = "https://tinyurl.com/2p9xjvn9";
 
 local distributed_dataloader = {
     batch_size: batch_size,
@@ -50,7 +50,7 @@ local single_device_dataloader = {
             },
             dataset_dict: {"type": "ref", "ref": "transform_data"},
             train_dataloader: single_device_dataloader,
-            validation_split: "test",
+            validation_split: null,
             optimizer: {
                 type: "torch_adam",
                 lr: 0.001,

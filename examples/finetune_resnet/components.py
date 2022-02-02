@@ -75,31 +75,34 @@ def get_data_transforms(input_size: int):
     return data_transforms
 
 
+# loads and image and applies the appropriate transformation
+def pil_loader(path: str, input_size: int, transform_type: str):
+        with open(path, "rb") as f:
+            image = Image.open(f)
+            image = image.convert("RGB")
+            transform = get_data_transforms(input_size=input_size)[transform_type]
+            transformed_image = transform(image)
+            return transformed_image
+
+# calls the image loader on every image in a given batch
+def image_loader(example_batch, input_size: int, transform_type: str):
+    example_batch["image"] = [pil_loader(f, input_size, transform_type) for f in example_batch["file"]]
+    return example_batch
+
+
 # This step takes in raw image data and transforms and tokenizes it.
 @Step.register("transform_data")
 class TransformData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def pil_loader(self, path: str, input_size: int):
-        with open(path, "rb") as f:
-            image = Image.open(f)
-            image = image.convert("RGB")
-            transform = get_data_transforms(input_size=input_size)["train"]
-            transformed_image = transform(image)
-            return transformed_image
-
-    def image_loader(self, example_batch, input_size: int):
-        example_batch["image"] = [self.pil_loader(f, input_size) for f in example_batch["file"]]
-        return example_batch
-
     def run(  # type: ignore
         self, dataset: datasets.DatasetDict, test_size: float, input_size: int
     ) -> datasets.DatasetDict:
-        def image_loader(example_batch):
-            return self.image_loader(example_batch, input_size=input_size)
+        def image_loader_wrapper(example_batch):
+            return image_loader(example_batch, input_size=input_size, transform_type="train")
 
-        dataset = dataset.with_transform(image_loader)
+        dataset = dataset.with_transform(image_loader_wrapper)
         train_test = dataset["train"].train_test_split(test_size=test_size)
         return train_test
 
@@ -109,11 +112,9 @@ class Prediction(Step):
     def run(self, image_url: str, input_size: int, model: models) -> torch.Tensor:  # type: ignore
         # download and store image
         image_path = cached_path(image_url)
-        raw_image = Image.open(image_path)
+        transformed_image = pil_loader(image_path, input_size, transform_type="test")
 
         # pass image through transform
-        transform = get_data_transforms(input_size=input_size)["test"]
-        transformed_image = transform(raw_image)
         transformed_image = transformed_image.unsqueeze(0)
 
         # pass image through model and get the prediction
