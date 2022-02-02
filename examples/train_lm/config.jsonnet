@@ -3,6 +3,9 @@ local pretrained_model = "gpt2";
 # a 6B model on 4x ~40GB GPUs:
 # local pretrained_model = "EleutherAI/gpt-j-6B";
 
+# This doesn't seem to work with gpt2, but works with gpt-j.
+local load_with_low_cpu_mem_usage = std.startsWith(pretrained_model, "EleutherAI/gpt-j");
+
 # Trainer settings, adjust to your use-case.
 local training_steps = 200;
 local warmup_steps = 20;
@@ -68,9 +71,9 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
                 model: {
                     type: "transformers::AutoModelForCausalLM::from_pretrained",
                     pretrained_model_name_or_path: pretrained_model,
-                    low_cpu_mem_usage: true,
+                    low_cpu_mem_usage: load_with_low_cpu_mem_usage,
                 },
-                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],
+                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },
