@@ -320,8 +320,13 @@ def _params_contain_step(o: Any) -> bool:
         return True
     elif isinstance(o, str):
         return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-    elif isinstance(o, dict) or isinstance(o, Params):
-        return _params_contain_step(o.values())
+    elif isinstance(o, Params):
+        return _params_contain_step(o.as_dict(quiet=True))
+    elif isinstance(o, dict):
+        if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+            return True
+        else:
+            return _params_contain_step(o.values())
     elif isinstance(o, Iterable):
         return any(_params_contain_step(p) for p in o)
     else:
@@ -334,15 +339,27 @@ def construct_arg(
     popped_params: Params,
     annotation: Type,
     default: Any,
-    could_be_step: bool = True,
+    try_from_step: bool = True,
     **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
     """
-    from tango.step import Step
+    if popped_params is default:
+        return popped_params
 
-    if could_be_step:
+    from tango.step import Step, WithUnresolvedSteps
+
+    origin = getattr(annotation, "__origin__", None)
+    args = getattr(annotation, "__args__", [])
+
+    could_be_step = (
+        origin == Step
+        or isinstance(popped_params, Step)
+        or _params_contain_step(popped_params)
+        or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+    )
+    if try_from_step and could_be_step:
         # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
         # it will fall back to returning a dict. So we can't try parsing as a non-step first.
         backup_params = deepcopy(popped_params)
@@ -353,14 +370,11 @@ def construct_arg(
                 popped_params,
                 Step[annotation],  # type: ignore
                 default,
-                could_be_step=False,
+                try_from_step=False,
                 **extras,
             )
         except (ValueError, TypeError, ConfigurationError, AttributeError, IndexError):
             popped_params = backup_params
-
-    origin = getattr(annotation, "__origin__", None)
-    args = getattr(annotation, "__args__", [])
 
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
@@ -368,9 +382,7 @@ def construct_arg(
     if (inspect.isclass(annotation) and issubclass(annotation, FromParams)) or (
         inspect.isclass(origin) and issubclass(origin, FromParams)
     ):
-        if popped_params is default:
-            return default
-        elif origin is None and isinstance(popped_params, annotation):
+        if origin is None and isinstance(popped_params, annotation):
             return popped_params
         elif popped_params is not None:
             subextras = create_extras(annotation, extras)
@@ -391,8 +403,6 @@ def construct_arg(
                     f"Expected a `Params` object, found `{popped_params}` instead while constructing "
                     f"parameter '{argument_name}' for `{class_name}`"
                 )
-
-            from tango.step import WithUnresolvedSteps
 
             result: Union[FromParams, WithUnresolvedSteps]
             if isinstance(popped_params, Step):
@@ -435,7 +445,10 @@ def construct_arg(
         if type(popped_params) in {int, bool}:
             return annotation(popped_params)
         else:
-            raise TypeError(f"Expected {argument_name} to be a {annotation.__name__}.")
+            raise TypeError(
+                f"Expected {argument_name} to be {annotation.__name__}, "
+                f"found {popped_params} ({type(popped_params)})."
+            )
     elif annotation == str:
         # Strings are special because we allow casting from Path to str.
         if type(popped_params) == str or isinstance(popped_params, Path):
@@ -467,7 +480,8 @@ def construct_arg(
         value_dict = {}
         if not isinstance(popped_params, Mapping):
             raise TypeError(
-                f"Expected {argument_name} to be a Mapping (probably a dict or a Params object)."
+                f"Expected {argument_name} to be a Mapping (probably a dict or a Params object) "
+                f"found {popped_params} ({type(popped_params)})."
             )
 
         for key, value_params in popped_params.items():
@@ -548,9 +562,6 @@ def construct_arg(
         config_error.__cause__ = error_chain
         raise config_error
     elif origin == Lazy:
-        if popped_params is default:
-            return default
-
         value_cls = args[0]
         return Lazy(value_cls, params=deepcopy(popped_params))  # type: ignore
 
