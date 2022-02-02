@@ -15,9 +15,12 @@ To learn more about the Tango integrations that allow you to train a 6B paramete
 
 ## Components
 
-Create a file called `components.py` with following contents:
+We'll need to write a step for tokenizing the data and preparing it for language model training.
+All of the other steps we need are provided by Tango integrations.
 
-```{literalinclude} ../../../examples/train_lm/components.py
+So, create a file called `tokenize.py` with following contents:
+
+```{literalinclude} ../../../examples/train_lm/tokenize.py
 :language: py
 ```
 
@@ -34,5 +37,5 @@ Next you'll need to create a configuration file that defines the experiment. Jus
 Now we can run the experiment with:
 
 ```bash
-tango run config.jsonnet -i components -d /tmp/results
+tango run config.jsonnet -i tokenize.py -d /tmp/results
 ```

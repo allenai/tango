@@ -14,5 +14,5 @@ Without using CPU offloading you'll need at least 4 x 40GiB A100 GPUs, or a diff
 To getting started, just run
 
 ```
-tango run config.jsonnet -i components.py
+tango run config.jsonnet -i tokenize.py
 ```

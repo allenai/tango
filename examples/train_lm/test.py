@@ -10,6 +10,7 @@ def test_small_experiment():
     }
     steps = 4
     overrides = {
+        "steps.tokenized_data.block_size": 64,
         # Override the model in the config with the tiny alternative so training is fast.
         "steps.tokenized_data.tokenizer.pretrained_model_name_or_path": model,
         "steps.trained_model.model.model.pretrained_model_name_or_path": model,
@@ -37,5 +38,5 @@ def test_small_experiment():
         if "model_name" in key or (isinstance(value, str) and "gpt" in value):
             assert value == model
 
-    with run_experiment(config, include_package=["components.py"]) as run_dir:
+    with run_experiment(config, include_package=["tokenize.py"]) as run_dir:
         assert (run_dir / "trained_model").is_dir()
