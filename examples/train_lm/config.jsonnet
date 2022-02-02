@@ -70,7 +70,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
                     pretrained_model_name_or_path: pretrained_model,
                     low_cpu_mem_usage: true,
                 },
-                modules_to_wrap: ["transformer\.h\.[0-9]+"],
+                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },

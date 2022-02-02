@@ -57,7 +57,8 @@ def with_wrapped_modules(
         for pattern in modules_to_wrap:
             if re.fullmatch(pattern, module_name):
                 actual_modules_to_wrap.add(module_name)
-                unmatched_patterns.remove(pattern)
+                if pattern in unmatched_patterns:
+                    unmatched_patterns.remove(pattern)
 
     if unmatched_patterns:
         raise ValueError(
