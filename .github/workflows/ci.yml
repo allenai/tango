@@ -83,6 +83,11 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
 
+          - name: FairScale integration
+            extras: dev,all
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
+
           - name: Example - train_lm
             extras: dev,all
             run: |

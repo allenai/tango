@@ -26,6 +26,9 @@ def with_wrapped_modules(
         Registered as a :class:`~tango.integrations.torch.Model` constructor under the name
         "fairscale::with_wrapped_modules".
 
+    .. important::
+        This is meant to be used with the :class:`FairScaleTrainingEngine`.
+
     Parameters
     ----------
 
@@ -35,9 +38,30 @@ def with_wrapped_modules(
         The names of submodule to wrap. Can be regular expressions.
     fsdp_config : :class:`~FSDPConfig`, optional
         The ``FullyShardedDataParallel`` configuration to use when wrapping the modules.
+        If not specified, the modules will NOT be wrapped with FSDP.
     activation_checkpointing : :class:`bool`, optional
         Whether to wrap the modules with FairScale's
         :class:`~fairscale.nn.checkpoint.checkpoint_wrapper`.
+
+    Examples
+    --------
+
+    You can use this as a :class:`~tango.integrations.torch.Model` constructor from a config/params
+    like this:
+
+    .. testcode::
+
+        from tango.integrations.torch import Model
+
+        model = Model.from_params({
+            "type": "fairscale::with_wrapped_modules",
+            "model": {
+                "type": "transformers::AutoModelForCausalLM::from_pretrained",
+                "pretrained_model_name_or_path": "sshleifer/tiny-gpt2",
+            },
+            "modules_to_wrap": ["transformer\\.h\\.[0-9]+"],  # wrap each block of the transformer
+            "activation_checkpointing": True,
+        })
 
     """
 

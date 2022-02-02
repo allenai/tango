@@ -119,11 +119,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             checkpoint_every: validate_every,
             log_every: 1,
             device_count: devices,
-            training_engine: {
-                type: if fsdp then "fairscale" else "torch",
-                amp: amp,
-                [if fsdp then "fsdp_config" else null]: fsdp_config,
-            },
+            training_engine: training_engine,
         },
         final_metrics: {
             type: "torch::eval",

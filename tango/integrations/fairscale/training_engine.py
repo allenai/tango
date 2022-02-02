@@ -53,6 +53,7 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
         to use ``bfloat16`` when training with AMP on CPU, otherwise not.
     fsdp_config : :class:`FSDPConfig`
         The options for :class:`~fairscale.nn.FullyShardedDataParallel`.
+        If not specified, the default options will be used.
 
     """
 
@@ -74,7 +75,6 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
             )
 
         self.fsdp_config = fsdp_config or FSDPConfig()
-        self.fsdp_config.mixed_precision = amp
 
         super().__init__(
             train_config,
