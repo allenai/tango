@@ -14,7 +14,14 @@ installation
 overview
 examples/index
 faq
-CHANGELOG
+```
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+:caption: Advanced Guides
+
+guides/training_at_scale
 ```
 
 ```{toctree}
@@ -35,6 +42,7 @@ api/utilities
 :caption: Development
 
 CONTRIBUTING
+CHANGELOG
 License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```

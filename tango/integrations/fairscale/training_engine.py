@@ -33,8 +33,8 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
     .. tip::
         To get the best performance out of :class:`FairScaleTrainingEngine` you should
         wrap individual layers of your model with :class:`~fairscale.nn.FullyShardedDataParallel`
-        while instantiating them, such as in the example in the FairScale docs and in the
-        `language model example </examples/train_lm.html>`_.
+        and/or :class:`~fairscale.nn.checkpoint.checkpoint_wrapper`
+        while instantiating them. You can use :class:`with_wrapped_modules()` to accomplish this.
 
     .. important::
         Only the parameters listed below should be defined in a configuration

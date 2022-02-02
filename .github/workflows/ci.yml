@@ -78,6 +78,12 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
+          - name: Example - train_lm
+            extras: dev,all
+            run: |
+              cd examples/train_lm
+              pytest -v --color=yes test.py
+
         include:
           # Run the core tests on other Python versions as well.
           - task:
