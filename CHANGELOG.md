@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   For example, transformers `Adafactor` optimizer is registered as an `Optimizer` under the name
   "transformers::Adafactor". More details can be found in the documentation for the transformers integration.
 
+### Changed
+
+- Params logged as `DEBUG` level instead of `INFO` to reduce noise in logs.
+
 ### Fixed
 
 - Fixed a bug in `Registrable` and `FromParams` where registered function constructors would not properly construct

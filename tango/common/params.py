@@ -273,7 +273,7 @@ class Params(MutableMapping):
         else:
             value = self.params.pop(key, default)
 
-        logger.info(f"{self.history}{key} = {value}")
+        logger.debug(f"{self.history}{key} = {value}")
         if keep_as_dict or _is_dict_free(value):
             return value
         else:
@@ -405,7 +405,7 @@ class Params(MutableMapping):
                     new_local_history = history + key + "."
                     log_recursively(value, new_local_history)
                 else:
-                    logger.info(f"{history}{key} = {value}")
+                    logger.debug(f"{history}{key} = {value}")
 
         log_recursively(self.params, self.history)
         return params_as_dict
