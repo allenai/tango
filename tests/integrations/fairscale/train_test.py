@@ -20,20 +20,28 @@ class TestFairScaleTrain(TangoTestCase):
         (
             pytest.param(
                 True,
+                id="fsdp=True",
                 marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA"),
             ),
-            False,
+            pytest.param(False, id="fsdp=False"),
         ),
     )
-    @pytest.mark.parametrize("activation_checkpoint", (True, False))
+    @pytest.mark.parametrize(
+        "activation_checkpoint",
+        (
+            pytest.param(True, id="checkpointing=True"),
+            pytest.param(False, id="checkpointing=False"),
+        ),
+    )
     @pytest.mark.parametrize(
         "amp",
         (
             pytest.param(
                 True,
+                id="amp=True",
                 marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA"),
             ),
-            False,
+            pytest.param(False, id="amp=False"),
         ),
     )
     def test_train_tiny_gpt2(self, fsdp: bool, activation_checkpoint: bool, amp: bool):
