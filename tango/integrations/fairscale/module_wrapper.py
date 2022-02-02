@@ -67,8 +67,8 @@ def with_wrapped_modules(
 
     for module_name in actual_modules_to_wrap:
         if "." in module_name:
-            parent_module_name, module_name = module_name.split(".", 1)
-            parent_module = model.get_submodule(parent_module_name)
+            *parent_parts, module_name = module_name.split(".")
+            parent_module = model.get_submodule(".".join(parent_parts))
         else:
             parent_module = model
         module = parent_module.get_submodule(module_name)
