@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Type
 
 from transformers.models.auto import modeling_auto
 
@@ -7,8 +7,8 @@ from tango.integrations.torch.model import Model
 from .config import Config
 
 
-def auto_model_wrapper_factory(cls) -> Model:
-    class AutoModelWrapper(cls, Model):
+def auto_model_wrapper_factory(cls: type) -> Type[Model]:
+    class AutoModelWrapper(cls, Model):  # type: ignore
         @classmethod
         def from_pretrained(
             cls, pretrained_model_name_or_path: str, config: Optional[Config] = None, **kwargs
