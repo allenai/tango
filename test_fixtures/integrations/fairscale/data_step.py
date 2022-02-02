@@ -18,7 +18,7 @@ class FairScaleTestLoadDataStep(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run(self, tokenizer: Tokenizer, block_size: int = 8) -> DatasetDict:
+    def run(self, tokenizer: Tokenizer, block_size: int = 8) -> DatasetDict:  # type: ignore
         # Tokenize text.
         tokenized = tokenizer(LOREM_IPSUM)
         tokenized["labels"] = tokenized["input_ids"].copy()
