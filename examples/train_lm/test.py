@@ -38,5 +38,5 @@ def test_small_experiment():
         if "model_name" in key or (isinstance(value, str) and "gpt" in value):
             assert value == model
 
-    with run_experiment(config, include_package=["tokenize.py"]) as run_dir:
+    with run_experiment(config, include_package=["tokenize_step.py"]) as run_dir:
         assert (run_dir / "trained_model").is_dir()
