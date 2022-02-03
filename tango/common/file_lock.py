@@ -1,5 +1,6 @@
 import os
 import warnings
+from typing import Optional
 
 from filelock import AcquireReturnProxy
 from filelock import FileLock as _FileLock
@@ -45,7 +46,7 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
             else:
                 raise
 
-    def acquire_with_updates(self, desc: str = "acquiring lock"):
+    def acquire_with_updates(self, desc: Optional[str] = None):
         """
         Same as :meth:`acquire()`, except that when the lock cannot be immediately acquired,
         it will keep trying and print status updates as it goes.
@@ -56,6 +57,9 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
             pass
 
         from .tqdm import Tqdm
+
+        if desc is None:
+            desc = f"acquiring lock at {self._lock_file}"
 
         progress = Tqdm.tqdm(desc=desc, bar_format="{desc} [{elapsed}]")
         while True:
