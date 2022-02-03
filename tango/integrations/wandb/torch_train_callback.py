@@ -115,6 +115,9 @@ class WandbTrainCallback(TrainCallback):
             self._run_id = state_dict["run_id"]
 
     def pre_train_loop(self) -> None:
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+        peak_gpu_mbs = peak_gpu_memory()
         if self.is_local_main_process:
             import wandb
 
@@ -127,43 +130,27 @@ class WandbTrainCallback(TrainCallback):
 
             if self._watch_model:
                 self.wandb.watch(self.training_engine.model)
-
-    def _log_peak_gpu_mbs(self, step: int, epoch: int) -> None:
-        peak_gpu_mbs = peak_gpu_memory()
-        if self.is_local_main_process:
-            metrics_dict = {
-                f"sys/worker{rank}_peak_gpu_mem": mbs for rank, mbs in peak_gpu_mbs.items()
-            }
-            metrics_dict["epoch"] = epoch
-            self.wandb.log(
-                metrics_dict,
-                step=step + 1,
-            )
-
-    def pre_epoch(self, step: int, epoch: int) -> None:
-        if torch.cuda.is_available():
-            torch.cuda.reset_peak_memory_stats()
-        if epoch == 0:
-            # It's useful to get a measure of the peak GPU memory before the first batch
-            # is processed, so you can tell how much GPU memory the model and optimizer states
-            # occupy without activations and gradients.
-            self._log_peak_gpu_mbs(step, epoch)
-
-    def post_epoch(self, step: int, epoch: int) -> None:
-        self._log_peak_gpu_mbs(step, epoch)
+            metrics = {f"sys/worker{rank}_peak_gpu_mem": mbs for rank, mbs in peak_gpu_mbs.items()}
+            metrics["epoch"] = 0
+            self.wandb.log(metrics, step=0)
 
     def post_train_loop(self, step: int, epoch: int) -> None:
         if self.is_local_main_process:
             self.wandb.finish()
 
     def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+        peak_gpu_mbs = peak_gpu_memory()
         if self.is_local_main_process:
+            metrics = {
+                "train/loss": batch_loss,
+                "train/lr": self.training_engine.optimizer.param_groups[0]["lr"],
+                "epoch": epoch,
+            }
+            metrics.update(
+                {f"sys/worker{rank}_peak_gpu_mem": mbs for rank, mbs in peak_gpu_mbs.items()}
+            )
             self.wandb.log(
-                {
-                    "train/loss": batch_loss,
-                    "train/lr": self.training_engine.optimizer.param_groups[0]["lr"],
-                    "epoch": epoch,
-                },
+                metrics,
                 step=step + 1,
             )
 
