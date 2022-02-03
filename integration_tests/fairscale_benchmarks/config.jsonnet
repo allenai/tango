@@ -10,8 +10,8 @@ local load_with_low_cpu_mem_usage = true;  # be careful, this doesn't seem to wo
 ####################
 
 # Trainer settings, adjust to your use-case.
-local training_steps = 200;  # total number of optimization steps to train for
-local validate_every = 25;  # how often to validate and save checkpoints
+local training_steps = 100;  # total number of optimization steps to train for
+local validate_every = 20;  # how often to validate and save checkpoints
 
 local devices = 4;
 local grad_accum = 1;  # number of gradient accumulation steps (changes the effective batch size)
@@ -115,11 +115,22 @@ local TrainStep(options) =
     } + {
         ["trained_model_" + options.name]: TrainStep(options)
         for options in [
+            // {
+            //     name: "baseline",
+            //     amp: false,
+            //     fsdp_config: null,
+            //     activation_checkpointing: false,
+            // },
             {
-                name: "baseline",
+                name: "checkpointing_and_fsdp",
                 amp: false,
-                fsdp_config: null,
-                activation_checkpointing: false,
+                activation_checkpointing: true,
+                fsdp_config: {
+                    reshard_after_forward: true,
+                    move_params_to_cpu: false,
+                    move_grads_to_cpu: false,
+                    mixed_precision: false,
+                },
             },
             {
                 name: "amp_and_checkpointing_and_fsdp_mp",
