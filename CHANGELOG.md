@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Params logged as `DEBUG` level instead of `INFO` to reduce noise in logs.
 - The waiting message for `FileLock` is now clear about which file it's waiting for.
 - Added an easier way to get the default Tango global config
+- Most methods to `TorchTrainCallback` also take an `epoch` parameter now.
+- `WandbTrainCallback` now logs peak GPU memory occupied by PyTorch tensors per worker. This is useful because W&B's system metrics only display the total GPU memory reserved by PyTorch, which is always higher than the actual amount of GPU memory occupied by tensors. So these new metrics give a more accurate view into how much memory your training job is actually using.
 
 ### Fixed
 
