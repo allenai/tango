@@ -153,6 +153,8 @@ def infer_method_params(
     # first superclass, and so on. We take the first superclass we find that inherits from
     # FromParams.
     super_class = None
+    # We have to be a little careful here because in some cases we might not have an
+    # actual class. Instead we might just have a function that returns a class instance.
     if hasattr(cls, "mro"):
         for super_class_candidate in cls.mro()[1:]:
             if issubclass(super_class_candidate, FromParams):
@@ -345,6 +347,7 @@ def construct_arg(
     """
     The first two parameters here are only used for logging if we encounter an error.
     """
+    # If we have the default, we're already done :)
     if popped_params is default:
         return popped_params
 
@@ -353,15 +356,17 @@ def construct_arg(
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
 
-    could_be_step = (
+    # Try to guess if `popped_params` might be a step, come from a step, or contain a step.
+    could_be_step = try_from_step and (
         origin == Step
         or isinstance(popped_params, Step)
         or _params_contain_step(popped_params)
         or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
     )
-    if try_from_step and could_be_step:
-        # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
-        # it will fall back to returning a dict. So we can't try parsing as a non-step first.
+    if could_be_step:
+        # If we think it might be a step, we try parsing as a step _first_.
+        # Parsing as a non-step always succeeds, because it will fall back to returning a dict.
+        # So we can't try parsing as a non-step first.
         backup_params = deepcopy(popped_params)
         try:
             return construct_arg(
@@ -697,6 +702,7 @@ class FromParams(CustomDetHash):
                     choice
                 )
                 if inspect.isclass(subclass_or_factory_func):
+                    # We have an actual class.
                     subclass = subclass_or_factory_func
                     if constructor_name is not None:
                         constructor_to_inspect = cast(
@@ -707,6 +713,7 @@ class FromParams(CustomDetHash):
                         constructor_to_inspect = subclass.__init__
                         constructor_to_call = subclass
                 else:
+                    # We have a function that returns an instance of the class.
                     factory_func = cast(Callable[..., T], subclass_or_factory_func)
                     return_type = inspect.signature(factory_func).return_annotation
                     if return_type == inspect.Signature.empty:

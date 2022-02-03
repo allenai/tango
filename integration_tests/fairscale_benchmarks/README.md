@@ -10,3 +10,6 @@ This integration test is for checking the performance of the `FairScaleTrainingE
 ```
 tango run integration_tests/fairscale_benchmarks/config.jsonnet -i examples/train_lm/tokenize_step.py
 ```
+
+**What to look for:** The training jobs shouldn't fail, for one. After `tango run` completes, check the corresponding Weights & Biases
+dashboard and inspect the results. Compare the various "fsdp" training runs with the baseline to ensure you see memory savings.

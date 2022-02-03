@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Various changes to the parameters othe `TorchTrainStep` due to the introduction of the `TrainingEngine` class.
 - Params logged as `DEBUG` level instead of `INFO` to reduce noise in logs.
 - The waiting message for `FileLock` is now clear about which file it's waiting for.
 - Added an easier way to get the default Tango global config
@@ -29,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a bug in `Registrable` and `FromParams` where registered function constructors would not properly construct
   arguments that were classes.
-- Fixed a bug in `FromParams` when an argument to the constructor had the name `params`.
-- Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it could be a step.
+- Fixed a bug in `FromParams` that would cause a crash when an argument to the constructor had the name `params`.
+- Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it actually could be a step.
 - Fixed bug where `Executor` would crash if `git` command could not be found.
 
 ### Changed
