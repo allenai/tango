@@ -31,6 +31,15 @@ class FSDPConfig(FromParams):
     move_grads_to_cpu: Optional[bool] = None
     """
     See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+
+    .. warning::
+        At the moment we recommend that you don't mess with this parameter, or only explicitly
+        set it to the same value as :data:`move_params_to_cpu`. If you leave it as ``None``
+        (the default), it will automatically be set to match :data:`move_params_to_cpu` by FairScale.
+
+        Currently training seems to crash if you set this ``False`` while :data:`move_params_to_cpu` is ``True``.
+        We're tracking `fairscale#918 <https://github.com/facebookresearch/fairscale/issues/918>`_,
+        which may be related.
     """
 
     mixed_precision: bool = False
