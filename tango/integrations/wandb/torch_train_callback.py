@@ -2,6 +2,8 @@ import os
 import warnings
 from typing import Any, Dict, List, Optional
 
+import torch
+
 from tango.integrations.torch.train_callback import TrainCallback
 
 
@@ -109,6 +111,8 @@ class WandbTrainCallback(TrainCallback):
         if self.is_local_main_process:
             self._wandb_kwargs["resume"] = "allow"
             self._run_id = state_dict["run_id"]
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
 
     def pre_train_loop(self) -> None:
         if self.is_local_main_process:
@@ -124,7 +128,7 @@ class WandbTrainCallback(TrainCallback):
             if self._watch_model:
                 self.wandb.watch(self.training_engine.model)
 
-    def post_train_loop(self) -> None:
+    def post_train_loop(self, step: int) -> None:
         if self.is_local_main_process:
             self.wandb.finish()
 

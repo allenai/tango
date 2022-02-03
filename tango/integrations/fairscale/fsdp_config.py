@@ -31,6 +31,11 @@ class FSDPConfig(FromParams):
     mixed_precision: bool = False
     """
     See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
+
+    .. tip::
+        If training with AMP (automatic mixed precision), it usually makes sense to
+        set this to ``True``.
+
     """
 
     def as_kwargs(self) -> Dict[str, Any]:

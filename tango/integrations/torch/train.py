@@ -500,9 +500,9 @@ def _train(
                 if epoch > 0:
                     # Call post-epoch callbacks for the last epoch.
                     for callback in callbacks:
-                        callback.post_epoch(current_epoch)
+                        callback.post_epoch(step, current_epoch)
                 for callback in callbacks:
-                    callback.pre_epoch(epoch)
+                    callback.pre_epoch(step, epoch)
                 current_epoch = epoch
 
             # Pre-batch callback.
@@ -645,7 +645,7 @@ def _train(
 
         # Final post-epoch callback.
         for callback in callbacks:
-            callback.post_epoch(current_epoch)
+            callback.post_epoch(step, current_epoch)
     except StopEarly:
         if config.is_local_main_process:
             logger.info("Stopping early!")
@@ -656,7 +656,7 @@ def _train(
         dist.barrier()
 
     for callback in callbacks:
-        callback.post_train_loop()
+        callback.post_train_loop(step)
 
     if config.is_local_main_process:
         training_engine.save_complete_weights_from_checkpoint(

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -75,6 +76,7 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
             )
 
         self.fsdp_config = fsdp_config or FSDPConfig()
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         super().__init__(
             train_config,
@@ -110,6 +112,7 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
     def save_complete_weights_from_checkpoint(
         self, checkpoint_dir: Path, weights_path: Path
     ) -> None:
+        self.logger.info("Consolidating sharded checkpoint weights...")
         sharded_weights: List[Dict[str, torch.Tensor]] = []
         sharded_metadata: List[Dict[str, Any]] = []
         for path in checkpoint_dir.resolve().glob("worker*_model.pt"):

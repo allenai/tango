@@ -93,7 +93,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_train_loop(self) -> None:
+    def post_train_loop(self, step: int) -> None:
         """
         Called after the training loop completes.
 
@@ -101,13 +101,13 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_epoch(self, epoch: int) -> None:
+    def pre_epoch(self, step: int, epoch: int) -> None:
         """
         Called right before the start of an epoch. Epochs start at 0.
         """
         pass
 
-    def post_epoch(self, epoch: int) -> None:
+    def post_epoch(self, step: int, epoch: int) -> None:
         """
         Called after an epoch is completed. Epochs start at 0.
         """
@@ -234,8 +234,8 @@ class CudaMemStatsCallback(TrainCallback):
     def pre_train_loop(self) -> None:
         torch.cuda.reset_peak_memory_stats()
 
-    def post_epoch(self, epoch: int) -> None:
+    def post_epoch(self, step: int, epoch: int) -> None:
         self.log_memory_stats(f"Epoch {epoch}")
 
-    def post_train_loop(self) -> None:
+    def post_train_loop(self, step: int) -> None:
         self.log_memory_stats("Train end")
