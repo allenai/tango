@@ -128,11 +128,7 @@ class WandbTrainCallback(TrainCallback):
             if self._watch_model:
                 self.wandb.watch(self.training_engine.model)
 
-    def pre_epoch(self, step: int, epoch: int) -> None:
-        if torch.cuda.is_available():
-            torch.cuda.reset_peak_memory_stats()
-
-    def post_epoch(self, step: int, epoch: int) -> None:
+    def _log_peak_gpu_mbs(self, step: int, epoch: int) -> None:
         peak_gpu_mbs = peak_gpu_memory()
         if self.is_local_main_process:
             metrics_dict = {
@@ -143,6 +139,18 @@ class WandbTrainCallback(TrainCallback):
                 metrics_dict,
                 step=step + 1,
             )
+
+    def pre_epoch(self, step: int, epoch: int) -> None:
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+        if epoch == 0:
+            # It's useful to get a measure of the peak GPU memory before the first batch
+            # is processed, so you can tell how much GPU memory the model and optimizer states
+            # occupy without activations and gradients.
+            self._log_peak_gpu_mbs(step, epoch)
+
+    def post_epoch(self, step: int, epoch: int) -> None:
+        self._log_peak_gpu_mbs(step, epoch)
 
     def post_train_loop(self, step: int, epoch: int) -> None:
         if self.is_local_main_process:
