@@ -113,18 +113,6 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_checkpoint(self, checkpoint_state: Dict[str, Any]) -> None:
-        """
-        Called directly before the checkpoint is saved.
-        """
-        pass
-
-    def post_checkpoint(self, checkpoint_path: Path) -> None:
-        """
-        Called directly after a checkpoint is saved.
-        """
-        pass
-
     def pre_batch(self, step: int, batch: List[Dict[str, Any]]) -> None:
         """
         Called directly before processing a batch.

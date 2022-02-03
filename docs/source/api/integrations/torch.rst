@@ -78,3 +78,5 @@ Callbacks
 
 .. autoclass:: tango.integrations.torch.StopEarly
    :members:
+
+.. autoclass:: tango.integrations.torch.CudaMemStatsCallback
