@@ -176,6 +176,17 @@ local TrainStep(options) =
                 },
             },
             {
+                name: "amp_and_fsdp_mp",
+                amp: true,
+                activation_checkpointing: false,
+                fsdp_config: {
+                    reshard_after_forward: true,
+                    move_params_to_cpu: false,
+                    move_grads_to_cpu: false,
+                    mixed_precision: true,
+                },
+            },
+            {
                 name: "checkpointing_and_fsdp",
                 amp: false,
                 activation_checkpointing: true,
