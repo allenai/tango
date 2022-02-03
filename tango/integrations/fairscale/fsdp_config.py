@@ -11,7 +11,12 @@ from tango.common import FromParams
 class FSDPConfig(FromParams):
     """
     Defines all of the configurable options for FairScale's :class:`~fairscale.nn.FullyShardedDataParallel`.
-    """
+
+    .. seealso::
+        `Best practices for FullyShardedDataParallel <https://fairscale.readthedocs.io/en/latest/deep_dive/oss_sdp_fsdp.html#best-practices-for-fairscale-nn-fullyshardeddataparallel>`_
+        from the FairScale docs.
+
+    """  # noqa: E501
 
     reshard_after_forward: bool = True
     """
@@ -32,9 +37,16 @@ class FSDPConfig(FromParams):
     """
     See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
 
-    .. tip::
-        If training with AMP (automatic mixed precision), it usually makes sense to
-        set this to ``True``.
+    .. important::
+        We recommend setting this to the same value as the ``amp`` parameter in
+        :class:`FairScaleTrainingEngine`.
+
+        Based on our experiments, if you're training with AMP enabled (``amp=True``)
+        you might see a small additional speedup in training time without any performance penalty
+        (with respect to convergence) by setting this to ``True``.
+
+        But if you're *not* training with AMP, setting this ``True`` could impact the
+        model's ability to converge.
 
     """
 
@@ -48,5 +60,9 @@ class FSDPConfig(FromParams):
         """
         A convenience method for wrapping a module in :class:`~fairscale.nn.FullyShardedDataParallel`
         with all of the options defined in this class.
+
+        .. seealso::
+            Internally this is what :func:`with_wrapped_modules()` calls.
+
         """
         return FSDP(module, **self.as_kwargs())
