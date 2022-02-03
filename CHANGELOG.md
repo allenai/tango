@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it could be a step.
 - Fixed bug where `Executor` would crash if `git` command could not be found.
 
+### Changed
+
+- Tango is now more lenient about registering the same class under the same name twice.
+
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
 
