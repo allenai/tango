@@ -7,9 +7,15 @@ local feature_extract = true;
 local distributed = false;
 local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
+<<<<<<< HEAD
 local training_steps = 500;
 local validate_every = 50;
 local image_url = "https://tinyurl.com/2p9xjvn9";
+=======
+local training_steps = 100;
+local validate_every = 20;
+local image_url = "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.countryliving.com%2Flife%2Fkids-pets%2Fa28423224%2Fdog-instagram-captions%2F&psig=AOvVaw1GHVmz_Ftm9Q0wiOWv8RUh&ust=1643836699366000&source=images&cd=vfe&ved=0CAsQjRxqFwoTCKCarIa33_UCFQAAAAAdAAAAABAF";
+>>>>>>> b697284d64614c466c2e1ee273c3e095044db522
 
 local distributed_dataloader = {
     batch_size: batch_size,
