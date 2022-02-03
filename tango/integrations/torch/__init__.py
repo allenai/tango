@@ -149,7 +149,6 @@ __all__ = [
     "EvalCallback",
     "TrainConfig",
     "StopEarlyCallback",
-    "CudaMemStatsCallback",
     "StopEarly",
     "TrainingEngine",
     "TorchTrainingEngine",
@@ -163,6 +162,6 @@ from .format import TorchFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
-from .train_callback import CudaMemStatsCallback, StopEarlyCallback, TrainCallback
+from .train_callback import StopEarlyCallback, TrainCallback
 from .train_config import TrainConfig
 from .training_engine import TorchTrainingEngine, TrainingEngine

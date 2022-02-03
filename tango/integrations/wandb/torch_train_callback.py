@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 import torch
 
 from tango.integrations.torch.train_callback import TrainCallback
+from tango.integrations.torch.util import peak_gpu_memory
 
 
 @TrainCallback.register("wandb::log")
@@ -73,6 +74,7 @@ class WandbTrainCallback(TrainCallback):
             )
 
         _wandb_config = self.train_config.as_dict()
+        del _wandb_config["worker_id"]
         _wandb_config["work_dir"] = str(self.train_config.work_dir.resolve())
         if wandb_config is not None:
             _wandb_config.update(wandb_config)
@@ -111,8 +113,6 @@ class WandbTrainCallback(TrainCallback):
         if self.is_local_main_process:
             self._wandb_kwargs["resume"] = "allow"
             self._run_id = state_dict["run_id"]
-        if torch.cuda.is_available():
-            torch.cuda.reset_peak_memory_stats()
 
     def pre_train_loop(self) -> None:
         if self.is_local_main_process:
@@ -128,26 +128,46 @@ class WandbTrainCallback(TrainCallback):
             if self._watch_model:
                 self.wandb.watch(self.training_engine.model)
 
-    def post_train_loop(self, step: int) -> None:
+    def pre_epoch(self, step: int, epoch: int) -> None:
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
+
+    def post_epoch(self, step: int, epoch: int) -> None:
+        peak_gpu_mbs = peak_gpu_memory()
+        if self.is_local_main_process:
+            metrics_dict = {
+                f"sys/worker{rank}_peak_gpu_mem": mbs for rank, mbs in peak_gpu_mbs.items()
+            }
+            metrics_dict["epoch"] = epoch
+            self.wandb.log(
+                metrics_dict,
+                step=step + 1,
+            )
+
+    def post_train_loop(self, step: int, epoch: int) -> None:
         if self.is_local_main_process:
             self.wandb.finish()
 
-    def log_batch(self, step: int, batch_loss: float) -> None:
+    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         if self.is_local_main_process:
             self.wandb.log(
                 {
                     "train/loss": batch_loss,
                     "train/lr": self.training_engine.optimizer.param_groups[0]["lr"],
+                    "epoch": epoch,
                 },
                 step=step + 1,
             )
 
-    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+    ) -> None:
         if self.is_local_main_process:
             self.wandb.log(
                 {
                     f"val/{self.train_config.val_metric_name}": val_metric,
                     f"val/best_{self.train_config.val_metric_name}": best_val_metric,
+                    "epoch": epoch,
                 },
                 step=step + 1,
             )

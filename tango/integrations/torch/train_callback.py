@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import torch
-
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
@@ -22,6 +20,10 @@ class TrainCallback(Registrable):
     .. tip::
         All of the parameters to this base class will be automatically set within
         the training loop, so you shouldn't include them in your config for your callbacks.
+
+    .. important::
+        The ``step`` argument to callback methods is the total/overall number of training steps
+        so far, independent of the current epoch.
 
     .. seealso::
         See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
@@ -93,7 +95,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_train_loop(self, step: int) -> None:
+    def post_train_loop(self, step: int, epoch: int) -> None:
         """
         Called after the training loop completes.
 
@@ -113,7 +115,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_batch(self, step: int, batch: List[Dict[str, Any]]) -> None:
+    def pre_batch(self, step: int, epoch: int, batch: List[Dict[str, Any]]) -> None:
         """
         Called directly before processing a batch.
 
@@ -124,7 +126,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, batch_loss: float) -> None:
+    def post_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
@@ -138,7 +140,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def log_batch(self, step: int, batch_loss: float) -> None:
+    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         """
         Called after the optimizer step. Here ``batch_loss`` is the average loss across
         all distributed workers.
@@ -151,13 +153,17 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_val_batch(self, step: int, val_step: int, val_batch: Dict[str, Any]) -> None:
+    def pre_val_batch(
+        self, step: int, val_step: int, epoch: int, val_batch: Dict[str, Any]
+    ) -> None:
         """
         Called right before a validation batch is processed.
         """
         pass
 
-    def post_val_batch(self, step: int, val_step: int, val_batch_outputs: Dict[str, Any]) -> None:
+    def post_val_batch(
+        self, step: int, val_step: int, epoch: int, val_batch_outputs: Dict[str, Any]
+    ) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
 
@@ -170,7 +176,9 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+    ) -> None:
         """
         Called right after the validation loop finishes.
         """
@@ -193,7 +201,9 @@ class StopEarlyCallback(TrainCallback):
         self.patience = patience
         self.best_step = 0
 
-    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+    ) -> None:
         if val_metric == best_val_metric:
             self.best_step = step
         elif step > self.best_step + self.patience:
@@ -211,31 +221,3 @@ class StopEarlyCallback(TrainCallback):
         """
         self.patience = state_dict["patience"]
         self.best_step = state_dict["best_step"]
-
-
-@TrainCallback.register("torch::cuda_mem_stats")
-class CudaMemStatsCallback(TrainCallback):
-    """
-    A :class:`TrainCallback` that logs CUDA memory statistics throughout training at the INFO level.
-
-    .. tip::
-
-        Registered as a :class:`TrainCallback` under the name "torch::cuda_mem_stats".
-    """
-
-    def log_memory_stats(self, state: str) -> None:
-        max_mem_allocated_mb = torch.cuda.max_memory_allocated() // (1024 * 1024)
-        self.logger.info(
-            "%s - CUDA max memory used: %dMiB",
-            state,
-            max_mem_allocated_mb,
-        )
-
-    def pre_train_loop(self) -> None:
-        torch.cuda.reset_peak_memory_stats()
-
-    def post_epoch(self, step: int, epoch: int) -> None:
-        self.log_memory_stats(f"Epoch {epoch}")
-
-    def post_train_loop(self, step: int) -> None:
-        self.log_memory_stats("Train end")

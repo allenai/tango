@@ -2,8 +2,10 @@
 # Model settings #
 ##################
 
-local pretrained_model = "EleutherAI/gpt-j-6B";
-local load_with_low_cpu_mem_usage = true;  # be careful, this doesn't seem to work with every model
+// local pretrained_model = "EleutherAI/gpt-j-6B";
+# local pretrained_model = "EleutherAI/gpt-j-6B";
+# This doesn't seem to work with gpt2, but works fine with gpt-j-6B.
+local load_with_low_cpu_mem_usage = pretrained_model == "EleutherAI/gpt-j-6B";
 
 ####################
 # Trainer settings #
@@ -89,13 +91,10 @@ local TrainStep(options) =
         training_engine: training_engine,
         callbacks: [
             {
-                type: "torch::cuda_mem_stats",
-            },
-            {
                 type: "wandb::log",
                 entity: "allennlp",
                 project: "tango-fairscale-benchmarks",
-                wandb_config: options,
+                wandb_config: options + { effective_batch_size: batch_size * devices * grad_accum },
             },
         ],
     };
@@ -115,13 +114,13 @@ local TrainStep(options) =
     } + {
         ["trained_model_" + options.name]: TrainStep(options)
         for options in [
-            // With 6B model, baseline will fail with CUDA OOM
-            // {
-            //     name: "baseline",
-            //     amp: false,
-            //     fsdp_config: null,
-            //     activation_checkpointing: false,
-            // },
+            # With 6B model, baseline will fail with CUDA OOM
+            {
+                name: "baseline",
+                amp: false,
+                fsdp_config: null,
+                activation_checkpointing: false,
+            },
             {
                 name: "checkpointing_and_fsdp",
                 amp: false,

@@ -1,9 +1,10 @@
 import random
 import warnings
-from typing import Optional, TypeVar, Union
+from typing import Dict, Optional, TypeVar, Union
 
 import numpy as np
 import torch
+import torch.distributed as dist
 from torch.utils.data import DistributedSampler, IterableDataset
 
 from .data import DataLoader
@@ -76,3 +77,47 @@ def resolve_device(device: Optional[Union[int, str, torch.device]] = None) -> to
         return device
     else:
         raise TypeError(f"unexpected type for 'device': '{device}'")
+
+
+def peak_gpu_memory(reset: bool = False) -> Dict[int, int]:
+    """
+    Get the peak GPU memory usage in MiB by distributed worker rank.
+
+    Returns
+    -------
+
+    Dict[int, int]
+        Keys are rank ids as integers (from 0 up to world size - 1).
+        Values are memory usage as integers in MiB.
+        Returns an empty `dict` if GPUs are not available.
+    """
+    if not torch.cuda.is_available():
+        return {}
+
+    device = torch.device("cuda")
+
+    results_dict: Dict[int, int] = {}
+    if dist.is_available() and dist.is_initialized():
+        # If the backend is not 'nccl', we're training on CPU.
+        if dist.get_backend() != "nccl":
+            return {}
+
+        global_rank = dist.get_rank()
+        world_size = dist.get_world_size()
+        peak_mb = torch.cuda.max_memory_allocated(device)
+        peak_mb_tensor = torch.tensor([global_rank, peak_mb], device=device)
+        # All of these tensors will be gathered into this list.
+        gather_results = [torch.tensor([0, 0], device=device) for _ in range(world_size)]
+
+        dist.all_gather(gather_results, peak_mb_tensor)
+
+        for peak_mb_tensor in gather_results:
+            results_dict[int(peak_mb_tensor[0])] = int(peak_mb_tensor[1])
+    else:
+        results_dict = {0: torch.cuda.max_memory_allocated()}
+
+    if reset:
+        # Reset peak stats.
+        torch.cuda.reset_max_memory_allocated(device)
+
+    return results_dict

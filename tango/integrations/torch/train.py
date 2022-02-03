@@ -507,7 +507,7 @@ def _train(
 
             # Pre-batch callback.
             for callback in callbacks:
-                callback.pre_batch(step, batch)
+                callback.pre_batch(step, current_epoch, batch)
             batch_loss = 0.0
             for micro_batch_idx, micro_batch in enumerate(batch):
                 # Get loss.
@@ -527,7 +527,7 @@ def _train(
 
             # Post-batch callback.
             for callback in callbacks:
-                callback.post_batch(step, batch_loss)
+                callback.post_batch(step, current_epoch, batch_loss)
 
             if best_batch_loss is None or batch_loss <= best_batch_loss:
                 best_batch_loss = batch_loss
@@ -547,7 +547,7 @@ def _train(
             if config.should_log_this_step(step):
                 # Callbacks.
                 for callback in callbacks:
-                    callback.log_batch(step, batch_loss)
+                    callback.log_batch(step, current_epoch, batch_loss)
 
                 # Update progress bar.
                 metrics_to_log: Dict[str, float] = {"batch_loss": batch_loss}
@@ -576,13 +576,13 @@ def _train(
                 ) as val_batch_iterator:
                     for val_step, val_batch in enumerate(val_batch_iterator):
                         for callback in callbacks:
-                            callback.pre_val_batch(step, val_step, val_batch)
+                            callback.pre_val_batch(step, val_step, current_epoch, val_batch)
 
                         # Get metric.
                         outputs = training_engine.forward_eval(val_batch)
 
                         for callback in callbacks:
-                            callback.post_val_batch(step, val_step, outputs)
+                            callback.post_val_batch(step, val_step, current_epoch, outputs)
                         metric = outputs[config.val_metric_name]
 
                         if config.auto_aggregate_val_metric:
@@ -626,7 +626,7 @@ def _train(
 
                 # Post validation callback.
                 for callback in callbacks:
-                    callback.post_val_loop(step, val_metric, best_val_metric)
+                    callback.post_val_loop(step, current_epoch, val_metric, best_val_metric)
 
                 # Update progress bar again.
                 metrics_to_log = {
@@ -656,7 +656,7 @@ def _train(
         dist.barrier()
 
     for callback in callbacks:
-        callback.post_train_loop(step)
+        callback.post_train_loop(step, current_epoch)
 
     if config.is_local_main_process:
         training_engine.save_complete_weights_from_checkpoint(
