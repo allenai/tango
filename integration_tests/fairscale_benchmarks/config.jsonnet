@@ -2,7 +2,7 @@
 # Model settings #
 ##################
 
-// local pretrained_model = "EleutherAI/gpt-j-6B";
+local pretrained_model = "gpt2";
 # local pretrained_model = "EleutherAI/gpt-j-6B";
 # This doesn't seem to work with gpt2, but works fine with gpt-j-6B.
 local load_with_low_cpu_mem_usage = pretrained_model == "EleutherAI/gpt-j-6B";
@@ -26,7 +26,7 @@ local batch_size = 8;
 ######################
 
 local warmup_steps = 20;
-local learning_rate = 0.00001;
+local learning_rate = if pretrained_model == "EleutherAI/gpt-j-6B" then 0.00001 else 0.0001;
 
 
 # <----- you probably don't need to edit below this line ----> #
@@ -94,7 +94,10 @@ local TrainStep(options) =
                 type: "wandb::log",
                 entity: "allennlp",
                 project: "tango-fairscale-benchmarks",
-                wandb_config: options + { effective_batch_size: batch_size * devices * grad_accum },
+                wandb_config: options + {
+                    effective_batch_size: batch_size * devices * grad_accum,
+                    model: pretrained_model,
+                },
             },
         ],
     };
@@ -165,18 +168,18 @@ local TrainStep(options) =
                     mixed_precision: true,
                 },
             },
-            // Currently does not work. Tracking https://github.com/facebookresearch/fairscale/issues/918
-            // {
-            //     name: "amp_and_checkpointing_and_fsdp_mp_with_partial_offloading",
-            //     amp: true,
-            //     activation_checkpointing: true,
-            //     fsdp_config: {
-            //         reshard_after_forward: true,
-            //         move_params_to_cpu: true,
-            //         move_grads_to_cpu: false,
-            //         mixed_precision: true,
-            //     },
-            // },
+            # Currently does not work. Tracking https://github.com/facebookresearch/fairscale/issues/918
+            # {
+            #     name: "amp_and_checkpointing_and_fsdp_mp_with_partial_offloading",
+            #     amp: true,
+            #     activation_checkpointing: true,
+            #     fsdp_config: {
+            #         reshard_after_forward: true,
+            #         move_params_to_cpu: true,
+            #         move_grads_to_cpu: false,
+            #         mixed_precision: true,
+            #     },
+            # },
             {
                 name: "amp_and_checkpointing_and_fsdp_mp_with_full_offloading",
                 amp: true,
