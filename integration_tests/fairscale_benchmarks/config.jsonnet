@@ -115,6 +115,7 @@ local TrainStep(options) =
     } + {
         ["trained_model_" + options.name]: TrainStep(options)
         for options in [
+            // With 6B model, baseline will fail with CUDA OOM
             // {
             //     name: "baseline",
             //     amp: false,
@@ -124,6 +125,17 @@ local TrainStep(options) =
             {
                 name: "checkpointing_and_fsdp",
                 amp: false,
+                activation_checkpointing: true,
+                fsdp_config: {
+                    reshard_after_forward: true,
+                    move_params_to_cpu: false,
+                    move_grads_to_cpu: false,
+                    mixed_precision: false,
+                },
+            },
+            {
+                name: "amp_and_checkpointing_and_fsdp",
+                amp: true,
                 activation_checkpointing: true,
                 fsdp_config: {
                     reshard_after_forward: true,
@@ -143,17 +155,17 @@ local TrainStep(options) =
                     mixed_precision: true,
                 },
             },
-            // {
-            //     name: "amp_and_checkpointing_and_fsdp_mp_with_offloading",
-            //     amp: true,
-            //     activation_checkpointing: true,
-            //     fsdp_config: {
-            //         reshard_after_forward: true,
-            //         move_params_to_cpu: true,
-            //         move_grads_to_cpu: true,
-            //         mixed_precision: true,
-            //     },
-            // },
+            {
+                name: "amp_and_checkpointing_and_fsdp_mp_with_offloading",
+                amp: true,
+                activation_checkpointing: true,
+                fsdp_config: {
+                    reshard_after_forward: true,
+                    move_params_to_cpu: true,
+                    move_grads_to_cpu: true,
+                    mixed_precision: true,
+                },
+            },
         ]
     }
 }
