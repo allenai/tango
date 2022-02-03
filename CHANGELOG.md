@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed bug where `Executor` would crash if `git` command could not be found.
 
+### Changed
+
+- Tango is now better at guessing when a step has died and should be re-run.
+
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
 
@@ -26,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web UI now shows runs by date, with the most recent run at the top.
 - The web UI now shows steps in a color-coded way.
 - The `--include-package` flag now also accepts paths instead of module names.
-- Tango is now better at guessing when a step has died and should be re-run.
 
 ### Fixed
 
