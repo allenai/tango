@@ -19,14 +19,6 @@ faq
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: Advanced Guides
-
-guides/training_at_scale
-```
-
-```{toctree}
-:maxdepth: 2
-:hidden:
 :caption: API Reference
 
 api/commands

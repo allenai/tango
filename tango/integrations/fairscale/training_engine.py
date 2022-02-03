@@ -42,10 +42,42 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
         file. The other parameters will be automatically passed to the constructor
         within :class:`~tango.integrations.torch.TorchTrainStep`.
 
+    .. warning::
+        :class:`~FairScaleTrainingEngine` can only be used in distributed training, i.e.
+        when ``device_count > 1`` in the :class:`~tango.integrations.torch.TorchTrainStep`.
+
+    For maximum memory savings, we recommend training with AMP enabled and the following
+    :class:`FSDPConfig`:
+
+    .. testcode::
+
+        from tango.integrations.fairscale import FSDPConfig
+
+        fsdp_config = FSDPConfig(
+            reshard_after_forward=True,
+            move_params_to_cpu=True,
+            move_grads_to_cpu=True,
+            mixed_precision=True,
+        )
+
+    For maximum training *speed*, we recommend training with AMP enabled and the following
+    :class:`FSDPConfig`:
+
+    .. testcode::
+
+        from tango.integrations.fairscale import FSDPConfig
+
+        fsdp_config = FSDPConfig(
+            reshard_after_forward=False,
+            move_params_to_cpu=False,
+            move_grads_to_cpu=False,
+            mixed_precision=True,
+        )
+
     Parameters
     ----------
     amp : :class:`bool`, optional
-        Use automatic mixed precision. Default is ``False``.
+        Use automatic mixed precision (AMP). Default is ``False``.
     max_grad_norm : :class:`float`, optional
         If set, gradients will be clipped to have this max norm. Default is ``None``.
     amp_use_bfloat16 : ``Optional[bool]``

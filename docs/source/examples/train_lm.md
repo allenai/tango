@@ -9,10 +9,6 @@
 You can find the full code for this example on [GitHub](https://github.com/allenai/tango/tree/main/examples/train_lm).
 ```
 
-```{tip}
-To learn more about the Tango integrations that allow you to train a 6B parameter model or larger, see the [Training at Scale](/guides/training_at_scale) guide.
-```
-
 ## Components
 
 We'll need to write a step for tokenizing the data and preparing it for language model training.

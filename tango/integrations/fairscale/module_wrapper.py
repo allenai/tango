@@ -59,7 +59,7 @@ def with_wrapped_modules(
                 "type": "transformers::AutoModelForCausalLM::from_pretrained",
                 "pretrained_model_name_or_path": "sshleifer/tiny-gpt2",
             },
-            "modules_to_wrap": ["transformer\\.h\\.[0-9]+"],  # wrap each block of the transformer
+            "modules_to_wrap": [r"transformer\.h\.[0-9]+"],  # wrap each block of the transformer
             "activation_checkpointing": True,
         })
 

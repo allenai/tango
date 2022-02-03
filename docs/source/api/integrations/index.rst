@@ -8,8 +8,8 @@ Integrations
    :caption: Integrations
 
    torch
-   datasets
    fairscale
+   datasets
    transformers
    wandb
    pytorch_lightning

@@ -32,6 +32,9 @@ class FSDPConfig(FromParams):
     """
     See the docstring for :class:`~fairscale.nn.FullyShardedDataParallel`.
 
+    .. seealso::
+        :data:`move_params_to_cpu`
+
     .. warning::
         At the moment we recommend that you don't mess with this parameter, or only explicitly
         set it to the same value as :data:`move_params_to_cpu`. If you leave it as ``None``
@@ -51,9 +54,9 @@ class FSDPConfig(FromParams):
         :class:`FairScaleTrainingEngine`.
 
         Based on our experiments, if you're training with AMP enabled (``amp=True``)
-        you might see a small additional speedup in training time without any performance penalty
+        you might see a small additional speedup in training time along with a small
+        additional decrease in GPU memory utilization without any performance penalty
         (with respect to convergence) by setting this to ``True``.
-
         But if you're *not* training with AMP, setting this ``True`` could impact the
         model's ability to converge.
 

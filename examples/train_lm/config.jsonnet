@@ -57,19 +57,19 @@ local training_engine = {
 };
 
 local distributed_dataloader = {
-  batch_size: batch_size,
-  collate_fn: { type: "transformers::DefaultDataCollator" },
-  sampler: {
-    type: "torch::DistributedSampler",
-    shuffle: true,
-    drop_last: true,
-  },
+    batch_size: batch_size,
+    collate_fn: { type: "transformers::DefaultDataCollator" },
+    sampler: {
+        type: "torch::DistributedSampler",
+        shuffle: true,
+        drop_last: true,
+    },
 };
 
 local single_device_dataloader = {
-  shuffle: true,
-  batch_size: batch_size,
-  collate_fn: { type: "transformers::DefaultDataCollator" },
+    shuffle: true,
+    batch_size: batch_size,
+    collate_fn: { type: "transformers::DefaultDataCollator" },
 };
 
 local dataloader = if devices > 1 then distributed_dataloader else single_device_dataloader;

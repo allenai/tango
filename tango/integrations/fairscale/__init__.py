@@ -9,6 +9,20 @@
     for more details.
 
 Components for Tango integration with `FairScale <https://github.com/facebookresearch/fairscale>`_.
+
+Overview
+--------
+
+FairScale is a PyTorch library for large scale training. Among other things, it implements
+the main memory-savings techniques for distributed data-parallel training (DDP) that came from the paper
+`ZeRO: Memory Optimization Towards Training A Trillion Parameter Models
+<https://api.semanticscholar.org/CorpusID:203736482>`_.
+
+The main part of this Tango integration is the :class:`FairScaleTrainingEngine`.
+This is a :class:`~tango.integrations.torch.TrainingEngine` implementation that utilizes
+FairScale's :class:`~fairscale.nn.FullyShardedDataParallel` for substantial memory savings
+during distributed training.
+
 """
 
 __all__ = [
