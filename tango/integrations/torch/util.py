@@ -104,7 +104,7 @@ def peak_gpu_memory(reset: bool = False) -> Dict[int, int]:
 
         global_rank = dist.get_rank()
         world_size = dist.get_world_size()
-        peak_mb = torch.cuda.max_memory_allocated(device)
+        peak_mb = torch.cuda.max_memory_allocated(device) / 1048576
         peak_mb_tensor = torch.tensor([global_rank, peak_mb], device=device)
         # All of these tensors will be gathered into this list.
         gather_results = [torch.tensor([0, 0], device=device) for _ in range(world_size)]
