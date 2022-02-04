@@ -192,44 +192,27 @@ jobs:
           pip uninstall -y ai2-tango
 
   docker:
-    name: Docker (CUDA ${{ matrix.cuda }})
+    name: Docker (${{ matrix.tag }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        cuda: ['11.3']
+        build:
+          - base_image: ghcr.io/allenai/pytorch:1.10.2-cuda11.3
+            tag: cuda11.3
     env:
       IMAGE_NAME: ghcr.io/allenai/tango
       DOCKER_BUILDKIT: 1
     steps:
       - uses: actions/checkout@v2
 
-      - name: Find image for layer caching
-        shell: bash
-        run: |
-          for tag in "cuda${{ matrix.cuda }}"
-          do
-            image="${IMAGE_NAME}:${tag}"
-            docker manifest inspect "$image" > /dev/null 2>&1 || continue
-            echo "CACHE_FROM=${image}" >> $GITHUB_ENV
-            echo "Found image '${image}' to cache from"
-            break
-          done
-
       - name: Build Docker image
         run: |
-          if [ -z "$CACHE_FROM" ]
-          then
-            # Build without cache image
-            docker build --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
-          else
-            # Build with cache image
-            docker build --cache-from "${IMAGE_NAME}:cuda${{ matrix.cuda }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
-          fi
+          docker build --cache-from "${IMAGE_NAME}:${{ matrix.build.tag }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg BASE_IMAGE=${{ matrix.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
 
       - name: Test Docker image
         run: |
-          docker run --rm "${IMAGE_NAME}:cuda${{ matrix.cuda }}" info
+          docker run --rm "${IMAGE_NAME}:${{ matrix.build.tag }}" info
 
       - name: Log in to ghcr.io
         if: github.event_name != 'pull_request'
@@ -239,14 +222,14 @@ jobs:
       - name: Push latest to ghcr.io
         if: github.event_name != 'pull_request'
         run: |
-          docker push "${IMAGE_NAME}:cuda${{ matrix.cuda }}"
+          docker push "${IMAGE_NAME}:${{ matrix.build.tag }}"
 
       - name: Push release version to ghcr.io
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           GITHUB_TAG=${GITHUB_REF#refs/tags/}
-          docker tag "${IMAGE_NAME}:cuda${{ matrix.cuda }}" "${IMAGE_NAME}:${GITHUB_TAG}-cuda${{ matrix.cuda }}"
-          docker push "${IMAGE_NAME}:${GITHUB_TAG}-cuda${{ matrix.cuda }}"
+          docker tag "${IMAGE_NAME}:${{ matrix.build.tag }}" "${IMAGE_NAME}:${GITHUB_TAG}-${{ matrix.build.tag }}"
+          docker push "${IMAGE_NAME}:${GITHUB_TAG}-${{ matrix.build.tag }}"
 
   release:
     name: Release
