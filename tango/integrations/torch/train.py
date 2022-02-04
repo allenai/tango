@@ -88,7 +88,7 @@ class TorchTrainStep(Step):
         grad_accum: int = 1,
         log_every: int = 10,
         checkpoint_every: int = 100,
-        validate_every: int = 100,
+        validate_every: Optional[int] = None,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
         device_count: int = 1,
