@@ -19,14 +19,14 @@ RUN curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Mini
     chmod +x ~/miniconda.sh && \
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
-    /opt/conda/bin/conda install -y python=${PYTHON_VERSION} ipython && \
+    /opt/conda/bin/conda install -y "python=${PYTHON_VERSION}" ipython && \
     /opt/conda/bin/conda clean -ya
 
 FROM conda as conda-installs
 ARG PYTHON_VERSION=3.9
 ARG CUDA_VERSION=11.3
 ARG INSTALL_CHANNEL=pytorch
-RUN /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -y python=${PYTHON_VERSION} pytorch torchvision torchtext "cudatoolkit=${CUDA_VERSION}" && \
+RUN /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -y "python=${PYTHON_VERSION}" pytorch torchvision torchtext "cudatoolkit=${CUDA_VERSION}" && \
     /opt/conda/bin/conda clean -ya
 WORKDIR /stage
 COPY requirements.txt requirements.txt
