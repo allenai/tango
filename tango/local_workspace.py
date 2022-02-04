@@ -302,6 +302,8 @@ class LocalWorkspace(Workspace):
         for dir_entry in dir.iterdir():
             if dir_entry.name == "work" and dir_entry.is_dir():
                 continue
+            if dir_entry.name == "lock" and dir_entry.is_file():
+                continue
             break
         else:
             return StepState.INCOMPLETE
