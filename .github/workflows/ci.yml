@@ -197,7 +197,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cuda: ['11.5.1']
+        cuda: ['11.3']
     env:
       IMAGE_NAME: ghcr.io/allenai/tango
       DOCKER_BUILDKIT: 1
@@ -206,7 +206,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --cache-from "${IMAGE_NAME}:cuda${{ matrix.cuda }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg cuda=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
+          docker build --cache-from "${IMAGE_NAME}:cuda${{ matrix.cuda }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
 
       - name: Test Docker image
         run: |

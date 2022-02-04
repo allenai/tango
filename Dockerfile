@@ -28,6 +28,11 @@ ARG CUDA_VERSION=11.3
 ARG INSTALL_CHANNEL=pytorch
 RUN /opt/conda/bin/conda install -c "${INSTALL_CHANNEL}" -y python=${PYTHON_VERSION} pytorch torchvision torchtext "cudatoolkit=${CUDA_VERSION}" && \
     /opt/conda/bin/conda clean -ya
+WORKDIR /stage
+COPY requirements.txt requirements.txt
+RUN /opt/conda/bin/pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN /opt/conda/bin/pip install --no-cache-dir --no-deps .[all]
 
 FROM ${BASE_IMAGE} as official
 
