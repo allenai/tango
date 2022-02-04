@@ -202,13 +202,13 @@ jobs:
             tag: cuda11.3
     env:
       IMAGE_NAME: ghcr.io/allenai/tango
-      DOCKER_BUILDKIT: 1
+      # DOCKER_BUILDKIT: 1
     steps:
       - uses: actions/checkout@v2
 
       - name: Build Docker image
         run: |
-          docker build --cache-from "${IMAGE_NAME}:${{ matrix.build.tag }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
+          docker build --cache-from "${IMAGE_NAME}:${{ matrix.build.tag }}" --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
 
       - name: Test Docker image
         run: |
