@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Tango is now better at guessing when a step has died and should be re-run.
+- Tango is now more lenient about registering the same class under the same name twice.
 
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
