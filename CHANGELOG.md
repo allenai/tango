@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- The waiting message for `FileLock` is now clear about which file it's waiting for.
+- Added an easier way to get the default Tango global config
+
+### Fixed
+
+- Fixed bug where `Executor` would crash if `git` command could not be found.
+
+### Changed
+
+- Tango is now more lenient about registering the same class under the same name twice.
+
+
+## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
+
 ### Changed
 
 - Default log level is `WARNING` instead of `ERROR`.
 - The web UI now renders the step graph left-to-right.
 - The web UI now shows runs by date, with the most recent run at the top.
 - The web UI now shows steps in a color-coded way.
+- The `--include-package` flag now also accepts paths instead of module names.
 
 ### Fixed
 

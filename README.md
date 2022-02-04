@@ -90,13 +90,19 @@ cd tango
 Then run
 
 ```bash
-pip install -e .
+pip install -e .[all]
 ```
 
-To install with a specific integration, such as `torch` for example, run
+To install with only a specific integration, such as `torch` for example, run
 
 ```bash
 pip install -e .[torch]
+```
+
+Or to install just the base tango library, you can run
+
+```bash
+pip install -e .
 ```
 
 ### Checking your installation
@@ -109,6 +115,30 @@ tango info
 ```
 
 to check your installation.
+
+### Docker image
+
+You can build a Docker image suitable for tango projects by using [the official Dockerfile](https://github.com/allenai/tango/blob/main/Dockerfile) as a starting point for your own Dockerfile, or you can simply use one of our [prebuilt images](https://github.com/allenai/tango/pkgs/container/tango) as a base image in your Dockerfile. For example:
+
+```Dockerfile
+# Start from a prebuilt tango base image.
+# You can choose the right tag from the available options here:
+# https://github.com/allenai/tango/pkgs/container/tango/versions
+FROM ghcr.io/allenai/tango:cuda11.5.1
+
+# Install your project's additional requirements.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install source code.
+# This instruction copies EVERYTHING in the current directory (build context),
+# which may not be what you want. Consider using a ".dockerignore" file to
+# exclude files and directories that you don't want on the image.
+COPY . .
+```
+
+Make sure to choose the right base image for your use case depending on the version of tango you're using and the CUDA version that your host machine supports.
+You can see a list of all available image tags [on GitHub](https://github.com/allenai/tango/pkgs/container/tango/versions).
 
 <!-- end install -->
 
