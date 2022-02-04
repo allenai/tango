@@ -204,9 +204,28 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Find image for layer caching
+        shell: bash
+        run: |
+          for tag in "cuda${{ matrix.cuda }}"
+          do
+            image="${IMAGE_NAME}:${tag}"
+            docker manifest inspect "$image" > /dev/null 2>&1 || continue
+            echo "CACHE_FROM=${image}" >> $GITHUB_ENV
+            echo "Found image '${image}' to cache from"
+            break
+          done
+
       - name: Build Docker image
         run: |
-          docker build --cache-from "${IMAGE_NAME}:cuda${{ matrix.cuda }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
+          if [ -z "$CACHE_FROM" ]
+          then
+            # Build without cache image
+            docker build --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
+          else
+            # Build with cache image
+            docker build --cache-from "${IMAGE_NAME}:cuda${{ matrix.cuda }}" --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg CUDA_VERSION=${{ matrix.cuda }} -t "${IMAGE_NAME}:cuda${{ matrix.cuda }}" .
+          fi
 
       - name: Test Docker image
         run: |
