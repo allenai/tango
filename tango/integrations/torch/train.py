@@ -205,7 +205,7 @@ class TorchTrainStep(Step):
 
         if validate_every is not None and validation_split is None:
             raise ConfigurationError(
-                "You chave set a validation interval, but no invalidation split. "
+                "You have set a validation interval, but no validation split. "
                 "That's probably unintentional."
             )
 
