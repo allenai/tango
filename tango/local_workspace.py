@@ -293,7 +293,7 @@ class LocalWorkspace(Workspace):
         if lock_file.exists():
             lock = FileLock(lock_file)
             try:
-                lock.acquire(0)
+                lock.acquire(0.1)
                 lock.release()
             except TimeoutError:
                 return StepState.RUNNING
