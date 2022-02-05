@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
 
 import petname
 from sqlitedict import SqliteDict
@@ -276,17 +276,17 @@ class LocalWorkspace(Workspace):
         return result
 
     @classmethod
-    def guess_step_dir_state(cls, dir: Path) -> Optional[StepState]:
+    def guess_step_dir_state(cls, dir: Path) -> Set[StepState]:
         """
-        Returns the status of a given step dir, to the best of our knowledge.
+        Returns the possible states of a given step dir, to the best of our knowledge.
 
         :param dir: the step dir to example
-        :return: our best guess at the state of the step, or ``None`` if we don't know
+        :return: a set of possible states for the step
         """
 
         # If the directory doesn't exist, the step is incomplete.
         if not dir.exists():
-            return StepState.INCOMPLETE
+            return {StepState.INCOMPLETE}
 
         # If the lock file exists and is locked, the step is running.
         lock_file = dir / "lock"
@@ -296,9 +296,11 @@ class LocalWorkspace(Workspace):
                 lock.acquire(0.1)
                 lock.release()
             except TimeoutError:
-                return StepState.RUNNING
+                return {StepState.RUNNING}
 
-        # If the directory is empty except for the work dir, the step is incomplete.
+        # If the directory is empty except for the work dir and the lock file, the step is running, incomplete,
+        # or failed. But it can't be running because then the lockfile would be locked, so it can only be
+        # incomplete or failed.
         for dir_entry in dir.iterdir():
             if dir_entry.name == "work" and dir_entry.is_dir():
                 continue
@@ -306,9 +308,9 @@ class LocalWorkspace(Workspace):
                 continue
             break
         else:
-            return StepState.INCOMPLETE
+            return {StepState.INCOMPLETE, StepState.FAILED}
 
-        return None
+        return set(StepState)
 
     @staticmethod
     def _fix_step_info(step_info: StepInfo) -> None:
@@ -354,20 +356,21 @@ class LocalWorkspace(Workspace):
                 # Perform some sanity checks. Sqlite and the file system can get out of sync
                 # when a process dies suddenly.
                 step_dir = self.step_dir(unique_id)
-                step_state_guess = self.guess_step_dir_state(step_dir) or step_info.state
-                if (
-                    step_state_guess == StepState.INCOMPLETE
-                    and step_info.state != StepState.INCOMPLETE
-                ):
-                    step_info.start_time = None
-                    step_info.end_time = None
-                    d[unique_id] = step_info
-                elif step_state_guess == StepState.RUNNING and step_info.state != StepState.RUNNING:
-                    raise IOError(
-                        f"The step '{unique_id}' is locked with the lock file in '{step_dir / 'lock'}', "
-                        "but we don't seem to think it's running. If you are positive the step is not "
-                        "running, please delete the lock file and try again."
-                    )
+                step_state_guesses = self.guess_step_dir_state(step_dir) or step_info.state
+                if step_info.state not in step_state_guesses:
+                    if step_info.state == StepState.RUNNING:
+                        # We think the step is running, but it can't possibly be running, so we go ahead and
+                        # assume the step is incomplete.
+                        step_info.start_time = None
+                        step_info.end_time = None
+                        d[unique_id] = step_info
+                    else:
+                        possible_states = ", ".join(s.value for s in step_state_guesses)
+                        raise IOError(
+                            f"The step '{unique_id}' is marked as being {step_info.state.value}, but we "
+                            f"determined it can only be one of {{{possible_states}}}. If you are positive"
+                            f"this is a screw-up, delete the directory at '{step_dir}' and try again."
+                        )
 
                 return step_info
 
