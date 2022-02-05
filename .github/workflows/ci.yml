@@ -206,9 +206,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Pull last image
+        continue-on-error: true
+        run: |
+          docker pull "${IMAGE_NAME}:${{ matrix.build.tag }}"
+
       - name: Build Docker image
         run: |
-          docker build --cache-from "${IMAGE_NAME}:${{ matrix.build.tag }}" --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
+          docker build --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
 
       - name: Test Docker image
         run: |
