@@ -37,7 +37,13 @@ class TestTrainStep(TangoTestCase):
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
             ],
-            overrides=json.dumps({"steps.train.train_steps": None, "steps.train.train_epochs": 2}),
+            overrides=json.dumps(
+                {
+                    "steps.train.train_steps": None,
+                    "steps.train.train_epochs": 2,
+                    "steps.train.validate_every": None,
+                }
+            ),
         )
         assert (result_dir / "train" / "data.pt").is_file()
 
