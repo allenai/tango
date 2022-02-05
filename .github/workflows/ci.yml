@@ -208,7 +208,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
+          docker build --cache-from "${IMAGE_NAME}:${{ matrix.build.tag }}" --build-arg BASE_IMAGE=${{ matrix.build.base_image }} -t "${IMAGE_NAME}:${{ matrix.build.tag }}" .
 
       - name: Test Docker image
         run: |
