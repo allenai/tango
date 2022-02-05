@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The waiting message for `FileLock` is now clear about which file it's waiting for.
 - Added an easier way to get the default Tango global config
+- Plain old Python functions can now be used in `Lazy` objects.
 
 ### Fixed
 
 - Fixed bug where `Executor` would crash if `git` command could not be found.
+- Fixed bug where validation settings were not interpreted the right way by the torch trainer.
 
 ### Changed
 
