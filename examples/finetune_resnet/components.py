@@ -1,3 +1,4 @@
+import imp
 import json
 from typing import Any, Dict, List, Optional
 
@@ -9,7 +10,7 @@ from torch import nn
 from torch.optim import Adam
 from torchvision import models, transforms
 
-from tango import Step
+from tango import Format, JsonFormat, Step
 from tango.integrations.torch import DataCollator, Model, Optimizer
 
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
@@ -33,11 +34,11 @@ class ResNetWrapper(Model):
                 param.requires_grad = False
 
     def forward(
-        self, image: torch.Tensor, label: Optional[torch.Tensor]
+        self, image: torch.Tensor, label: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
         if label is None:
-            return torch.argmax(output)
+            return {"pred": torch.argmax(output)}
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
@@ -78,16 +79,19 @@ def get_data_transforms(input_size: int):
 
 # loads and image and applies the appropriate transformation
 def pil_loader(path: str, input_size: int, transform_type: str):
-        with open(path, "rb") as f:
-            image = Image.open(f)
-            image = image.convert("RGB")
-            transform = get_data_transforms(input_size=input_size)[transform_type]
-            transformed_image = transform(image)
-            return transformed_image
+    with open(path, "rb") as f:
+        image = Image.open(f)
+        image = image.convert("RGB")
+        transform = get_data_transforms(input_size=input_size)[transform_type]
+        transformed_image = transform(image)
+        return transformed_image
+
 
 # calls the image loader on every image in a given batch
 def image_loader(example_batch, input_size: int, transform_type: str):
-    example_batch["image"] = [pil_loader(f, input_size, transform_type) for f in example_batch["file"]]
+    example_batch["image"] = [
+        pil_loader(f, input_size, transform_type) for f in example_batch["file"]
+    ]
     return example_batch
 
 
@@ -108,9 +112,19 @@ class TransformData(Step):
         return train_test
 
 
+# function to map integer labels to string labels
+def convert_to_label(int_label: int) -> str:
+    if int_label == 0:
+        return "cat"
+    else:
+        return "dog"
+
+
 @Step.register("prediction")
 class Prediction(Step):
-    def run(self, image_url: str, input_size: int, model: models) -> torch.Tensor:  # type: ignore
+    FORMAT: Format = JsonFormat()
+
+    def run(self, image_url: str, input_size: int, model: models) -> Dict[str, Any]:  # type: ignore
         # download and store image
         image_path = cached_path(image_url)
         transformed_image = pil_loader(image_path, input_size, transform_type="test")
@@ -119,6 +133,6 @@ class Prediction(Step):
         transformed_image = transformed_image.unsqueeze(0)
 
         # pass image through model and get the prediction
-        prediction = model(image=transformed_image, label=None)
-        output = json.loads({image_path: prediction})
-        return output
+        prediction = model(image=transformed_image, label=None)["pred"]
+        label = convert_to_label(prediction)
+        return {"image_url": image_url, "local_path": image_path, "label": label}
