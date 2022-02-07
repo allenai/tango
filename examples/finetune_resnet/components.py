@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List, Optional
 
 import datasets
@@ -36,7 +37,7 @@ class ResNetWrapper(Model):
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
         if label is None:
-            return output
+            return torch.argmax(output)
         loss = self.loss_fn(output, label)
         return {"loss": loss}
 
@@ -119,4 +120,5 @@ class Prediction(Step):
 
         # pass image through model and get the prediction
         prediction = model(image=transformed_image, label=None)
-        return prediction
+        output = json.loads({image_path: prediction})
+        return output
