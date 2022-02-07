@@ -1,7 +1,7 @@
 local input_size = 224;
 local batch_size = 32;
 local num_classes = 2;
-local test_size = 0.2;
+local val_size = 0.2;
 local model = "resnet";
 local feature_extract = true;
 local distributed = false;
@@ -38,7 +38,7 @@ local single_device_dataloader = {
             type: "transform_data",
             dataset: { type: 'ref', ref: 'raw_data' },
             input_size: input_size,
-            test_size: test_size,
+            val_size: val_size,
         },
         trained_model: {
             type: "torch::train",
@@ -60,13 +60,6 @@ local single_device_dataloader = {
             checkpoint_every: validate_every,
             log_every: 1,
             device_count: devices,
-        },
-        final_metrics: {
-            type: "torch::eval",
-            model: {"type": "ref", "ref": "trained_model"},
-            dataset_dict: {"type": "ref", "ref": "transform_data"},
-            dataloader: single_device_dataloader,
-            test_split: "test",
         },
         prediction: {
             type: "prediction",

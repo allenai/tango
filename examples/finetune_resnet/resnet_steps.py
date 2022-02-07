@@ -11,7 +11,7 @@ from torch.optim import Adam
 from torchvision import models, transforms
 
 from tango import Format, JsonFormat, Step
-from tango.integrations.torch import DataCollator, Model, Optimizer
+from tango.integrations.torch import DataCollator, Model, Optimizer, data
 
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
@@ -65,7 +65,7 @@ def get_data_transforms(input_size: int):
                 transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             ]
         ),
-        "test": transforms.Compose(
+        "val": transforms.Compose(
             [
                 transforms.Resize(input_size),
                 transforms.CenterCrop(input_size),
@@ -102,14 +102,15 @@ class TransformData(Step):
     CACHEABLE = False
 
     def run(  # type: ignore
-        self, dataset: datasets.DatasetDict, test_size: float, input_size: int
+        self, dataset: datasets.DatasetDict, val_size: float, input_size: int
     ) -> datasets.DatasetDict:
         def image_loader_wrapper(example_batch):
             return image_loader(example_batch, input_size=input_size, transform_type="train")
 
         dataset = dataset.with_transform(image_loader_wrapper)
-        train_test = dataset["train"].train_test_split(test_size=test_size)
-        return train_test
+        train_val = dataset["train"].train_val_split(test_size=val_size)
+        train_val["val"] = train_val.pop("test")
+        return train_val
 
 
 # function to map integer labels to string labels
@@ -124,13 +125,13 @@ def convert_to_label(int_label: int) -> str:
 class Prediction(Step):
     FORMAT: Format = JsonFormat()
 
-    def run(self, image_url: str, input_size: int, model: models) -> Dict[str, Any]:  # type: ignore
+    def run(self, image_url: str, input_size: int, model: models, device: Optional[str] = "cpu") -> Dict[str, Any]:  # type: ignore
         # download and store image
         image_path = cached_path(image_url)
-        transformed_image = pil_loader(image_path, input_size, transform_type="test")
+        transformed_image = pil_loader(image_path, input_size, transform_type="val")
 
         # pass image through transform
-        transformed_image = transformed_image.unsqueeze(0)
+        transformed_image = transformed_image.unsqueeze(0).to(device)
 
         # pass image through model and get the prediction
         prediction = model(image=transformed_image, label=None)["pred"]
