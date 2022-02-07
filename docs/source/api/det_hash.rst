@@ -1,5 +1,5 @@
 Deterministic Hashing
-=========
+=====================
 
 In order to detect whether a :class:`~tango.step.Step` has to be re-run or not, Tango relies on some tools to compute
 deterministic hashes from the inputs to the :class:`~tango.step.Step`.
