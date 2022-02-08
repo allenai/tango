@@ -1,9 +1,11 @@
+import os
 import time
 from pathlib import Path
 
 import pytest
 from flaky import flaky
 
+from tango.common.testing import TangoTestCase
 from tango.common.util import (
     could_be_class_name,
     find_integrations,
@@ -13,27 +15,35 @@ from tango.common.util import (
 )
 
 
-@pytest.mark.parametrize(
-    "package_name, resolved_package_name, resolved_base_path",
-    [
-        (
-            "tango/integrations/datasets/__init__.py",
-            "tango.integrations.datasets",
-            Path("."),
-        ),
-        (
-            "tango/__init__.py",
-            "tango",
-            Path("."),
-        ),
-        ("tango/steps/dataset_remix.py", "tango.steps.dataset_remix", Path(".")),
-        ("examples/train_gpt2/components.py", "components", Path("examples/train_gpt2/")),
-    ],
-)
-def test_resolve_module_name(
-    package_name: str, resolved_package_name: str, resolved_base_path: Path
-):
-    assert resolve_module_name(package_name) == (resolved_package_name, resolved_base_path)
+class TestResolveModuleName(TangoTestCase):
+    def setup_method(self):
+        super().setup_method()
+        self._work_dir_restore = os.getcwd()
+        os.chdir(self.TEST_DIR)
+
+    def teardown_method(self):
+        super().teardown_method()
+        os.chdir(self._work_dir_restore)
+
+    def test_with_package_init_file(self):
+        path = Path("fake_package/fake_module/__init__.py")
+        (self.TEST_DIR / path.parent).mkdir(parents=True)
+        open(path, "w").close()
+        open(path.parent.parent / "__init__.py", "w").close()
+        assert resolve_module_name(str(path)) == ("fake_package.fake_module", Path("."))
+
+    def test_with_submodule(self):
+        path = Path("fake_package/fake_module")
+        (self.TEST_DIR / path).mkdir(parents=True)
+        open(path / "__init__.py", "w").close()
+        open(path.parent / "__init__.py", "w").close()
+        assert resolve_module_name(str(path)) == ("fake_package.fake_module", Path("."))
+
+    def test_with_module_in_child_directory(self):
+        path = Path("some_dir/fake_module.py")
+        (self.TEST_DIR / path.parent).mkdir(parents=True)
+        open(path, "w").close()
+        assert resolve_module_name(str(path)) == ("fake_module", Path("./some_dir"))
 
 
 def test_find_submodules():
@@ -42,7 +52,7 @@ def test_find_submodules():
     assert "tango.common" in set(find_submodules(recursive=False))
     assert "tango.common.registrable" not in set(find_submodules(recursive=False))
     assert "tango.integrations.torch" in set(find_submodules("integrations"))
-    assert "tango.integrations.torch" not in set(find_submodules(exclude="tango.integrations*"))
+    assert "tango.integrations.torch" not in set(find_submodules(exclude={"tango.integrations*"}))
 
 
 def test_find_integrations():
