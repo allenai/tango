@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Optional, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
 
 import petname
 from sqlitedict import SqliteDict
@@ -215,12 +215,13 @@ class LocalWorkspace(Workspace):
 
     :param dir: The directory to store all the data in
 
-    The directory will have two subdirectories, ``cache/`` for the step cache, and ``runs/`` for the runs. For the
-    format of the ``cache/`` directory, refer to :class:`.LocalStepCache`. The ``runs/`` directory will contain one
-    subdirectory for each registered run. Each one of those contains a symlink from the name of the step to the
-    results directory in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps
-    that have not finished yet. You can tell the difference because either the symlink points to a directory that
-    doesn't exist, or it points to a directory in the step cache that doesn't contain results.
+    The directory will have three subdirectories, ``cache/`` for the step cache, ``runs/`` for the runs,
+    and ``latest/`` for the results of the latest run. For the format of the ``cache/`` directory,
+    refer to :class:`.LocalStepCache`. The ``runs/`` directory will contain one subdirectory for each
+    registered run. Each one of those contains a symlink from the name of the step to the results directory
+    in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps that have not
+    finished yet. You can tell the difference because either the symlink points to a directory that doesn't exist,
+    or it points to a directory in the step cache that doesn't contain results.
     """
 
     def __init__(self, dir: PathOrStr):
@@ -232,6 +233,7 @@ class LocalWorkspace(Workspace):
         self.runs_dir = self.dir / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.step_info_file = self.dir / "stepinfo.sqlite"
+        self.latest_dir = self.dir / "latest"
 
         # Check the version of the local workspace
         try:
@@ -275,9 +277,42 @@ class LocalWorkspace(Workspace):
         result.mkdir(parents=True, exist_ok=True)
         return result
 
-    @staticmethod
-    def dir_is_empty(dir: Path):
-        return not any(True for _ in dir.iterdir())
+    @classmethod
+    def guess_step_dir_state(cls, dir: Path) -> Set[StepState]:
+        """
+        Returns the possible states of a given step dir, to the best of our knowledge.
+
+        :param dir: the step dir to example
+        :return: a set of possible states for the step
+        """
+
+        # If the directory doesn't exist, the step is incomplete or uncacheable.
+        if not dir.exists():
+            return {StepState.INCOMPLETE, StepState.UNCACHEABLE}
+
+        # If the lock file exists and is locked, the step is running.
+        lock_file = dir / "lock"
+        if lock_file.exists():
+            lock = FileLock(lock_file)
+            try:
+                lock.acquire(0.1)
+                lock.release()
+            except TimeoutError:
+                return {StepState.RUNNING}
+
+        # If the directory is empty except for the work dir and the lock file, the step is running, incomplete,
+        # or failed. But it can't be running because then the lockfile would be locked, so it can only be
+        # incomplete or failed.
+        for dir_entry in dir.iterdir():
+            if dir_entry.name == "work" and dir_entry.is_dir():
+                continue
+            if dir_entry.name == "lock" and dir_entry.is_file():
+                continue
+            break
+        else:
+            return {StepState.INCOMPLETE, StepState.FAILED}
+
+        return set(StepState)
 
     @staticmethod
     def _fix_step_info(step_info: StepInfo) -> None:
@@ -323,17 +358,22 @@ class LocalWorkspace(Workspace):
                 # Perform some sanity checks. Sqlite and the file system can get out of sync
                 # when a process dies suddenly.
                 step_dir = self.step_dir(unique_id)
-                new_state = step_info.state
-                if not step_dir.exists() or self.dir_is_empty(step_dir):
-                    new_state = StepState.INCOMPLETE
-                elif step_info.state == StepState.RUNNING and not self._step_lock_file_is_locked(
-                    unique_id
-                ):
-                    new_state = StepState.INCOMPLETE
-                if new_state != step_info.state:
-                    step_info.start_time = None
-                    step_info.end_time = None
-                    d[unique_id] = step_info
+                step_state_guesses = self.guess_step_dir_state(step_dir) or step_info.state
+                if step_info.state not in step_state_guesses:
+                    if step_info.state == StepState.RUNNING:
+                        # We think the step is running, but it can't possibly be running, so we go ahead and
+                        # assume the step is incomplete.
+                        step_info.start_time = None
+                        step_info.end_time = None
+                        d[unique_id] = step_info
+                    else:
+                        possible_states = ", ".join(s.value for s in step_state_guesses)
+                        raise IOError(
+                            f"The step '{unique_id}' is marked as being {step_info.state.value}, but we "
+                            f"determined it can only be one of {{{possible_states}}}. If you are positive "
+                            f"this is a screw-up, delete the directory at '{step_dir}' and try again."
+                        )
+
                 return step_info
 
             result = find_or_add_step_info(step_or_unique_id)
@@ -345,16 +385,6 @@ class LocalWorkspace(Workspace):
         step_dir = self.step_dir(step_or_unique_id)
         step_dir.mkdir(parents=True, exist_ok=True)
         return step_dir / "lock"
-
-    def _step_lock_file_is_locked(self, step_or_unique_id: Union[Step, str]) -> bool:
-        # FileLock.is_locked does not work, so we do this.
-        lock = FileLock(self._step_lock_file(step_or_unique_id))
-        try:
-            lock.acquire(0)
-            lock.release()
-            return False
-        except TimeoutError:
-            return True
 
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
@@ -507,7 +537,13 @@ class LocalWorkspace(Workspace):
 
         # write targets
         for target in targets:
-            (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
+            target_path = self.step_dir(target)
+            (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
+
+        # Note: Python3.7 pathlib.Path.unlink does not support the `missing_ok` argument.
+        if self.latest_dir.is_symlink():
+            self.latest_dir.unlink()
+        self.latest_dir.symlink_to(run_dir)
 
         return self.registered_run(name)
 

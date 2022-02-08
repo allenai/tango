@@ -63,7 +63,9 @@ class Lazy(Generic[T]):
 
     @property
     def constructor(self) -> Callable[..., T]:
-        if inspect.isclass(self._constructor):
+        from tango.common.from_params import FromParams
+
+        if inspect.isclass(self._constructor) and issubclass(self._constructor, FromParams):
 
             def constructor_to_use(**kwargs):
                 return self._constructor.from_params(  # type: ignore[union-attr]

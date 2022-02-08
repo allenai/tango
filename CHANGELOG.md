@@ -9,11 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The waiting message for `FileLock` is now clear about which file it's waiting for.
 - Added an easier way to get the default Tango global config
+- Plain old Python functions can now be used in `Lazy` objects.
+- `LocalWorkspace` now creates a symlink to the outputs of the latest run.
 
 ### Fixed
 
 - Fixed bug where `Executor` would crash if `git` command could not be found.
+- Fixed bug where validation settings were not interpreted the right way by the torch trainer.
+
+### Changed
+
+- Tango is now better at guessing when a step has died and should be re-run.
+- Tango is now more lenient about registering the same class under the same name twice.
 
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
@@ -29,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
+
 
 ## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19
 
