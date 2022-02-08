@@ -284,9 +284,9 @@ class LocalWorkspace(Workspace):
         :return: a set of possible states for the step
         """
 
-        # If the directory doesn't exist, the step is incomplete.
+        # If the directory doesn't exist, the step is incomplete or uncacheable.
         if not dir.exists():
-            return {StepState.INCOMPLETE}
+            return {StepState.INCOMPLETE, StepState.UNCACHEABLE}
 
         # If the lock file exists and is locked, the step is running.
         lock_file = dir / "lock"
