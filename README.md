@@ -124,11 +124,11 @@ You can build a Docker image suitable for tango projects by using [the official 
 # Start from a prebuilt tango base image.
 # You can choose the right tag from the available options here:
 # https://github.com/allenai/tango/pkgs/container/tango/versions
-FROM ghcr.io/allenai/tango:cuda11.5.1
+FROM ghcr.io/allenai/tango:cuda11.3
 
 # Install your project's additional requirements.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN /opt/conda/bin/pip install --no-cache-dir -r requirements.txt
 
 # Install source code.
 # This instruction copies EVERYTHING in the current directory (build context),
