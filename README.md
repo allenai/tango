@@ -75,7 +75,7 @@ pip install ai2-tango
 To install with a specific integration, such as `torch` for example, run
 
 ```bash
-pip install ai2-tango[torch]
+pip install 'ai2-tango[torch]'
 ```
 
 ### Installing from source
@@ -90,13 +90,13 @@ cd tango
 Then run
 
 ```bash
-pip install -e .[all]
+pip install -e '.[all]'
 ```
 
 To install with only a specific integration, such as `torch` for example, run
 
 ```bash
-pip install -e .[torch]
+pip install -e '.[torch]'
 ```
 
 Or to install just the base tango library, you can run
