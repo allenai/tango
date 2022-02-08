@@ -368,7 +368,7 @@ class LocalWorkspace(Workspace):
                         possible_states = ", ".join(s.value for s in step_state_guesses)
                         raise IOError(
                             f"The step '{unique_id}' is marked as being {step_info.state.value}, but we "
-                            f"determined it can only be one of {{{possible_states}}}. If you are positive"
+                            f"determined it can only be one of {{{possible_states}}}. If you are positive "
                             f"this is a screw-up, delete the directory at '{step_dir}' and try again."
                         )
 
