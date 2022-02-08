@@ -513,7 +513,7 @@ class LocalWorkspace(Workspace):
             target_path = self.step_dir(target)
             (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
             # Note: Python3.7 pathlib.Path.unlink does not support the `missing_ok` argument.
-            if (self.latest_dir / target.name).exists():
+            if (self.latest_dir / target.name).is_symlink():
                 (self.latest_dir / target.name).unlink()
             (self.latest_dir / target.name).symlink_to(
                 os.path.relpath(target_path, self.latest_dir)
