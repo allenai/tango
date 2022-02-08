@@ -384,16 +384,6 @@ class LocalWorkspace(Workspace):
         step_dir.mkdir(parents=True, exist_ok=True)
         return step_dir / "lock"
 
-    def _step_lock_file_is_locked(self, step_or_unique_id: Union[Step, str]) -> bool:
-        # FileLock.is_locked does not work, so we do this.
-        lock = FileLock(self._step_lock_file(step_or_unique_id))
-        try:
-            lock.acquire(0)
-            lock.release()
-            return False
-        except TimeoutError:
-            return True
-
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
         if not step.cache_results:
