@@ -11,6 +11,8 @@ on:
     paths:
       - 'Dockerfile'
       - '.dockerignore'
+      - 'requirements.txt'
+      - 'setup.py'
   push:
     tags:
       - 'v*.*.*'
