@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Tango is now better at guessing when a step has died and should be re-run.
 - Tango is now more lenient about registering the same class under the same name twice.
 
 
@@ -37,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
+
 
 ## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19
 
