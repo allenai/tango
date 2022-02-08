@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an easier way to get the default Tango global config
 - Most methods to `TorchTrainCallback` also take an `epoch` parameter now.
 - `WandbTrainCallback` now logs peak GPU memory occupied by PyTorch tensors per worker. This is useful because W&B's system metrics only display the total GPU memory reserved by PyTorch, which is always higher than the actual amount of GPU memory occupied by tensors. So these new metrics give a more accurate view into how much memory your training job is actually using.
+- Plain old Python functions can now be used in `Lazy` objects.
+- `LocalWorkspace` now creates a symlink to the outputs of the latest run.
 
 ### Fixed
 
@@ -33,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in `FromParams` that would cause a crash when an argument to the constructor had the name `params`.
 - Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it actually could be a step.
 - Fixed bug where `Executor` would crash if `git` command could not be found.
+- Fixed bug where validation settings were not interpreted the right way by the torch trainer.
 
 ### Changed
 

@@ -73,7 +73,7 @@ class TrainConfig:
     Controls the frequency of checkpoints.
     """
 
-    validate_every: int = 100
+    validate_every: Optional[int] = None
     """
     Controls the frequency of the validation loop.
     """
@@ -195,12 +195,6 @@ class TrainConfig:
     def should_checkpoint_this_step(self, step: int) -> bool:
         assert self.train_steps is not None
         return ((step + 1) % self.checkpoint_every == 0) or step == self.train_steps - 1
-
-    def should_validate_this_step(self, step: int) -> bool:
-        assert self.train_steps is not None
-        return self.validation_split is not None and (
-            ((step + 1) % self.validate_every == 0) or step == self.train_steps - 1
-        )
 
     def should_log_this_val_step(self, val_step: int) -> bool:
         assert self.validation_steps is not None

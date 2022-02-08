@@ -3,6 +3,7 @@ import shutil
 from itertools import islice
 from typing import Any, Dict, List, Optional, Set, cast
 
+import more_itertools
 import torch
 import torch.distributed as dist
 from more_itertools import chunked
@@ -87,7 +88,7 @@ class TorchTrainStep(Step):
         grad_accum: int = 1,
         log_every: int = 10,
         checkpoint_every: int = 100,
-        validate_every: int = 100,
+        validate_every: Optional[int] = None,
         device_count: int = 1,
         distributed_port: str = "54761",
         val_metric_name: str = "loss",
@@ -197,6 +198,12 @@ class TorchTrainStep(Step):
                 "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
             )
 
+        if validate_every is not None and validation_split is None:
+            raise ConfigurationError(
+                "You have set a validation interval, but no validation split. "
+                "That's probably unintentional."
+            )
+
         is_distributed = False
         num_workers = 1
         if devices and len(devices) > 1:
@@ -220,6 +227,7 @@ class TorchTrainStep(Step):
             log_every=log_every,
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
+            validation_steps=validation_steps,
             is_distributed=is_distributed,
             devices=devices,
             distributed_port=distributed_port,
@@ -486,13 +494,14 @@ def _train(
     for callback in callbacks:
         callback.pre_train_loop()
 
-    train_batch_iterator = Tqdm.tqdm(
+    train_batch_iterator_tqdm = Tqdm.tqdm(
         training_batches,
         desc="Training",
         initial=start_step,
         total=config.train_steps,
         disable=not config.is_local_main_process,
     )
+    train_batch_iterator = more_itertools.peekable(train_batch_iterator_tqdm)
     try:
         for step, (epoch, batch) in train_batch_iterator:
             if epoch != current_epoch:
@@ -536,10 +545,25 @@ def _train(
 
             training_engine.step()
 
+            # Find out whether we should validate
+            if config.validation_split is None:
+                # If we can't validate, we don't.
+                should_validate = False
+            elif step == config.train_steps - 1:
+                # If we're at the end of the training run, we always validate.
+                should_validate = True
+            elif config.validate_every is not None and (step + 1) % config.validate_every == 0:
+                # If validate_every is given, we use that to decide.
+                should_validate = True
+            elif config.validate_every is None and epoch != train_batch_iterator.peek()[1][0]:
+                # If validate_every is not given, we validate at the end of the epoch.
+                should_validate = True
+            else:
+                # Otherwise, we don't validate.
+                should_validate = False
+
             # Gather average loss across all workers.
-            if (
-                config.should_log_this_step(step) or config.should_validate_this_step(step)
-            ) and config.is_distributed:
+            if (config.should_log_this_step(step) or should_validate) and config.is_distributed:
                 batch_loss_tensor = torch.tensor(batch_loss, device=device)
                 dist.all_reduce(batch_loss_tensor)
                 batch_loss = batch_loss_tensor.item() / config.world_size
@@ -556,10 +580,10 @@ def _train(
                 if best_val_metric is not None:
                     metrics_to_log[f"best_val_{config.val_metric_name}"] = best_val_metric
                 if config.is_local_main_process:
-                    train_batch_iterator.set_postfix(**metrics_to_log)
+                    train_batch_iterator_tqdm.set_postfix(**metrics_to_log)
 
             # Validate.
-            if config.should_validate_this_step(step):
+            if should_validate:
                 assert validation_dataloader is not None
                 assert config.validation_steps is not None
 
@@ -635,7 +659,7 @@ def _train(
                     f"best_{config.val_metric_name}": best_val_metric,
                 }
                 if config.is_local_main_process:
-                    train_batch_iterator.set_postfix(**metrics_to_log)
+                    train_batch_iterator_tqdm.set_postfix(**metrics_to_log)
 
             # Checkpoint.
             if config.should_checkpoint_this_step(step):
@@ -650,7 +674,7 @@ def _train(
         if config.is_local_main_process:
             logger.info("Stopping early!")
     finally:
-        train_batch_iterator.close()
+        train_batch_iterator_tqdm.close()
 
     if config.is_distributed:
         dist.barrier()
