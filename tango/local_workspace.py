@@ -215,12 +215,13 @@ class LocalWorkspace(Workspace):
 
     :param dir: The directory to store all the data in
 
-    The directory will have two subdirectories, ``cache/`` for the step cache, and ``runs/`` for the runs. For the
-    format of the ``cache/`` directory, refer to :class:`.LocalStepCache`. The ``runs/`` directory will contain one
-    subdirectory for each registered run. Each one of those contains a symlink from the name of the step to the
-    results directory in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps
-    that have not finished yet. You can tell the difference because either the symlink points to a directory that
-    doesn't exist, or it points to a directory in the step cache that doesn't contain results.
+    The directory will have three subdirectories, ``cache/`` for the step cache, ``runs/`` for the runs,
+    and ``latest/`` for the results of the latest run. For the format of the ``cache/`` directory,
+    refer to :class:`.LocalStepCache`. The ``runs/`` directory will contain one subdirectory for each
+    registered run. Each one of those contains a symlink from the name of the step to the results directory
+    in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps that have not
+    finished yet. You can tell the difference because either the symlink points to a directory that doesn't exist,
+    or it points to a directory in the step cache that doesn't contain results.
     """
 
     def __init__(self, dir: PathOrStr):
@@ -232,6 +233,7 @@ class LocalWorkspace(Workspace):
         self.runs_dir = self.dir / "runs"
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         self.step_info_file = self.dir / "stepinfo.sqlite"
+        self.latest_dir = self.dir / "latest"
 
         # Check the version of the local workspace
         try:
@@ -535,7 +537,13 @@ class LocalWorkspace(Workspace):
 
         # write targets
         for target in targets:
-            (run_dir / target.name).symlink_to(os.path.relpath(self.step_dir(target), run_dir))
+            target_path = self.step_dir(target)
+            (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
+
+        # Note: Python3.7 pathlib.Path.unlink does not support the `missing_ok` argument.
+        if self.latest_dir.is_symlink():
+            self.latest_dir.unlink()
+        self.latest_dir.symlink_to(run_dir)
 
         return self.registered_run(name)
 
