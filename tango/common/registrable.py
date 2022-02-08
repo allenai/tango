@@ -130,16 +130,30 @@ class Registrable(FromParams):
         def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
             # Add to registry, raise an error if key has already been used.
             if name in registry:
-                if exist_ok:
+
+                def fullname(c: type) -> str:
+                    return f"{c.__module__}.{c.__qualname__}"
+
+                already_in_use_for = registry[name][0]
+                if already_in_use_for.__module__ == "__main__":
+                    # Sometimes the same class shows up under module.submodule.Class and __main__.Class, and we
+                    # don't want to make a fuss in that case. We prefer the class without __main__, so we go
+                    # ahead and overwrite the entry.
+                    pass
+                elif subclass.__module__ == "__main__":
+                    # We don't want to overwrite the entry because the new one comes from the __main__ module.
+                    return already_in_use_for
+                elif exist_ok:
                     message = (
-                        f"{name} has already been registered as {registry[name][0].__name__}, but "
-                        f"exist_ok=True, so overwriting with {subclass.__name__}"
+                        f"Registering {fullname(subclass)} as a {fullname(cls)} under the name {name} overwrites "
+                        f"existing entry {fullname(already_in_use_for)}, which is fine because you said "
+                        "exist_ok=True."
                     )
                     logger.info(message)
                 else:
                     message = (
-                        f"Cannot register {name} as {cls.__name__}; "
-                        f"name already in use for {registry[name][0].__name__}"
+                        f"Attempting to register {fullname(subclass)} as a {fullname(cls)} under the name "
+                        f"'{name}' failed. {fullname(already_in_use_for)} is already registered under that name."
                     )
                     raise ConfigurationError(message)
             registry[name] = (subclass, constructor)

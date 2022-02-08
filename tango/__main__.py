@@ -129,10 +129,23 @@ class TangoGlobalSettings(FromParams):
     _path: Optional[Path] = None
 
     @classmethod
-    def find_or_default(cls, path: Optional[PathOrStr]) -> "TangoGlobalSettings":
+    def default(cls) -> "TangoGlobalSettings":
         """
         Initialize the config from files by checking the default locations
         in order, or just return the default if none of the files can be found.
+        """
+        for directory in (Path("."), Path.home() / ".config"):
+            for extension in ("yml", "yaml"):
+                path = directory / f"tango.{extension}"
+                if path.is_file():
+                    return cls.from_file(path)
+        return cls()
+
+    @classmethod
+    def find_or_default(cls, path: Optional[PathOrStr]) -> "TangoGlobalSettings":
+        """
+        Initialize the config from a given configuration file, or falls back to returning
+        the default configuration if no file is given.
         """
         if path is not None:
             path = Path(path)
@@ -140,12 +153,7 @@ class TangoGlobalSettings(FromParams):
                 raise FileNotFoundError(path)
             return cls.from_file(path)
         else:
-            for directory in (Path("."), Path.home() / ".config"):
-                for extension in ("yml", "yaml"):
-                    path = directory / f"tango.{extension}"
-                    if path.is_file():
-                        return cls.from_file(path)
-            return cls()
+            return cls.default()
 
     @property
     def path(self) -> Optional[Path]:
