@@ -37,7 +37,7 @@ jobs:
 
       - name: Test Docker image
         run: |
-          docker run --rm --env COMMIT_SHA="$COMMIT_SHA" "$IMAGE_NAME" tango info
+          docker run --rm --env COMMIT_SHA="$GITHUB_SHA" "$IMAGE_NAME" tango info
 
       - name: Install beaker client
         if: github.event_name != 'pull_request'
