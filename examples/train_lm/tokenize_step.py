@@ -19,15 +19,16 @@ class TokenizeData(Step):
         tokenizer: Tokenizer,
         block_size: int = 1024,
         num_workers: int = 1,
+        field_to_tokenize: str = "text",
     ) -> datasets.DatasetDict:
         def tokenize_function(example):
-            return tokenizer(example["text"])
+            return tokenizer(example[field_to_tokenize])
 
         dataset = dataset.map(
             tokenize_function,
             batched=True,
             num_proc=num_workers,
-            remove_columns=["text"],
+            remove_columns=list(dataset.column_names.values())[0],  # remove all old columns
             desc="Tokenizing dataset",
         )
 
