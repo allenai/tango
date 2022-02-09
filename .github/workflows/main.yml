@@ -239,7 +239,7 @@ jobs:
             - name: tests
               image:
                 beaker: petew/tango-testing
-              command: [/entrypoint.sh, tango, info]
+              command: [/entrypoint.sh, pytest, -v, tests/common/util_test.py]
               envVars:
                 - name: COMMIT_SHA
                   value: $COMMIT_SHA
