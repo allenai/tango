@@ -3,14 +3,20 @@ import json
 import pytest
 import torch.distributed as dist
 
+from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
 
 class TestTrainStep(TangoTestCase):
+    def setup_method(self):
+        super().setup_method()
+        initialize_logging(enable_click_logs=True)
+
     def teardown_method(self):
         super().teardown_method()
         if dist.is_initialized():
             dist.destroy_process_group()
+        teardown_logging()
 
     @pytest.mark.parametrize("with_validation", [True, False])
     def test_basic_train(self, with_validation: bool):
@@ -20,7 +26,11 @@ class TestTrainStep(TangoTestCase):
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
             ],
-            overrides="" if with_validation else json.dumps({"steps.train.validation_split": None}),
+            overrides=""
+            if with_validation
+            else json.dumps(
+                {"steps.train.validation_split": None, "steps.train.validate_every": None}
+            ),
         )
         assert (result_dir / "train" / "data.pt").is_file()
         assert (result_dir / "train" / "work" / "state_worker0.pt").is_file()
@@ -33,7 +43,13 @@ class TestTrainStep(TangoTestCase):
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
             ],
-            overrides=json.dumps({"steps.train.train_steps": None, "steps.train.train_epochs": 2}),
+            overrides=json.dumps(
+                {
+                    "steps.train.train_steps": None,
+                    "steps.train.train_epochs": 2,
+                    "steps.train.validate_every": None,
+                }
+            ),
         )
         assert (result_dir / "train" / "data.pt").is_file()
 

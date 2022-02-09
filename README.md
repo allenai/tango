@@ -75,7 +75,7 @@ pip install ai2-tango
 To install with a specific integration, such as `torch` for example, run
 
 ```bash
-pip install ai2-tango[torch]
+pip install 'ai2-tango[torch]'
 ```
 
 ### Installing from source
@@ -90,13 +90,13 @@ cd tango
 Then run
 
 ```bash
-pip install -e .[all]
+pip install -e '.[all]'
 ```
 
 To install with only a specific integration, such as `torch` for example, run
 
 ```bash
-pip install -e .[torch]
+pip install -e '.[torch]'
 ```
 
 Or to install just the base tango library, you can run
@@ -124,11 +124,11 @@ You can build a Docker image suitable for tango projects by using [the official 
 # Start from a prebuilt tango base image.
 # You can choose the right tag from the available options here:
 # https://github.com/allenai/tango/pkgs/container/tango/versions
-FROM ghcr.io/allenai/tango:cuda11.5.1
+FROM ghcr.io/allenai/tango:cuda11.3
 
 # Install your project's additional requirements.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN /opt/conda/bin/pip install --no-cache-dir -r requirements.txt
 
 # Install source code.
 # This instruction copies EVERYTHING in the current directory (build context),
