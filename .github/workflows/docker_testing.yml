@@ -29,15 +29,25 @@ jobs:
       BEAKER_WORKSPACE: ai2/tango-testing
       IMAGE_NAME: tango-testing
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
 
       - name: Build Docker image
         run: |
           docker build -t "$IMAGE_NAME" -f Dockerfile.test .
 
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
+
       - name: Test Docker image
         run: |
-          docker run --rm --env COMMIT_SHA="$GITHUB_SHA" "$IMAGE_NAME" tango info
+          docker run --rm --env COMMIT_SHA="$COMMIT_SHA" "$IMAGE_NAME" tango info
 
       - name: Install beaker client
         if: github.event_name != 'pull_request'
