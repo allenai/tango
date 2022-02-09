@@ -192,6 +192,7 @@ jobs:
           pip uninstall -y ai2-tango
 
   gpu_tests:
+    name: GPU Tests
     runs-on: [ubuntu-latest]
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
