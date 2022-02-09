@@ -21,10 +21,9 @@ from .data import DataLoader
 from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
-from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
-from .training_engine import TorchTrainingEngine, TrainingEngine
+from .training_engine import TrainingEngine
 from .util import check_dataloader, check_dataset, set_seed_all
 
 
@@ -73,13 +72,12 @@ class TorchTrainStep(Step):
     def run(  # type: ignore[override]
         self,
         model: Lazy[Model],
+        training_engine: Lazy[TrainingEngine],
         dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
-        optimizer: Lazy[Optimizer],
         *,
         train_split: str = "train",
         validation_split: Optional[str] = None,
-        lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         validation_dataloader: Optional[Lazy[DataLoader]] = None,
         seed: int = 42,
         train_steps: Optional[int] = None,
@@ -95,7 +93,6 @@ class TorchTrainStep(Step):
         minimize_val_metric: bool = True,
         auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-        training_engine: Lazy[TrainingEngine] = Lazy(TorchTrainingEngine),
         remove_stale_checkpoints: bool = True,
     ) -> Model:
         """
@@ -107,23 +104,19 @@ class TorchTrainStep(Step):
         model : :class:`Model`
             The model to train. It should return a ``dict`` that includes the ``loss``
             during training and the ``val_metric_name`` during validation.
+        training_engine : :class:`TrainingEngine`
+            The :class:`TrainingEngine` to use to train the model.
         dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
             The train and optional validation data.
         train_dataloader : :class:`DataLoader`
             The data loader that generates training batches. The batches should be :class:`dict`
             objects.
-        optimizer : :class:`Optimizer`
-            A PyTorch :class:`~torch.optim.Optimizer`.
         train_split : :class:`str`, optional
             The name of the data split used for training in the ``dataset_dict``.
             Default is "train".
         validation_split : :class:`str`, optional
             Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
             which means no validation.
-        lr_scheduler : :class:`LRScheduler`, optional
-            An optional
-            `learning rate scheduler <https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate>`_
-            to adjust the learning rate throughout training.
         validation_dataloader : :class:`DataLoader`, optional
             An optional data loader for generating validation batches. The batches should be
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
@@ -173,8 +166,6 @@ class TorchTrainStep(Step):
             or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
         callbacks : ``List[TrainCallback]``
             A list of :class:`TrainCallback`.
-        training_engine : :class:`TrainingEngine`
-            A :class:`TrainingEngine` to use. By default :class:`TorchTrainingEngine` is used.
         remove_stale_checkpoints : :class:`bool`
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
@@ -247,13 +238,11 @@ class TorchTrainStep(Step):
                 args=(
                     config,
                     model,
+                    training_engine,
                     dataset_dict,
                     train_dataloader,
-                    optimizer,
-                    lr_scheduler,
                     validation_dataloader,
                     callbacks,
-                    training_engine,
                     get_extra_imported_modules(),
                 ),
                 nprocs=num_workers,
@@ -265,13 +254,11 @@ class TorchTrainStep(Step):
                 0,
                 config,
                 model,
+                training_engine,
                 dataset_dict,
                 train_dataloader,
-                optimizer,
-                lr_scheduler=lr_scheduler,
                 validation_dataloader=validation_dataloader,
                 callbacks=callbacks,
-                training_engine=training_engine,
             )
             assert final_model is not None
             final_model = final_model.cpu()
@@ -292,13 +279,11 @@ def _train(
     worker_id: int,
     config: TrainConfig,
     model: Lazy[Model],
+    training_engine: Lazy[TrainingEngine],
     dataset_dict: DatasetDictBase,
     train_dataloader: Lazy[DataLoader],
-    optimizer: Lazy[Optimizer],
-    lr_scheduler: Optional[Lazy[LRScheduler]] = None,
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
-    training_engine: Lazy[TrainingEngine] = Lazy(TorchTrainingEngine),
     include_package: Optional[Set[str]] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
@@ -318,8 +303,6 @@ def _train(
     training_engine: TrainingEngine = training_engine.construct(
         train_config=config,
         model=model,
-        optimizer=optimizer,
-        lr_scheduler=lr_scheduler,
     )
 
     # Check working directory to see if we should recover from a previous run.

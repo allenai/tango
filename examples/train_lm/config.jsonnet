@@ -52,6 +52,17 @@ local fsdp_config = if fsdp then {
 
 local training_engine = {
     type: if fsdp then "fairscale" else "torch",
+    optimizer: {
+        type: "torch::AdamW",
+        lr: learning_rate,
+        betas: [0.9, 0.95],
+        eps: 1e-6,
+    },
+    lr_scheduler: {
+        type: "transformers::linear",
+        num_warmup_steps: warmup_steps,
+        num_training_steps: training_steps,
+    },
     amp: amp,
     [if fsdp then "fsdp_config" else null]: fsdp_config,
 };
@@ -102,17 +113,6 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             dataset_dict: { type: "ref", ref: "tokenized_data" },
             train_dataloader: dataloader,
             validation_split: "validation",
-            optimizer: {
-                type: "torch::AdamW",
-                lr: learning_rate,
-                betas: [0.9, 0.95],
-                eps: 1e-6,
-            },
-            lr_scheduler: {
-                type: "transformers::linear",
-                num_warmup_steps: warmup_steps,
-                num_training_steps: training_steps,
-            },
             grad_accum: grad_accum,
             train_steps: training_steps,
             validate_every: validate_every,

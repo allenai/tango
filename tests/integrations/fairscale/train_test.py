@@ -3,6 +3,7 @@ from typing import Any, Dict
 import pytest
 import torch
 
+from tango.common import Params
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
@@ -50,6 +51,12 @@ class TestFairScaleTrain(TangoTestCase):
         }
         training_engine: Dict[str, Any] = {
             "amp": amp,
+            "optimizer": {
+                "type": "torch::AdamW",
+                "lr": 0.005,
+                "betas": [0.9, 0.95],
+                "eps": 1e-6,
+            },
         }
         if fsdp:
             training_engine["type"] = "fairscale"
