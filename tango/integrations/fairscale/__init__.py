@@ -20,8 +20,12 @@ the main memory-savings techniques for distributed data-parallel training (DDP) 
 
 The main part of this Tango integration is the :class:`FairScaleTrainingEngine`.
 This is a :class:`~tango.integrations.torch.TrainingEngine` implementation that utilizes
-FairScale's :class:`~fairscale.nn.FullyShardedDataParallel` for substantial memory savings
+FairScale's :class:`~fairscale.nn.FullyShardedDataParallel` (FSDP) for substantial memory savings
 during distributed training.
+
+For the best performance you should also use :func:`with_wrapped_modules()` to wrap the inner modules
+of your :class:`~tango.integrations.torch.Model`. When used with FSDP this will dramatically reduce
+the memory required to load your model.
 
 """
 
