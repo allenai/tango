@@ -227,10 +227,7 @@ jobs:
 
       - name: Verify beaker install
         run: |
-          if [[ $(beaker account whoami | grep "ai2") == "" ]]; then
-              echo "Error: the Beaker user is not 'ai2' but should be."
-              exit 1
-          fi
+          beaker account whoami
 
       - name: Create beaker experiment config
         run: |
