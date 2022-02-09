@@ -1,5 +1,4 @@
-import imp
-import json
+from traceback import print_tb
 from typing import Any, Dict, List, Optional
 
 import datasets
@@ -37,10 +36,12 @@ class ResNetWrapper(Model):
         self, image: torch.Tensor, label: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
+        preds = torch.argmax(output, dim=1)
         if label is None:
-            return {"pred": torch.argmax(output)}
+            return {"preds": preds}
         loss = self.loss_fn(output, label)
-        return {"loss": loss}
+        accuracy = (preds == label).float().mean()
+        return {"loss": loss, "accuracy": accuracy}
 
 
 # Custom data collator for images, that takes in a batch of images and labels and
@@ -108,7 +109,7 @@ class TransformData(Step):
             return image_loader(example_batch, input_size=input_size, transform_type="train")
 
         dataset = dataset.with_transform(image_loader_wrapper)
-        train_val = dataset["train"].train_val_split(test_size=val_size)
+        train_val = dataset["train"].train_test_split(test_size=val_size)
         train_val["val"] = train_val.pop("test")
         return train_val
 
