@@ -147,11 +147,28 @@ def infer_method_params(
                 )
             except TypeError as e:
                 if "'type' object is not subscriptable" in str(e):
-                    new_e = TypeError(
-                        f"Could not determine the type annotations for `{method.__qualname__}`. Did you use the "
-                        "lowercase `dict`, `list`, `set`, or `tuple` in the type annotations instead of the "
-                        "uppercase `Dict`, `List`, `Set`, `Tuple`?"
+                    # This can happen when someone uses a type hint like `dict[str, str]`
+                    # instead of `Dict[str, str]`.
+                    err_msg = (
+                        f"Failed to parse the type annotation `{param.annotation}` "
+                        f"from `{cls.__qualname__}.{method.__name__}()`."
                     )
+
+                    if "[" in param.annotation:
+                        # Check if there is an equivalent generic in the `typing` module.
+                        import typing
+
+                        type_, *_ = param.annotation.split("[", 1)
+                        for possible_typing_equivalent in {type_, type_.title()}:
+                            if hasattr(typing, possible_typing_equivalent):
+                                err_msg += (
+                                    f" Try using `{possible_typing_equivalent}` "
+                                    "from the `typing` module instead."
+                                )
+                                break
+
+                    new_e = TypeError(err_msg)
+                    new_e.__cause__ = e
                     new_e.__cause__ = e
                     raise new_e
                 else:
