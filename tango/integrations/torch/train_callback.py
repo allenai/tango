@@ -7,6 +7,7 @@ from tango.common.registrable import Registrable
 
 from .data import DataLoader
 from .exceptions import StopEarly
+from .model import Model
 from .train_config import TrainConfig
 from .training_engine import TrainingEngine
 
@@ -76,6 +77,13 @@ class TrainCallback(Registrable):
         If the current worker is the main distributed worker of the current node.
         """
         return self.train_config.is_local_main_process
+
+    @property
+    def model(self) -> Model:
+        """
+        The :class:`Model` being trained.
+        """
+        return self.training_engine.model
 
     def state_dict(self) -> Dict[str, Any]:
         """
