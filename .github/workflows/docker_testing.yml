@@ -1,3 +1,5 @@
+# This workflow is just for building our Docker image for GPU testing on Beaker,
+# and pushing it to Beaker. We only run it when the relevant Dockerfile (or .dockerignore) changes.
 name: Docker testing
 
 concurrency:
