@@ -238,7 +238,7 @@ jobs:
           tasks:
             - name: Tests
               image:
-                beaker: ai2/tango-testing
+                beaker: petew/tango-testing
               command: [tango, info]
               result:
                 path: '/unused'
