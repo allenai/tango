@@ -234,12 +234,15 @@ jobs:
         run: |
           cat >beaker_config.yml << EOL
           version: v2-alpha
-          description: GPU Tests - $COMMIT_SHA
+          description: GPU Tests
           tasks:
-            - name: Tests
+            - name: tests
               image:
                 beaker: petew/tango-testing
-              command: [tango, info]
+              command: [/entrypoint.sh, tango, info]
+              envVars:
+                - name: COMMIT_SHA
+                  value: $COMMIT_SHA
               result:
                 path: '/unused'
               resources:
@@ -250,9 +253,15 @@ jobs:
           EOL
           cat beaker_config.yml
 
-      - name: Create beaker experiment config
+      - name: Submit beaker job
         run: |
-          beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name gpu-tests-$COMMIT_SHA
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name gpu-tests-$COMMIT_SHA | awk '{print $2}')
+          echo "EXPERIMENT=$EXPERIMENT" >> $GITHUB_ENV
+          echo "Experiment $EXPERIMENT submitted. See progress at https://beaker.org/ex/$EXPERIMENT"
+
+      - name: Wait for job to finish
+        run: |
+          beaker experiment await $EXPERIMENT tests finalized
 
   release:
     name: Release
