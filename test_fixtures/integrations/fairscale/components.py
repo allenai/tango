@@ -17,7 +17,7 @@ class FeedForward(nn.Module):
         return self.activation(self.linear(x))
 
 
-@Model.register("simple_regression_model")
+@Model.register("simple_regression_model", exist_ok=True)
 class SimpleRegressionModel(Model):
     def __init__(self):
         super().__init__()
