@@ -22,6 +22,9 @@ class TrainCallback(Registrable):
         All of the parameters to this base class will be automatically set within
         the training loop, so you shouldn't include them in your config for your callbacks.
 
+    .. tip::
+        You can access the model being trained through :attr:`self.model <model>`.
+
     .. important::
         The ``step`` argument to callback methods is the total/overall number of training steps
         so far, independent of the current epoch.
