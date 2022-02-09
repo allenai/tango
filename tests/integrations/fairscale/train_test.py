@@ -3,7 +3,6 @@ from typing import Any, Dict
 import pytest
 import torch
 
-from tango.common import Params
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
