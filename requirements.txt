@@ -23,7 +23,7 @@ petname>=2.6,<3.0
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
 torch>=1.9,<1.11             # needed by: torch,pytorch_lightning,transformers,fairscale
-numpy                        # needed by: torch
+numpy                        # needed by: torch,pytorch_lightning,transformers,fairscale
 datasets>=1.12,<2            # needed by: datasets,transformers
 wandb>=0.12,<0.13            # needed by: wandb
 pytorch-lightning>=1.5,<1.6  # needed by: pytorch_lightning
