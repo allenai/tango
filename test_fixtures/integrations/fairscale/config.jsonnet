@@ -49,23 +49,21 @@ local dataloader = {
 
 {
     steps: {
-        tokenized_data: {
-            type: "fairscale_test_load_data",
-            tokenizer: { pretrained_model_name_or_path: pretrained_model }
+        regression_data: {
+            type: "simple_regression_data",
         },
         trained_model: {
             type: "torch::train",
             model: {
                 type: "fairscale::with_wrapped_modules",
                 model: {
-                    type: "transformers::AutoModelForCausalLM::from_pretrained",
-                    pretrained_model_name_or_path: pretrained_model,
+                    type: "simple_regression_model",
                 },
-                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
+                modules_to_wrap: ["blocks\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },
-            dataset_dict: { type: "ref", ref: "tokenized_data" },
+            dataset_dict: { type: "ref", ref: "regression_data" },
             train_dataloader: dataloader,
             validation_split: "dev",
             optimizer: {
@@ -73,11 +71,6 @@ local dataloader = {
                 lr: learning_rate,
                 betas: [0.9, 0.95],
                 eps: 1e-6,
-            },
-            lr_scheduler: {
-                type: "transformers::linear",
-                num_warmup_steps: warmup_steps,
-                num_training_steps: training_steps,
             },
             grad_accum: grad_accum,
             train_steps: training_steps,

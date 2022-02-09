@@ -62,7 +62,7 @@ class TestFairScaleTrain(TangoTestCase):
         overrides["steps.trained_model.training_engine"] = training_engine
         run_dir = self.run(
             self.FIXTURES_ROOT / "integrations" / "fairscale" / "config.jsonnet",
-            include_package=["test_fixtures.integrations.fairscale.data_step"],
+            include_package=["test_fixtures.integrations.fairscale.components"],
             overrides=overrides,
         )
         assert (run_dir / "trained_model").is_dir()
