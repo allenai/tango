@@ -7,7 +7,6 @@
 .mypy_cache
 docs
 examples
-scripts
 tests
 test_fixtures
 dist

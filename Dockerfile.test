@@ -1,0 +1,8 @@
+FROM ghcr.io/allenai/pytorch:1.10.2-cuda11.3
+
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /testing
+
+ENTRYPOINT ["/entrypoint.sh"]
