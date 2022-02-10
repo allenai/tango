@@ -52,7 +52,7 @@ jobs:
           docker run --rm --env COMMIT_SHA="$COMMIT_SHA" "$IMAGE_NAME" tango info
 
       - name: Install beaker client
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         shell: bash
         run: |
           mkdir -p "$HOME/bin"
@@ -68,12 +68,12 @@ jobs:
           echo "$HOME/bin" >> "$GITHUB_PATH"
 
       - name: Verify beaker install
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         run: |
           beaker account whoami
 
       - name: Push release to beaker
-        if: github.event_name != 'pull_request'
+        # if: github.event_name != 'pull_request'
         run: |
           # In order to push a new version of an image to beaker, we have to delete the old version first.
           # This doesn't actually delete the backing Docker image, so we'll still benefit from layer
