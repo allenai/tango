@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -7,8 +8,8 @@ from tango.common.registrable import Registrable
 from .data import DataLoader
 from .exceptions import StopEarly
 from .model import Model
-from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
+from .training_engine import TrainingEngine
 
 
 class TrainCallback(Registrable):
@@ -21,6 +22,13 @@ class TrainCallback(Registrable):
         All of the parameters to this base class will be automatically set within
         the training loop, so you shouldn't include them in your config for your callbacks.
 
+    .. tip::
+        You can access the model being trained through :attr:`self.model <model>`.
+
+    .. important::
+        The ``step`` argument to callback methods is the total/overall number of training steps
+        so far, independent of the current epoch.
+
     .. seealso::
         See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
         implementation.
@@ -28,7 +36,7 @@ class TrainCallback(Registrable):
     Attributes
     ----------
     train_config : :class:`TrainConfig`
-    model : :class:`Model`
+    training_engine : :class:`TrainingEngine`
     optimizer : :class:`Optimizer`
     dataset_dict : :class:`tango.common.DatasetDictBase`
     train_dataloader : :class:`DataLoader`
@@ -40,20 +48,17 @@ class TrainCallback(Registrable):
     def __init__(
         self,
         train_config: TrainConfig,
-        model: Model,
-        optimizer: Optimizer,
+        training_engine: TrainingEngine,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
-        lr_scheduler: Optional[LRScheduler] = None,
     ) -> None:
         self.train_config = train_config
-        self.model = model
-        self.optimizer = optimizer
+        self.training_engine = training_engine
         self.dataset_dict = dataset_dict
         self.train_dataloader = train_dataloader
         self.validation_dataloader = validation_dataloader
-        self.lr_scheduler = lr_scheduler
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def step_id(self) -> str:
@@ -76,6 +81,13 @@ class TrainCallback(Registrable):
         """
         return self.train_config.is_local_main_process
 
+    @property
+    def model(self) -> Model:
+        """
+        The :class:`Model` being trained.
+        """
+        return self.training_engine.model
+
     def state_dict(self) -> Dict[str, Any]:
         """
         Return any state that needs to be kept after a restart.
@@ -94,7 +106,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_train_loop(self) -> None:
+    def post_train_loop(self, step: int, epoch: int) -> None:
         """
         Called after the training loop completes.
 
@@ -102,31 +114,19 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_epoch(self, epoch: int) -> None:
+    def pre_epoch(self, step: int, epoch: int) -> None:
         """
         Called right before the start of an epoch. Epochs start at 0.
         """
         pass
 
-    def post_epoch(self, epoch: int) -> None:
+    def post_epoch(self, step: int, epoch: int) -> None:
         """
         Called after an epoch is completed. Epochs start at 0.
         """
         pass
 
-    def pre_checkpoint(self, checkpoint_state: Dict[str, Any]) -> None:
-        """
-        Called directly before the checkpoint is saved.
-        """
-        pass
-
-    def post_checkpoint(self, checkpoint_path: Path) -> None:
-        """
-        Called directly after a checkpoint is saved.
-        """
-        pass
-
-    def pre_batch(self, step: int, batch: List[Dict[str, Any]]) -> None:
+    def pre_batch(self, step: int, epoch: int, batch: List[Dict[str, Any]]) -> None:
         """
         Called directly before processing a batch.
 
@@ -137,7 +137,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, batch_loss: float) -> None:
+    def post_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
@@ -151,7 +151,7 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def log_batch(self, step: int, batch_loss: float) -> None:
+    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         """
         Called after the optimizer step. Here ``batch_loss`` is the average loss across
         all distributed workers.
@@ -164,13 +164,17 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def pre_val_batch(self, step: int, val_step: int, val_batch: Dict[str, Any]) -> None:
+    def pre_val_batch(
+        self, step: int, val_step: int, epoch: int, val_batch: Dict[str, Any]
+    ) -> None:
         """
         Called right before a validation batch is processed.
         """
         pass
 
-    def post_val_batch(self, step: int, val_step: int, val_batch_outputs: Dict[str, Any]) -> None:
+    def post_val_batch(
+        self, step: int, val_step: int, epoch: int, val_batch_outputs: Dict[str, Any]
+    ) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
 
@@ -183,7 +187,9 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+    ) -> None:
         """
         Called right after the validation loop finishes.
         """
@@ -206,7 +212,9 @@ class StopEarlyCallback(TrainCallback):
         self.patience = patience
         self.best_step = 0
 
-    def post_val_loop(self, step: int, val_metric: float, best_val_metric: float) -> None:
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+    ) -> None:
         if val_metric == best_val_metric:
             self.best_step = step
         elif step > self.best_step + self.patience:

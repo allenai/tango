@@ -32,16 +32,19 @@ jobs:
         task:
           - name: Lint
             extras: dev,all
+            requires_torch: true
             run: |
               flake8 .
 
           - name: Type check
             extras: dev,all
+            requires_torch: true
             run: |
               mypy .
 
           - name: Build
             extras: dev,all
+            requires_torch: true
             run: |
               tango --version
               python setup.py check
@@ -49,39 +52,58 @@ jobs:
 
           - name: Style
             extras: dev
+            requires_torch: false
             run: |
               isort --check .
               black --check .
 
           - name: Docs
             extras: dev,all
+            requires_torch: true
             run: |
               cd docs && make html SPHINXOPTS="-W --keep-going"
 
           - name: Test
             extras: dev
+            requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Datasets integration
             extras: dev,datasets
+            requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/datasets tests/integrations/datasets
 
           - name: PyTorch integration
             extras: dev,torch
+            requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
           - name: PyTorch Lightning integration
             extras: dev,pytorch_lightning
+            requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
-          - name: GPT2 example
-            extras: dev,examples,datasets,torch
+          - name: Transformers integration
+            extras: dev,transformers
+            requires_torch: true
             run: |
-              cd examples/train_gpt2
+              pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
+
+          - name: FairScale integration
+            extras: dev,fairscale
+            requires_torch: true
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
+
+          - name: Example - train_lm
+            extras: dev,all
+            requires_torch: true
+            run: |
+              cd examples/train_lm
               pytest -v --color=yes test.py
 
         include:
@@ -89,6 +111,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.8'
@@ -96,6 +119,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.9'
@@ -103,6 +127,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.10'
@@ -142,10 +167,10 @@ jobs:
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
 
       - name: Pre-install torch
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all'))
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
         run: |
           . .venv/bin/activate
-          pip install torch==1.10.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
+          pip install torch==1.10.2+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -191,10 +216,121 @@ jobs:
           . .venv/bin/activate
           pip uninstall -y ai2-tango
 
+  gpu_tests:
+    name: GPU Tests
+    runs-on: [ubuntu-latest]
+    timeout-minutes: 20
+    env:
+      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      BEAKER_WORKSPACE: ai2/tango-testing
+      BEAKER_CLUSTER: ai2/tango-gpu-tests
+      IMAGE_NAME: petew/tango-testing
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
+
+      - name: Install beaker client
+        shell: bash
+        run: |
+          mkdir -p "$HOME/bin"
+
+          # Download and install from latest GitHub release.
+          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
+            | grep 'browser_download_url.*linux' \
+            | cut -d '"' -f 4 \
+            | wget -qi - \
+          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
+
+          # Add to path.
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Verify beaker install
+        run: |
+          beaker account whoami
+
+      - name: Create beaker experiment config
+        run: |
+          cat >beaker_config.yml << EOL
+          version: v2-alpha
+          description: GPU Tests
+          tasks:
+            - name: tests
+              image:
+                beaker: ${{ env.IMAGE_NAME }}
+              command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
+              envVars:
+                - name: COMMIT_SHA
+                  value: $COMMIT_SHA
+              result:
+                path: '/results'
+              resources:
+                gpuCount: 2
+              context:
+                cluster: ${{ env.BEAKER_CLUSTER }}
+                priority: normal
+          EOL
+          cat beaker_config.yml
+
+      - name: Submit beaker job
+        run: |
+          TIMESTAMP=$(date +%H%M%S)
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "gpu-tests-${COMMIT_SHA}-${TIMESTAMP}" | awk '{print $2}')
+          if [ -z "$EXPERIMENT" ]; then
+            exit 1
+          else
+            echo "EXPERIMENT=$EXPERIMENT" >> $GITHUB_ENV
+            echo "Experiment $EXPERIMENT submitted. See progress at https://beaker.org/ex/$EXPERIMENT"
+          fi
+
+      - name: Wait for job to finish
+        run: |
+          beaker experiment await $EXPERIMENT tests finalized --timeout 10m
+          # Check the job's exit code.
+          test $(beaker experiment get $EXPERIMENT --format=json | jq '.[0].jobs[0].status.exitCode') -eq 0
+
+      - name: Get logs
+        if: always()
+        run: |
+          # EXPERIMENT could be empty if the submission step failed.
+          # We'll exit right away if that's the case.
+          if [ -z "$EXPERIMENT" ]; then
+            echo "No logs to show"
+            exit 0
+          fi
+
+          # Download logs from beaker.
+          beaker experiment results $EXPERIMENT --prefix out.log --output results
+
+          # If the experiment failed during startup, there might not be any logs.
+          if [ -f results/tests/out.log ]; then
+            echo ""
+            echo ">>> Logs:"
+            echo ""
+            cat results/tests/out.log
+          else
+            echo "No logs to show"
+          fi
+
+      - name: Stop job
+        if: cancelled()
+        run: |
+          if [ ! -z "$EXPERIMENT" ]; then
+            beaker experiment stop $EXPERIMENT
+          fi
+
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [checks]
+    needs: [checks, gpu_tests]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v1
