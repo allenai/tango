@@ -9,20 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The waiting message for `FileLock` is now clear about which file it's waiting for.
-- Added an easier way to get the default Tango global config
-- Plain old Python functions can now be used in `Lazy` objects.
-- `LocalWorkspace` now creates a symlink to the outputs of the latest run.
-
-### Fixed
-
-- Fixed bug where `Executor` would crash if `git` command could not be found.
-- Fixed bug where validation settings were not interpreted the right way by the torch trainer.
+- Added `TrainingEngine` abstraction to torch integration.
+- Added [FairScale](https://fairscale.readthedocs.io/en/latest/) with a `FairScaleTrainingEngine`
+  that leverages FairScale's `FullyShardedDataParallel`. This is meant to be used within the `TorchTrainStep`.
+- All PyTorch components (such as learning rate schedulers, optimizers, data collators, etc) from the
+  transformers library and now registered under the corresponding class in the torch integration.
+  For example, transformers `Adafactor` optimizer is registered as an `Optimizer` under the name
+  "transformers::Adafactor". More details can be found in the documentation for the transformers integration.
 
 ### Changed
 
+- Various changes to the parameters othe `TorchTrainStep` due to the introduction of the `TrainingEngine` class.
+- Params logged as `DEBUG` level instead of `INFO` to reduce noise in logs.
+- The waiting message for `FileLock` is now clear about which file it's waiting for.
+- Added an easier way to get the default Tango global config
+- Most methods to `TorchTrainCallback` also take an `epoch` parameter now.
+- `WandbTrainCallback` now logs peak GPU memory occupied by PyTorch tensors per worker. This is useful because W&B's system metrics only display the total GPU memory reserved by PyTorch, which is always higher than the actual amount of GPU memory occupied by tensors. So these new metrics give a more accurate view into how much memory your training job is actually using.
+- Plain old Python functions can now be used in `Lazy` objects.
+- `LocalWorkspace` now creates a symlink to the outputs of the latest run.
 - Tango is now better at guessing when a step has died and should be re-run.
 - Tango is now more lenient about registering the same class under the same name twice.
+
+### Fixed
+
+- Fixed a bug in `Registrable` and `FromParams` where registered function constructors would not properly construct
+  arguments that were classes.
+- Fixed a bug in `FromParams` that would cause a crash when an argument to the constructor had the name `params`.
+- Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it actually could be a step.
+- Fixed bug where `Executor` would crash if `git` command could not be found.
+- Fixed bug where validation settings were not interpreted the right way by the torch trainer.
 
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27

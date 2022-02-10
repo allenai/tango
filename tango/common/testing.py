@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 from tango.common.aliases import PathOrStr
 from tango.common.logging import initialize_logging, teardown_logging
+from tango.common.params import Params
 
 
 class TangoTestCase:
@@ -58,16 +59,14 @@ class TangoTestCase:
 
     def run(
         self,
-        config: Union[PathOrStr, Dict[str, Any]],
+        config: Union[PathOrStr, Dict[str, Any], Params],
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
     ) -> Path:
         from tango.__main__ import TangoGlobalSettings, _run
 
-        from .params import Params
-
-        if isinstance(config, dict):
-            params = Params(config)
+        if isinstance(config, (dict, Params)):
+            params = config if isinstance(config, Params) else Params(config)
             config = self.TEST_DIR / "config.json"
             params.to_file(cast(Path, config))
 
@@ -88,20 +87,21 @@ class TangoTestCase:
 
 @contextmanager
 def run_experiment(
-    config: Union[PathOrStr, Dict[str, Any]],
+    config: Union[PathOrStr, Dict[str, Any], Params],
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
+    include_package: Optional[List[str]] = None,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
-    the experiment and returns the path to the cache directory, a temporary directory that will be
+    the experiment and returns the path to the run directory, a temporary directory that will be
     cleaned up on ``__exit__``.
     """
     initialize_logging(enable_click_logs=True, file_friendly_logging=file_friendly_logging)
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config, overrides=overrides)
+        yield test_case.run(config, overrides=overrides, include_package=include_package)
     finally:
         test_case.teardown_method()
         teardown_logging()
