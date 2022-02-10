@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a small bug that would result in a bunch of conda errors in the output when `LocalWorkspace`  failed to capture the conda environment.
 - Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
+- Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09
