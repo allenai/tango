@@ -19,23 +19,24 @@ on:
           - ai2/tango-integration-tests
           - ai2/allennlp-cirrascale
   # Uncomment this trigger to test changes on a pull request.
-  pull_request:
-    branches:
-      - '*'
+  # You also have to uncomment the lines below that mention 'for pull request checks'
+  # pull_request:
+  #   branches:
+  #     - '*'
 
 jobs:
   run_test:
-    # name: ${{ github.event.inputs.test }}
-    name: fairscale_benchmarks
+    name: ${{ github.event.inputs.test }}
+    # name: fairscale_benchmarks  # for pull request checks
     runs-on: [ubuntu-latest]
     timeout-minutes: 60
     env:
-      # TEST_NAME: ${{ github.event.inputs.test }}
-      TEST_NAME: fairscale_benchmarks
+      TEST_NAME: ${{ github.event.inputs.test }}
+      # TEST_NAME: fairscale_benchmarks  # for pull request checks
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
       BEAKER_WORKSPACE: ai2/tango-integration-tests
-      # BEAKER_CLUSTER: ${{ github.event.inputs.cluster }}
-      BEAKER_CLUSTER: ai2/allennlp-cirrascale
+      BEAKER_CLUSTER: ${{ github.event.inputs.cluster }}
+      # BEAKER_CLUSTER: ai2/allennlp-cirrascale  # for pull request checks
       IMAGE_NAME: petew/tango-testing
     steps:
       - uses: actions/checkout@v2
