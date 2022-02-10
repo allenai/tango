@@ -239,12 +239,12 @@ jobs:
             - name: tests
               image:
                 beaker: petew/tango-testing
-              command: [/entrypoint.sh, pytest, -v, tests/common/util_test.py]
+              command: [/entrypoint.sh, pytest, -v, tests/common/util_test.py, |, tee, /results/out.log]
               envVars:
                 - name: COMMIT_SHA
                   value: $COMMIT_SHA
               result:
-                path: '/unused'
+                path: '/results'
               resources:
                 gpuCount: 2
               context:
@@ -261,7 +261,7 @@ jobs:
 
       - name: Wait for job to finish
         run: |
-          beaker experiment await $EXPERIMENT tests finalized
+          beaker experiment await $EXPERIMENT tests finalized --timeout 10m
 
   release:
     name: Release
