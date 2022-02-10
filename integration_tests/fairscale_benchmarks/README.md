@@ -8,7 +8,7 @@ This integration test is for checking the performance of the `FairScaleTrainingE
 
 **How to run it:** From the root directory of this repository, run:
 ```
-tango run integration_tests/fairscale_benchmarks/config.jsonnet -i examples/train_lm/tokenize_step.py
+integration_tests/fairscale_benchmarks/run.sh
 ```
 
 **What to look for:** The training jobs shouldn't fail, for one. After `tango run` completes, check the corresponding Weights & Biases

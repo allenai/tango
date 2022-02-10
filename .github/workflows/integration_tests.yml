@@ -1,0 +1,109 @@
+name: Integration tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test:
+        description: the integration test to run
+        default: fairscale_benchmarks
+        required: true
+      name:
+        description: the name to assign to the beaker run
+        required: true
+
+jobs:
+  run_test:
+    name: ${{ github.event.inputs.test }}
+    runs-on: [ubuntu-latest]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Validate inputs
+        run: |
+          # The 'test' input should be a directory in `integration_tests/`
+          test -d integration_tests/${{ github.event.inputs.test }}
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
+
+      - name: Install beaker client
+        shell: bash
+        run: |
+          mkdir -p "$HOME/bin"
+
+          # Download and install from latest GitHub release.
+          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
+            | grep 'browser_download_url.*linux' \
+            | cut -d '"' -f 4 \
+            | wget -qi - \
+          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
+
+          # Add to path.
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Verify beaker install
+        run: |
+          beaker account whoami
+
+      - name: Create beaker experiment config
+        run: |
+          cat >beaker_config.yml << EOL
+          version: v2-alpha
+          description: ${{ github.event.inputs.test }}
+          tasks:
+            - name: test
+              image:
+                beaker: petew/tango-testing
+              command: ["/entrypoint.sh", "integration_tests/${{ github.event.inputs.test }}/run.sh"]
+              envVars:
+                - name: COMMIT_SHA
+                  value: $COMMIT_SHA
+              result:
+                path: '/results'
+              resources:
+                gpuCount: 2
+              context:
+                cluster: ai2/tango-integration-tests
+                priority: normal
+          EOL
+          cat beaker_config.yml
+
+      - name: Submit beaker job
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name ${{ github.event.inputs.test }}-"$TIMESTAMP" | awk '{print $2}')
+          if [ -z "$EXPERIMENT" ]; then
+            exit 1
+          else
+            echo "EXPERIMENT=$EXPERIMENT" >> $GITHUB_ENV
+            echo "Experiment $EXPERIMENT submitted. See progress at https://beaker.org/ex/$EXPERIMENT"
+          fi
+
+      - name: Wait for job to finish
+        run: |
+          beaker experiment await $EXPERIMENT test finalized --timeout 60m
+          # Check the job's exit code.
+          test $(beaker experiment get $EXPERIMENT --format=json | jq '.[0].jobs[0].status.exitCode') -eq 0
+
+      - name: Get logs
+        if: always()
+        run: |
+          # EXPERIMENT could be empty if the submission step failed.
+          # We'll exit right away if that's the case.
+          if [ -z "$EXPERIMENT" ]; then
+            echo "No logs to show"
+            exit 0
+          fi
+
+          # Download logs from beaker.
+          beaker experiment results $EXPERIMENT --prefix out.log --output results
+
+          # If the experiment failed during startup, there might not be any logs.
+          if [ -f results/test/out.log ]; then
+            cat results/test/out.log
+          else
+            echo "No log to show"
+          fi

@@ -219,6 +219,7 @@ jobs:
   gpu_tests:
     name: GPU Tests
     runs-on: [ubuntu-latest]
+    timeout-minutes: 20
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
       BEAKER_WORKSPACE: ai2/tango-testing
@@ -297,13 +298,21 @@ jobs:
       - name: Get logs
         if: always()
         run: |
+          # EXPERIMENT could be empty if the submission step failed.
+          # We'll exit right away if that's the case.
           if [ -z "$EXPERIMENT" ]; then
             echo "No logs to show"
             exit 0
           fi
+
+          # Download logs from beaker.
           beaker experiment results $EXPERIMENT --prefix out.log --output results
+
+          # If the experiment failed during startup, there might not be any logs.
           if [ -f results/tests/out.log ]; then
             cat results/tests/out.log
+          else
+            echo "No log to show"
           fi
 
   release:
