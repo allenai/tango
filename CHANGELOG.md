@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transformers library and now registered under the corresponding class in the torch integration.
   For example, transformers `Adafactor` optimizer is registered as an `Optimizer` under the name
   "transformers::Adafactor". More details can be found in the documentation for the transformers integration.
+- Added a '@requires_gpus' decorator for marking tests as needing GPUs. Tests marked with this will be ran in the "GPU Tests" workflow
+  on dual k80 GPUs via Beaker.
 
 ### Changed
 
