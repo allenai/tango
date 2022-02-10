@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a '@requires_gpus' decorator for marking tests as needing GPUs. Tests marked with this will be run in the "GPU Tests" workflow
   on dual k80 GPUs via Beaker.
 
+### Fixed
+
+- Fixed a small bug that would result in a bunch of conda errors in the output when `LocalWorkspace`  failed to capture the conda environment.
+- Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
+
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09
 
