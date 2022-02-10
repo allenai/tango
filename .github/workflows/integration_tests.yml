@@ -11,21 +11,25 @@ on:
         description: the name to assign to the beaker run
         required: true
 
+env:
+  WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+
 jobs:
   run_test:
     name: ${{ github.event.inputs.test }}
     runs-on: [ubuntu-latest]
     timeout-minutes: 60
+    env:
+      TEST_NAME: ${{ github.event.inputs.test }}
     steps:
       - uses: actions/checkout@v2
 
       - name: Validate inputs
         run: |
           # The 'test' input should be a directory in `integration_tests/`
-          test -d integration_tests/${{ github.event.inputs.test }}
+          test -d "integration_tests/${TEST_NAME}"
 
       - name: Determine current commit SHA (push)
-        if: github.event_name != 'pull_request'
         run: |
           echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
 
@@ -52,12 +56,12 @@ jobs:
         run: |
           cat >beaker_config.yml << EOL
           version: v2-alpha
-          description: ${{ github.event.inputs.test }}
+          description: ${{ env.TEST_NAME }}
           tasks:
             - name: test
               image:
                 beaker: petew/tango-testing
-              command: ["/entrypoint.sh", "integration_tests/${{ github.event.inputs.test }}/run.sh"]
+              command: ["/entrypoint.sh", "integration_tests/${{ env.TEST_NAME }}/run.sh"]
               envVars:
                 - name: COMMIT_SHA
                   value: $COMMIT_SHA
@@ -74,7 +78,7 @@ jobs:
       - name: Submit beaker job
         run: |
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name ${{ github.event.inputs.test }}-"$TIMESTAMP" | awk '{print $2}')
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "${TEST_NAME}-${TIMESTAMP}" | awk '{print $2}')
           if [ -z "$EXPERIMENT" ]; then
             exit 1
           else
