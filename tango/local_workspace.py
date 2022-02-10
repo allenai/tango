@@ -188,7 +188,9 @@ class ExecutorMetadata(FromParams):
 
             try:
                 with (run_dir / "conda-environment.yaml").open("w") as f:
-                    subprocess.call(["conda", "env", "export"], stdout=f)
+                    subprocess.run(
+                        ["conda", "env", "export"], stdout=f, stderr=subprocess.DEVNULL, check=True
+                    )
             except Exception as exc:
                 logger.exception("Error saving conda packages: %s", exc)
 
