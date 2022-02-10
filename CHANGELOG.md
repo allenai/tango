@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LocalWorkspace` now creates a symlink to the outputs of the latest run.
 - Tango is now better at guessing when a step has died and should be re-run.
 - Tango is now more lenient about registering the same class under the same name twice.
+- When you use `dict` instead of `Dict` in your type annotations, you now get a legible error message. Same for `List`, `Tuple`, and `Set`.
 
 ### Fixed
 
@@ -38,13 +39,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it actually could be a step.
 - Fixed bug where `Executor` would crash if `git` command could not be found.
 - Fixed bug where validation settings were not interpreted the right way by the torch trainer.
+- When you register the same name twice using `Registrable`, you get an error message. That error message now contains the correct class name.
 
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
 
 ### Changed
 
-- When you use `dict` instead of `Dict` in your type annotations, you now get a legible error message. Same for `List`, `Tuple`, and `Set`.
 - Default log level is `WARNING` instead of `ERROR`.
 - The web UI now renders the step graph left-to-right.
 - The web UI now shows runs by date, with the most recent run at the top.
@@ -54,7 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
-- When you register the same name twice using `Registrable`, you get an error message. That error message now contains the correct class name.
 
 
 ## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19
