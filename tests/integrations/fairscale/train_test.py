@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from tango.common.logging import initialize_logging, teardown_logging
-from tango.common.testing import TangoTestCase, requires_gpus
+from tango.common.testing import TangoTestCase
 
 
 class TestFairScaleTrain(TangoTestCase):
