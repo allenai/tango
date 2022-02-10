@@ -76,5 +76,5 @@ jobs:
           # We delete the previous version. This doesn't actually delete the backing Docker image, so
           # we'll still benefit from layer caching when we push new version. The image might not exist
           # yet, so it's ok if this fails.
-          beaker image delete ai2/"$IMAGE_NAME" || true
+          beaker image delete petew/"$IMAGE_NAME" || true
           beaker image create --workspace "$BEAKER_WORKSPACE" --name "$IMAGE_NAME" "$IMAGE_NAME"
