@@ -219,10 +219,12 @@ jobs:
   gpu_tests:
     name: GPU Tests
     runs-on: [ubuntu-latest]
+    timeout-minutes: 20
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
       BEAKER_WORKSPACE: ai2/tango-testing
-      IMAGE_NAME: tango-testing
+      BEAKER_CLUSTER: ai2/tango-gpu-tests
+      IMAGE_NAME: petew/tango-testing
     steps:
       - uses: actions/checkout@v2
 
@@ -263,7 +265,7 @@ jobs:
           tasks:
             - name: tests
               image:
-                beaker: petew/tango-testing
+                beaker: ${{ env.IMAGE_NAME }}
               command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
               envVars:
                 - name: COMMIT_SHA
@@ -273,14 +275,15 @@ jobs:
               resources:
                 gpuCount: 2
               context:
-                cluster: ai2/tango-gpu-tests
+                cluster: ${{ env.BEAKER_CLUSTER }}
                 priority: normal
           EOL
           cat beaker_config.yml
 
       - name: Submit beaker job
         run: |
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name gpu-tests-$COMMIT_SHA | awk '{print $2}')
+          TIMESTAMP=$(date +%H%M%S)
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "gpu-tests-${COMMIT_SHA}-${TIMESTAMP}" | awk '{print $2}')
           if [ -z "$EXPERIMENT" ]; then
             exit 1
           else
@@ -297,13 +300,31 @@ jobs:
       - name: Get logs
         if: always()
         run: |
+          # EXPERIMENT could be empty if the submission step failed.
+          # We'll exit right away if that's the case.
           if [ -z "$EXPERIMENT" ]; then
             echo "No logs to show"
             exit 0
           fi
+
+          # Download logs from beaker.
           beaker experiment results $EXPERIMENT --prefix out.log --output results
+
+          # If the experiment failed during startup, there might not be any logs.
           if [ -f results/tests/out.log ]; then
+            echo ""
+            echo ">>> Logs:"
+            echo ""
             cat results/tests/out.log
+          else
+            echo "No logs to show"
+          fi
+
+      - name: Stop job
+        if: cancelled()
+        run: |
+          if [ ! -z "$EXPERIMENT" ]; then
+            beaker experiment stop $EXPERIMENT
           fi
 
   release:

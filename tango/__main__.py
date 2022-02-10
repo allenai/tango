@@ -110,12 +110,10 @@ class TangoGlobalSettings(FromParams):
 
     """
 
-    file_friendly_logging: bool = False
+    file_friendly_logging: Optional[bool] = None
     """
     If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
     down tqdm's output to only once every 10 seconds.
-
-    By default, it is set to ``False``.
     """
 
     multiprocessing_start_method: str = "spawn"
@@ -216,7 +214,7 @@ def main(
     if log_level is not None:
         config.log_level = log_level
 
-    if file_friendly_logging is not None:
+    if file_friendly_logging:
         config.file_friendly_logging = file_friendly_logging
 
     initialize_logging(

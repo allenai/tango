@@ -1,7 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
 # Exit script if any commands fail.
 set -e
+set -o pipefail
 
 # Check that the environment variable has been set correctly
 if [ -z "$COMMIT_SHA" ]; then
@@ -19,4 +20,4 @@ git checkout "$COMMIT_SHA"
 mkdir -p /results
 
 # Execute the arguments to this script as commands themselves, piping output into a log file.
-exec "$@" | tee /results/out.log
+exec "$@" 2>&1 | tee /results/out.log
