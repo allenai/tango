@@ -302,7 +302,7 @@ jobs:
             exit 0
           fi
           beaker experiment results $EXPERIMENT --prefix out.log --output results
-          if [ if results/tests/out.log ]; then
+          if [ -f results/tests/out.log ]; then
             cat results/tests/out.log
           fi
 
