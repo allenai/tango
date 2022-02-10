@@ -15,9 +15,6 @@ on:
     branches:
       - '*'
 
-env:
-  WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
-
 jobs:
   run_test:
     # name: ${{ github.event.inputs.test }}
@@ -27,6 +24,10 @@ jobs:
     env:
       # TEST_NAME: ${{ github.event.inputs.test }}
       TEST_NAME: fairscale_benchmarks
+      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      BEAKER_WORKSPACE: ai2/tango-integration-tests
+      BEAKER_CLUSTER: ai2/tango-integration-tests
+      IMAGE_NAME: petew/tango-testing
     steps:
       - uses: actions/checkout@v2
 
@@ -66,7 +67,7 @@ jobs:
           tasks:
             - name: test
               image:
-                beaker: petew/tango-testing
+                beaker: ${{ env.IMAGE_NAME }}
               command: ["/entrypoint.sh", "integration_tests/${{ env.TEST_NAME }}/run.sh"]
               envVars:
                 - name: COMMIT_SHA
@@ -78,7 +79,7 @@ jobs:
               resources:
                 gpuCount: 4
               context:
-                cluster: ai2/tango-integration-tests
+                cluster: ${{ env.BEAKER_CLUSTER }}
                 priority: normal
           EOL
           cat beaker_config.yml
@@ -117,5 +118,5 @@ jobs:
           if [ -f results/test/out.log ]; then
             cat results/test/out.log
           else
-            echo "No log to show"
+            echo "No logs to show"
           fi

@@ -223,7 +223,8 @@ jobs:
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
       BEAKER_WORKSPACE: ai2/tango-testing
-      IMAGE_NAME: tango-testing
+      BEAKER_CLUSTER: ai2/tango-gpu-tests
+      IMAGE_NAME: petew/tango-testing
     steps:
       - uses: actions/checkout@v2
 
@@ -264,7 +265,7 @@ jobs:
           tasks:
             - name: tests
               image:
-                beaker: petew/tango-testing
+                beaker: ${{ env.IMAGE_NAME }}
               command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
               envVars:
                 - name: COMMIT_SHA
@@ -274,7 +275,7 @@ jobs:
               resources:
                 gpuCount: 2
               context:
-                cluster: ai2/tango-gpu-tests
+                cluster: ${{ env.BEAKER_CLUSTER }}
                 priority: normal
           EOL
           cat beaker_config.yml
@@ -312,7 +313,7 @@ jobs:
           if [ -f results/tests/out.log ]; then
             cat results/tests/out.log
           else
-            echo "No log to show"
+            echo "No logs to show"
           fi
 
   release:
