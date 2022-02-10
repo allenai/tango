@@ -51,6 +51,17 @@ local single_device_dataloader = {
 local TrainStep(options) =
     local training_engine = {
         type: if options.fsdp_config != null then "fairscale" else "torch",
+        optimizer: {
+            type: "torch::AdamW",
+            lr: learning_rate,
+            betas: [0.9, 0.95],
+            eps: 1e-6,
+        },
+        lr_scheduler: {
+            type: "transformers::linear",
+            num_warmup_steps: warmup_steps,
+            num_training_steps: training_steps,
+        },
         amp: options.amp,
         [if options.fsdp_config != null then "fsdp_config" else null]: options.fsdp_config,
     };
@@ -71,17 +82,6 @@ local TrainStep(options) =
         dataset_dict: { type: "ref", ref: "tokenized_data" },
         train_dataloader: distributed_dataloader,
         validation_split: "validation",
-        optimizer: {
-            type: "torch::AdamW",
-            lr: learning_rate,
-            betas: [0.9, 0.95],
-            eps: 1e-6,
-        },
-        lr_scheduler: {
-            type: "transformers::linear",
-            num_warmup_steps: warmup_steps,
-            num_training_steps: training_steps,
-        },
         grad_accum: grad_accum,
         train_steps: training_steps,
         validate_every: validate_every,

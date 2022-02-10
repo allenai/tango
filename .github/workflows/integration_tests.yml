@@ -132,7 +132,7 @@ jobs:
           # If the experiment failed during startup, there might not be any logs.
           if [ -f results/test/out.log ]; then
             echo ""
-            echo "Logs:"
+            echo ">>> Logs:"
             echo ""
             cat results/test/out.log
           else
