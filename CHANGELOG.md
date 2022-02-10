@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `WandbTrainCallback` now logs peak GPU memory occupied by PyTorch tensors per worker. This is useful because W&B's system metrics only display the total GPU memory reserved by PyTorch, which is always higher than the actual amount of GPU memory occupied by tensors. So these new metrics give a more accurate view into how much memory your training job is actually using.
 - Plain old Python functions can now be used in `Lazy` objects.
 - `LocalWorkspace` now creates a symlink to the outputs of the latest run.
+- Tango is now better at guessing when a step has died and should be re-run.
+- Tango is now more lenient about registering the same class under the same name twice.
 
 ### Fixed
 
@@ -36,11 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made `FromParams` more efficient by only trying to parse the params as a `Step` when it looks like it actually could be a step.
 - Fixed bug where `Executor` would crash if `git` command could not be found.
 - Fixed bug where validation settings were not interpreted the right way by the torch trainer.
-
-### Changed
-
-- Tango is now better at guessing when a step has died and should be re-run.
-- Tango is now more lenient about registering the same class under the same name twice.
 
 
 ## [v0.4.0](https://github.com/allenai/tango/releases/tag/v0.4.0) - 2022-01-27
