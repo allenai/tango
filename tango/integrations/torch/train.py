@@ -432,13 +432,17 @@ def _train(
         if config.is_local_main_process:
             if config.state_path.is_symlink():
                 config.state_path.unlink()
-            config.state_path.symlink_to(config.state_path_for_step(step))
+            config.state_path.symlink_to(
+                config.state_path_for_step(step).relative_to(config.work_dir)
+            )
 
             # Link to best state path.
             if is_best_checkpoint():
                 if config.best_state_path.is_symlink():
                     config.best_state_path.unlink()
-                config.best_state_path.symlink_to(config.state_path_for_step(step))
+                config.best_state_path.symlink_to(
+                    config.state_path_for_step(step).relative_to(config.work_dir)
+                )
 
             # Clean up stale checkpoints.
             if config.remove_stale_checkpoints:
