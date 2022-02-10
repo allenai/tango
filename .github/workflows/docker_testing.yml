@@ -1,0 +1,80 @@
+# This workflow is just for building our Docker image for GPU testing on Beaker,
+# and pushing it to Beaker. We only run it when the relevant Dockerfile (or .dockerignore) changes.
+name: Docker testing
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile.test'
+      - '.dockerignore'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile.test'
+      - '.dockerignore'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      BEAKER_WORKSPACE: ai2/tango-testing
+      IMAGE_NAME: tango-testing
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t "$IMAGE_NAME" -f Dockerfile.test .
+
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
+
+      - name: Test Docker image
+        run: |
+          docker run --rm --env COMMIT_SHA="$COMMIT_SHA" "$IMAGE_NAME" tango info
+
+      - name: Install beaker client
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          mkdir -p "$HOME/bin"
+
+          # Download and install from latest GitHub release.
+          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
+            | grep 'browser_download_url.*linux' \
+            | cut -d '"' -f 4 \
+            | wget -qi - \
+          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
+
+          # Add to path.
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Verify beaker install
+        if: github.event_name != 'pull_request'
+        run: |
+          beaker account whoami
+
+      - name: Push release to beaker
+        if: github.event_name != 'pull_request'
+        run: |
+          # We delete the previous version. This doesn't actually delete the backing Docker image, so
+          # we'll still benefit from layer caching when we push new version. The image might not exist
+          # yet, so it's ok if this fails.
+          beaker image delete petew/"$IMAGE_NAME" || true
+          beaker image create --workspace "$BEAKER_WORKSPACE" --name "$IMAGE_NAME" "$IMAGE_NAME"
