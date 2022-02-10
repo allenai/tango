@@ -33,14 +33,14 @@ class ResNetWrapper(Model):
                 param.requires_grad = False
 
     def forward(
-        self, image: torch.Tensor, label: Optional[torch.Tensor] = None
+        self, image: torch.Tensor, labels: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
         preds = torch.argmax(output, dim=1)
-        if label is None:
+        if labels is None:
             return {"preds": preds}
-        loss = self.loss_fn(output, label)
-        accuracy = (preds == label).float().mean()
+        loss = self.loss_fn(output, labels)
+        accuracy = (preds == labels).float().mean()
         return {"loss": loss, "accuracy": accuracy}
 
 
@@ -135,6 +135,6 @@ class Prediction(Step):
         transformed_image = transformed_image.unsqueeze(0).to(device)
 
         # pass image through model and get the prediction
-        prediction = model(image=transformed_image, label=None)["pred"]
+        prediction = model(image=transformed_image, label=None)["pred"].float()
         label = convert_to_label(prediction)
         return {"image_url": image_url, "local_path": image_path, "label": label}
