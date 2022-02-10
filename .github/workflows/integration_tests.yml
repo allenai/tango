@@ -89,6 +89,10 @@ jobs:
                   value: $COMMIT_SHA
                 - name: WANDB_API_KEY
                   secret: WANDB_API_KEY
+                - name: FILE_FRIENDLY_LOGGING
+                  value: "true"
+                - name: TOKENIZERS_PARALLELISM  # set this to avoid warnings
+                  value: "true"
               result:
                 path: '/results'
               resources:
