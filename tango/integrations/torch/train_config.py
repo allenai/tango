@@ -78,16 +78,6 @@ class TrainConfig:
     Controls the frequency of the validation loop.
     """
 
-    amp: bool = False
-    """
-    Whether automatic mixed precision is enabled.
-    """
-
-    max_grad_norm: Optional[float] = None
-    """
-    Max gradient norm. If set, gradients are clipped.
-    """
-
     is_distributed: bool = False
     """
     Whether or not the training job is distributed.
@@ -98,9 +88,14 @@ class TrainConfig:
     The devices used (for distributed jobs).
     """
 
+    distributed_address: str = "127.0.0.1"
+    """
+    The IP address of the main distributed process.
+    """
+
     distributed_port: str = "54761"
     """
-    The port of the distributed backend.
+    The port of the main distributed process.
     """
 
     val_metric_name: str = "loss"
@@ -130,6 +125,8 @@ class TrainConfig:
 
     _worker_local_default_device: Optional[torch.device] = None
 
+    _device_type: Optional[str] = None  # either "cuda" or "cpu"
+
     @property
     def worker_local_default_device(self) -> torch.device:
         """
@@ -152,6 +149,17 @@ class TrainConfig:
             return device
 
     @property
+    def device_type(self) -> str:
+        if self._device_type is None:
+            device_type = (
+                "cpu" if self.worker_local_default_device == torch.device("cpu") else "cuda"
+            )
+            self._device_type = device_type
+            return device_type
+        else:
+            return self._device_type
+
+    @property
     def is_local_main_process(self) -> bool:
         """
         Whether the local process is the main distributed worker.
@@ -163,7 +171,7 @@ class TrainConfig:
         """
         The path to the latest state checkpoint file.
         """
-        return self.work_dir / f"state_worker{self.worker_id}.pt"
+        return self.work_dir / "checkpoint_state_latest"
 
     @property
     def best_state_path(self) -> Path:
@@ -171,10 +179,14 @@ class TrainConfig:
         The path to the best state checkpoint file according to the validation metric or training
         loss (if no validation split is given).
         """
-        return self.work_dir / f"state_worker{self.worker_id}_best.pt"
+        return self.work_dir / "checkpoint_state_best"
 
     def state_path_for_step(self, step: int) -> Path:
-        return self.work_dir / f"state_worker{self.worker_id}_step{step + 1}.pt"
+        return self.work_dir / f"checkpoint_state_step{step + 1}"
+
+    @property
+    def final_weights_path(self) -> Path:
+        return self.work_dir / "weights.pt"
 
     def should_log_this_step(self, step: int) -> bool:
         assert self.train_steps is not None

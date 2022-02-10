@@ -83,7 +83,9 @@ class TestFromParams(TangoTestCase):
         assert my_class.my_bool
 
     def test_create_kwargs(self):
-        kwargs = create_kwargs(MyClass, MyClass, Params({"my_int": 5}), my_bool=True, my_float=4.4)
+        kwargs = create_kwargs(
+            MyClass, MyClass, Params({"my_int": 5}), dict(my_bool=True, my_float=4.4)
+        )
 
         # my_float should not be included because it's not a param of the MyClass constructor
         assert kwargs == {"my_int": 5, "my_bool": True}
@@ -1077,6 +1079,29 @@ class TestFromParams(TangoTestCase):
 
         o = ClassWithUnionType.from_params({"x": {"a": 1}})
         assert isinstance(o.x, Item)
+
+    def test_from_params_with_function(self):
+        """
+        Tests that a function registered as a constructor for a registrable class
+        will properly construct arguments.
+        """
+
+        class MyRegistrableClass(Registrable):
+            def __init__(self, a: int, b: int):
+                self.a = a
+                self.b = b
+
+        @dataclass
+        class OptionsClass(FromParams):
+            a: int
+            b: int
+
+        @MyRegistrableClass.register("func_constructor")  # type: ignore
+        def constructor(options: OptionsClass) -> MyRegistrableClass:
+            assert isinstance(options, OptionsClass)
+            return MyRegistrableClass(options.a, options.b)
+
+        MyRegistrableClass.from_params({"type": "func_constructor", "options": {"a": 1, "b": 2}})
 
 
 class MyClass(FromParams):
