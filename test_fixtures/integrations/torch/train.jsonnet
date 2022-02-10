@@ -8,6 +8,11 @@
             "model": {
                 "type": "basic_regression",
             },
+            "training_engine": {
+                "optimizer": {
+                    "type": "torch::Adam",
+                },
+            },
             "dataset_dict": {
                 "type": "ref",
                 "ref": "data"
@@ -15,9 +20,6 @@
             "train_dataloader": {
                 "batch_size": 8,
                 "shuffle": true
-            },
-            "optimizer": {
-                "type": "torch::Adam",
             },
             "validation_split": "validation",
             "validation_dataloader": {

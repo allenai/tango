@@ -54,5 +54,4 @@ packaging
 ##################################################
 ###### Extra dev dependencies for examples #######
 ##################################################
-transformers  # needed by: examples
-torchmetrics>=0.7.0          # needed by: examples
+torchmetrics>=0.7.0  # needed by: examples

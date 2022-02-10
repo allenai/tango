@@ -32,16 +32,19 @@ jobs:
         task:
           - name: Lint
             extras: dev,all
+            requires_torch: true
             run: |
               flake8 .
 
           - name: Type check
             extras: dev,all
+            requires_torch: true
             run: |
               mypy .
 
           - name: Build
             extras: dev,all
+            requires_torch: true
             run: |
               tango --version
               python setup.py check
@@ -49,39 +52,58 @@ jobs:
 
           - name: Style
             extras: dev
+            requires_torch: false
             run: |
               isort --check .
               black --check .
 
           - name: Docs
             extras: dev,all
+            requires_torch: true
             run: |
               cd docs && make html SPHINXOPTS="-W --keep-going"
 
           - name: Test
             extras: dev
+            requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Datasets integration
             extras: dev,datasets
+            requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/datasets tests/integrations/datasets
 
           - name: PyTorch integration
             extras: dev,torch
+            requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
           - name: PyTorch Lightning integration
             extras: dev,pytorch_lightning
+            requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
-          - name: GPT2 example
-            extras: dev,examples,datasets,torch
+          - name: Transformers integration
+            extras: dev,transformers
+            requires_torch: true
             run: |
-              cd examples/train_gpt2
+              pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
+
+          - name: FairScale integration
+            extras: dev,fairscale
+            requires_torch: true
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
+
+          - name: Example - train_lm
+            extras: dev,all
+            requires_torch: true
+            run: |
+              cd examples/train_lm
               pytest -v --color=yes test.py
 
         include:
@@ -89,6 +111,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.8'
@@ -96,6 +119,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.9'
@@ -103,6 +127,7 @@ jobs:
           - task:
               name: Test
               extras: dev
+              requires_torch: false
               run: |
                 pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.10'
@@ -142,10 +167,10 @@ jobs:
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
 
       - name: Pre-install torch
-        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all'))
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
         run: |
           . .venv/bin/activate
-          pip install torch==1.10.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
+          pip install torch==1.10.2+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'

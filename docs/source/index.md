@@ -14,7 +14,6 @@ installation
 overview
 examples/index
 faq
-CHANGELOG
 ```
 
 ```{toctree}
@@ -35,6 +34,7 @@ api/utilities
 :caption: Development
 
 CONTRIBUTING
+CHANGELOG
 License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```
