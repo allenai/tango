@@ -3,7 +3,7 @@
         "data": {
             "type": "generate_data",
         },
-        "train": {
+        "eval": {
             "type": "torch::eval",
             "model": {
                 "type": "basic_regression",

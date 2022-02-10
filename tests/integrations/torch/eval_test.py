@@ -10,4 +10,4 @@ class TestEvalStep(TangoTestCase):
                 "test_fixtures.integrations.torch",
             ],
         )
-        assert (result_dir / "train" / "data.json").is_file()
+        assert (result_dir / "eval" / "data.json").is_file()

@@ -153,10 +153,13 @@ def infer_method_params(
     # first superclass, and so on. We take the first superclass we find that inherits from
     # FromParams.
     super_class = None
-    for super_class_candidate in cls.mro()[1:]:
-        if issubclass(super_class_candidate, FromParams):
-            super_class = super_class_candidate
-            break
+    # We have to be a little careful here because in some cases we might not have an
+    # actual class. Instead we might just have a function that returns a class instance.
+    if hasattr(cls, "mro"):
+        for super_class_candidate in cls.mro()[1:]:
+            if issubclass(super_class_candidate, FromParams):
+                super_class = super_class_candidate
+                break
     if super_class:
         super_parameters = infer_params(super_class)
     else:
@@ -166,7 +169,10 @@ def infer_method_params(
 
 
 def create_kwargs(
-    constructor: Callable[..., T], cls: Type[T], params: Params, **extras
+    constructor: Callable[..., T],
+    cls: Type[T],
+    params: Params,
+    extras: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Given some class, a ``Params`` object, and potentially other keyword arguments,
@@ -211,7 +217,7 @@ def create_kwargs(
 
         explicitly_set = param_name in params
         constructed_arg = pop_and_construct_arg(
-            cls.__name__, param_name, annotation, param.default, params, **extras
+            cls.__name__, param_name, annotation, param.default, params, extras or {}
         )
 
         # If the param wasn't explicitly set in `params` and we just ended up constructing
@@ -226,8 +232,9 @@ def create_kwargs(
     if accepts_kwargs:
         for key in list(params):
             kwargs[key] = params.pop(key, keep_as_dict=True)
-        for key, value in extras.items():
-            kwargs[key] = value
+        if extras:
+            for key, value in extras.items():
+                kwargs[key] = value
     params.assert_empty(cls.__name__)
     return kwargs
 
@@ -261,7 +268,12 @@ def create_extras(cls: Type[T], extras: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def pop_and_construct_arg(
-    class_name: str, argument_name: str, annotation: Type, default: Any, params: Params, **extras
+    class_name: str,
+    argument_name: str,
+    annotation: Type,
+    default: Any,
+    params: Params,
+    extras: Dict[str, Any],
 ) -> Any:
     """
     Does the work of actually constructing an individual argument for
@@ -310,8 +322,13 @@ def _params_contain_step(o: Any) -> bool:
         return True
     elif isinstance(o, str):
         return False  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-    elif isinstance(o, dict) or isinstance(o, Params):
-        return _params_contain_step(o.values())
+    elif isinstance(o, Params):
+        return _params_contain_step(o.as_dict(quiet=True))
+    elif isinstance(o, dict):
+        if set(o.keys()) == {"type", "ref"} and o["type"] == "ref":
+            return True
+        else:
+            return _params_contain_step(o.values())
     elif isinstance(o, Iterable):
         return any(_params_contain_step(p) for p in o)
     else:
@@ -324,17 +341,32 @@ def construct_arg(
     popped_params: Params,
     annotation: Type,
     default: Any,
-    could_be_step: bool = True,
+    try_from_step: bool = True,
     **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
     """
-    from tango.step import Step
+    # If we have the default, we're already done :)
+    if popped_params is default:
+        return popped_params
 
+    from tango.step import Step, WithUnresolvedSteps
+
+    origin = getattr(annotation, "__origin__", None)
+    args = getattr(annotation, "__args__", [])
+
+    # Try to guess if `popped_params` might be a step, come from a step, or contain a step.
+    could_be_step = try_from_step and (
+        origin == Step
+        or isinstance(popped_params, Step)
+        or _params_contain_step(popped_params)
+        or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+    )
     if could_be_step:
-        # We try parsing as a step _first_. Parsing as a non-step always succeeds, because
-        # it will fall back to returning a dict. So we can't try parsing as a non-step first.
+        # If we think it might be a step, we try parsing as a step _first_.
+        # Parsing as a non-step always succeeds, because it will fall back to returning a dict.
+        # So we can't try parsing as a non-step first.
         backup_params = deepcopy(popped_params)
         try:
             return construct_arg(
@@ -343,14 +375,11 @@ def construct_arg(
                 popped_params,
                 Step[annotation],  # type: ignore
                 default,
-                could_be_step=False,
+                try_from_step=False,
                 **extras,
             )
-        except (ValueError, TypeError, ConfigurationError, AttributeError):
+        except (ValueError, TypeError, ConfigurationError, AttributeError, IndexError):
             popped_params = backup_params
-
-    origin = getattr(annotation, "__origin__", None)
-    args = getattr(annotation, "__args__", [])
 
     # The parameter is optional if its default value is not the "no default" sentinel.
     optional = default != _NO_DEFAULT
@@ -358,9 +387,7 @@ def construct_arg(
     if (inspect.isclass(annotation) and issubclass(annotation, FromParams)) or (
         inspect.isclass(origin) and issubclass(origin, FromParams)
     ):
-        if popped_params is default:
-            return default
-        elif origin is None and isinstance(popped_params, annotation):
+        if origin is None and isinstance(popped_params, annotation):
             return popped_params
         elif popped_params is not None:
             subextras = create_extras(annotation, extras)
@@ -381,8 +408,6 @@ def construct_arg(
                     f"Expected a `Params` object, found `{popped_params}` instead while constructing "
                     f"parameter '{argument_name}' for `{class_name}`"
                 )
-
-            from tango.step import WithUnresolvedSteps
 
             result: Union[FromParams, WithUnresolvedSteps]
             if isinstance(popped_params, Step):
@@ -425,7 +450,10 @@ def construct_arg(
         if type(popped_params) in {int, bool}:
             return annotation(popped_params)
         else:
-            raise TypeError(f"Expected {argument_name} to be a {annotation.__name__}.")
+            raise TypeError(
+                f"Expected {argument_name} to be {annotation.__name__}, "
+                f"found {popped_params} ({type(popped_params)})."
+            )
     elif annotation == str:
         # Strings are special because we allow casting from Path to str.
         if type(popped_params) == str or isinstance(popped_params, Path):
@@ -457,7 +485,8 @@ def construct_arg(
         value_dict = {}
         if not isinstance(popped_params, Mapping):
             raise TypeError(
-                f"Expected {argument_name} to be a Mapping (probably a dict or a Params object)."
+                f"Expected {argument_name} to be a Mapping (probably a dict or a Params object) "
+                f"found {popped_params} ({type(popped_params)})."
             )
 
         for key, value_params in popped_params.items():
@@ -538,9 +567,6 @@ def construct_arg(
         config_error.__cause__ = error_chain
         raise config_error
     elif origin == Lazy:
-        if popped_params is default:
-            return default
-
         value_cls = args[0]
         return Lazy(value_cls, params=deepcopy(popped_params))  # type: ignore
 
@@ -574,7 +600,7 @@ def construct_arg(
         constructor_to_inspect = arbitrary_class.__init__
         constructor_to_call = arbitrary_class
         params_contain_step = _params_contain_step(popped_params)
-        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, **subextras)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, subextras)
         from tango.step import WithUnresolvedSteps
 
         if origin != Step and params_contain_step:
@@ -662,6 +688,7 @@ class FromParams(CustomDetHash):
             if "type" in params and params["type"] not in as_registrable.list_available():
                 as_registrable.search_modules(params["type"])
 
+            # Resolve the subclass and constructor.
             if is_base_registrable(cls) or "type" in params:
                 default_to_first_choice = as_registrable.default_implementation is not None
                 choice = params.pop_choice(
@@ -669,19 +696,37 @@ class FromParams(CustomDetHash):
                     choices=as_registrable.list_available(),
                     default_to_first_choice=default_to_first_choice,
                 )
-                subclass, constructor_name = as_registrable.resolve_class_name(choice)
+                # We allow users to register methods and functions, not just classes.
+                # So we have to handle both here.
+                subclass_or_factory_func, constructor_name = as_registrable.resolve_class_name(
+                    choice
+                )
+                if inspect.isclass(subclass_or_factory_func):
+                    # We have an actual class.
+                    subclass = subclass_or_factory_func
+                    if constructor_name is not None:
+                        constructor_to_inspect = cast(
+                            Callable[..., T], getattr(subclass, constructor_name)
+                        )
+                        constructor_to_call = constructor_to_inspect
+                    else:
+                        constructor_to_inspect = subclass.__init__
+                        constructor_to_call = subclass
+                else:
+                    # We have a function that returns an instance of the class.
+                    factory_func = cast(Callable[..., T], subclass_or_factory_func)
+                    return_type = inspect.signature(factory_func).return_annotation
+                    if return_type == inspect.Signature.empty:
+                        subclass = cls
+                    else:
+                        subclass = return_type
+                    constructor_to_inspect = factory_func
+                    constructor_to_call = factory_func
             else:
                 # Must be trying to instantiate the given class directly.
                 subclass = cls
-                constructor_name = None
-
-            # See the docstring for an explanation of what's going on here.
-            if not constructor_name:
-                constructor_to_inspect = subclass.__init__
-                constructor_to_call = subclass  # type: ignore
-            else:
-                constructor_to_inspect = cast(Callable[..., T], getattr(subclass, constructor_name))
-                constructor_to_call = constructor_to_inspect
+                constructor_to_inspect = cls.__init__
+                constructor_to_call = cast(Callable[..., T], cls)
 
             if hasattr(subclass, "from_params"):
                 # We want to call subclass.from_params.
@@ -701,7 +746,8 @@ class FromParams(CustomDetHash):
                 # instead of adding a `from_params` method for them somehow.  We just trust that
                 # you've done the right thing in passing your parameters, and nothing else needs to
                 # be recursively constructed.
-                return constructor_to_call(**params, **create_extras(constructor_to_call, extras))  # type: ignore
+                kwargs = create_kwargs(constructor_to_inspect, subclass, params, extras)  # type: ignore
+                return constructor_to_call(**kwargs)  # type: ignore
         else:
             # This is not a base class, so convert our params and extras into a dict of kwargs.
 
@@ -715,12 +761,12 @@ class FromParams(CustomDetHash):
                 # This class does not have an explicit constructor, so don't give it any kwargs.
                 # Without this logic, create_kwargs will look at object.__init__ and see that
                 # it takes *args and **kwargs and look for those.
-                kwargs: Dict[str, Any] = {}
+                kwargs: Dict[str, Any] = {}  # type: ignore[no-redef]
                 params.assert_empty(cls.__name__)
             else:
                 # This class has a constructor, so create kwargs for it.
                 constructor_to_inspect = cast(Callable[..., T], constructor_to_inspect)
-                kwargs = create_kwargs(constructor_to_inspect, cls, params, **extras)
+                kwargs = create_kwargs(constructor_to_inspect, cls, params, extras)
 
             return constructor_to_call(**kwargs)  # type: ignore
 
