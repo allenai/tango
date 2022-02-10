@@ -93,6 +93,8 @@ jobs:
                   value: "true"
                 - name: TOKENIZERS_PARALLELISM  # set this to avoid warnings
                   value: "true"
+                - name: PYTHONUNBUFFERED
+                  value: "true"
               result:
                 path: '/results'
               resources:
