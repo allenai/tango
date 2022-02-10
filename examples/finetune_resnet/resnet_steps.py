@@ -31,7 +31,7 @@ class ResNetWrapper(Model):
             for param in model.parameters():
                 param.requires_grad = False
 
-    def forward( # type: ignore
+    def forward(  # type: ignore
         self, image: torch.Tensor, label: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
@@ -101,7 +101,7 @@ class TransformData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run( # type: ignore
+    def run(  # type: ignore
         self, dataset: datasets.DatasetDict, val_size: float, input_size: int
     ) -> datasets.DatasetDict:
         def image_loader_wrapper(example_batch):
@@ -125,7 +125,7 @@ def convert_to_label(int_label: int) -> str:
 class Prediction(Step):
     FORMAT: Format = JsonFormat()
 
-    def run( # type: ignore
+    def run(  # type: ignore
         self, image_url: str, input_size: int, model: models, device: Optional[str] = "cpu"
     ) -> Dict[str, Any]:
         # download and store image
