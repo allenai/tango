@@ -287,6 +287,8 @@ jobs:
       - name: Wait for job to finish
         run: |
           beaker experiment await $EXPERIMENT tests finalized --timeout 10m
+          # Check the job's exit code.
+          test $(beaker experiment get $EXPERIMENT --format=json | jq '.[0].jobs[0].status.exitCode') -eq 0
 
       - name: Get logs
         if: always()
