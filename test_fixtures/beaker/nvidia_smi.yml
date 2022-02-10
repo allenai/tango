@@ -1,0 +1,16 @@
+# Used to test that GPUs in a cluster are available. Submit this to beaker with:
+# $ beaker experiment create test_fixtures/beaker/nvidia_smi.yml --workspace ai2/tango-testing --name tango-test-1
+version: v2-alpha
+description: NvidiaSMI
+tasks:
+  - name: nvidia-smi
+    image:
+      docker: nvidia/cuda:11.0-base
+    command: [nvidia-smi]
+    result:
+      path: '/unused'
+    resources:
+      gpuCount: 2
+    context:
+      cluster: ai2/tango-gpu-tests
+      priority: normal

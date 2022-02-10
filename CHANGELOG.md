@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a '@requires_gpus' decorator for marking tests as needing GPUs. Tests marked with this will be run in the "GPU Tests" workflow
+  on dual k80 GPUs via Beaker.
+
+
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09
 
 ### Added

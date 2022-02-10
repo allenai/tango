@@ -21,7 +21,12 @@ class TestFairScaleTrain(TangoTestCase):
             pytest.param(
                 True,
                 id="fsdp=True",
-                marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA"),
+                marks=[
+                    pytest.mark.gpu,
+                    pytest.mark.skipif(
+                        torch.cuda.device_count() < 2, reason="Requires CUDA devices"
+                    ),
+                ],
             ),
             pytest.param(False, id="fsdp=False"),
         ),
@@ -39,7 +44,12 @@ class TestFairScaleTrain(TangoTestCase):
             pytest.param(
                 True,
                 id="amp=True",
-                marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="Requires CUDA"),
+                marks=[
+                    pytest.mark.gpu,
+                    pytest.mark.skipif(
+                        torch.cuda.device_count() < 2, reason="Requires CUDA devices"
+                    ),
+                ],
             ),
             pytest.param(False, id="amp=False"),
         ),

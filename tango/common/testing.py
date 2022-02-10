@@ -105,3 +105,17 @@ def run_experiment(
     finally:
         test_case.teardown_method()
         teardown_logging()
+
+
+def requires_gpus(test_method):
+    """
+    Decorator to indicate that a test requires multiple GPU devices.
+    """
+    import pytest
+    import torch
+
+    return pytest.mark.gpu(
+        pytest.mark.skipif(torch.cuda.device_count() < 2, reason="2 or more GPUs required.")(
+            test_method
+        )
+    )
