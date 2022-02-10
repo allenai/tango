@@ -10,13 +10,17 @@ on:
       name:
         description: the name to assign to the beaker run
         required: true
+  # Uncomment this trigger to test changes on a pull request.
+  pull_request:
+    branches:
+      - '*'
 
 env:
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
 
 jobs:
   run_test:
-    name: ${{ github.event.inputs.test }}
+    name: ${{ env.TEST_NAME }}
     runs-on: [ubuntu-latest]
     timeout-minutes: 60
     env:
@@ -65,10 +69,12 @@ jobs:
               envVars:
                 - name: COMMIT_SHA
                   value: $COMMIT_SHA
+                - name: WANDB_API_KEY
+                  secret: WANDB_API_KEY
               result:
                 path: '/results'
               resources:
-                gpuCount: 2
+                gpuCount: 4
               context:
                 cluster: ai2/tango-integration-tests
                 priority: normal
