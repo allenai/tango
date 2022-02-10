@@ -1,0 +1,14 @@
+# This Dockerfile is for building an image suitable for running tango's GPU tests.
+# There are no instructions in the Dockerfile that install tango. Instead, the entrypoint
+# script handles installing tango from a particular commit at runtime, based on the environment
+# variable "COMMIT_SHA". That way we don't need to rebuild and push the image each time we run
+# GPU tests.
+
+FROM ghcr.io/allenai/pytorch:1.10.2-cuda11.3
+
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /testing
+
+ENTRYPOINT ["/entrypoint.sh"]
