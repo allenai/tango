@@ -31,15 +31,15 @@ class ResNetWrapper(Model):
             for param in model.parameters():
                 param.requires_grad = False
 
-    def forward(
-        self, image: torch.Tensor, labels: Optional[torch.Tensor] = None
+    def forward( # type: ignore
+        self, image: torch.Tensor, label: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         output = self.model_ft(image)
         preds = torch.argmax(output, dim=1)
-        if labels is None:
+        if label is None:
             return {"preds": preds}
-        loss = self.loss_fn(output, labels)
-        accuracy = (preds == labels).float().mean()
+        loss = self.loss_fn(output, label)
+        accuracy = (preds == label).float().mean()
         return {"loss": loss, "accuracy": accuracy}
 
 
@@ -101,7 +101,7 @@ class TransformData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
 
-    def run(  # type: ignore
+    def run( # type: ignore
         self, dataset: datasets.DatasetDict, val_size: float, input_size: int
     ) -> datasets.DatasetDict:
         def image_loader_wrapper(example_batch):
@@ -125,9 +125,9 @@ def convert_to_label(int_label: int) -> str:
 class Prediction(Step):
     FORMAT: Format = JsonFormat()
 
-    def run(
+    def run( # type: ignore
         self, image_url: str, input_size: int, model: models, device: Optional[str] = "cpu"
-    ) -> Dict[str, Any]:  # type: ignore
+    ) -> Dict[str, Any]:
         # download and store image
         image_path = cached_path(image_url)
         transformed_image = pil_loader(image_path, input_size, transform_type="val")
@@ -136,6 +136,6 @@ class Prediction(Step):
         transformed_image = transformed_image.unsqueeze(0).to(device)
 
         # pass image through model and get the prediction
-        prediction = model(image=transformed_image, label=None)["pred"].float()
+        prediction = model(image=transformed_image, label=None)["preds"][0].float()
         label = convert_to_label(prediction)
         return {"image_url": image_url, "local_path": image_path, "label": label}

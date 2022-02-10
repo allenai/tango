@@ -7,8 +7,8 @@ local feature_extract = true;
 local distributed = false;
 local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
-local training_steps = 500;
-local validate_every = 50;
+local training_steps = 5;
+local validate_every = 100;
 local image_url = "https://tinyurl.com/2p9xjvn9";
 
 local distributed_dataloader = {
@@ -50,7 +50,7 @@ local single_device_dataloader = {
             },
             dataset_dict: {"type": "ref", "ref": "transform_data"},
             train_dataloader: single_device_dataloader,
-            validation_split: null,
+            validation_split: "val",
             optimizer: {
                 type: "torch_adam",
                 lr: 0.001,
