@@ -45,7 +45,13 @@ jobs:
           # The 'test' input should be a directory in `integration_tests/`
           test -d "integration_tests/${TEST_NAME}"
 
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
       - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
         run: |
           echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
 
@@ -127,4 +133,11 @@ jobs:
             cat results/test/out.log
           else
             echo "No logs to show"
+          fi
+
+      - name: Stop job
+        if: cancelled()
+        run: |
+          if [ ! -z "$EXPERIMENT" ]; then
+            beaker experiment stop $EXPERIMENT
           fi

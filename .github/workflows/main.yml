@@ -316,6 +316,13 @@ jobs:
             echo "No logs to show"
           fi
 
+      - name: Stop job
+        if: cancelled()
+        run: |
+          if [ ! -z "$EXPERIMENT" ]; then
+            beaker experiment stop $EXPERIMENT
+          fi
+
   release:
     name: Release
     runs-on: ubuntu-latest
