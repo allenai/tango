@@ -282,7 +282,8 @@ jobs:
 
       - name: Submit beaker job
         run: |
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name gpu-tests-$COMMIT_SHA | awk '{print $2}')
+          TIMESTAMP=$(date +%H%M%S)
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "gpu-tests-${COMMIT_SHA}-${TIMESTAMP}" | awk '{print $2}')
           if [ -z "$EXPERIMENT" ]; then
             exit 1
           else

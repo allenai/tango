@@ -101,7 +101,8 @@ jobs:
 
       - name: Submit beaker job
         run: |
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "${TEST_NAME}-${{ github.run_number }}" | awk '{print $2}')
+          TIMESTAMP=$(date +%H%M%S)
+          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "${TEST_NAME}-${{ github.run_number }}-${TIMESTAMP}" | awk '{print $2}')
           if [ -z "$EXPERIMENT" ]; then
             exit 1
           else
