@@ -20,11 +20,13 @@ env:
 
 jobs:
   run_test:
-    name: ${{ env.TEST_NAME }}
+    # name: ${{ github.event.inputs.test }}
+    name: fairscale_benchmarks
     runs-on: [ubuntu-latest]
     timeout-minutes: 60
     env:
-      TEST_NAME: ${{ github.event.inputs.test }}
+      # TEST_NAME: ${{ github.event.inputs.test }}
+      TEST_NAME: fairscale_benchmarks
     steps:
       - uses: actions/checkout@v2
 
