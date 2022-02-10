@@ -15,5 +15,8 @@ cd tango
 git checkout "$COMMIT_SHA"
 /opt/conda/bin/pip install --no-cache-dir '.[dev,all]'
 
-# Execute the arguments to this script as commands themselves.
-exec "$@"
+# Create directory for results.
+mkdir -p /results
+
+# Execute the arguments to this script as commands themselves, piping output into a log file.
+exec "$@" | tee /results/out.log
