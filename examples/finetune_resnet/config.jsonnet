@@ -1,14 +1,14 @@
 local input_size = 224;
 local batch_size = 32;
 local num_classes = 2;
-local val_size = 0.2;
+local val_size = 0.05;
 local model = "resnet";
 local feature_extract = true;
 local distributed = false;
 local devices = if distributed then 2 else 1;
 local pretrained_model = "resnet_ft";
-local training_steps = 5;
-local validate_every = 100;
+local training_steps = 500;
+local validate_every = 50;
 local image_url = "https://tinyurl.com/2p9xjvn9";
 
 local distributed_dataloader = {
@@ -48,18 +48,22 @@ local single_device_dataloader = {
                 feature_extract: true,
                 use_pretrained: true,
             },
+            training_engine: {
+                optimizer: {
+                    type: "torch_adam",
+                    lr: 0.001,
+                },
+            },
             dataset_dict: {"type": "ref", "ref": "transform_data"},
             train_dataloader: single_device_dataloader,
             validation_split: "val",
-            optimizer: {
-                type: "torch_adam",
-                lr: 0.001,
-            },
+            val_metric_name: "accuracy",
             train_steps: training_steps,
             validate_every: validate_every,
             checkpoint_every: validate_every,
             log_every: 1,
             device_count: devices,
+            minimize_val_metric: false,
         },
         prediction: {
             type: "prediction",
