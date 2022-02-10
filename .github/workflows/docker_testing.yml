@@ -13,12 +13,14 @@ on:
     paths:
       - 'Dockerfile.test'
       - '.dockerignore'
+      - 'scripts/entrypoint.sh'
   push:
     branches:
       - main
     paths:
       - 'Dockerfile.test'
       - '.dockerignore'
+      - 'scripts/entrypoint.sh'
 
 jobs:
   build:

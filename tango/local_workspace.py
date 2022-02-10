@@ -187,8 +187,24 @@ class ExecutorMetadata(FromParams):
             import subprocess
 
             try:
-                with (run_dir / "conda-environment.yaml").open("w") as f:
-                    subprocess.call(["conda", "env", "export"], stdout=f)
+                result = subprocess.run(["conda", "env", "export"], capture_output=True)
+                if (
+                    result.returncode != 0
+                    and result.stderr is not None
+                    and "Unable to determine environment" in result.stderr.decode()
+                ):
+                    result = subprocess.run(
+                        ["conda", "env", "export", "-n", "base"], capture_output=True
+                    )
+
+                if result.returncode != 0:
+                    if result.stderr is not None:
+                        logger.exception("Error saving conda packages: %s", result.stderr.decode())
+                    else:
+                        result.check_returncode()
+                elif result.stdout is not None:
+                    with (run_dir / "conda-environment.yaml").open("w") as f:
+                        f.write(result.stdout.decode())
             except Exception as exc:
                 logger.exception("Error saving conda packages: %s", exc)
 
