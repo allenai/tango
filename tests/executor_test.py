@@ -2,7 +2,18 @@ from pathlib import Path
 
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
-from tango.local_workspace import ExecutorMetadata
+from tango.executor import Executor
+from tango.local_workspace import ExecutorMetadata, LocalWorkspace
+from tango.step import Step
+
+
+class AdditionStep(Step):
+
+    DETERMINISTIC = True
+    CACHEABLE = True
+
+    def run(self, a: int, b: int) -> int:  # type: ignore
+        return a + b
 
 
 class TestMetadata(TangoTestCase):
@@ -20,3 +31,15 @@ class TestMetadata(TangoTestCase):
             Params.from_file(self.TEST_DIR / "executor-metadata.json")
         )
         assert metadata == metadata2
+
+
+class TestExecutor(TangoTestCase):
+    def test_executor(self):
+        workspace = LocalWorkspace(self.TEST_DIR)
+        step = AdditionStep(a=1, b=2)
+        step_graph = {"sum": step}
+        executor = Executor(workspace)
+        assert len(executor.workspace.step_cache) == 0
+        executor.execute_step_graph(step_graph)
+        assert len(executor.workspace.step_cache) == 1
+        assert executor.workspace.step_cache[step] == 3

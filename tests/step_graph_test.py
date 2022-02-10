@@ -1,6 +1,6 @@
+from tango.common.testing import TangoTestCase
 from tango.step import Step
 from tango.step_graph import StepGraph
-from tango.common.testing import TangoTestCase
 
 
 @Step.register("add_numbers")
