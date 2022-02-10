@@ -1,4 +1,3 @@
-from traceback import print_tb
 from typing import Any, Dict, List, Optional
 
 import datasets
@@ -10,7 +9,7 @@ from torch.optim import Adam
 from torchvision import models, transforms
 
 from tango import Format, JsonFormat, Step
-from tango.integrations.torch import DataCollator, Model, Optimizer, data
+from tango.integrations.torch import DataCollator, Model, Optimizer
 
 # Register the Adam optimizer as an `Optimizer` so we can use it in the train step.
 Optimizer.register("torch_adam")(Adam)
@@ -126,7 +125,9 @@ def convert_to_label(int_label: int) -> str:
 class Prediction(Step):
     FORMAT: Format = JsonFormat()
 
-    def run(self, image_url: str, input_size: int, model: models, device: Optional[str] = "cpu") -> Dict[str, Any]:  # type: ignore
+    def run(
+        self, image_url: str, input_size: int, model: models, device: Optional[str] = "cpu"
+    ) -> Dict[str, Any]:  # type: ignore
         # download and store image
         image_path = cached_path(image_url)
         transformed_image = pil_loader(image_path, input_size, transform_type="val")
