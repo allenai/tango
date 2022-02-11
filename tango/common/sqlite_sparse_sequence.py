@@ -13,7 +13,9 @@ class SqliteSparseSequence(MutableSequence[Any]):
         self.table = SqliteDict(filename, "sparse_sequence", flag="r" if read_only else "c")
 
     def __del__(self):
-        self.close()
+        if self.table is not None:
+            self.table.close(force=True)
+            self.table = None
 
     def __getitem__(self, i: Union[int, slice]) -> Any:
         if isinstance(i, int):
