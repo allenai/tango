@@ -41,6 +41,8 @@ extensions = [
     "sphinx_copybutton",
 ]
 
+myst_heading_anchors = 3
+
 suppress_warnings = ["myst.header"]
 
 # Add any paths that contain templates here, relative to this directory.
