@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `run_dir()` is now an abstract method on `Workspace`, and `Workspace.__init__()` takes a `dir` parameter just like `LocalWorkspace`.
 
+### Changed
+
+- `local_workspace.ExecutorMetadata` renamed to `StepExecutionMetadata` and now saved as `execution-metadata.json`.
+
 ### Fixed
 
 - Fixed a small bug `LocalWorkspace` would fail to capture the conda environment in our Docker image.
