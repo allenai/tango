@@ -268,7 +268,7 @@ class Step(Registrable, Generic[T]):
 
             explicitly_set = param_name in params
             constructed_arg = pop_and_construct_arg(
-                subclass.__name__, param_name, param.annotation, param.default, params, **extras
+                subclass.__name__, param_name, param.annotation, param.default, params, extras
             )
 
             # If the param wasn't explicitly set in `params` and we just ended up constructing

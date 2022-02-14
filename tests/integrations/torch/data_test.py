@@ -36,7 +36,7 @@ def test_dataloader_from_params_with_batch_sampler():
         {
             "dataset": list(range(10)),
             "sampler": {
-                "type": "BatchSampler",
+                "type": "torch::BatchSampler",
                 "sampler": {
                     "type": "torch::RandomSampler",
                 },

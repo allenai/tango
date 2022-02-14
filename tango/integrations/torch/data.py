@@ -45,6 +45,8 @@ class ConcatTensorDictsCollator(DataCollator[Dict[str, Any]]):
         for key in keys:
             if isinstance(items[0][key], torch.Tensor):
                 out[key] = torch.cat([item[key].unsqueeze(0) for item in items])
+            elif isinstance(items[0][key], (int, float)):
+                out[key] = torch.tensor([item[key] for item in items])
             else:
                 out[key] = [item[key] for item in items]  # type: ignore[assignment]
         return out
@@ -61,7 +63,7 @@ class Sampler(torch.utils.data.Sampler, Registrable):
     """
 
 
-@Sampler.register("BatchSampler")
+@Sampler.register("torch::BatchSampler")
 class BatchSampler(torch.utils.data.BatchSampler, Sampler):
     def __init__(self, sampler: Sampler, batch_size: int, drop_last: bool) -> None:
         super().__init__(sampler, batch_size, drop_last)
@@ -69,13 +71,14 @@ class BatchSampler(torch.utils.data.BatchSampler, Sampler):
 
 # Register all remaining samplers.
 for name, cls in torch.utils.data.__dict__.items():
+    registered_name = "torch::" + name
     if (
         isinstance(cls, type)
         and issubclass(cls, torch.utils.data.Sampler)
         and not cls == torch.utils.data.Sampler
-        and name not in Sampler.list_available()
+        and registered_name not in Sampler.list_available()
     ):
-        Sampler.register("torch::" + name)(cls)
+        Sampler.register(registered_name)(cls)
 
 
 class DataLoader(torch.utils.data.DataLoader, Registrable):

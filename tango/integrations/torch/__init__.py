@@ -114,7 +114,6 @@ would produce the following output:
     ✓ The output for "train" is in ...
     Finished run ...
 
-
 Tips
 ----
 
@@ -151,6 +150,8 @@ __all__ = [
     "TrainConfig",
     "StopEarlyCallback",
     "StopEarly",
+    "TrainingEngine",
+    "TorchTrainingEngine",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
@@ -163,3 +164,4 @@ from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
 from .train_callback import StopEarlyCallback, TrainCallback
 from .train_config import TrainConfig
+from .training_engine import TorchTrainingEngine, TrainingEngine

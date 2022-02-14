@@ -9,5 +9,5 @@ You can find all of these `on GitHub <https://github.com/allenai/tango/tree/main
    :caption: Examples
 
    euler
-   train_gpt2
+   train_lm
    eval_p3

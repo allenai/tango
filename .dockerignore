@@ -7,8 +7,8 @@
 .mypy_cache
 docs
 examples
-scripts
 tests
 test_fixtures
+integration_tests
 dist
 *.egg-info
