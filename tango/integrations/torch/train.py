@@ -88,7 +88,7 @@ class TorchTrainStep(Step):
         checkpoint_every: int = 100,
         validate_every: Optional[int] = None,
         device_count: int = 1,
-        distributed_port: str = "54761",
+        distributed_port: int = 54761,
         val_metric_name: str = "loss",
         minimize_val_metric: bool = True,
         auto_aggregate_val_metric: bool = True,

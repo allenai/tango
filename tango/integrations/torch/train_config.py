@@ -94,7 +94,7 @@ class TrainConfig:
     The IP address of the main distributed process.
     """
 
-    distributed_port: str = "54761"
+    distributed_port: int = 54761
     """
     The port of the main distributed process.
     """
