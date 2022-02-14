@@ -9,7 +9,7 @@ import pytest
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
-from tango.local_workspace import ExecutorMetadata
+from tango.local_workspace import StepExecutionMetadata
 from tango.version import VERSION
 
 
@@ -88,7 +88,7 @@ class TestMain(TangoTestCase):
         metadata_path = run_dir / "hello_world" / "executor-metadata.json"
         assert metadata_path.is_file()
         metadata_params = Params.from_file(metadata_path)
-        metadata = ExecutorMetadata.from_params(metadata_params)
+        metadata = StepExecutionMetadata.from_params(metadata_params)
         assert metadata.config == {
             "type": "concat_strings",
             "string1": {"type": "ref", "ref": "StringStep-4cHbmoHigd3rvNn3w7shc1d45WA1ijSp"},

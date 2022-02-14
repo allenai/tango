@@ -3,7 +3,7 @@ from pathlib import Path
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
 from tango.executor import Executor
-from tango.local_workspace import ExecutorMetadata, LocalWorkspace
+from tango.local_workspace import LocalWorkspace, StepExecutionMetadata
 from tango.step import Step
 
 
@@ -18,7 +18,7 @@ class AdditionStep(Step):
 
 class TestMetadata(TangoTestCase):
     def test_metadata(self):
-        metadata = ExecutorMetadata("some_step")
+        metadata = StepExecutionMetadata("some_step")
         metadata.save(self.TEST_DIR)
 
         if (Path.cwd() / ".git").exists():
@@ -27,7 +27,7 @@ class TestMetadata(TangoTestCase):
             assert metadata.git.remote is not None
             assert "allenai/tango" in metadata.git.remote
 
-        metadata2 = ExecutorMetadata.from_params(
+        metadata2 = StepExecutionMetadata.from_params(
             Params.from_file(self.TEST_DIR / "executor-metadata.json")
         )
         assert metadata == metadata2
