@@ -112,6 +112,21 @@ class TestMain(TangoTestCase):
         # We should see two runs now.
         assert len(os.listdir(self.TEST_DIR / "runs")) == 2
 
+    def test_experiment_with_memory_workspace(self):
+        cmd = [
+            "tango",
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
+            "-i",
+            "test_fixtures.package",
+            "-d",
+            str(self.TEST_DIR),
+            "-o",
+            "{'workspace':{'type':'memory'}}",
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        assert result.returncode == 0
+
     def test_random_experiment(self):
         cmd = [
             "tango",

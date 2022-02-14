@@ -4,14 +4,14 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
 
 import dill
 import petname
 
 from tango import step_cache
-from tango.common import Registrable
+from tango.common import PathOrStr, Registrable
 from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import StepCache
@@ -190,6 +190,8 @@ class Workspace(Registrable):
     of metadata. If you don't want to worry about all that, do nothing and Tango will use the default
     :class:`.LocalWorkspace` that puts everything into a directory of your choosing.
 
+    :param dir: The directory to store all the data in
+
     If you want to do fancy things like store results in the cloud, share state across machines, etc., this is your
     integration point.
 
@@ -205,7 +207,9 @@ class Workspace(Registrable):
     # do that.
     #
 
-    def __init__(self):
+    def __init__(self, dir: PathOrStr):
+        self.dir = Path(dir)
+        self.dir.mkdir(parents=True, exist_ok=True)
         self._delayed_cleanup_temp_dirs: List[TemporaryDirectory] = []
 
     @property
@@ -226,7 +230,7 @@ class Workspace(Registrable):
 
         # TemporaryDirectory cleans up the directory automatically when the TemporaryDirectory object
         # gets garbage collected, so we hold on to it in the Workspace.
-        dir = TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir")
+        dir = TemporaryDirectory(prefix=f"{step.unique_id}-", suffix=".step_dir", dir=self.dir)
         self._delayed_cleanup_temp_dirs.append(dir)
         return Path(dir.name)
 
@@ -306,6 +310,16 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
+    @abstractmethod
+    def run_dir(self, name: str) -> Path:
+        """
+        Returns the directory where data for a given run is stored.
+
+        :param name: The name of the run
+        :return: The directory where the results of the run are stored
+        """
+        raise NotImplementedError()
+
 
 @Workspace.register("memory")
 class MemoryWorkspace(Workspace):
@@ -314,10 +328,11 @@ class MemoryWorkspace(Workspace):
     course you don't get any caching across restarts.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, dir: PathOrStr):
+        super().__init__(dir)
         self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Run] = {}
+        self._runs_dir: Optional[TemporaryDirectory] = None
 
     @property
     def step_cache(self) -> StepCache:
@@ -416,5 +431,13 @@ class MemoryWorkspace(Workspace):
     def registered_run(self, name: str) -> Run:
         return copy.deepcopy(self.runs[name])
 
+    def run_dir(self, name: str) -> Path:
+        if self._runs_dir is None:
+            self._runs_dir = TemporaryDirectory(prefix="runs-", dir=self.dir)
+            self._delayed_cleanup_temp_dirs.append(self._runs_dir)
+        run_dir = Path(self._runs_dir.name) / name
+        run_dir.mkdir(exist_ok=True, parents=True)
+        return run_dir
 
-default_workspace = MemoryWorkspace()
+
+default_workspace = MemoryWorkspace(gettempdir())

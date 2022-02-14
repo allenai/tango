@@ -241,9 +241,7 @@ class LocalWorkspace(Workspace):
     """
 
     def __init__(self, dir: PathOrStr):
-        super().__init__()
-        self.dir = Path(dir)
-        self.dir.mkdir(parents=True, exist_ok=True)
+        super().__init__(dir)
         self.cache = LocalStepCache(self.dir / "cache")
         self.locks: Dict[Step, FileLock] = {}
         self.runs_dir = self.dir / "runs"
@@ -588,13 +586,4 @@ class LocalWorkspace(Workspace):
             return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
 
     def run_dir(self, name: str) -> Path:
-        """
-        Returns the directory where a given run is stored.
-
-        :param name: The name of the run
-        :return: The directory where the results of the run are stored
-
-        If the run does not exist, this returns the directory where it will be stored if you call
-        :meth:`register_run()` with that name.
-        """
         return self.runs_dir / name

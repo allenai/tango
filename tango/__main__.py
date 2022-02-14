@@ -381,9 +381,9 @@ def _run(
     start_server: bool = True,
 ) -> Path:
     from tango.executor import Executor
-    from tango.local_workspace import LocalWorkspace
     from tango.server.workspace_server import WorkspaceServer
     from tango.step_graph import StepGraph
+    from tango.workspace import Workspace
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -408,10 +408,11 @@ def _run(
         )
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
-    workspace = LocalWorkspace(workspace_dir)
+    workspace = Workspace.from_params(params.pop("workspace", {}), dir=workspace_dir)
 
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    params.assert_empty("'tango run'")
     run = workspace.register_run(step for step in step_graph.values() if step.cache_results)
     run_dir = workspace.run_dir(run.name)
 
