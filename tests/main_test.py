@@ -81,11 +81,11 @@ class TestMain(TangoTestCase):
         run_dir = next((self.TEST_DIR / "runs").iterdir())
         assert (run_dir / "hello").is_dir()
         assert (run_dir / "hello" / "cache-metadata.json").is_file()
-        assert (run_dir / "hello" / "executor-metadata.json").is_file()
+        assert (run_dir / "hello" / "execution-metadata.json").is_file()
         assert (run_dir / "hello_world").is_dir()
 
         # Check metadata.
-        metadata_path = run_dir / "hello_world" / "executor-metadata.json"
+        metadata_path = run_dir / "hello_world" / "execution-metadata.json"
         assert metadata_path.is_file()
         metadata_params = Params.from_file(metadata_path)
         metadata = StepExecutionMetadata.from_params(metadata_params)

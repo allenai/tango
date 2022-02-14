@@ -28,7 +28,7 @@ class TestMetadata(TangoTestCase):
             assert "allenai/tango" in metadata.git.remote
 
         metadata2 = StepExecutionMetadata.from_params(
-            Params.from_file(self.TEST_DIR / "executor-metadata.json")
+            Params.from_file(self.TEST_DIR / "execution-metadata.json")
         )
         assert metadata == metadata2
 
