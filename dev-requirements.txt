@@ -40,7 +40,7 @@ Sphinx==4.4.0
 furo==2022.1.2
 
 # Lets Sphinx parse markdown files in addition to rst.
-myst-parser==0.16.1
+myst-parser==0.17.0
 
 # Adds a copy button to code examples in the docs.
 sphinx-copybutton==0.5.0
