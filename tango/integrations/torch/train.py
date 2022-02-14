@@ -98,42 +98,39 @@ class TorchTrainStep(Step):
         """
         Run a basic training loop to train the ``model``.
 
-        Parameters
-        ----------
-
-        model : :class:`Model`
+        :param model:
             The model to train. It should return a ``dict`` that includes the ``loss``
             during training and the ``val_metric_name`` during validation.
-        training_engine : :class:`TrainingEngine`
+        :param training_engine:
             The :class:`TrainingEngine` to use to train the model.
-        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
+        :param dataset_dict:
             The train and optional validation data.
-        train_dataloader : :class:`DataLoader`
+        :param train_dataloader:
             The data loader that generates training batches. The batches should be :class:`dict`
             objects that will be used as ``kwargs`` for the model's ``forward()`` method.
-        train_split : :class:`str`, optional
+        :param train_split:
             The name of the data split used for training in the ``dataset_dict``.
             Default is "train".
-        validation_split : :class:`str`, optional
+        :param validation_split:
             Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
             which means no validation.
-        validation_dataloader : :class:`DataLoader`, optional
+        :param validation_dataloader:
             An optional data loader for generating validation batches. The batches should be
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
             as the train ``DataLoader``.
-        seed : :class:`int`, optional
+        :param seed:
             Used to set the RNG states at the beginning of training.
-        train_steps : :class:`int`, optional
+        :param train_steps:
             The number of steps to train for. If not specified training will
-            stop after a complete iteration through the `train_dataloader`.
-        train_epochs : :class:`int`, optionsl
+            stop after a complete iteration through the ``train_dataloader``.
+        :param train_epochs:
             The number of epochs to train for. You cannot specify ``train_steps`` and ``train_epochs``
             at the same time.
-        validation_steps : :class:`int`, optional
+        :param validation_steps:
             The number of steps to validate for. If not specified validation
             will stop after a complete iteration through the ``validation_dataloader``.
-        grad_accum : :class:`int`, optional
+        :param grad_accum:
             The number of gradient accumulation steps. Defaults to 1.
 
             .. note::
@@ -141,38 +138,36 @@ class TorchTrainStep(Step):
                 and the number distributed workers -
                 determines the *effective batch size* of your training run.
 
-        log_every : :class:`int`, optional
+        :param log_every:
             Log every this many steps.
-        checkpoint_every : :class:`int`, optional
+        :param checkpoint_every:
             Save a checkpoint every this many steps.
-        validate_every : :class:`int`, optional
+        :param validate_every:
             Run the validation loop every this many steps.
-        device_count : :class:`int`, optional
+        :param device_count:
             The number of devices to train on, i.e. the number of distributed data parallel workers.
-        distributed_port : :class:`str`
+        :param distributed_port:
             The port of the distributed process group. Default = "54761".
-        val_metric_name : :class:`str`
+        :param val_metric_name:
             The name of the validation metric, i.e. the key of the metric in the dictionary
             returned by the forward pass of the model. Default is "loss".
-        minimize_val_metric : :class:`bool`
+        :param minimize_val_metric:
             Whether the validation metric is meant to be minimized (such as the loss).
             Default is ``True``. When using a metric such as accuracy, you should set
             this to ``False``.
-        auto_aggregate_val_metric : :class:`bool`
+        :param auto_aggregate_val_metric:
             If ``True`` (the default), the validation metric will be averaged across
             validation batches and distributed processes. This may not be the correct
             behavior for some metrics (such as F1), in which you should set this to
             ``False`` and handle the aggregation internally in your model
             or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
-        callbacks : ``List[TrainCallback]``
+        :param callbacks:
             A list of :class:`TrainCallback`.
-        remove_stale_checkpoints : :class:`bool`
+        :param remove_stale_checkpoints:
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
 
-        Returns
-        -------
-        :class:`Model`
+        :returns:
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """

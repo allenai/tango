@@ -254,47 +254,42 @@ class RunGeneration(Step[Iterable[List[str]]]):
         """
         Run a Huggingface seq2seq model in inference mode.
 
-        Parameters
-        ----------
-
-        model_name : :class:`str`
+        :param model_name:
             The name of the model to run. Any name that works in the transformers library works here.
-        prompts : :class:`Iterable[str]`
+        :param prompts:
             The prompts to run through the model. You can specify prompts directly in the config, but
             more commonly the prompts are produced by another step that reads a dataset, for example.
-        batch_size : :class:`int`
+        :param batch_size:
             The number of sequences to process at one time. This has no bearing on the output, so
             you can change this number without invalidating cached results.
-        max_length : :class:`int`
+        :param max_length:
             The maximum number of tokens/word pieces that the model will generate. For models that
             extend the prompt, the prefix does not count towards this limit.
-        temperature : :class:`float`
+        :param temperature:
             Passed directly to transformer's ``generate()`` method.
             The value used to model the next token probabilities.
-        repetition_penalty : :class:`float`
+        :param repetition_penalty:
             Passed directly to transformer's ``generate()`` method.
             The parameter for repetition penalty. 1.0 means no penalty.
-        k : :class:`int`
+        :param k:
             Passed directly to transformer's ``generate()`` method.
             The number of highest probability vocabulary tokens to keep for top-k-filtering.
-        p : :class:`float`
+        :param p:
             Passed directly to transformer's ``generate()`` method.
             If set to float < 1, only the most probable tokens with probabilities that add up to top_p or higher
             are kept for generation.
-        prefix : :class:`str`
+        :param prefix:
             A prefix that gets pre-pended to all prompts.
-        xlm_language : :class:`str`
+        :param xlm_language:
             For the XLM model, this is a way to specify the language you want to use.
-        seed : :class:`int`
+        :param seed:
             Random seed
-        num_return_sequences : :class:`int`
+        :param num_return_sequences:
             The number of generations to return for each prompt.
-        fp16 : :class:`bool`
+        :param fp16:
             Whether to use 16-bit floats.
 
-        Returns
-        -------
-        :class:`Iterable[List[str]]`
+        :returns:
             Returns an iterator of lists of string. Each list contains the predictions for one prompt.
         """
 
@@ -354,53 +349,48 @@ class RunGenerationDataset(Step[DatasetDict]):
         """
         Augment an input dataset with generations from a Huggingface seq2seq model.
 
-        Parameters
-        ----------
-
-        model_name : :class:`str`
+        :param model_name:
             The name of the model to run. Any name that works in the transformers library works here.
-        input : :class:`tango.common.DatasetDict` or :class:`datasets.DatasetDict`
+        :param input:
             The input dataset.
-        prompt_field : :class:`str`
+        :param prompt_field:
             The field in the dataset that contains the text of the prompts.
-        output_field : :class:`str`
+        :param output_field:
             The field in the dataset that we will write the predictions into. In the result, this field
             will contain ``List[str]``.
-        splits : :class:`str` or :class:`Set[str]`
+        :param splits:
             A split, or set of splits, to process. If this is not specified, we will process all splits.
-        batch_size : :class:`int`
+        :param batch_size:
             The number of sequences to process at one time. This has no bearing on the output, so
             you can change this number without invalidating cached results.
-        max_length : :class:`int`
+        :param max_length:
             The maximum number of tokens/word pieces that the model will generate. For models that
             extend the prompt, the prefix does not count towards this limit.
-        temperature : :class:`float`
+        :param temperature:
             Passed directly to transformer's `generate()` method.
             The value used to model the next token probabilities.
-        repetition_penalty : :class:`float`
+        :param repetition_penalty:
             Passed directly to transformer's `generate()` method.
             The parameter for repetition penalty. 1.0 means no penalty.
-        k : :class:`int`
+        :param k:
             Passed directly to transformer's `generate()` method.
             The number of highest probability vocabulary tokens to keep for top-k-filtering.
-        p : :class:`float`
+        :param p:
             Passed directly to transformer's `generate()` method.
             If set to float < 1, only the most probable tokens with probabilities that add up to top_p or higher
             are kept for generation.
-        prefix : :class:`str`
+        :param prefix:
             A prefix that gets pre-pended to all prompts.
-        xlm_language : :class:`str`
+        :param xlm_language:
             For the XLM model, this is a way to specify the language you want to use.
-        seed : :class:`int`
+        :param seed:
             Random seed
-        num_return_sequences : :class:`int`
+        :param num_return_sequences:
             The number of generations to return for each prompt.
-        fp16 : :class:`bool`
+        :param fp16:
             Whether to use 16-bit floats.
 
-        Returns
-        -------
-        :class:`tango.common.DatasetDict`
+        :returns:
             Returns a dataset with an extra field containing the predictions.
         """
         if isinstance(input, HfDatasetDict):
