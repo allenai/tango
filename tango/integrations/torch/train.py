@@ -68,6 +68,7 @@ class TorchTrainStep(Step):
     DETERMINISTIC = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
+    SKIP_ID_ARGUMENTS = {"distributed_port", "log_every"}
 
     def run(  # type: ignore[override]
         self,

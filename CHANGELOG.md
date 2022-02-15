@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 - Fixed some scenarios where Tango can hang after finishing all steps.
+- `distributed_port` and `log_every` parameters won't factor into `TorchTrainStep`'s unique ID.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09

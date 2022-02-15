@@ -50,6 +50,7 @@ class TorchEvalStep(Step):
     DETERMINISTIC = True
     CACHEABLE = True
     FORMAT: Format = JsonFormat()
+    SKIP_ID_ARGUMENTS = {"log_every"}
 
     def run(  # type: ignore[override]
         self,
