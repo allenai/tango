@@ -49,13 +49,49 @@ library under the corresponding class from the `torch <torch.html>`_ integration
                     print(name)
 
         .. testoutput::
-            :options: +ELLIPSIS
 
             transformers::AutoModel::from_config
             transformers::AutoModel::from_pretrained
             transformers::AutoModelForAudioClassification::from_config
             transformers::AutoModelForAudioClassification::from_pretrained
-            ...
+            transformers::AutoModelForAudioFrameClassification::from_config
+            transformers::AutoModelForAudioFrameClassification::from_pretrained
+            transformers::AutoModelForAudioXVector::from_config
+            transformers::AutoModelForAudioXVector::from_pretrained
+            transformers::AutoModelForCTC::from_config
+            transformers::AutoModelForCTC::from_pretrained
+            transformers::AutoModelForCausalLM::from_config
+            transformers::AutoModelForCausalLM::from_pretrained
+            transformers::AutoModelForImageClassification::from_config
+            transformers::AutoModelForImageClassification::from_pretrained
+            transformers::AutoModelForImageSegmentation::from_config
+            transformers::AutoModelForImageSegmentation::from_pretrained
+            transformers::AutoModelForMaskedLM::from_config
+            transformers::AutoModelForMaskedLM::from_pretrained
+            transformers::AutoModelForMultipleChoice::from_config
+            transformers::AutoModelForMultipleChoice::from_pretrained
+            transformers::AutoModelForNextSentencePrediction::from_config
+            transformers::AutoModelForNextSentencePrediction::from_pretrained
+            transformers::AutoModelForObjectDetection::from_config
+            transformers::AutoModelForObjectDetection::from_pretrained
+            transformers::AutoModelForPreTraining::from_config
+            transformers::AutoModelForPreTraining::from_pretrained
+            transformers::AutoModelForQuestionAnswering::from_config
+            transformers::AutoModelForQuestionAnswering::from_pretrained
+            transformers::AutoModelForSeq2SeqLM::from_config
+            transformers::AutoModelForSeq2SeqLM::from_pretrained
+            transformers::AutoModelForSequenceClassification::from_config
+            transformers::AutoModelForSequenceClassification::from_pretrained
+            transformers::AutoModelForSpeechSeq2Seq::from_config
+            transformers::AutoModelForSpeechSeq2Seq::from_pretrained
+            transformers::AutoModelForTableQuestionAnswering::from_config
+            transformers::AutoModelForTableQuestionAnswering::from_pretrained
+            transformers::AutoModelForTokenClassification::from_config
+            transformers::AutoModelForTokenClassification::from_pretrained
+            transformers::AutoModelForVision2Seq::from_config
+            transformers::AutoModelForVision2Seq::from_pretrained
+            transformers::AutoModelWithLMHead::from_config
+            transformers::AutoModelWithLMHead::from_pretrained
 
 - :class:`~tango.integrations.torch.Optimizer`: All optimizers from transformers are registered according
   to their class names (e.g. "transformers::AdaFactor").
@@ -74,7 +110,6 @@ library under the corresponding class from the `torch <torch.html>`_ integration
                     print(name)
 
         .. testoutput::
-            :options: +ELLIPSIS
 
             transformers::Adafactor
             transformers::AdamW
@@ -96,12 +131,13 @@ library under the corresponding class from the `torch <torch.html>`_ integration
                     print(name)
 
         .. testoutput::
-            :options: +ELLIPSIS
 
             transformers::constant
             transformers::constant_with_warmup
             transformers::cosine
-            ...
+            transformers::cosine_with_restarts
+            transformers::linear
+            transformers::polynomial
 
 - :class:`~tango.integrations.torch.DataCollator`: All data collators from transformers
   are registered according to their class name (e.g. "transformers::DefaultDataCollator").
@@ -133,13 +169,15 @@ library under the corresponding class from the `torch <torch.html>`_ integration
                     print(name)
 
         .. testoutput::
-            :options: +ELLIPSIS
 
             transformers::DataCollatorForLanguageModeling
             transformers::DataCollatorForPermutationLanguageModeling
             transformers::DataCollatorForSOP
-            ...
-
+            transformers::DataCollatorForSeq2Seq
+            transformers::DataCollatorForTokenClassification
+            transformers::DataCollatorForWholeWordMask
+            transformers::DataCollatorWithPadding
+            transformers::DefaultDataCollator
 """
 
 __all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer", "Config"]

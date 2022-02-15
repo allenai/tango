@@ -78,6 +78,13 @@ To install with a specific integration, such as `torch` for example, run
 pip install 'ai2-tango[torch]'
 ```
 
+To install with all integrations, run
+
+```bash
+pip install 'ai2-tango[all]'
+```
+
+
 ### Installing from source
 
 To install **ai2-tango** from source, first clone [the repository](https://github.com/allenai/tango):

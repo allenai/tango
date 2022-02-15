@@ -1,6 +1,6 @@
-from ._det_hash import CustomDetHash, det_hash
 from .aliases import PathOrStr
 from .dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
+from .det_hash import det_hash
 from .from_params import FromParams
 from .lazy import Lazy
 from .params import Params
@@ -13,7 +13,6 @@ __all__ = [
     "DatasetDictBase",
     "DatasetDict",
     "IterableDatasetDict",
-    "CustomDetHash",
     "det_hash",
     "Params",
     "FromParams",

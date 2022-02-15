@@ -83,10 +83,7 @@ def peak_gpu_memory(reset: bool = False) -> Dict[int, int]:
     """
     Get the peak GPU memory usage in MiB by distributed worker rank.
 
-    Returns
-    -------
-
-    Dict[int, int]
+    :returns:
         Keys are rank ids as integers (from 0 up to world size - 1).
         Values are memory usage as integers in MiB.
         Returns an empty `dict` if GPUs are not available.

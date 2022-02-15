@@ -29,7 +29,7 @@ from typing import Any, List, Optional, TypeVar, Union, overload
 import datasets as ds
 
 from tango.common.aliases import PathOrStr
-from tango.common.dataset_dict import DatasetDict, DatasetDictBase, IterableDatasetDict
+from tango.common.dataset_dict import DatasetDict, IterableDatasetDict
 from tango.common.exceptions import ConfigurationError
 from tango.format import Format
 from tango.step import Step

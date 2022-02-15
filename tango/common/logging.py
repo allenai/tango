@@ -333,14 +333,12 @@ def initialize_logging(
     .. tip::
         For worker threads/processes, use :func:`initialize_worker_logging()` instead.
 
-    Parameters
-    ----------
-    log_level : :class:`str`
+    :param log_level:
         Can be one of "debug", "info", "warning", "error". Defaults to the value
         of :data:`TANGO_LOG_LEVEL`.
-    enable_click_logs : :class:`bool`
+    :param enable_click_logs:
         Set to ``True`` to enable messages from the :data:`click_logger`.
-    file_friendly_logging : :class:`bool`
+    :param file_friendly_logging:
         Enable or disable file friendly logging. Defaults to the value of :data:`FILE_FRIENDLY_LOGGING`.
 
     """
@@ -364,9 +362,7 @@ def initialize_worker_logging(worker_rank: Optional[int] = None):
     """
     Initialize logging in a worker thread/process.
 
-    Parameters
-    ----------
-    worker_rank : :class:`int`
+    :param worker_rank:
         The rank/ID of the worker.
 
     """
