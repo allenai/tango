@@ -235,7 +235,7 @@ class Step(Registrable, Generic[T]):
         if "type" in params and params["type"] not in as_registrable.list_available():
             as_registrable.search_modules(params["type"])
         choice = params.pop_choice(
-            "type", choices=as_registrable.list_available(), default_to_first_choice=True
+            "type", choices=as_registrable.list_available(), default_to_first_choice=False
         )
         subclass, constructor_name = as_registrable.resolve_class_name(choice)
         if not issubclass(subclass, Step):
