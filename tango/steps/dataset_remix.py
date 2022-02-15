@@ -66,11 +66,9 @@ class DatasetRemixStep(Step[DatasetDict]):
         """
         Remixes and shuffles a dataset. This is done lazily, so all operations are fast.
 
-        Parameters
-        ----------
-        input : :class:`tango.common.DatasetDict`
+        :param input:
             The input dataset that will be remixed.
-        new_splits : :class:`Dict[str, str]`
+        :param new_splits:
             Specifies the new splits that the output dataset should have. Keys are the name of the new
             splits. Values refer to the original splits. You can refer to original splits in the following ways:
 
@@ -81,25 +79,23 @@ class DatasetRemixStep(Step[DatasetDict]):
             * ``"instances + instances"`` concatenates the instances into one split.
 
             You can combine these possibilities.
-        keep_old_splits : :class:`bool`
+        :param keep_old_splits:
             Whether to keep the splits from the input dataset in addition to the new ones given by
             ``new_splits``.
-        shuffle_before : :class:`bool`
+        :param shuffle_before:
             Whether to shuffle the input splits before creating the new ones.
 
             If you need shuffled instances and you're not sure the input is properly shuffled, use this.
-        shuffle_after : :class:`bool`
+        :param shuffle_after:
             Whether to shuffle the input splits after creating the new ones.
 
             If you need shuffled instances and you're slicing or concatenating splits, use this.
 
             If you want to be on the safe side, shuffle both before and after. Shuffling is a cheap operation.
-        random_seed : :class:`int`
+        :param random_seed:
             Random seed, affects shuffling
 
-        Returns
-        -------
-        :class:`tango.common.DatasetDict`
+        :returns:
             Returns a new dataset that is appropriately remixed.
         """
         random.seed(random_seed)
@@ -202,19 +198,15 @@ class DatasetCombineStep(Step[DatasetDict]):
         If a split is present in more than one input dataset, the output dataset will have a split that's
         the concatenation of the input splits.
 
-        Parameters
-        ----------
-        inputs : :class:`List[tango.common.DatasetDict]`
+        :param inputs:
             The list of input datasets that will be combined.
-        shuffle : :class:`bool`
+        :param shuffle:
             Whether to shuffle the combined datasets. If you don't do this, the new splits will contain first
             all the instances from one dataset, and then all the instances from another dataset.
-        random_seed : :class:`int`
+        :param random_seed:
             Random seed, affects shuffling
 
-        Returns
-        -------
-        :class:`tango.common.DatasetDict`
+        :returns:
             Returns a new dataset that is the combination of the input datasets.
         """
 

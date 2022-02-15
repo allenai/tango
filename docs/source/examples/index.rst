@@ -8,4 +8,6 @@ You can find all of these `on GitHub <https://github.com/allenai/tango/tree/main
    :maxdepth: 2
    :caption: Examples
 
+   euler
    train_lm
+   eval_p3
