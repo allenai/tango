@@ -1,3 +1,4 @@
+import test_fixtures.package.steps  # noqa: F401
 from tango.common.testing import TangoTestCase
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -37,8 +38,6 @@ class TestStepGraph(TangoTestCase):
         assert [res.name for res in result] == ["step1", "step2", "step3"]
 
     def test_from_file(self):
-        import test_fixtures.package.steps  # noqa: F401
-
         step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")
         assert "hello" in step_graph
         assert "hello_world" in step_graph
