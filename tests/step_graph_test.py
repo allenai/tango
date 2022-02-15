@@ -1,16 +1,6 @@
 import test_fixtures.package.steps  # noqa: F401
 from tango.common.testing import TangoTestCase
-from tango.step import Step
 from tango.step_graph import StepGraph
-
-
-@Step.register("add_numbers")
-class AddNumbers(Step):
-    DETERMINISTIC = True
-    CACHEABLE = True
-
-    def run(self, a_number: int, b_number: int) -> int:  # type: ignore
-        return a_number + b_number
 
 
 class TestStepGraph(TangoTestCase):
