@@ -1,6 +1,6 @@
-# Overview
+# First Steps
 
-## Steps
+## What is a Step?
 
 Tango is a Python library for choreographing machine learning research experiments by executing
 a series of steps.
@@ -21,7 +21,7 @@ Well, we don't know yet, but we can say at least that Tango is **Tango-complete*
 Experiments themselves are defined through JSON, [Jsonnet](https://jsonnet.org/), or YAML configuration files.
 At a minimum, these files must contain the "steps" field, which should be a mapping of arbitrary (yet unique) step names to the configuration of the corresponding step.
 
-For example, let's create a config file called `config.jsonnet` with following contents:
+For example, let's create a config file called `config.jsonnet` with the following contents:
 
 ```json
 {
@@ -141,13 +141,14 @@ this module when you pass `-i components` (note the lack of the `.py` at the end
 You should see something like this in the output:
 
 ```
-● Starting run for "random_name"
-✓ Finished run for "random_name"
-● Starting run for "say_hello"
-✓ Finished run for "say_hello"
-● Starting run for "print"
+Starting new run cute-kitten
+● Starting step "random_name"
+✓ Finished step "random_name"
+● Starting step "say_hello"
+✓ Finished step "say_hello"
+● Starting step "print"
 Hello, Tango
-✓ Finished run for "print"
+✓ Finished step "print"
 ```
 
 ## Step caching
@@ -198,30 +199,39 @@ class ReallyInefficientAdditionStep(Step):
         return num1 + num2
 ```
 
-There are a couple of things to note about this step, other than the obvious inefficiencies; the class variables we've defined: {attr}`~tango.step.Step.DETERMINISTIC`, {attr}`~tango.step.Step.CACHEABLE`, and {attr}`~tango.step.Step.FORMAT`.
+There are a couple of things to note about this step, other than the obvious inefficiencies; the class variables
+we've defined: {attr}`~tango.step.Step.DETERMINISTIC`, {attr}`~tango.step.Step.CACHEABLE`, and
+{attr}`~tango.step.Step.FORMAT`.
 
-`DETERMINISTIC = True` tells Tango that, given particular inputs, the output to this step will always be the same every time it is ran, which has implications on caching.
-By default Tango assumes steps are non-deterministic, and it will warn you when you try to cache a non-deterministic step.
+`DETERMINISTIC = True` tells Tango that, given particular inputs, the output to this step will always be the same
+every time it is ran, which has implications on caching.
+By default, Tango assumes steps are deterministic.
+You can override this by saying `DETERMINISTIC = False`.
+Tango will warn you when you try to cache a non-deterministic step.
 
-`CACHEABLE = True` tells Tango that it can cache this step and `FORMAT = JsonFormat()` defines which {class}`~tango.format.Format` Tango will use to serialize the result of the step.
+`CACHEABLE = True` tells Tango that it can cache this step and `FORMAT = JsonFormat()` defines which
+{class}`~tango.format.Format` Tango will use to serialize the result of the step.
 
 This time when we run the experiment we'll designate a specific directory for Tango to use:
 
 ```bash
-$ tango run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d workspace/
 ```
 ```
-● Starting run for "add_numbers"
+Starting new run live-tarpon
+● Starting step "add_numbers"
 Computing...: 100%|##########| 100/100 [00:05<00:00, 18.99it/s]
-✓ Finished run for "add_numbers"
-✓ The output for "add_numbers" is in /tmp/add/add_numbers
+✓ Finished step "add_numbers"
+✓ The output for "add_numbers" is in workspace/runs/live-tarpon/add_numbers
 ```
 
-The last line in the output tells us where we can find the result of our "add_numbers" step.
-This will be in a file called `data.json`:
+The last line in the output tells us where we can find the result of our "add_numbers" step. `live-parpon` is
+the name of the run. Run names are randomly generated and may be different on your machine. `add_numbers` is the
+name of the step in your config. The whole path is a symlink to a directory, which contains (among other things)
+a file `data.json`:
 
 ```bash
-$ cat /tmp/add/add_numbers/data.json
+$ cat workspace/runs/live-tarpon/add_numbers/data.json
 ```
 ```
 42
@@ -230,15 +240,19 @@ $ cat /tmp/add/add_numbers/data.json
 Now look what happens when we run this step again:
 
 ```bash
-$ tango run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d workspace/
 ```
 ```
+Starting new run modest-shrimp
 ✓ Found output for "add_numbers" in cache
-✓ The output for "add_numbers" is in /tmp/add/add_numbers
+✓ The output for "add_numbers" is in workspace/runs/modest-shrimp/add_numbers
 ```
 
-Tango didn't have to run our really inefficient addition step this time because it found the previous cached result.
-But if we changed the inputs to the step in `config.jsonnet`:
+Tango didn't have to run our really inefficient addition step this time because it found the previous cached
+result. It put the results in the result directory for a different run (in our case, the `modest-shrimp` run),
+but once again it is a symlink that links to the same results from our first run.
+
+If we changed the inputs to the step in `config.jsonnet`:
 
 ```diff
      "add_numbers": {
@@ -254,22 +268,24 @@ But if we changed the inputs to the step in `config.jsonnet`:
 And ran it again:
 
 ```bash
-$ tango run config.jsonnet -i components -d /tmp/add
+$ tango run config.jsonnet -i components -d workspace/
 ```
 ```
-● Starting run for "add_numbers"
+Starting new run true-parrot
+● Starting step "add_numbers"
 Computing...: 100%|##########| 100/100 [00:05<00:00, 19.13it/s]
-✓ Finished run for "add_numbers"
-✓ The output for "add_numbers" is in /tmp/add/add_numbers
+✓ Finished step "add_numbers"
+✓ The output for "add_numbers" is in workspace/runs/true-parrot/add_numbers
 ```
 
 You'd see that Tango had to run our "add_numbers" step again.
 
-You may have also noticed that the output path for "add_numbers" (`/tmp/add/add_numbers`) is the same as it was before, even though we had to rerun the step.
-But if you inspect the `/tmp/add` directory you'll find that `add_numbers` is actually a symlink to another directory in `/tmp/add/step_cache`.
-The `/tmp/add/step_cache` directory has two sub-directories at this point: one for each run of the step.
+You may have noticed that `workspace/runs/true-parrot/add_numbers` is now a symlink that points to a different
+place than it did for the first two runs. That's because it produced a different result this time. All the
+result symlinks point into the `workspace/cache/` directory, where all the step's results are cached.
 
-This means that if we ran the experiment again with the original inputs, Tango would still find the cached result and wouldn't need to rerun the step.
+This means that if we ran the experiment again with the original inputs, Tango would still find the cached result
+and wouldn't need to rerun the step.
 
 ## Arbitrary objects as inputs
 

@@ -29,17 +29,14 @@ def with_wrapped_modules(
     .. important::
         This is meant to be used with the :class:`FairScaleTrainingEngine`.
 
-    Parameters
-    ----------
-
-    model : :class:`~tango.integrations.torch.Model`
+    :param model:
         The model to wrap.
-    modules_to_wrap : :class:`set`
+    :param modules_to_wrap:
         The names of submodule to wrap. Can be regular expressions.
-    fsdp_config : :class:`~FSDPConfig`, optional
+    :param fsdp_config:
         The ``FullyShardedDataParallel`` configuration to use when wrapping the modules.
         If not specified, the modules will NOT be wrapped with FSDP.
-    activation_checkpointing : :class:`bool`, optional
+    :param activation_checkpointing:
         Whether to wrap the modules with FairScale's
         :class:`~fairscale.nn.checkpoint.checkpoint_wrapper`.
 

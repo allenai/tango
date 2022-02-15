@@ -98,38 +98,33 @@ class LightningTrainStep(Step):
         """
         Run a basic training loop to train the ``model``.
 
-        Parameters
-        ----------
-
-        trainer : :class:`LightningTrainer`
+        :param trainer:
             The lightning trainer object.
-        model : :class:`LightningModule`
+        :param model:
             The lightning module to train.
-        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDict`, optional
+        :param dataset_dict:
             The train and optional validation data. This is ignored if the `datamodule` argument
             is provided.
-        train_dataloader : :class:`DataLoader`, optional
+        :param train_dataloader:
             The data loader that generates training batches. The batches should be :class:`dict`
             objects. This is ignored if the `datamodule` argument is provided.
-        train_split : :class:`str`, optional
+        :param train_split:
             The name of the data split used for training in the ``dataset_dict``.
             Default is "train". This is ignored if the `datamodule` argument is provided.
-        validation_split : :class:`str`, optional
+        :param validation_split:
             Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
             which means no validation. This is ignored if the `datamodule` argument is provided.
-        validation_dataloader : :class:`DataLoader`, optional
+        :param validation_dataloader:
             An optional data loader for generating validation batches. The batches should be
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
             as the train ``DataLoader``. This is ignored if the `datamodule` argument
             is provided.
-        datamodule : :class:`LightningDataModule`, optional
+        :param datamodule:
             If a :class:`LightningDataModule` object is given, the other data loading arguments
             are ignored.
 
-        Returns
-        -------
-        :class:`LightningModule`
+        :returns:
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """

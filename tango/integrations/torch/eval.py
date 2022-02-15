@@ -20,7 +20,7 @@ from .util import check_dataset, move_to_device, resolve_device, set_seed_all
 @Step.register("torch::eval")
 class TorchEvalStep(Step):
     """
-    A basic PyTorch evaluation loop that pairs well with :class:`TorchTrainStep`.
+    A PyTorch evaluation loop that pairs well with :class:`TorchTrainStep`.
 
     .. tip::
 
@@ -67,36 +67,33 @@ class TorchEvalStep(Step):
         """
         Evaluate the ``model``.
 
-        Parameters
-        ----------
-
-        model : :class:`Model`
+        :param model:
             The model to evaluate. It should return a ``dict`` from its ``forward()`` method
             that includes all of the metrics in ``metric_names`` .
-        dataset_dict : :class:`~tango.common.dataset_dict.DatasetDictBase`
+        :param dataset_dict:
             Should contain the test data.
-        dataloader : :class:`DataLoader`
+        :param dataloader:
             The data loader that generates test batches. The batches should be :class:`dict`
             objects.
-        test_split : :class:`str`, optional
+        :param test_split:
             The name of the data split used for evaluation in the ``dataset_dict``.
             Default is "test".
-        seed : :class:`int`, optional
+        :param seed:
             Used to set the RNG states at the beginning of the evaluation loop.
-        eval_steps : :class:`int`, optional
+        :param eval_steps:
             The number of steps to evaluate for. If not specified evaluation will
             stop after a complete iteration through the ``dataloader``.
-        log_every : :class:`int`, optional
+        :param log_every:
             Log every this many steps. Default is ``1``.
-        metric_names : ``Sequence[str]``, optional
+        :param metric_names:
             The names of the metrics to track and aggregate. Default is ``("loss",)``.
-        auto_aggregate_metrics : :class:`bool`, optional
+        :param auto_aggregate_metrics:
             If ``True`` (the default), the metrics will be averaged across batches.
             This may not be the correct behavior for some metrics (such as F1),
             in which you should set this to ``False`` and handle the aggregation
             internally in your model or with an :class:`EvalCallback`
             (using :meth:`EvalCallback.post_batch()`).
-        callbacks : ``List[TrainCallback]``
+        :param callbacks:
             A list of :class:`EvalCallback`.
 
         """
