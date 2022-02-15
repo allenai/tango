@@ -51,6 +51,17 @@ local single_device_dataloader = {
 local TrainStep(options) =
     local training_engine = {
         type: if options.fsdp_config != null then "fairscale" else "torch",
+        optimizer: {
+            type: "torch::AdamW",
+            lr: learning_rate,
+            betas: [0.9, 0.95],
+            eps: 1e-6,
+        },
+        lr_scheduler: {
+            type: "transformers::linear",
+            num_warmup_steps: warmup_steps,
+            num_training_steps: training_steps,
+        },
         amp: options.amp,
         [if options.fsdp_config != null then "fsdp_config" else null]: options.fsdp_config,
     };
@@ -71,17 +82,6 @@ local TrainStep(options) =
         dataset_dict: { type: "ref", ref: "tokenized_data" },
         train_dataloader: distributed_dataloader,
         validation_split: "validation",
-        optimizer: {
-            type: "torch::AdamW",
-            lr: learning_rate,
-            betas: [0.9, 0.95],
-            eps: 1e-6,
-        },
-        lr_scheduler: {
-            type: "transformers::linear",
-            num_warmup_steps: warmup_steps,
-            num_training_steps: training_steps,
-        },
         grad_accum: grad_accum,
         train_steps: training_steps,
         validate_every: validate_every,
@@ -117,33 +117,39 @@ local TrainStep(options) =
     } + {
         ["trained_model_" + options.name]: TrainStep(options)
         for options in [
-            # With 6B model, baseline will fail with CUDA OOM
+            # NOTE: With 6B model, baseline and many others will fail with CUDA OOM.
+            # FSDP and activation checkpointing will be required for a 6B model.
             {
                 name: "baseline",
+                enabled: false,
                 amp: false,
                 fsdp_config: null,
                 activation_checkpointing: false,
             },
             {
                 name: "amp",
+                enabled: false,
                 amp: true,
                 fsdp_config: null,
                 activation_checkpointing: false,
             },
             {
                 name: "checkpointing",
+                enabled: false,
                 amp: false,
                 fsdp_config: null,
                 activation_checkpointing: true,
             },
             {
                 name: "amp_and_checkpointing",
+                enabled: false,
                 amp: true,
                 fsdp_config: null,
                 activation_checkpointing: true,
             },
             {
                 name: "fsdp",
+                enabled: false,
                 amp: false,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -155,6 +161,7 @@ local TrainStep(options) =
             },
             {
                 name: "fsdp_no_reshard",
+                enabled: false,
                 amp: false,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -166,6 +173,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_fsdp",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -177,6 +185,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_fsdp_no_reshard",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -188,6 +197,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_fsdp_mp",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -199,6 +209,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_fsdp_mp_no_reshard",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: false,
                 fsdp_config: {
@@ -210,6 +221,7 @@ local TrainStep(options) =
             },
             {
                 name: "checkpointing_and_fsdp",
+                enabled: false,
                 amp: false,
                 activation_checkpointing: true,
                 fsdp_config: {
@@ -221,6 +233,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_checkpointing_and_fsdp",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: true,
                 fsdp_config: {
@@ -232,6 +245,7 @@ local TrainStep(options) =
             },
             {
                 name: "amp_and_checkpointing_and_fsdp_mp",
+                enabled: true,
                 amp: true,
                 activation_checkpointing: true,
                 fsdp_config: {
@@ -243,6 +257,7 @@ local TrainStep(options) =
             },
             {
                 name: "checkpointing_and_fsdp_mp",
+                enabled: false,
                 amp: false,
                 activation_checkpointing: true,
                 fsdp_config: {
@@ -252,20 +267,21 @@ local TrainStep(options) =
                     mixed_precision: true,
                 },
             },
-            # Currently does not work. Tracking https://github.com/facebookresearch/fairscale/issues/918
-            # {
-            #     name: "amp_and_checkpointing_and_fsdp_mp_with_partial_offloading",
-            #     amp: true,
-            #     activation_checkpointing: true,
-            #     fsdp_config: {
-            #         reshard_after_forward: true,
-            #         move_params_to_cpu: true,
-            #         move_grads_to_cpu: false,
-            #         mixed_precision: true,
-            #     },
-            # },
+            {  # This configuration currently does not work. Tracking https://github.com/facebookresearch/fairscale/issues/918
+                name: "amp_and_checkpointing_and_fsdp_mp_with_partial_offloading",
+                enabled: false,
+                amp: true,
+                activation_checkpointing: true,
+                fsdp_config: {
+                    reshard_after_forward: true,
+                    move_params_to_cpu: true,
+                    move_grads_to_cpu: false,
+                    mixed_precision: true,
+                },
+            },
             {
                 name: "amp_and_checkpointing_and_fsdp_mp_with_full_offloading",
+                enabled: false,
                 amp: true,
                 activation_checkpointing: true,
                 fsdp_config: {
@@ -275,6 +291,6 @@ local TrainStep(options) =
                     mixed_precision: true,
                 },
             },
-        ]
+        ] if options.enabled
     }
 }

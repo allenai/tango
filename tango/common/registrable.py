@@ -72,15 +72,13 @@ class Registrable(FromParams):
         """
         Register a class under a particular name.
 
-        Parameters
-        ----------
-        name :
+        :param name:
             The name to register the class under.
-        constructor :
+        :param constructor:
             The name of the method to use on the class to construct the object.  If this is given,
             we will use this method (which must be a ``@classmethod``) instead of the default
             constructor.
-        exist_ok :
+        :param exist_ok:
             If True, overwrites any existing models registered under ``name``. Else,
             throws an error if a model is already registered under ``name``.
 

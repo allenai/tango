@@ -110,12 +110,10 @@ class TangoGlobalSettings(FromParams):
 
     """
 
-    file_friendly_logging: bool = False
+    file_friendly_logging: Optional[bool] = None
     """
     If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
     down tqdm's output to only once every 10 seconds.
-
-    By default, it is set to ``False``.
     """
 
     multiprocessing_start_method: str = "spawn"
@@ -216,7 +214,7 @@ def main(
     if log_level is not None:
         config.log_level = log_level
 
-    if file_friendly_logging is not None:
+    if file_friendly_logging:
         config.file_friendly_logging = file_friendly_logging
 
     initialize_logging(
@@ -409,7 +407,6 @@ def _run(
             "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
     workspace_dir = Path(workspace_dir)
-    workspace_dir.mkdir(parents=True, exist_ok=True)
     workspace = LocalWorkspace(workspace_dir)
 
     # Initialize step graph and register run.
@@ -441,12 +438,26 @@ def _run(
         for step in ordered_steps:
             if step in workspace.step_cache:
                 info = workspace.step_info(step)
-                click_logger.info(
-                    click.style("\N{check mark} The output for ", fg="green")
-                    + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(" is in ", fg="green")
-                    + click.style(f"{info.result_location}", bold=True, fg="green")
-                )
+                if info.step_name is not None:
+                    path = run_dir / info.step_name
+                elif info.result_location is not None:
+                    path = Path(info.result_location)
+                else:
+                    path = None
+
+                if path is None:
+                    click_logger.warn(
+                        click.style("\N{ballot x} The output for ", fg="red")
+                        + click.style(f'"{step.name}"', bold=True, fg="red")
+                        + click.style(" is missing!", fg="red")
+                    )
+                else:
+                    click_logger.info(
+                        click.style("\N{check mark} The output for ", fg="green")
+                        + click.style(f'"{step.name}"', bold=True, fg="green")
+                        + click.style(" is in ", fg="green")
+                        + click.style(f"{path}", bold=True, fg="green")
+                    )
 
         click_logger.info(
             click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)

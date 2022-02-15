@@ -31,7 +31,7 @@ from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
-from tango.common.sqlite_sparse_sequence import SqliteSparseSequence
+from tango.common.sequences import SqliteSparseSequence
 
 T = TypeVar("T")
 
@@ -153,7 +153,7 @@ class DillFormat(Format[T], Generic[T]):
 
 class DillFormatIterator(Iterator[T], Generic[T]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``DillFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.DillFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
@@ -190,7 +190,6 @@ class JsonFormat(Format[T], Generic[T]):
     .. tip::
         This format has special support for iterables. If you write an iterator, it will consume the
         iterator. If you read an iterator, it will read the iterator lazily.
-
     """
 
     VERSION = 2
@@ -288,7 +287,7 @@ class JsonFormat(Format[T], Generic[T]):
 
 class JsonFormatIterator(Iterator[T], Generic[T]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``JsonFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.JsonFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
@@ -323,8 +322,8 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         iterator. If you read an iterator, it will read the iterator lazily.
 
         Be aware that if your strings contain newlines, you will read out more strings than you wrote.
-        For this reason, it's often advisable to use `JsonFormat` instead. With `JsonFormat`, all special
-        characters are escaped, strings are quoted, but it's all still human-readable.
+        For this reason, it's often advisable to use :class:`JsonFormat` instead. With :class:`JsonFormat`,
+        all special characters are escaped, strings are quoted, but it's all still human-readable.
     """
 
     VERSION = 1
@@ -379,7 +378,7 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
 
 class TextFormatIterator(Iterator[str]):
     """
-    An ``Iterator`` class that is used so we can return an iterator from ``TextFormat.read()``.
+    An ``Iterator`` class that is used to return an iterator from :meth:`tango.format.TextFormat.read`.
     """
 
     def __init__(self, filename: PathOrStr):
@@ -404,6 +403,56 @@ class TextFormatIterator(Iterator[str]):
 
 @Format.register("sqlite")
 class SqliteDictFormat(Format[DatasetDict]):
+    """This format works specifically on results of type :class:`~tango.common.DatasetDict`. It writes those
+    datasets into Sqlite databases.
+
+    During reading, the advantage is that the dataset can be read lazily. Reading a result that is stored
+    in :class:`SqliteDictFormat` takes milliseconds. No actual reading takes place until you access individual
+    instances.
+
+    During writing, you have to take some care to take advantage of the same trick. Recall that
+    :class:`~tango.DatasetDict` is basically a map, mapping split names to lists of instances. If you ensure
+    that those lists of instances are of type :class:`~tango.common.sequences.SqliteSparseSequence`, then writing
+    the results in :class:`SqliteDictFormat` can in many cases be instantaneous.
+
+    Here is an example of the pattern to use to make writing fast:
+
+    .. code-block:: Python
+
+        @Step.register("my_step")
+        class MyStep(Step[DatasetDict]):
+
+            FORMAT: Format = SqliteDictFormat()
+            VERSION = "001"
+
+            def run(self, ...) -> DatasetDict:
+                result: Dict[str, Sequence] = {}
+                for split_name in my_list_of_splits:
+                    output_split = SqliteSparseSequence(self.work_dir / f"{split_name}.sqlite")
+                    for instance in instances:
+                        output_split.append(instance)
+                    result[split_name] = output_split
+
+                metadata = {}
+                return DatasetDict(result, metadata)
+
+    Observe how for each split, we create a :class:`~tango.common.sequences.SqliteSparseSequence` in the step's
+    work directory (accessible with :meth:`~tango.step.Step.work_dir`). This has the added advantage that if the
+    step fails and you have to re-run it, the previous results that were already written to the
+    :class:`~tango.common.sequences.SqliteSparseSequence` are still there. You could replace the inner ``for``
+    loop like this to take advantage:
+
+    .. code-block:: Python
+
+        output_split = SqliteSparseSequence(self.work_dir / f"{split_name}.sqlite")
+        for instance in instances[len(output_split):]:      # <-- here is the difference
+            output_split.append(instance)
+        result[split_name] = output_split
+
+    This works because when you re-run the step, the work directory will still be there, so ``output_split`` is
+    not empty when you open it.
+    """
+
     VERSION = 3
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):

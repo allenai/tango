@@ -11,7 +11,7 @@
 :caption: Getting started
 
 installation
-overview
+first_steps
 examples/index
 faq
 ```
@@ -26,6 +26,8 @@ api/components/index
 api/integrations/index
 api/exceptions
 api/logging
+api/sequences
+api/det_hash
 api/utilities
 ```
 
@@ -38,6 +40,10 @@ CHANGELOG
 License <https://raw.githubusercontent.com/allenai/tango/main/LICENSE>
 GitHub Repository <https://github.com/allenai/tango>
 ```
+
+To learn about Tango in 5 minutes, head over to the [First Steps section](first_steps).
+
+If you'd rather learn from examples, check out the [Examples section](examples/index).
 
 ## Team
 

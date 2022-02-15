@@ -143,13 +143,11 @@ class TorchTrainingEngine(TrainingEngine):
         file. The other parameters will be automatically passed to the constructor
         within :class:`TorchTrainStep`.
 
-    Parameters
-    ----------
-    amp : :class:`bool`, optional
+    :param amp:
         Use automatic mixed precision. Default is ``False``.
-    max_grad_norm : :class:`float`, optional
+    :param max_grad_norm:
         If set, gradients will be clipped to have this max norm. Default is ``None``.
-    amp_use_bfloat16 : ``Optional[bool]``
+    :param amp_use_bfloat16:
         Set to ``True`` to force using the ``bfloat16`` datatype in mixed precision training.
         Only applicable when ``amp=True``. If not specified, the default behavior will be
         to use ``bfloat16`` when training with AMP on CPU, otherwise not.

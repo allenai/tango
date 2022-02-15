@@ -1,18 +1,12 @@
 import pytest
 
+import test_fixtures.package.steps  # noqa: F401
 from tango.common.from_params import FromParams
 from tango.common.testing import TangoTestCase
 from tango.step import Step
 
 
 class TestStep(TangoTestCase):
-    @classmethod
-    def setup_class(cls):
-        @Step.register("float")
-        class FloatStep(Step):
-            def run(self, result: float) -> float:  # type: ignore
-                return result
-
     def test_from_params(self):
         step = Step.from_params({"type": "float", "result": 3})
         result = step.result()

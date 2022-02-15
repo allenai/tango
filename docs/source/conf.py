@@ -39,7 +39,11 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
     "sphinx_copybutton",
+    "sphinx_autodoc_typehints",
 ]
+
+# Tell myst-parser to assign header anchors for h1-h3.
+myst_heading_anchors = 3
 
 suppress_warnings = ["myst.header"]
 
@@ -86,7 +90,6 @@ html_css_files = ["css/custom.css"]
 html_favicon = "_static/favicon.ico"
 
 html_theme_options = {
-    "announcement": "ai2-tango is currently under rapid development. Use at your own risk!",
     "light_css_variables": {
         "color-announcement-background": "#1B4596",
         "color-announcement-text": "#FFFFFF",

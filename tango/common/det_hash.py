@@ -12,7 +12,7 @@ class CustomDetHash:
     """
     By default, :func:`det_hash()` pickles an object, and returns the hash of the pickled
     representation. Sometimes you want to take control over what goes into
-    that hash. In that case, implement this :meth:`det_hash_object()`.
+    that hash. In that case, derive from this class and implement :meth:`det_hash_object()`.
     :func:`det_hash()` will pickle the result of this method instead of the object itself.
 
     If you return ``None``, :func:`det_hash()` falls back to the original behavior and pickles
@@ -30,7 +30,7 @@ class CustomDetHash:
 class DetHashFromInitParams(CustomDetHash):
     """
     Add this class as a mixin base class to make sure your class's det_hash is derived
-    exclusively from the parameters passed to __init__().
+    exclusively from the parameters passed to ``__init__()``.
     """
 
     _det_hash_object: Any
@@ -45,6 +45,7 @@ class DetHashFromInitParams(CustomDetHash):
         return instance
 
     def det_hash_object(self) -> Any:
+        """Returns a copy of the parameters that were passed to the class instance's ``__init__()`` method."""
         return self._det_hash_object
 
 
@@ -52,15 +53,33 @@ class DetHashWithVersion(CustomDetHash):
     """
     Add this class as a mixin base class to make sure your class's det_hash can be modified
     by altering a static ``VERSION`` member of your class.
+
+    Let's say you are working on training a model. Whenever you change code that's part of your experiment,
+    you have to change the :attr:`~tango.step.Step.VERSION` of the step that's running that code to tell
+    Tango that the step has changed and should be re-run. But if
+    you are training your model using Tango's built-in :class:`~tango.integrations.torch.TorchTrainStep`,
+    how do you change the version of the step? The answer is, leave the version of the step alone, and
+    instead add a :attr:`VERSION` to your model by deriving from this class:
+
+    .. code-block:: Python
+
+        class MyModel(DetHashWithVersion):
+            VERSION = "001"
+
+            def __init__(self, ...):
+                ...
     """
 
     VERSION = None
 
     def det_hash_object(self) -> Any:
+        """
+        Returns a tuple of :attr:`~tango.common.det_hash.DetHashWithVersion.VERSION` and this instance itself.
+        """
         if self.VERSION is not None:
             return self.VERSION, self
         else:
-            return None
+            return None  # When you return `None` from here, it falls back to just hashing the object itself.
 
 
 class _DetHashPickler(dill.Pickler):

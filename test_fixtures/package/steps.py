@@ -42,6 +42,15 @@ class RandomStringStep(Step):
         return "".join([random.choice(ascii_letters) for _ in range(length)])
 
 
+@Step.register("add_numbers")
+class AddNumbersStep(Step):
+    DETERMINISTIC = True
+    CACHEABLE = True
+
+    def run(self, a_number: int, b_number: int) -> int:  # type: ignore
+        return a_number + b_number
+
+
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     """
