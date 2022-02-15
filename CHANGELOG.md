@@ -14,11 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on dual k80 GPUs via Beaker.
 - Added a utility function to get a `StepGraph` directly from a file.
 
+### Changed
+
+- `local_workspace.ExecutorMetadata` renamed to `StepExecutionMetadata` and now saved as `execution-metadata.json`.
+
 ### Fixed
 
 - Fixed a small bug `LocalWorkspace` would fail to capture the conda environment in our Docker image.
 - Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
+- Fixed some scenarios where Tango can hang after finishing all steps.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09
@@ -66,11 +71,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The web UI now renders the step graph left-to-right.
 - The web UI now shows runs by date, with the most recent run at the top.
 - The web UI now shows steps in a color-coded way.
+- The `tango run` command now prints user-friendly paths if possible.
 - The `--include-package` flag now also accepts paths instead of module names.
+- `tango.common.sqlite_sparse_sequence.SqliteSparseSequence` now lives at `tango.common.sequences.SqliteSparseSequence`.
 
 ### Fixed
 
 - Ensure tqdm log lines always make it into the log file `out.log` even when log level is `WARNING` or `ERROR`.
+- Numerous parts of Tango now have documentation when they didn't before.
 
 
 ## [v0.4.0rc5](https://github.com/allenai/tango/releases/tag/v0.4.0rc5) - 2022-01-19

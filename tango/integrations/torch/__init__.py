@@ -11,7 +11,7 @@
 
 Components for Tango integration with `PyTorch <https://pytorch.org/>`_.
 
-These include a basic training loop :class:`~tango.step.Step` and registrable versions
+These include a training loop :class:`~tango.step.Step` and registrable versions
 of many ``torch`` classes, such :class:`torch.optim.Optimizer` and :class:`torch.utils.data.DataLoader`.
 
 Example: training a model
@@ -19,7 +19,7 @@ Example: training a model
 
 Let's look a simple example of training a model.
 
-We'll make a very basic regression model and generate some fake data to train on.
+We'll make a basic regression model and generate some fake data to train on.
 First, the setup:
 
 .. testcode::

@@ -117,7 +117,7 @@ class TangoMetadata(FromParams):
 
 
 @dataclass
-class ExecutorMetadata(FromParams):
+class StepExecutionMetadata(FromParams):
     step: str
     """
     The unique ID of the step.
@@ -220,7 +220,7 @@ class ExecutorMetadata(FromParams):
         self._save_conda(run_dir)
 
         # Serialize self.
-        self.to_params().to_file(run_dir / "executor-metadata.json")
+        self.to_params().to_file(run_dir / "execution-metadata.json")
 
 
 @Workspace.register("local")
@@ -470,7 +470,7 @@ class LocalWorkspace(Workspace):
                 config = step.config
             except ValueError:
                 config = None
-            metadata = ExecutorMetadata(
+            metadata = StepExecutionMetadata(
                 step=step.unique_id, config=replace_steps_with_unique_id(config)
             )
             # Finalize metadata and save to run directory.

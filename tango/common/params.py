@@ -336,12 +336,10 @@ class Params(MutableMapping):
         the given choices. Note that this ``pops`` the key from params, modifying the dictionary,
         consistent with how parameters are processed in this codebase.
 
-        Parameters
-        ----------
-        key :
+        :param key:
             Key to get the value from in the param dictionary
 
-        choices :
+        :param choices:
             A list of valid options for values corresponding to ``key``.  For example, if you're
             specifying the type of encoder to use for some part of your model, the choices might be
             the list of encoder classes we know about and can instantiate.  If the value we find in
@@ -349,7 +347,7 @@ class Params(MutableMapping):
             :class:`~tango.common.exceptions.ConfigurationError`, because
             the user specified an invalid value in their parameter file.
 
-        default_to_first_choice :
+        :param default_to_first_choice:
             If this is ``True``, we allow the ``key`` to not be present in the parameter
             dictionary.  If the key is not present, we will use the return as the value the first
             choice in the ``choices`` list.  If this is ``False``, we raise a
@@ -358,7 +356,7 @@ class Params(MutableMapping):
             specify your model class when running an experiment, but you can feel free to use
             default settings for encoders if you want).
 
-        allow_class_names :
+        :param allow_class_names:
             If this is ``True``, then we allow unknown choices that look like fully-qualified class names.
             This is to allow e.g. specifying a model type as ``my_library.my_model.MyModel``
             and importing it on the fly. Our check for "looks like" is extremely lenient
@@ -383,12 +381,10 @@ class Params(MutableMapping):
         Sometimes we need to just represent the parameters as a dict, for instance when we pass
         them to PyTorch code.
 
-        Parameters
-        ----------
-        quiet :
+        :param quiet:
             Whether to log the parameters before returning them as a dict.
 
-        infer_type_and_cast :
+        :param infer_type_and_cast:
             If ``True``, we infer types and cast (e.g. things that look like floats to floats).
         """
         if infer_type_and_cast:
@@ -483,19 +479,16 @@ class Params(MutableMapping):
         """
         Load a ``Params`` object from a configuration file.
 
-        Parameters
-        ----------
-
-        params_file :
+        :param params_file:
             The path to the configuration file to load. Can be JSON, Jsonnet, or YAML.
 
-        params_overrides :
+        :param params_overrides:
             A dict of overrides that can be applied to final object.
             e.g. ``{"model.embedding_dim": 10}`` will change the value of "embedding_dim"
             within the "model" object of the config to 10. If you wanted to override the entire
             "model" object of the config, you could do ``{"model": {"type": "other_type", ...}}``.
 
-        ext_vars :
+        :param ext_vars:
             Our config files are Jsonnet, which allows specifying external variables
             for later substitution. Typically we substitute these using environment
             variables; however, you can also specify them here, in which case they
@@ -541,10 +534,7 @@ class Params(MutableMapping):
         """
         Returns an ``OrderedDict`` of ``Params`` from list of partial order preferences.
 
-        Parameters
-        ----------
-
-        preference_orders :
+        :param preference_orders:
             ``preference_orders`` is list of partial preference orders. ["A", "B", "C"] means
             "A" > "B" > "C". For multiple preference_orders first will be considered first.
             Keys not found, will have last but alphabetical preference. Default Preferences:

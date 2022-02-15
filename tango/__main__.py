@@ -438,12 +438,26 @@ def _run(
         for step in ordered_steps:
             if step in workspace.step_cache:
                 info = workspace.step_info(step)
-                click_logger.info(
-                    click.style("\N{check mark} The output for ", fg="green")
-                    + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(" is in ", fg="green")
-                    + click.style(f"{info.result_location}", bold=True, fg="green")
-                )
+                if info.step_name is not None:
+                    path = run_dir / info.step_name
+                elif info.result_location is not None:
+                    path = Path(info.result_location)
+                else:
+                    path = None
+
+                if path is None:
+                    click_logger.warn(
+                        click.style("\N{ballot x} The output for ", fg="red")
+                        + click.style(f'"{step.name}"', bold=True, fg="red")
+                        + click.style(" is missing!", fg="red")
+                    )
+                else:
+                    click_logger.info(
+                        click.style("\N{check mark} The output for ", fg="green")
+                        + click.style(f'"{step.name}"', bold=True, fg="green")
+                        + click.style(" is in ", fg="green")
+                        + click.style(f"{path}", bold=True, fg="green")
+                    )
 
         click_logger.info(
             click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)

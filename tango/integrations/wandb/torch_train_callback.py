@@ -23,29 +23,26 @@ class WandbTrainCallback(TrainCallback):
     .. important::
         This class also requires the :mod:`~tango.integrations.torch` integration.
 
-    Parameters
-    ----------
-
-    project : :class:`str`
+    :param project:
         W&B project to associated this run with.
-    entity : :class:`str`
+    :param entity:
         W&B entity (user or organization) to associated this run with.
-    group : :class:`str`
+    :param group:
         W&B group to associated this run with.
-    name : :class:`str`
+    :param name:
         Set the name of the run in W&B.
-    notes : :class:`str`
+    :param notes:
         Arbitrary notes to add in W&B to this run.
-    tags : ``List[str]``
+    :param tags:
         Arbitrary tags to add in W&B to this run.
-    watch_model : :class:`bool`
+    :param watch_model:
         If ``True``, ``wandb.watch()`` is called to collect gradients and other information
         about the model throughout training.
         See `docs.wandb.ai/ref/python/watch <https://docs.wandb.ai/ref/python/watch>`_.
-    wandb_config : ``Dict[str, Any]``
+    :param wandb_config:
         Arbitrary configuration fields to set in W&B for this run.
         See `docs.wandb.ai/guides/track/config <https://docs.wandb.ai/guides/track/config>`_.
-    wandb_kwargs : ``Dict[str, Any]``
+    :param wandb_kwargs:
         Additional keyword arguments that will be passed to ``wandb.init()``.
         See `docs.wandb.ai/ref/python/init <https://docs.wandb.ai/ref/python/init>`_.
 

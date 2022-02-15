@@ -77,7 +77,8 @@ class TrainCallback(Registrable):
     @property
     def is_local_main_process(self) -> bool:
         """
-        If the current worker is the main distributed worker of the current node.
+        This is ``True`` if the current worker is the main distributed worker of the current node, or if
+        we are not using distributed training.
         """
         return self.train_config.is_local_main_process
 
@@ -91,12 +92,18 @@ class TrainCallback(Registrable):
     def state_dict(self) -> Dict[str, Any]:
         """
         Return any state that needs to be kept after a restart.
+
+        Some callbacks need to maintain state across restarts. This is the callback's opportunity to
+        save it's state. It will be restored using :meth:`load_state_dict`.
         """
         return {}
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         """
         Load the state on a restart.
+
+        Some callbacks need to maintain state across restarts. This is the callback's opportunity to
+        restore it's state. It gets saved using :meth:`state_dict`.
         """
         pass
 

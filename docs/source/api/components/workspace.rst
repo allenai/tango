@@ -23,7 +23,7 @@ Metadata
 .. autoclass:: tango.workspace.StepInfo
    :members:
 
-.. autoclass:: tango.local_workspace.ExecutorMetadata
+.. autoclass:: tango.local_workspace.StepExecutionMetadata
    :members:
 
 .. autoclass:: tango.local_workspace.TangoMetadata
