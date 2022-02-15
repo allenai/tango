@@ -407,7 +407,6 @@ def _run(
             "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
         )
     workspace_dir = Path(workspace_dir)
-    workspace_dir.mkdir(parents=True, exist_ok=True)
     workspace = LocalWorkspace(workspace_dir)
 
     # Initialize step graph and register run.

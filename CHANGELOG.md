@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New example that finetunes a pre-trained ResNet model on the Cats & Dogs dataset.
 - Added a '@requires_gpus' decorator for marking tests as needing GPUs. Tests marked with this will be run in the "GPU Tests" workflow
   on dual k80 GPUs via Beaker.
+- Added a utility function to get a `StepGraph` directly from a file.
 
 ### Changed
 
