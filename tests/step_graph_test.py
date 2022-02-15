@@ -28,6 +28,7 @@ class TestStepGraph(TangoTestCase):
                     "b_number": 5,
                 },
                 "step3": {
+                    "type": "add_numbers",
                     "a_number": 3,
                     "b_number": 1,
                 },
