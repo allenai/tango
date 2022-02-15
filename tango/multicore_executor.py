@@ -1,6 +1,6 @@
 import logging
 import multiprocessing as mp
-from typing import List, Optional, Set, TypeVar
+from typing import Any, List, Optional, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.executor import Executor
@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+def execute_step(step: Step, shared_state: Dict[str, Any]):
+    if step.cache_results:
+        step_process = mp.Process(target=step.ensure_result, args=(self.workspace,))
+    elif step in uncacheable_leaf_steps:
+        step_process = mp.Process(target=step.result, args=(self.workspace,))
 
 class MulticoreExecutor(Executor):
     """
@@ -54,10 +59,16 @@ class MulticoreExecutor(Executor):
             step for step in set(step_graph.values()) - interior_steps if not step.cache_results
         }
 
+        manager = mp.Manager()
         step_processes: List[mp.Process] = []
 
+        count = 0
         while self.has_incomplete_steps(step_graph):
             to_run = self.get_steps_to_run(step_graph)
+            print("to_run", to_run)
+            if count > 1:
+                break
+            count += 1
             for step in to_run:
                 if self.cores_being_used <= self.num_cores:
                     if step.cache_results:
@@ -103,6 +114,7 @@ class MulticoreExecutor(Executor):
     def get_steps_to_run(self, step_graph: StepGraph):
         to_run: Set[Step] = set()
         for step in step_graph.values():
+            print(step.name, self.get_state(step))
             if self.are_dependencies_available(step) and self.get_state(step) == StepState.INCOMPLETE:
                 to_run.add(step)
         return to_run
