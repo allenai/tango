@@ -51,6 +51,20 @@ class AddNumbersStep(Step):
         return a_number + b_number
 
 
+@Step.register("sleep-print-maybe-fail")
+class SleepPrintMaybeFail(Step):
+    DETERMINISTIC = True
+    CACHEABLE = True
+
+    def run(self, string: str, seconds: int = 5, fail: bool = False) -> str:  # type: ignore
+        time.sleep(seconds)
+        self.logger.info(f"Step {self.name} is awake.")
+        print(string)
+        if fail:
+            raise RuntimeError("Step had to fail!")
+        return string
+
+
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     """
