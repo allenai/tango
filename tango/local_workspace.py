@@ -511,13 +511,6 @@ class LocalWorkspace(Workspace):
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         # sanity check targets
         targets = list(targets)
-        for target in targets:
-            if not target.cache_results:
-                raise RuntimeError(
-                    f"Step {target.name} is marked as a target for a run, but is not cacheable. "
-                    "Only cacheable steps can be targets."
-                )
-
         if name is None:
             while name is None or (self.runs_dir / name).exists():
                 name = petname.generate()
@@ -553,8 +546,9 @@ class LocalWorkspace(Workspace):
 
         # write targets
         for target in targets:
-            target_path = self.step_dir(target)
-            (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
+            if target.cache_results:
+                target_path = self.step_dir(target)
+                (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
 
         # Note: Python3.7 pathlib.Path.unlink does not support the `missing_ok` argument.
         if self.latest_dir.is_symlink():
@@ -576,12 +570,7 @@ class LocalWorkspace(Workspace):
             raise KeyError(name)
         with SqliteDict(self.step_info_file, flag="r") as d:
             steps_for_run = {}
-            for step_symlink in run_dir.iterdir():
-                if not step_symlink.is_symlink():
-                    continue
-                step_name = str(step_symlink.name)
-                unique_id = str(step_symlink.resolve().name)
-                step_info = d[unique_id]
+            for step_name, step_info in d.items():
                 assert isinstance(step_info, StepInfo)
                 self._fix_step_info(step_info)
                 steps_for_run[step_name] = step_info
