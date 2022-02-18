@@ -566,7 +566,7 @@ class LocalWorkspace(Workspace):
             for step in all_steps:
                 try:
                     step_info = d[step.unique_id]
-                    step_info.name = step.name if step.name != step.unique_id else None
+                    step_info.name = step.name
                     d[step.unique_id] = step_info
                 except KeyError:
                     d[step.unique_id] = StepInfo(
@@ -589,7 +589,7 @@ class LocalWorkspace(Workspace):
         run_step_info_file = self._run_step_info_file(name)
         try:
             with open(run_step_info_file, "r") as file_ref:
-                step_ids = json.loads(file_ref.read())
+                step_ids = json.load(file_ref)
         except FileNotFoundError:
             # for backwards compatibility
             run_dir = self.runs_dir / name
