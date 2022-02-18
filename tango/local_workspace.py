@@ -527,22 +527,8 @@ class LocalWorkspace(Workspace):
         all_steps = set(targets)
         for step in targets:
             all_steps |= step.recursive_dependencies
-        with SqliteDict(self.step_info_file) as d:
-            for step in all_steps:
-                try:
-                    step_info = d[step.unique_id]
-                    step_info.name = step.name if step.name != step.unique_id else None
-                    d[step.unique_id] = step_info
-                except KeyError:
-                    d[step.unique_id] = StepInfo(
-                        step.unique_id,
-                        step.name if step.name != step.unique_id else None,
-                        step.__class__.__name__,
-                        step.VERSION,
-                        {dep.unique_id for dep in step.dependencies},
-                        step.cache_results,
-                    )
-                d.commit()
+
+        self._save_registered_run(name, all_steps)
 
         # write targets
         for target in targets:
@@ -568,13 +554,59 @@ class LocalWorkspace(Workspace):
         run_dir = self.runs_dir / name
         if not run_dir.is_dir():
             raise KeyError(name)
+        steps_for_run = self._load_registered_run(name)
+        return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
+
+    def _run_step_info_file(self, name: str):
+        return self.runs_dir / name / "stepinfo.json"
+
+    def _save_registered_run(self, name: str, all_steps: Iterable[Step]):
+        unique_ids = []
+        with SqliteDict(self.step_info_file) as d:
+            for step in all_steps:
+                try:
+                    step_info = d[step.unique_id]
+                    step_info.name = step.name if step.name != step.unique_id else None
+                    d[step.unique_id] = step_info
+                except KeyError:
+                    d[step.unique_id] = StepInfo(
+                        step.unique_id,
+                        step.name if step.name != step.unique_id else None,
+                        step.__class__.__name__,
+                        step.VERSION,
+                        {dep.unique_id for dep in step.dependencies},
+                        step.cache_results,
+                    )
+                d.commit()
+                unique_ids.append(step.unique_id)
+
+            run_step_info_file = self._run_step_info_file(name)
+            with open(run_step_info_file, "w") as file_ref:
+                json.dump(unique_ids, file_ref)
+
+    def _load_registered_run(self, name: str):
+        run_step_info_file = self._run_step_info_file(name)
+        try:
+            with open(run_step_info_file, "r") as file_ref:
+                step_ids = json.loads(file_ref.read())
+        except FileNotFoundError:
+            # for backwards compatibility
+            run_dir = self.runs_dir / name
+            step_ids = []
+            for step_symlink in run_dir.iterdir():
+                if not step_symlink.is_symlink():
+                    continue
+                unique_id = str(step_symlink.resolve().name)
+                step_ids.append(unique_id)
+
         with SqliteDict(self.step_info_file, flag="r") as d:
             steps_for_run = {}
-            for step_name, step_info in d.items():
+            for unique_id in step_ids:
+                step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
                 self._fix_step_info(step_info)
-                steps_for_run[step_name] = step_info
-            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
+                steps_for_run[step_info.step_name] = step_info
+            return steps_for_run
 
     def run_dir(self, name: str) -> Path:
         """
