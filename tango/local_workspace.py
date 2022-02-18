@@ -560,8 +560,8 @@ class LocalWorkspace(Workspace):
     def _run_step_info_file(self, name: str):
         return self.runs_dir / name / "stepinfo.json"
 
-    def _save_registered_run(self, name: str, all_steps: Iterable[Step]):
-        unique_ids = []
+    def _save_registered_run(self, name: str, all_steps: Iterable[Step]) -> None:
+        step_unique_ids = {}
         with SqliteDict(self.step_info_file) as d:
             for step in all_steps:
                 try:
@@ -571,20 +571,21 @@ class LocalWorkspace(Workspace):
                 except KeyError:
                     d[step.unique_id] = StepInfo(
                         step.unique_id,
-                        step.name if step.name != step.unique_id else None,
+                        step.name,
                         step.__class__.__name__,
                         step.VERSION,
                         {dep.unique_id for dep in step.dependencies},
                         step.cache_results,
                     )
-                d.commit()
-                unique_ids.append(step.unique_id)
+                step_unique_ids[step.name] = step.unique_id
+
+            d.commit()
 
             run_step_info_file = self._run_step_info_file(name)
             with open(run_step_info_file, "w") as file_ref:
-                json.dump(unique_ids, file_ref)
+                json.dump(step_unique_ids, file_ref)
 
-    def _load_registered_run(self, name: str):
+    def _load_registered_run(self, name: str) -> Dict[str, StepInfo]:
         run_step_info_file = self._run_step_info_file(name)
         try:
             with open(run_step_info_file, "r") as file_ref:
@@ -592,20 +593,21 @@ class LocalWorkspace(Workspace):
         except FileNotFoundError:
             # for backwards compatibility
             run_dir = self.runs_dir / name
-            step_ids = []
+            step_ids = {}
             for step_symlink in run_dir.iterdir():
                 if not step_symlink.is_symlink():
                     continue
+                step_name = str(step_symlink.name)
                 unique_id = str(step_symlink.resolve().name)
-                step_ids.append(unique_id)
+                step_ids[step_name] = unique_id
 
         with SqliteDict(self.step_info_file, flag="r") as d:
             steps_for_run = {}
-            for unique_id in step_ids:
+            for step_name, unique_id in step_ids.items():
                 step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
                 self._fix_step_info(step_info)
-                steps_for_run[step_info.step_name] = step_info
+                steps_for_run[step_name] = step_info
             return steps_for_run
 
     def run_dir(self, name: str) -> Path:
