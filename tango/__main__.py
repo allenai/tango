@@ -411,6 +411,7 @@ def _run(
 
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    # TODO: just register the single step. Use step.recursive_dependencies to get the subgraph.
     run = workspace.register_run(step for step in step_graph.values() if step.cache_results)
     run_dir = workspace.run_dir(run.name)
 
@@ -431,9 +432,11 @@ def _run(
 
         # Initialize Executor and execute the step graph.
         executor = Executor(workspace=workspace, include_package=include_package)
+        # TODO: if step specified, just call _execute_step.
         executor.execute_step_graph(step_graph)
 
         # Print everything that has been computed.
+        # TODO: get the subgraph that actually ran.
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
         for step in ordered_steps:
             if step in workspace.step_cache:

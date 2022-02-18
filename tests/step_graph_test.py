@@ -12,17 +12,17 @@ class TestStepGraph(TangoTestCase):
     def test_ordered_steps(self):
         step_graph = StepGraph(
             {
-                "step1": {
+                "stepB": {
                     "type": "add_numbers",
                     "a_number": 2,
                     "b_number": 3,
                 },
-                "step2": {
+                "stepC": {
                     "type": "add_numbers",
-                    "a_number": {"type": "ref", "ref": "step1"},
+                    "a_number": {"type": "ref", "ref": "stepB"},
                     "b_number": 5,
                 },
-                "step3": {
+                "stepA": {
                     "type": "add_numbers",
                     "a_number": 3,
                     "b_number": 1,
@@ -31,7 +31,7 @@ class TestStepGraph(TangoTestCase):
         )
 
         result = step_graph.ordered_steps()
-        assert [res.name for res in result] == ["step1", "step2", "step3"]
+        assert [res.name for res in result] == ["stepB", "stepC", "stepA"]
 
     def test_from_file(self):
         step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")

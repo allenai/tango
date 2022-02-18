@@ -24,6 +24,13 @@ class Executor:
         self.workspace = workspace
         self.include_package = include_package
 
+    def _execute_step(self, step, is_uncacheable_leaf_step=False):
+        # Note: did not add type information because of circular imports.
+        if step.cache_results:
+            step.ensure_result(self.workspace)
+        elif is_uncacheable_leaf_step:
+            step.result(self.workspace)
+
     def execute_step_graph(self, step_graph: StepGraph):
         """
         Execute a :class:`tango.step_graph.StepGraph`.
@@ -35,8 +42,8 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-
+        # ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+        ordered_steps = step_graph.ordered_steps()
         # find uncacheable leaf steps
         interior_steps: Set[Step] = set()
         for step in ordered_steps:
@@ -47,7 +54,8 @@ class Executor:
         }
 
         for step in ordered_steps:
-            if step.cache_results:
-                step.ensure_result(self.workspace)
-            elif step in uncacheable_leaf_steps:
-                step.result(self.workspace)
+            # if step.cache_results:
+            #     step.ensure_result(self.workspace)
+            # elif step in uncacheable_leaf_steps:
+            #     step.result(self.workspace)
+            self._execute_step(step, step in uncacheable_leaf_steps)
