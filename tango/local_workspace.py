@@ -557,7 +557,7 @@ class LocalWorkspace(Workspace):
         steps_for_run = self._load_registered_run(name)
         return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
 
-    def _run_step_info_file(self, name: str):
+    def _run_step_info_file(self, name: str) -> Path:
         return self.runs_dir / name / "stepinfo.json"
 
     def _save_registered_run(self, name: str, all_steps: Iterable[Step]) -> None:
