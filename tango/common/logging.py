@@ -58,7 +58,7 @@ For example,
     from tango import Step
     from tango.common.logging import initialize_worker_logging
 
-    @Step.register("multiprocessing_step")
+    @Step.register("multiprocessing_step_example")
     class MultiprocessingStep(Step):
         def run(self, num_proc: int = 2) -> bool:  # type: ignore
             workers = []
