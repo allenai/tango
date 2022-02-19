@@ -412,7 +412,7 @@ def _run(
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
     # TODO: just register the single step. Use step.recursive_dependencies to get the subgraph.
-    run = workspace.register_run(step for step in step_graph.values() if step.cache_results)
+    run = workspace.register_run(step for step in step_graph.values())
     run_dir = workspace.run_dir(run.name)
 
     # Capture logs to file.
