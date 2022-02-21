@@ -269,6 +269,13 @@ def cleanup(*args, **kwargs):
     help="Start a server that visualizes the current run",
     default=True,
 )
+@click.option(
+    "-n",
+    "--step-name",
+    help="Execute a particular step (and its dependencies) in the experiment.",
+    type=str,
+    default=None,
+)
 @click.pass_obj
 def run(
     config: TangoGlobalSettings,
@@ -277,6 +284,7 @@ def run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     server: bool = True,
+    step_name: Optional[str] = None,
 ):
     """
     Run a tango experiment
@@ -290,6 +298,7 @@ def run(
         overrides=overrides,
         include_package=include_package,
         start_server=server,
+        step_name=step_name,
     )
 
 
@@ -379,6 +388,7 @@ def _run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     start_server: bool = True,
+    step_name: Optional[str] = None,
 ) -> Path:
     from tango.executor import Executor
     from tango.local_workspace import LocalWorkspace
@@ -411,7 +421,16 @@ def _run(
 
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
-    # TODO: just register the single step. Use step.recursive_dependencies to get the subgraph.
+
+    if step_name is not None:
+        assert step_name in step_graph, (
+            f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
+            f"The config contains: {list(step_graph.keys())}."
+        )
+        # TODO: step_graph is supposed to be a Mapping anyway, is this ok?
+        # TODO: should the registered_run also contain the recursive_dependencies for the sake of completeness?
+        step_graph = {step_name: step_graph[step_name]}
+
     run = workspace.register_run(step for step in step_graph.values())
     run_dir = workspace.run_dir(run.name)
 
@@ -432,11 +451,9 @@ def _run(
 
         # Initialize Executor and execute the step graph.
         executor = Executor(workspace=workspace, include_package=include_package)
-        # TODO: if step specified, just call _execute_step.
         executor.execute_step_graph(step_graph)
 
         # Print everything that has been computed.
-        # TODO: get the subgraph that actually ran.
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
         for step in ordered_steps:
             if step in workspace.step_cache:

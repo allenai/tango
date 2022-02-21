@@ -1,25 +1,16 @@
 import logging
 import multiprocessing as mp
-from typing import Any, Dict, List, Optional, Set, TypeVar
+from typing import List, Optional, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.executor import Executor
-from tango.step_graph import StepGraph
-from tango.workspace import StepState
 from tango.step import Step
-from tango.workspace import Workspace
+from tango.step_graph import StepGraph
+from tango.workspace import StepState, Workspace
 
 logger = logging.getLogger(__name__)
 
-
 T = TypeVar("T")
-
-
-def execute_step(step: Step, shared_state: Dict[str, Any]):
-    if step.cache_results:
-        step_process = mp.Process(target=step.ensure_result, args=(self.workspace,))
-    elif step in uncacheable_leaf_steps:
-        step_process = mp.Process(target=step.result, args=(self.workspace,))
 
 
 class MulticoreExecutor(Executor):
@@ -61,7 +52,7 @@ class MulticoreExecutor(Executor):
             step for step in set(step_graph.values()) - interior_steps if not step.cache_results
         }
 
-        manager = mp.Manager()
+        # manager = mp.Manager()
         step_processes: List[mp.Process] = []
 
         count = 0

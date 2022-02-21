@@ -42,8 +42,7 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        # ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        ordered_steps = step_graph.ordered_steps()
+        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
         # find uncacheable leaf steps
         interior_steps: Set[Step] = set()
         for step in ordered_steps:

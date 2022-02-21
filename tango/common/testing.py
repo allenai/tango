@@ -62,6 +62,7 @@ class TangoTestCase:
         config: Union[PathOrStr, Dict[str, Any], Params],
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
+        step_name: Optional[str] = None,
     ) -> Path:
         from tango.__main__ import TangoGlobalSettings, _run
 
@@ -82,6 +83,7 @@ class TangoTestCase:
             overrides=overrides,
             include_package=include_package,
             start_server=False,
+            step_name=step_name,
         )
 
 

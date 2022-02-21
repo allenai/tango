@@ -63,6 +63,13 @@ class Format(Registrable, Generic[T]):
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
 
+    # def _to_params(self) -> Dict[str, Any]:
+    #     params_dict = super()._to_params()
+    #     params_dict.pop(
+    #         "open", None
+    #     )  # Removing the function. TODO: we still need compression method.
+    #     return params_dict
+
 
 _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
     None: open,
