@@ -5,10 +5,10 @@ from urllib.parse import ParseResult
 
 import petname
 
-from tango import step_cache
 from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import StepCache
+from tango.step_caches import default_step_cache
 from tango.workspace import Run, StepInfo, StepState, Workspace
 
 T = TypeVar("T")
@@ -36,7 +36,7 @@ class MemoryWorkspace(Workspace):
 
     @property
     def step_cache(self) -> StepCache:
-        return step_cache.default_step_cache
+        return default_step_cache
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         unique_id = (

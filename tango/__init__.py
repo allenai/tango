@@ -12,7 +12,6 @@ __all__ = [
     "SqliteDictFormat",
     "Step",
     "StepCache",
-    "LocalStepCache",
     "Workspace",
 ]
 
@@ -26,6 +25,6 @@ from tango.format import (
     SqliteDictFormat,
 )
 from tango.step import Step
-from tango.step_cache import LocalStepCache, StepCache
+from tango.step_cache import StepCache
 from tango.step_graph import StepGraph
 from tango.workspace import Workspace

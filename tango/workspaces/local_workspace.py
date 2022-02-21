@@ -14,7 +14,8 @@ from tango.common.file_lock import FileLock
 from tango.common.logging import with_file_handler
 from tango.common.util import exception_to_string
 from tango.step import Step
-from tango.step_cache import LocalStepCache, StepCache
+from tango.step_cache import StepCache
+from tango.step_caches import LocalStepCache
 from tango.workspace import Run, StepExecutionMetadata, StepInfo, StepState, Workspace
 
 logger = logging.getLogger(__name__)
