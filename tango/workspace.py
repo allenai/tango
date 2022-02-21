@@ -1,11 +1,13 @@
 import copy
-from abc import abstractmethod
+from abc import abstractclassmethod, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union, cast
+from urllib.parse import ParseResult, urlparse
 
 import dill
 import petname
@@ -208,6 +210,26 @@ class Workspace(Registrable):
     def __init__(self):
         self._delayed_cleanup_temp_dirs: List[TemporaryDirectory] = []
 
+    @classmethod
+    def from_url(cls, url: str) -> "Workspace":
+        """
+        Initialize a :class:`Workspace` from a workspace URL, e.g. ``local:///tmp/workspace``
+        would give you a :class:`~tango.local_workspace.LocalWorkspace` in the directory ``/tmp/workspace``.
+        """
+        parsed = urlparse(url)
+        workspace_type = parsed.scheme
+        workspace_cls = cast(Workspace, cls.by_name(workspace_type))
+        return workspace_cls.from_parsed_url(parsed)
+
+    @abstractclassmethod
+    def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
+        """
+        Subclasses should override this so that can be initialized from a URL.
+
+        :param parsed_url: The parsed URL object.
+        """
+        raise NotImplementedError
+
     @property
     @abstractmethod
     def step_cache(self) -> StepCache:
@@ -306,18 +328,35 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
+    @contextmanager
+    def capture_logs_for_run(self, name: str):
+        """
+        Should return a context manager that can be used to capture the logs for a run.
+
+        By default, this doesn't do anything.
+        """
+        yield None
+
 
 @Workspace.register("memory")
 class MemoryWorkspace(Workspace):
     """
     This is a workspace that keeps all its data in memory. This is useful for debugging or for quick jobs, but of
     course you don't get any caching across restarts.
+
+    .. tip::
+
+        Registered as a :class:`~tango.workspace.Workspace` under the name "memory".
     """
 
     def __init__(self):
         super().__init__()
         self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Run] = {}
+
+    @classmethod
+    def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
+        return cls()
 
     @property
     def step_cache(self) -> StepCache:

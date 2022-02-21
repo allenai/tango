@@ -496,32 +496,29 @@ def teardown_logging():
         _LOGGING_SERVER = None
 
 
-def add_file_handler(filepath: PathOrStr) -> logging.FileHandler:
+@contextmanager
+def with_handler(handler: logging.Handler):
+    """
+    A context manager that can be used to route logs to a specific handler temporarily.
+    """
     root_logger = logging.getLogger()
 
     from .tqdm import logger as tqdm_logger
 
-    handler = logging.FileHandler(str(filepath))
     formatter = get_formatter()
     handler.setFormatter(formatter)
 
     for logger in (root_logger, click_logger, tqdm_logger):
         logger.addHandler(handler)
 
-    return handler
+    try:
+        yield None
+    finally:
+        for logger in (root_logger, click_logger, tqdm_logger):
+            logger.removeHandler(handler)
 
 
-def remove_file_handler(handler: logging.FileHandler):
-    root_logger = logging.getLogger()
-
-    from .tqdm import logger as tqdm_logger
-
-    for logger in (root_logger, click_logger, tqdm_logger):
-        logger.removeHandler(handler)
-
-
-@contextmanager
-def file_handler(filepath: PathOrStr):
+def with_file_handler(filepath: PathOrStr):
     """
     A context manager that can be used to route logs to a file by adding a
     :class:`logging.FileHandler` to the root logger's handlers.
@@ -530,21 +527,18 @@ def file_handler(filepath: PathOrStr):
 
     .. code-block::
 
-        from tango.common.logging import initialize_logging, file_handler, teardown_logging
+        from tango.common.logging import initialize_logging, with_file_handler, teardown_logging
 
         initialize_logging(log_level="info")
 
         logger = logging.getLogger()
         logger.info("Hi!")
 
-        with file_handler("log.out"):
+        with with_file_handler("log.out"):
             logger.info("This message should also go into 'log.out'")
 
         teardown_logging()
 
     """
-    handler = add_file_handler(filepath)
-    try:
-        yield handler
-    finally:
-        remove_file_handler(handler)
+    handler = logging.FileHandler(str(filepath))
+    return with_handler(handler)

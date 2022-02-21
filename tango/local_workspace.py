@@ -10,12 +10,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
+from urllib.parse import ParseResult
 
 import petname
 from sqlitedict import SqliteDict
 
 from tango.common import FromParams, PathOrStr
 from tango.common.file_lock import FileLock
+from tango.common.logging import with_file_handler
 from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
@@ -238,6 +240,15 @@ class LocalWorkspace(Workspace):
     in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps that have not
     finished yet. You can tell the difference because either the symlink points to a directory that doesn't exist,
     or it points to a directory in the step cache that doesn't contain results.
+
+    .. tip::
+
+        Registered as a :class:`~tango.workspace.Workspace` under the name "local".
+
+        You can also instantiate this workspace from a URL with the scheme ``local://``.
+        For example, ``Workspace.from_url("local:///tmp/workspace")`` gives you a :class:`LocalWorkspace`
+        in the directory ``/tmp/workspace``.
+
     """
 
     def __init__(self, dir: PathOrStr):
@@ -280,6 +291,15 @@ class LocalWorkspace(Workspace):
             settings["version"] = 2
             with open(self.dir / "settings.json", "w") as settings_file:
                 json.dump(settings, settings_file)
+
+    @classmethod
+    def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
+        """
+        Subclasses should override this so that can be initialized from a URL.
+
+        :param parsed_url: The parsed URL object.
+        """
+        return cls(parsed_url.path)
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
@@ -621,3 +641,6 @@ class LocalWorkspace(Workspace):
         :meth:`register_run()` with that name.
         """
         return self.runs_dir / name
+
+    def capture_logs_for_run(self, name: str):
+        return with_file_handler(self.run_dir(name) / "out.log")

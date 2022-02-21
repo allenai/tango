@@ -75,14 +75,16 @@ class TangoTestCase:
 
             overrides = json.dumps(overrides)
 
-        return _run(
+        run_name = _run(
             TangoGlobalSettings(),
             str(config),
-            workspace_dir=str(self.TEST_DIR / "workspace"),
+            workspace_url="local://" + str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
             start_server=False,
         )
+
+        return self.TEST_DIR / "workspace" / "runs" / run_name
 
 
 @contextmanager
