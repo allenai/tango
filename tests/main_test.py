@@ -9,8 +9,8 @@ import pytest
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
-from tango.local_workspace import StepExecutionMetadata
 from tango.version import VERSION
+from tango.workspace import StepExecutionMetadata
 
 
 class TestMain(TangoTestCase):

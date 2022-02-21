@@ -10,27 +10,30 @@ Base class
 Implementations
 ---------------
 
-.. autoclass:: tango.workspace.MemoryWorkspace
+.. autoclass:: tango.workspaces.LocalWorkspace
 
-.. autoclass:: tango.local_workspace.LocalWorkspace
+.. autoclass:: tango.workspaces.MemoryWorkspace
 
 Metadata
 --------
 
-.. autoclass:: tango.workspace.StepState
-   :members:
-
 .. autoclass:: tango.workspace.StepInfo
    :members:
 
-.. autoclass:: tango.local_workspace.StepExecutionMetadata
+.. autoclass:: tango.workspace.StepState
    :members:
 
-.. autoclass:: tango.local_workspace.TangoMetadata
+.. autoclass:: tango.workspace.Run
    :members:
 
-.. autoclass:: tango.local_workspace.PlatformMetadata
+.. autoclass:: tango.workspace.StepExecutionMetadata
    :members:
 
-.. autoclass:: tango.local_workspace.GitMetadata
+.. autoclass:: tango.workspace.TangoMetadata
+   :members:
+
+.. autoclass:: tango.workspace.PlatformMetadata
+   :members:
+
+.. autoclass:: tango.workspace.GitMetadata
    :members:

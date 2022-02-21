@@ -14,8 +14,6 @@ __all__ = [
     "StepCache",
     "LocalStepCache",
     "Workspace",
-    "MemoryWorkspace",
-    "LocalWorkspace",
 ]
 
 from tango.executor import Executor
@@ -27,8 +25,7 @@ from tango.format import (
     JsonFormatIterator,
     SqliteDictFormat,
 )
-from tango.local_workspace import LocalWorkspace
 from tango.step import Step
 from tango.step_cache import LocalStepCache, StepCache
 from tango.step_graph import StepGraph
-from tango.workspace import MemoryWorkspace, Workspace
+from tango.workspace import Workspace

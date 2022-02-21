@@ -1,22 +1,28 @@
-import copy
+import getpass
+import logging
+import os
+import platform
+import socket
+import sys
+import time
 from abc import abstractclassmethod, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, TypeVar, Union, cast
 from urllib.parse import ParseResult, urlparse
 
 import dill
-import petname
 
-from tango import step_cache
-from tango.common import Registrable
-from tango.common.util import exception_to_string
+from tango.common import FromParams, Registrable
 from tango.step import Step
 from tango.step_cache import StepCache
+from tango.version import VERSION
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -214,7 +220,7 @@ class Workspace(Registrable):
     def from_url(cls, url: str) -> "Workspace":
         """
         Initialize a :class:`Workspace` from a workspace URL, e.g. ``local:///tmp/workspace``
-        would give you a :class:`~tango.local_workspace.LocalWorkspace` in the directory ``/tmp/workspace``.
+        would give you a :class:`~tango.workspaces.LocalWorkspace` in the directory ``/tmp/workspace``.
         """
         parsed = urlparse(url)
         workspace_type = parsed.scheme
@@ -338,122 +344,202 @@ class Workspace(Registrable):
         yield None
 
 
-@Workspace.register("memory")
-class MemoryWorkspace(Workspace):
+@dataclass
+class PlatformMetadata(FromParams):
+    python: str = field(default_factory=platform.python_version)
     """
-    This is a workspace that keeps all its data in memory. This is useful for debugging or for quick jobs, but of
-    course you don't get any caching across restarts.
-
-    .. tip::
-
-        Registered as a :class:`~tango.workspace.Workspace` under the name "memory".
+    The Python version.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.unique_id_to_info: Dict[str, StepInfo] = {}
-        self.runs: Dict[str, Run] = {}
+    operating_system: str = field(default_factory=platform.platform)
+    """
+    Full operating system name.
+    """
+
+    executable: Path = field(default_factory=lambda: Path(sys.executable))
+    """
+    Path to the Python executable.
+    """
+
+    cpu_count: Optional[int] = field(default_factory=os.cpu_count)
+    """
+    Numbers of CPUs on the machine.
+    """
+
+    user: str = field(default_factory=getpass.getuser)
+    """
+    The user that ran this step.
+    """
+
+    host: str = field(default_factory=socket.gethostname)
+    """
+    Name of the host machine.
+    """
+
+    root: Path = field(default_factory=lambda: Path(os.getcwd()))
+    """
+    The root directory from where the Python executable was ran.
+    """
+
+
+@dataclass
+class GitMetadata(FromParams):
+    commit: Optional[str] = None
+    """
+    The commit SHA of the current repo.
+    """
+
+    remote: Optional[str] = None
+    """
+    The URL of the primary remote.
+    """
 
     @classmethod
-    def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
-        return cls()
+    def check_for_repo(cls) -> Optional["GitMetadata"]:
+        import subprocess
 
-    @property
-    def step_cache(self) -> StepCache:
-        return step_cache.default_step_cache
-
-    def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        unique_id = (
-            step_or_unique_id.unique_id
-            if isinstance(step_or_unique_id, Step)
-            else step_or_unique_id
-        )
         try:
-            return self.unique_id_to_info[unique_id]
-        except KeyError:
-            if isinstance(step_or_unique_id, Step):
-                step = step_or_unique_id
-                return StepInfo(
-                    step.unique_id,
-                    step.name if step.name != step.unique_id else None,
-                    step.__class__.__name__,
-                    step.VERSION,
-                    {dep.unique_id for dep in step.dependencies},
-                    step.cache_results,
-                )
-            else:
-                raise KeyError()
-
-    def step_starting(self, step: Step) -> None:
-        # We don't do anything with uncacheable steps.
-        if not step.cache_results:
-            return
-
-        self.unique_id_to_info[step.unique_id] = StepInfo(
-            step.unique_id,
-            step.name if step.name != step.unique_id else None,
-            step.__class__.__name__,
-            step.VERSION,
-            {dep.unique_id for dep in step.dependencies},
-            step.cache_results,
-            datetime.now(),
-        )
-
-    def step_finished(self, step: Step, result: T) -> T:
-        # We don't do anything with uncacheable steps.
-        if not step.cache_results:
-            return result
-
-        existing_step_info = self.unique_id_to_info[step.unique_id]
-        if existing_step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is ending, but it never started.")
-        existing_step_info.end_time = datetime.now()
-
-        if step.cache_results:
-            self.step_cache[step] = result
-            if hasattr(result, "__next__"):
-                assert isinstance(result, Iterator)
-                # Caching the iterator will consume it, so we write it to the cache and then read from the cache
-                # for the return value.
-                return self.step_cache[step]
-        return result
-
-    def step_failed(self, step: Step, e: BaseException) -> None:
-        # We don't do anything with uncacheable steps.
-        if not step.cache_results:
-            return
-
-        assert e is not None
-        existing_step_info = self.unique_id_to_info[step.unique_id]
-        if existing_step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is failing, but it never started.")
-        existing_step_info.end_time = datetime.now()
-        existing_step_info.error = exception_to_string(e)
-
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
-        if name is None:
-            name = petname.generate()
-        steps: Dict[str, StepInfo] = {}
-        for step in targets:
-            step_info = StepInfo(
-                step.unique_id,
-                step.name if step.name != step.unique_id else None,
-                step.__class__.__name__,
-                step.VERSION,
-                {dep.unique_id for dep in step.dependencies},
-                step.cache_results,
+            commit = (
+                subprocess.check_output("git rev-parse HEAD".split(" "), stderr=subprocess.DEVNULL)
+                .decode("ascii")
+                .strip()
             )
-            self.unique_id_to_info[step.unique_id] = step_info
-            steps[step.unique_id] = step_info
-        run = Run(name, steps, datetime.now())
-        self.runs[name] = run
-        return run
+            remote: Optional[str] = None
+            for line in (
+                subprocess.check_output("git remote -v".split(" "))
+                .decode("ascii")
+                .strip()
+                .split("\n")
+            ):
+                if "(fetch)" in line:
+                    _, line = line.split("\t")
+                    remote = line.split(" ")[0]
+                    break
+            return cls(commit=commit, remote=remote)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
 
-    def registered_runs(self) -> Dict[str, Run]:
-        return copy.deepcopy(self.runs)
 
-    def registered_run(self, name: str) -> Run:
-        return copy.deepcopy(self.runs[name])
+@dataclass
+class TangoMetadata(FromParams):
+    version: str = VERSION
+    """
+    The tango release version.
+    """
+
+    command: str = field(default_factory=lambda: " ".join(sys.argv))
+    """
+    The exact command used.
+    """
 
 
-default_workspace = MemoryWorkspace()
+@dataclass
+class StepExecutionMetadata(FromParams):
+    """
+    Represents data collected during the execution of a step. This class can be used by :class:`Workspace`
+    implementations to store this data for each step.
+    """
+
+    step: str
+    """
+    The unique ID of the step.
+    """
+
+    config: Optional[Dict[str, Any]] = None
+    """
+    The raw config of the step.
+    """
+
+    platform: PlatformMetadata = field(default_factory=PlatformMetadata)
+    """
+    The :class:`PlatformMetadata`.
+    """
+
+    git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
+    """
+    The :class:`GitMetadata`.
+    """
+
+    tango: Optional[TangoMetadata] = field(default_factory=TangoMetadata)
+    """
+    The :class:`TangoMetadata`.
+    """
+
+    started_at: float = field(default_factory=time.time)
+    """
+    The unix timestamp from when the run was started.
+    """
+
+    finished_at: Optional[float] = None
+    """
+    The unix timestamp from when the run finished.
+    """
+
+    duration: Optional[float] = None
+    """
+    The number of seconds the step ran for.
+    """
+
+    def _save_pip(self, run_dir: Path):
+        """
+        Saves the current working set of pip packages to ``run_dir``.
+        """
+        # Adapted from the Weights & Biases client library:
+        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L56-L72
+        try:
+            import pkg_resources
+
+            installed_packages = [d for d in iter(pkg_resources.working_set)]
+            installed_packages_list = sorted(
+                ["%s==%s" % (i.key, i.version) for i in installed_packages]
+            )
+            with (run_dir / "requirements.txt").open("w") as f:
+                f.write("\n".join(installed_packages_list))
+        except Exception as exc:
+            logger.exception("Error saving pip packages: %s", exc)
+
+    def _save_conda(self, run_dir: Path):
+        """
+        Saves the current conda environment to ``run_dir``.
+        """
+        # Adapted from the Weights & Biases client library:
+        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L74-L87
+        current_shell_is_conda = os.path.exists(os.path.join(sys.prefix, "conda-meta"))
+        if current_shell_is_conda:
+            import subprocess
+
+            try:
+                result = subprocess.run(["conda", "env", "export"], capture_output=True)
+                if (
+                    result.returncode != 0
+                    and result.stderr is not None
+                    and "Unable to determine environment" in result.stderr.decode()
+                ):
+                    result = subprocess.run(
+                        ["conda", "env", "export", "-n", "base"], capture_output=True
+                    )
+
+                if result.returncode != 0:
+                    if result.stderr is not None:
+                        logger.exception("Error saving conda packages: %s", result.stderr.decode())
+                    else:
+                        result.check_returncode()
+                elif result.stdout is not None:
+                    with (run_dir / "conda-environment.yaml").open("w") as f:
+                        f.write(result.stdout.decode())
+            except Exception as exc:
+                logger.exception("Error saving conda packages: %s", exc)
+
+    def save(self, run_dir: Path):
+        """
+        Should be called after the run has finished to save to file.
+        """
+        self.finished_at = time.time()
+        self.duration = round(self.finished_at - self.started_at, 4)
+
+        # Save pip dependencies and conda environment files.
+        self._save_pip(run_dir)
+        self._save_conda(run_dir)
+
+        # Serialize self.
+        self.to_params().to_file(run_dir / "execution-metadata.json")
