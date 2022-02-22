@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New example that finetunes a pre-trained ResNet model on the Cats & Dogs dataset.
 - Added a '@requires_gpus' decorator for marking tests as needing GPUs. Tests marked with this will be run in the "GPU Tests" workflow
   on dual k80 GPUs via Beaker.
-- Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
+- Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
 - Added a utility function to get a `StepGraph` directly from a file.
 
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a default workspace in a `TangoGlobalSettings` file.
 - Moved `tango.workspace.MemoryWorkspace` and `tango.local_workspace.LocalWorkspace` to `tango.workspaces.*`.
 - Moved `tango.step_cache.MemoryStepCache` and `tango.step_cache.LocalStepCache` to `tango.step_caches.*`.
+- Deprecated the `-d/--workspace-dir` command-line option. Please use `-w/--workspace` instead.
 
 ### Fixed
 

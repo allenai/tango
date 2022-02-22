@@ -245,7 +245,7 @@ def cleanup(*args, **kwargs):
     "-w",
     "--workspace",
     type=click.Path(file_okay=False),
-    help="""A workspace URL. If not specified, the workspace from any global tango
+    help="""A workspace path or URL. If not specified, the workspace from any global tango
     settings file will be used, if found, otherwise an ephemeral MemoryWorkspace.""",
     default=None,
 )
@@ -253,8 +253,6 @@ def cleanup(*args, **kwargs):
     "-d",
     "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""[DEPRECATED] The directory of the workspace in which to work. If not specified,
-    a named temporary directory will be created.""",
     default=None,
     hidden=True,
 )
@@ -294,10 +292,18 @@ def run(
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
     if workspace_dir is not None:
+        import warnings
+
+        warnings.warn(
+            "-d/--workspace-dir option is deprecated. Please use -w/--workspace instead.",
+            DeprecationWarning,
+        )
+
         if workspace is not None:
             raise click.ClickException(
                 "-w/--workspace is mutually exclusive with -d/--workspace-dir"
             )
+
         workspace = "local://" + str(workspace_dir)
 
     _run(
@@ -328,8 +334,8 @@ def run(
     "-d",
     "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""The directory of the workspace to monitor.""",
     default=None,
+    hidden=True,
 )
 @click.pass_obj
 def server(

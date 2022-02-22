@@ -72,7 +72,7 @@ class TestMain(TangoTestCase):
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
             "-i",
             "test_fixtures.package",
-            "-d",
+            "-w",
             str(self.TEST_DIR),
         ]
         result = subprocess.run(cmd, capture_output=True)
@@ -143,7 +143,7 @@ class TestMain(TangoTestCase):
             str(self.FIXTURES_ROOT / "experiment" / "random.jsonnet"),
             "-i",
             "test_fixtures.package",
-            "-d",
+            "-w",
             str(self.TEST_DIR),
         ]
         result = subprocess.run(cmd)
@@ -166,7 +166,7 @@ class TestMain(TangoTestCase):
                 str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
                 "-i",
                 "test_fixtures.package",
-                "-d",
+                "-w",
                 str(self.TEST_DIR),
             ]
         )

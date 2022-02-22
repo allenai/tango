@@ -223,7 +223,7 @@ class Workspace(Registrable):
         would give you a :class:`~tango.workspaces.LocalWorkspace` in the directory ``/tmp/workspace``.
         """
         parsed = urlparse(url)
-        workspace_type = parsed.scheme
+        workspace_type = parsed.scheme or "local"
         workspace_cls = cast(Workspace, cls.by_name(workspace_type))
         return workspace_cls.from_parsed_url(parsed)
 
