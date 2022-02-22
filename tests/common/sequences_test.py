@@ -1,10 +1,12 @@
 import os
 from tempfile import TemporaryDirectory
 
+import datasets
 import pytest
 
 from tango.common.sequences import (
     ConcatenatedSequence,
+    MappedSequence,
     ShuffledSequence,
     SlicedSequence,
     SqliteSparseSequence,
@@ -100,3 +102,20 @@ def test_sqlite_sparse_sequence():
         assert s[-1] == "three"
         s.clear()
         assert len(s) == 0
+
+
+def test_mapped_sequence():
+    my_very_long_sequence = ["John", "Paul", "George", "Ringo"]
+    m = MappedSequence(lambda x: len(x), my_very_long_sequence)
+    assert m[0] == 4
+    assert len(m) == len(my_very_long_sequence)
+    for i in range(len(m)):
+        assert m[i] == m[i:][0]
+
+
+def test_mapped_sequence_of_dataset():
+    ds = datasets.load_dataset("piqa", split="validation")
+    mapped_ds = MappedSequence(lambda x: x["goal"], ds)
+    assert len(ds) == len(mapped_ds)
+    assert ds[0]["goal"] == mapped_ds[0]
+    assert ds[0]["goal"] == mapped_ds[:10][0]
