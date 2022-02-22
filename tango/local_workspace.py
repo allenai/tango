@@ -511,13 +511,6 @@ class LocalWorkspace(Workspace):
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         # sanity check targets
         targets = list(targets)
-        for target in targets:
-            if not target.cache_results:
-                raise RuntimeError(
-                    f"Step {target.name} is marked as a target for a run, but is not cacheable. "
-                    "Only cacheable steps can be targets."
-                )
-
         if name is None:
             while name is None or (self.runs_dir / name).exists():
                 name = petname.generate()
@@ -534,27 +527,14 @@ class LocalWorkspace(Workspace):
         all_steps = set(targets)
         for step in targets:
             all_steps |= step.recursive_dependencies
-        with SqliteDict(self.step_info_file) as d:
-            for step in all_steps:
-                try:
-                    step_info = d[step.unique_id]
-                    step_info.name = step.name if step.name != step.unique_id else None
-                    d[step.unique_id] = step_info
-                except KeyError:
-                    d[step.unique_id] = StepInfo(
-                        step.unique_id,
-                        step.name if step.name != step.unique_id else None,
-                        step.__class__.__name__,
-                        step.VERSION,
-                        {dep.unique_id for dep in step.dependencies},
-                        step.cache_results,
-                    )
-                d.commit()
+
+        self._save_registered_run(name, all_steps)
 
         # write targets
         for target in targets:
-            target_path = self.step_dir(target)
-            (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
+            if target.cache_results:
+                target_path = self.step_dir(target)
+                (run_dir / target.name).symlink_to(os.path.relpath(target_path, run_dir))
 
         # Note: Python3.7 pathlib.Path.unlink does not support the `missing_ok` argument.
         if self.latest_dir.is_symlink():
@@ -574,18 +554,61 @@ class LocalWorkspace(Workspace):
         run_dir = self.runs_dir / name
         if not run_dir.is_dir():
             raise KeyError(name)
-        with SqliteDict(self.step_info_file, flag="r") as d:
-            steps_for_run = {}
+        steps_for_run = self._load_registered_run(name)
+        return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
+
+    def _run_step_info_file(self, name: str) -> Path:
+        return self.runs_dir / name / "stepinfo.json"
+
+    def _save_registered_run(self, name: str, all_steps: Iterable[Step]) -> None:
+        step_unique_ids = {}
+        with SqliteDict(self.step_info_file) as d:
+            for step in all_steps:
+                try:
+                    step_info = d[step.unique_id]
+                    step_info.name = step.name
+                    d[step.unique_id] = step_info
+                except KeyError:
+                    d[step.unique_id] = StepInfo(
+                        step.unique_id,
+                        step.name,
+                        step.__class__.__name__,
+                        step.VERSION,
+                        {dep.unique_id for dep in step.dependencies},
+                        step.cache_results,
+                    )
+                step_unique_ids[step.name] = step.unique_id
+
+            d.commit()
+
+            run_step_info_file = self._run_step_info_file(name)
+            with open(run_step_info_file, "w") as file_ref:
+                json.dump(step_unique_ids, file_ref)
+
+    def _load_registered_run(self, name: str) -> Dict[str, StepInfo]:
+        run_step_info_file = self._run_step_info_file(name)
+        try:
+            with open(run_step_info_file, "r") as file_ref:
+                step_ids = json.load(file_ref)
+        except FileNotFoundError:
+            # for backwards compatibility
+            run_dir = self.runs_dir / name
+            step_ids = {}
             for step_symlink in run_dir.iterdir():
                 if not step_symlink.is_symlink():
                     continue
                 step_name = str(step_symlink.name)
                 unique_id = str(step_symlink.resolve().name)
+                step_ids[step_name] = unique_id
+
+        with SqliteDict(self.step_info_file, flag="r") as d:
+            steps_for_run = {}
+            for step_name, unique_id in step_ids.items():
                 step_info = d[unique_id]
                 assert isinstance(step_info, StepInfo)
                 self._fix_step_info(step_info)
                 steps_for_run[step_name] = step_info
-            return Run(name, steps_for_run, datetime.fromtimestamp(run_dir.stat().st_ctime))
+            return steps_for_run
 
     def run_dir(self, name: str) -> Path:
         """
