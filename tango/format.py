@@ -19,6 +19,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     TypeVar,
     Union,
     cast,
@@ -399,6 +400,29 @@ class TextFormatIterator(Iterator[str]):
             self.f.close()
             self.f = None
             raise StopIteration()
+
+
+@Format.register("sqlite_sequence")
+class SqliteSequenceFormat(Format[Sequence[T]]):
+    VERSION = 3
+
+    FILENAME = "data.sqlite"
+
+    def write(self, artifact: Sequence[T], dir: Union[str, PathLike]):
+        dir = pathlib.Path(dir)
+        try:
+            (dir / self.FILENAME).unlink()
+        except FileNotFoundError:
+            pass
+        if isinstance(artifact, SqliteSparseSequence):
+            artifact.copy_to(dir / self.FILENAME)
+        else:
+            sqlite = SqliteSparseSequence(dir / self.FILENAME)
+            sqlite.extend(artifact)
+
+    def read(self, dir: Union[str, PathLike]) -> Sequence[T]:
+        dir = pathlib.Path(dir)
+        return SqliteSparseSequence(dir / self.FILENAME, read_only=True)
 
 
 @Format.register("sqlite")
