@@ -1,226 +1,26 @@
-import getpass
 import json
 import logging
 import os
-import platform
-import socket
-import sys
-import time
-from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
+from urllib.parse import ParseResult
 
 import petname
 from sqlitedict import SqliteDict
 
-from tango.common import FromParams, PathOrStr
+from tango.common import PathOrStr
 from tango.common.file_lock import FileLock
+from tango.common.logging import file_handler
 from tango.common.util import exception_to_string
 from tango.step import Step
-from tango.step_cache import LocalStepCache, StepCache
-from tango.version import VERSION
-from tango.workspace import Run, StepInfo, StepState, Workspace
+from tango.step_cache import StepCache
+from tango.step_caches import LocalStepCache
+from tango.workspace import Run, StepExecutionMetadata, StepInfo, StepState, Workspace
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
-
-
-@dataclass
-class PlatformMetadata(FromParams):
-    python: str = field(default_factory=platform.python_version)
-    """
-    The Python version.
-    """
-
-    operating_system: str = field(default_factory=platform.platform)
-    """
-    Full operating system name.
-    """
-
-    executable: Path = field(default_factory=lambda: Path(sys.executable))
-    """
-    Path to the Python executable.
-    """
-
-    cpu_count: Optional[int] = field(default_factory=os.cpu_count)
-    """
-    Numbers of CPUs on the machine.
-    """
-
-    user: str = field(default_factory=getpass.getuser)
-    """
-    The user that ran this step.
-    """
-
-    host: str = field(default_factory=socket.gethostname)
-    """
-    Name of the host machine.
-    """
-
-    root: Path = field(default_factory=lambda: Path(os.getcwd()))
-    """
-    The root directory from where the Python executable was ran.
-    """
-
-
-@dataclass
-class GitMetadata(FromParams):
-    commit: Optional[str] = None
-    """
-    The commit SHA of the current repo.
-    """
-
-    remote: Optional[str] = None
-    """
-    The URL of the primary remote.
-    """
-
-    @classmethod
-    def check_for_repo(cls) -> Optional["GitMetadata"]:
-        import subprocess
-
-        try:
-            commit = (
-                subprocess.check_output("git rev-parse HEAD".split(" "), stderr=subprocess.DEVNULL)
-                .decode("ascii")
-                .strip()
-            )
-            remote: Optional[str] = None
-            for line in (
-                subprocess.check_output("git remote -v".split(" "))
-                .decode("ascii")
-                .strip()
-                .split("\n")
-            ):
-                if "(fetch)" in line:
-                    _, line = line.split("\t")
-                    remote = line.split(" ")[0]
-                    break
-            return cls(commit=commit, remote=remote)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return None
-
-
-@dataclass
-class TangoMetadata(FromParams):
-    version: str = VERSION
-    """
-    The tango release version.
-    """
-
-    command: str = field(default_factory=lambda: " ".join(sys.argv))
-    """
-    The exact command used.
-    """
-
-
-@dataclass
-class StepExecutionMetadata(FromParams):
-    step: str
-    """
-    The unique ID of the step.
-    """
-
-    config: Optional[Dict[str, Any]] = None
-    """
-    The raw config of the step.
-    """
-
-    platform: PlatformMetadata = field(default_factory=PlatformMetadata)
-    """
-    The :class:`PlatformMetadata`.
-    """
-
-    git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
-    """
-    The :class:`GitMetadata`.
-    """
-
-    tango: Optional[TangoMetadata] = field(default_factory=TangoMetadata)
-    """
-    The :class:`TangoMetadata`.
-    """
-
-    started_at: float = field(default_factory=time.time)
-    """
-    The unix timestamp from when the run was started.
-    """
-
-    finished_at: Optional[float] = None
-    """
-    The unix timestamp from when the run finished.
-    """
-
-    duration: Optional[float] = None
-    """
-    The number of seconds the step ran for.
-    """
-
-    def _save_pip(self, run_dir: Path):
-        """
-        Saves the current working set of pip packages to ``run_dir``.
-        """
-        # Adapted from the Weights & Biases client library:
-        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L56-L72
-        try:
-            import pkg_resources
-
-            installed_packages = [d for d in iter(pkg_resources.working_set)]
-            installed_packages_list = sorted(
-                ["%s==%s" % (i.key, i.version) for i in installed_packages]
-            )
-            with (run_dir / "requirements.txt").open("w") as f:
-                f.write("\n".join(installed_packages_list))
-        except Exception as exc:
-            logger.exception("Error saving pip packages: %s", exc)
-
-    def _save_conda(self, run_dir: Path):
-        """
-        Saves the current conda environment to ``run_dir``.
-        """
-        # Adapted from the Weights & Biases client library:
-        # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L74-L87
-        current_shell_is_conda = os.path.exists(os.path.join(sys.prefix, "conda-meta"))
-        if current_shell_is_conda:
-            import subprocess
-
-            try:
-                result = subprocess.run(["conda", "env", "export"], capture_output=True)
-                if (
-                    result.returncode != 0
-                    and result.stderr is not None
-                    and "Unable to determine environment" in result.stderr.decode()
-                ):
-                    result = subprocess.run(
-                        ["conda", "env", "export", "-n", "base"], capture_output=True
-                    )
-
-                if result.returncode != 0:
-                    if result.stderr is not None:
-                        logger.exception("Error saving conda packages: %s", result.stderr.decode())
-                    else:
-                        result.check_returncode()
-                elif result.stdout is not None:
-                    with (run_dir / "conda-environment.yaml").open("w") as f:
-                        f.write(result.stdout.decode())
-            except Exception as exc:
-                logger.exception("Error saving conda packages: %s", exc)
-
-    def save(self, run_dir: Path):
-        """
-        Should be called after the run has finished to save to file.
-        """
-        self.finished_at = time.time()
-        self.duration = round(self.finished_at - self.started_at, 4)
-
-        # Save pip dependencies and conda environment files.
-        self._save_pip(run_dir)
-        self._save_conda(run_dir)
-
-        # Serialize self.
-        self.to_params().to_file(run_dir / "execution-metadata.json")
 
 
 @Workspace.register("local")
@@ -238,6 +38,15 @@ class LocalWorkspace(Workspace):
     in the step cache. Note that :class:`.LocalWorkspace` creates these symlinks even for steps that have not
     finished yet. You can tell the difference because either the symlink points to a directory that doesn't exist,
     or it points to a directory in the step cache that doesn't contain results.
+
+    .. tip::
+
+        Registered as a :class:`~tango.workspace.Workspace` under the name "local".
+
+        You can also instantiate this workspace from a URL with the scheme ``local://``.
+        For example, ``Workspace.from_url("local:///tmp/workspace")`` gives you a :class:`LocalWorkspace`
+        in the directory ``/tmp/workspace``.
+
     """
 
     def __init__(self, dir: PathOrStr):
@@ -280,6 +89,15 @@ class LocalWorkspace(Workspace):
             settings["version"] = 2
             with open(self.dir / "settings.json", "w") as settings_file:
                 json.dump(settings, settings_file)
+
+    @classmethod
+    def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
+        """
+        Subclasses should override this so that can be initialized from a URL.
+
+        :param parsed_url: The parsed URL object.
+        """
+        return cls(parsed_url.path)
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
@@ -621,3 +439,6 @@ class LocalWorkspace(Workspace):
         :meth:`register_run()` with that name.
         """
         return self.runs_dir / name
+
+    def capture_logs_for_run(self, name: str):
+        return file_handler(self.run_dir(name) / "out.log")

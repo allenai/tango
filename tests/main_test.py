@@ -9,8 +9,8 @@ import pytest
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
-from tango.local_workspace import StepExecutionMetadata
 from tango.version import VERSION
+from tango.workspace import StepExecutionMetadata
 
 
 class TestMain(TangoTestCase):
@@ -72,7 +72,7 @@ class TestMain(TangoTestCase):
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
             "-i",
             "test_fixtures.package",
-            "-d",
+            "-w",
             str(self.TEST_DIR),
         ]
         result = subprocess.run(cmd, capture_output=True)
@@ -112,6 +112,30 @@ class TestMain(TangoTestCase):
         # We should see two runs now.
         assert len(os.listdir(self.TEST_DIR / "runs")) == 2
 
+    def test_experiment_with_memory_workspace(self):
+        cmd = [
+            "tango",
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
+            "-i",
+            "test_fixtures.package",
+            "-w",
+            "memory://",
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        assert result.returncode == 0
+
+    def test_experiment_with_default_workspace(self):
+        cmd = [
+            "tango",
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
+            "-i",
+            "test_fixtures.package",
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        assert result.returncode == 0
+
     def test_random_experiment(self):
         cmd = [
             "tango",
@@ -119,7 +143,7 @@ class TestMain(TangoTestCase):
             str(self.FIXTURES_ROOT / "experiment" / "random.jsonnet"),
             "-i",
             "test_fixtures.package",
-            "-d",
+            "-w",
             str(self.TEST_DIR),
         ]
         result = subprocess.run(cmd)
@@ -142,7 +166,7 @@ class TestMain(TangoTestCase):
                 str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
                 "-i",
                 "test_fixtures.package",
-                "-d",
+                "-w",
                 str(self.TEST_DIR),
             ]
         )
