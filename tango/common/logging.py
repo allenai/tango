@@ -87,7 +87,7 @@ import struct
 import sys
 import threading
 from contextlib import contextmanager
-from typing import Optional
+from typing import ContextManager, Generator, Optional
 
 import click
 
@@ -497,7 +497,7 @@ def teardown_logging():
 
 
 @contextmanager
-def insert_handler(handler: logging.Handler):
+def insert_handler(handler: logging.Handler) -> Generator[None, None, None]:
     """
     A context manager that can be used to route logs to a specific handler temporarily.
     """
@@ -518,7 +518,7 @@ def insert_handler(handler: logging.Handler):
             logger.removeHandler(handler)
 
 
-def file_handler(filepath: PathOrStr):
+def file_handler(filepath: PathOrStr) -> ContextManager[None]:
     """
     A context manager that can be used to route logs to a file by adding a
     :class:`logging.FileHandler` to the root logger's handlers.

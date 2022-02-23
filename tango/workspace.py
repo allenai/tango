@@ -12,7 +12,19 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Iterable, List, Optional, Set, TypeVar, Union, cast
+from typing import (
+    Any,
+    ContextManager,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    TypeVar,
+    Union,
+    cast,
+)
 from urllib.parse import ParseResult, urlparse
 
 import dill
@@ -334,14 +346,35 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
-    @contextmanager
-    def capture_logs_for_run(self, name: str):
+    def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
         Should return a context manager that can be used to capture the logs for a run.
 
         By default, this doesn't do anything.
+
+        Examples
+        --------
+
+        The :class:`.LocalWorkspace` implementation uses this method to capture logs
+        to a file in the workspace's directory using the :func:`~tango.common.logging.file_handler()`
+        context manager, similar to this:
+
+        .. testcode::
+
+            from tango.common.logging import file_handler
+            from tango.workspace import Workspace
+
+            class MyLocalWorkspace(Workspace):
+                def capture_logs_for_run(self, name: str):
+                    return file_handler("/path/to/workspace/" + name + ".log")
+
         """
-        yield None
+
+        @contextmanager
+        def do_nothing() -> Generator[None, None, None]:
+            yield None
+
+        return do_nothing()
 
 
 @dataclass
