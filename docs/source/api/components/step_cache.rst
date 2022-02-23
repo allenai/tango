@@ -8,16 +8,16 @@ Base class
    :members: 
    :special-members:
 
+Implementations
+---------------
+
+.. autoclass:: tango.step_caches.LocalStepCache
+   :members:
+
+.. autoclass:: tango.step_caches.MemoryStepCache
+
 Metadata
 --------
 
 .. autoclass:: tango.step_cache.CacheMetadata
-   :members:
-
-Implementations
----------------
-
-.. autoclass:: tango.step_cache.MemoryStepCache
-
-.. autoclass:: tango.step_cache.LocalStepCache
    :members:

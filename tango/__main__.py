@@ -71,19 +71,14 @@ import multiprocessing as mp
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
 from tango.common.aliases import PathOrStr
 from tango.common.from_params import FromParams
-from tango.common.logging import (
-    click_logger,
-    file_handler,
-    initialize_logging,
-    teardown_logging,
-)
+from tango.common.logging import click_logger, initialize_logging, teardown_logging
 from tango.common.params import Params
 from tango.common.util import import_extra_module
 from tango.version import VERSION
@@ -93,6 +88,11 @@ from tango.version import VERSION
 class TangoGlobalSettings(FromParams):
     """
     Defines global settings for tango.
+    """
+
+    workspace: Optional[Dict[str, Any]] = None
+    """
+    Parameters to initialize a :class:`tango.workspace.Workspace` with.
     """
 
     include_package: Optional[List[str]] = None
@@ -242,12 +242,19 @@ def cleanup(*args, **kwargs):
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
 )
 @click.option(
+    "-w",
+    "--workspace",
+    type=click.Path(file_okay=False),
+    help="""A workspace path or URL. If not specified, the workspace from any global tango
+    settings file will be used, if found, otherwise an ephemeral MemoryWorkspace.""",
+    default=None,
+)
+@click.option(
     "-d",
     "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""The directory of the workspace in which to work. If not specified,
-    a named temporary directory will be created.""",
     default=None,
+    hidden=True,
 )
 @click.option(
     "-o",
@@ -273,6 +280,7 @@ def cleanup(*args, **kwargs):
 def run(
     config: TangoGlobalSettings,
     experiment: str,
+    workspace: Optional[str] = None,
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
@@ -283,10 +291,25 @@ def run(
 
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
+    if workspace_dir is not None:
+        import warnings
+
+        warnings.warn(
+            "-d/--workspace-dir option is deprecated. Please use -w/--workspace instead.",
+            DeprecationWarning,
+        )
+
+        if workspace is not None:
+            raise click.ClickException(
+                "-w/--workspace is mutually exclusive with -d/--workspace-dir"
+            )
+
+        workspace = "local://" + str(workspace_dir)
+
     _run(
         config,
         experiment,
-        workspace_dir=workspace_dir,
+        workspace_url=workspace,
         overrides=overrides,
         include_package=include_package,
         start_server=server,
@@ -300,21 +323,51 @@ def run(
     context_settings={"max_content_width": 115},
 )
 @click.option(
+    "-w",
+    "--workspace",
+    type=click.Path(file_okay=False),
+    help="""A workspace URL. If not specified, the workspace from any global tango
+    settings file will be used, if found, otherwise an ephemeral MemoryWorkspace.""",
+    default=None,
+)
+@click.option(
     "-d",
     "--workspace-dir",
     type=click.Path(file_okay=False),
-    help="""The directory of the workspace to monitor.""",
+    default=None,
+    hidden=True,
 )
-def server(workspace_dir: Union[str, os.PathLike]):
+@click.pass_obj
+def server(
+    config: TangoGlobalSettings,
+    workspace: Optional[str],
+    workspace_dir: Optional[Union[str, os.PathLike]] = None,
+):
     """
     Run a local webserver that watches a workspace
     """
-    from tango.local_workspace import LocalWorkspace
     from tango.server.workspace_server import WorkspaceServer
+    from tango.workspace import Workspace
+    from tango.workspaces import LocalWorkspace
 
-    workspace_dir = Path(workspace_dir)
-    workspace = LocalWorkspace(workspace_dir)
-    server = WorkspaceServer.on_free_port(workspace)
+    workspace_to_watch: Workspace
+    if workspace_dir is not None:
+        if workspace is not None:
+            raise click.ClickException(
+                "-w/--workspace is mutually exclusive with -d/--workspace-dir"
+            )
+        workspace_to_watch = LocalWorkspace(workspace_dir)
+    elif workspace is not None:
+        workspace_to_watch = Workspace.from_url(workspace)
+    elif config.workspace is not None:
+        workspace_to_watch = Workspace.from_params(config.workspace)
+    else:
+        raise click.ClickException(
+            "-w/--workspace or -d/--workspace-dir required unless a default workspace is specified "
+            "in tango settings file."
+        )
+
+    server = WorkspaceServer.on_free_port(workspace_to_watch)
     click_logger.info("Server started at " + click.style(server.address_for_display(), bold=True))
     server.serve_forever()
 
@@ -375,15 +428,16 @@ def info(config: TangoGlobalSettings):
 def _run(
     config: TangoGlobalSettings,
     experiment: str,
-    workspace_dir: Optional[Union[str, os.PathLike]] = None,
+    workspace_url: Optional[str] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     start_server: bool = True,
-) -> Path:
+) -> str:
     from tango.executor import Executor
-    from tango.local_workspace import LocalWorkspace
     from tango.server.workspace_server import WorkspaceServer
     from tango.step_graph import StepGraph
+    from tango.workspace import Workspace
+    from tango.workspaces import default_workspace
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -398,24 +452,22 @@ def _run(
     for package_name in include_package:
         import_extra_module(package_name)
 
-    # Prepare directory.
-    if workspace_dir is None:
-        from tempfile import mkdtemp
-
-        workspace_dir = mkdtemp(prefix="tango-")
-        click_logger.info(
-            "Creating temporary directory for run: " + click.style(f"{workspace_dir}", fg="yellow")
-        )
-    workspace_dir = Path(workspace_dir)
-    workspace = LocalWorkspace(workspace_dir)
+    # Prepare workspace.
+    workspace: Workspace
+    if workspace_url is not None:
+        workspace = Workspace.from_url(workspace_url)
+    elif config.workspace is not None:
+        workspace = Workspace.from_params(config.workspace)
+    else:
+        workspace = default_workspace
 
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    params.assert_empty("'tango run'")
     run = workspace.register_run(step for step in step_graph.values())
-    run_dir = workspace.run_dir(run.name)
 
     # Capture logs to file.
-    with file_handler(run_dir / "out.log"):
+    with workspace.capture_logs_for_run(run.name):
         click_logger.info(
             click.style("Starting new run ", fg="green")
             + click.style(run.name, fg="green", bold=True)
@@ -436,34 +488,20 @@ def _run(
         # Print everything that has been computed.
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
         for step in ordered_steps:
-            if step in workspace.step_cache:
-                info = workspace.step_info(step)
-                if info.step_name is not None:
-                    path = run_dir / info.step_name
-                elif info.result_location is not None:
-                    path = Path(info.result_location)
-                else:
-                    path = None
-
-                if path is None:
-                    click_logger.warn(
-                        click.style("\N{ballot x} The output for ", fg="red")
-                        + click.style(f'"{step.name}"', bold=True, fg="red")
-                        + click.style(" is missing!", fg="red")
-                    )
-                else:
-                    click_logger.info(
-                        click.style("\N{check mark} The output for ", fg="green")
-                        + click.style(f'"{step.name}"', bold=True, fg="green")
-                        + click.style(" is in ", fg="green")
-                        + click.style(f"{path}", bold=True, fg="green")
-                    )
+            info = workspace.step_info(step)
+            if info.result_location is not None:
+                click_logger.info(
+                    click.style("\N{check mark} The output for ", fg="green")
+                    + click.style(f'"{step.name}"', bold=True, fg="green")
+                    + click.style(" is in ", fg="green")
+                    + click.style(f"{info.result_location}", bold=True, fg="green")
+                )
 
         click_logger.info(
             click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
         )
 
-    return run_dir
+    return run.name
 
 
 if __name__ == "__main__":
