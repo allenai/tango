@@ -2,9 +2,10 @@ from shutil import copytree
 
 import pytest
 
-from tango import LocalWorkspace, Step
+from tango import Step
 from tango.common.testing import TangoTestCase
 from tango.workspace import StepState
+from tango.workspaces import LocalWorkspace
 
 
 class AdditionStep(Step):

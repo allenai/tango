@@ -431,17 +431,15 @@ class Params(MutableMapping):
         """
         return copy.deepcopy(self)
 
-    def assert_empty(self, class_name: str):
+    def assert_empty(self, name: str):
         """
         Raises a :class:`~tango.common.exceptions.ConfigurationError` if ``self.params`` is not empty.
-        We take ``class_name`` as an argument so that the error message gives some idea of where an error
-        happened, if there was one.  ``class_name`` should be the name of the ``calling`` class, the one
+        We take ``name`` as an argument so that the error message gives some idea of where an error
+        happened, if there was one. For example, ``name`` could be the name of the ``calling`` class
         that got extra parameters (if there are any).
         """
         if self.params:
-            raise ConfigurationError(
-                "Extra parameters passed to {}: {}".format(class_name, self.params)
-            )
+            raise ConfigurationError("Extra parameters passed to {}: {}".format(name, self.params))
 
     def __getitem__(self, key):
         if key in self.params:

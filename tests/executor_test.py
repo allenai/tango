@@ -3,8 +3,9 @@ from pathlib import Path
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
 from tango.executor import Executor
-from tango.local_workspace import LocalWorkspace, StepExecutionMetadata
 from tango.step import Step
+from tango.workspace import StepExecutionMetadata
+from tango.workspaces import LocalWorkspace
 
 
 class AdditionStep(Step):

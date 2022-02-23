@@ -87,7 +87,7 @@ import struct
 import sys
 import threading
 from contextlib import contextmanager
-from typing import Optional
+from typing import ContextManager, Generator, Optional
 
 import click
 
@@ -496,32 +496,29 @@ def teardown_logging():
         _LOGGING_SERVER = None
 
 
-def add_file_handler(filepath: PathOrStr) -> logging.FileHandler:
+@contextmanager
+def insert_handler(handler: logging.Handler) -> Generator[None, None, None]:
+    """
+    A context manager that can be used to route logs to a specific handler temporarily.
+    """
     root_logger = logging.getLogger()
 
     from .tqdm import logger as tqdm_logger
 
-    handler = logging.FileHandler(str(filepath))
     formatter = get_formatter()
     handler.setFormatter(formatter)
 
     for logger in (root_logger, click_logger, tqdm_logger):
         logger.addHandler(handler)
 
-    return handler
+    try:
+        yield None
+    finally:
+        for logger in (root_logger, click_logger, tqdm_logger):
+            logger.removeHandler(handler)
 
 
-def remove_file_handler(handler: logging.FileHandler):
-    root_logger = logging.getLogger()
-
-    from .tqdm import logger as tqdm_logger
-
-    for logger in (root_logger, click_logger, tqdm_logger):
-        logger.removeHandler(handler)
-
-
-@contextmanager
-def file_handler(filepath: PathOrStr):
+def file_handler(filepath: PathOrStr) -> ContextManager[None]:
     """
     A context manager that can be used to route logs to a file by adding a
     :class:`logging.FileHandler` to the root logger's handlers.
@@ -543,8 +540,5 @@ def file_handler(filepath: PathOrStr):
         teardown_logging()
 
     """
-    handler = add_file_handler(filepath)
-    try:
-        yield handler
-    finally:
-        remove_file_handler(handler)
+    handler = logging.FileHandler(str(filepath))
+    return insert_handler(handler)

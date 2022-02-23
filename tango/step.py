@@ -445,7 +445,7 @@ class Step(Registrable, Generic[T]):
 
         If necessary, this method will first produce the results of all steps it depends on."""
         if workspace is None:
-            from tango.workspace import default_workspace
+            from tango.workspaces import default_workspace
 
             workspace = default_workspace
 
