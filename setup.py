@@ -94,5 +94,6 @@ setup(
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
     extras_require=extras,
+    tests_require=["datasets"],
     python_requires=">=3.7.1",
 )
