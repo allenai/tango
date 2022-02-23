@@ -3,9 +3,10 @@ from pathlib import Path
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
 from tango.executor import Executor
-from tango.local_workspace import LocalWorkspace, StepExecutionMetadata
 from tango.step import Step
 from tango.step_graph import StepGraph
+from tango.workspace import StepExecutionMetadata
+from tango.workspaces import LocalWorkspace
 
 
 @Step.register("sum_numbers")
