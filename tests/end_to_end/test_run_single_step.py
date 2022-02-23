@@ -27,11 +27,7 @@ class TestRunSingleStep(TangoTestCase):
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
         assert len(list(latest_outputs.iterdir())) == num_other_files + 1
 
-        # Running a single step with one or more dependencies should still have a single output.
-        # Note: this is really up to us. The cache would still contain the outputs for intermediate steps.
-        # The logic here is that for this particular "run", we only care about the specified step's output.
-        # However, this can be changed if we feel that all intermediate steps should also be part of the run's
-        # output.
+        # Running a single step with one or more dependencies will also run the step's dependencies.
         self.run(config, step_name="concatenated", include_package=["test_fixtures.package.steps"])
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
-        assert len(list(latest_outputs.iterdir())) == num_other_files + 1
+        assert len(list(latest_outputs.iterdir())) == num_other_files + 3

@@ -420,16 +420,14 @@ def _run(
     workspace = LocalWorkspace(workspace_dir)
 
     # Initialize step graph and register run.
-    step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
 
     if step_name is not None:
         assert step_name in step_graph, (
             f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
             f"The config contains: {list(step_graph.keys())}."
         )
-        # TODO: step_graph is supposed to be a Mapping anyway, is this ok?
-        # TODO: should the registered_run also contain the recursive_dependencies for the sake of completeness?
-        step_graph = {step_name: step_graph[step_name]}
+        step_graph = step_graph.get_sub_graph(step_name)
 
     run = workspace.register_run(step for step in step_graph.values())
     run_dir = workspace.run_dir(run.name)
