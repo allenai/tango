@@ -40,7 +40,7 @@ class TestExecutor(TangoTestCase):
     def test_executor(self):
         workspace = LocalWorkspace(self.TEST_DIR)
         step = AdditionStep(a=1, b=2)
-        step_graph = StepGraph({"sum": {"type": "sum_numbers", "a": 1, "b": 2}})
+        step_graph = StepGraph.from_params({"sum": {"type": "sum_numbers", "a": 1, "b": 2}})
         executor = Executor(workspace)
         assert len(executor.workspace.step_cache) == 0
         executor.execute_step_graph(step_graph)
