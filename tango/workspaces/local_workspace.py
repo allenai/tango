@@ -11,7 +11,7 @@ from sqlitedict import SqliteDict
 
 from tango.common import PathOrStr
 from tango.common.file_lock import FileLock
-from tango.common.logging import with_file_handler
+from tango.common.logging import file_handler
 from tango.common.util import exception_to_string
 from tango.step import Step
 from tango.step_cache import StepCache
@@ -441,4 +441,4 @@ class LocalWorkspace(Workspace):
         return self.runs_dir / name
 
     def capture_logs_for_run(self, name: str):
-        return with_file_handler(self.run_dir(name) / "out.log")
+        return file_handler(self.run_dir(name) / "out.log")

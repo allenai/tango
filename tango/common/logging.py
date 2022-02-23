@@ -497,7 +497,7 @@ def teardown_logging():
 
 
 @contextmanager
-def with_handler(handler: logging.Handler):
+def insert_handler(handler: logging.Handler):
     """
     A context manager that can be used to route logs to a specific handler temporarily.
     """
@@ -518,7 +518,7 @@ def with_handler(handler: logging.Handler):
             logger.removeHandler(handler)
 
 
-def with_file_handler(filepath: PathOrStr):
+def file_handler(filepath: PathOrStr):
     """
     A context manager that can be used to route logs to a file by adding a
     :class:`logging.FileHandler` to the root logger's handlers.
@@ -527,18 +527,18 @@ def with_file_handler(filepath: PathOrStr):
 
     .. code-block::
 
-        from tango.common.logging import initialize_logging, with_file_handler, teardown_logging
+        from tango.common.logging import initialize_logging, file_handler, teardown_logging
 
         initialize_logging(log_level="info")
 
         logger = logging.getLogger()
         logger.info("Hi!")
 
-        with with_file_handler("log.out"):
+        with file_handler("log.out"):
             logger.info("This message should also go into 'log.out'")
 
         teardown_logging()
 
     """
     handler = logging.FileHandler(str(filepath))
-    return with_handler(handler)
+    return insert_handler(handler)

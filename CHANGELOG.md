@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `local_workspace.ExecutorMetadata` renamed to `StepExecutionMetadata` and now saved as `execution-metadata.json`.
-- Renamed `common.logging.file_handler()` to `with_file_handler()`.
 - `tango run` without the option "-w/--workspace" or "-d/--workspace-dir" will now use a `MemoryWorkspace` instead of a `LocalWorkspace` in a temp directory, unless you've specified
   a default workspace in a `TangoGlobalSettings` file.
 - Moved `tango.workspace.MemoryWorkspace` and `tango.local_workspace.LocalWorkspace` to `tango.workspaces.*`.

@@ -18,8 +18,8 @@ Reference
 
 .. autofunction:: tango.common.logging.teardown_logging
 
-.. autofunction:: tango.common.logging.with_handler
+.. autofunction:: tango.common.logging.insert_handler
 
-.. autofunction:: tango.common.logging.with_file_handler
+.. autofunction:: tango.common.logging.file_handler
 
 .. autoclass:: tango.common.logging.TangoLogger
