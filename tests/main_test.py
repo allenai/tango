@@ -217,3 +217,13 @@ class TestSettings(TangoTestCase):
         cmd = "tango settings set include-package foo".split(" ")
         with pytest.raises(subprocess.CalledProcessError):
             subprocess.run(cmd, check=True)
+
+    def test_settings_set_environment(self):
+        cmd = "tango settings set env FOO BAR".split(" ")
+        subprocess.run(cmd, check=True)
+        assert self.settings.environment == {"FOO": "BAR"}
+
+    def test_settings_set_environment_blocked_var(self):
+        cmd = "tango settings set env TANGO_LOG_LEVEL info".split(" ")
+        with pytest.raises(subprocess.CalledProcessError):
+            subprocess.run(cmd, check=True)

@@ -2,3 +2,11 @@ from os import PathLike
 from typing import Union
 
 PathOrStr = Union[str, PathLike]
+
+
+class EnvVarNames:
+    FILE_FRIENDLY_LOGGING_ENV_VAR = "FILE_FRIENDLY_LOGGING"
+    LOG_LEVEL_ENV_VAR: str = "TANGO_LOG_LEVEL"
+    CLICK_LOGGER_ENABLED_ENV_VAR: str = "TANGO_CLICK_LOGGER_ENABLED"
+    LOGGING_HOST_ENV_VAR: str = "TANGO_LOGGING_HOST"
+    LOGGING_PORT_ENV_VAR: str = "TANGO_LOGGING_PORT"

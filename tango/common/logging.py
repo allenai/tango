@@ -91,11 +91,13 @@ from typing import ContextManager, Generator, Optional
 
 import click
 
-from .aliases import PathOrStr
+from .aliases import EnvVarNames, PathOrStr
 from .exceptions import SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
-FILE_FRIENDLY_LOGGING: bool = _parse_bool(os.environ.get("FILE_FRIENDLY_LOGGING", False))
+FILE_FRIENDLY_LOGGING: bool = _parse_bool(
+    os.environ.get(EnvVarNames.FILE_FRIENDLY_LOGGING_ENV_VAR, False)
+)
 """
 If this flag is set to ``True``, we remove special styling characters from log messages,
 add newlines to :class:`~tango.common.tqdm.Tqdm` output even on an interactive terminal, and we slow
@@ -117,7 +119,7 @@ For example,
 
 """
 
-TANGO_LOG_LEVEL: Optional[str] = os.environ.get("TANGO_LOG_LEVEL", None)
+TANGO_LOG_LEVEL: Optional[str] = os.environ.get(EnvVarNames.LOG_LEVEL_ENV_VAR, None)
 """
 The log level to use globally. The value can be set from the corresponding environment variable
 (``TANGO_LOG_LEVEL``) or field in a :class:`~tango.__main__.TangoGlobalSettings` file (``log_level``),
@@ -136,7 +138,9 @@ For example,
 """
 
 # Click logger disabled by default in case nobody calls initialize_logging().
-TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(os.environ.get("TANGO_CLICK_LOGGER_ENABLED", False))
+TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(
+    os.environ.get(EnvVarNames.CLICK_LOGGER_ENABLED_ENV_VAR, False)
+)
 
 
 class TangoLogger(logging.Logger):
@@ -276,8 +280,10 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
                 self.handle_request()
 
 
-_LOGGING_HOST: str = os.environ.get("TANGO_LOGGING_HOST", "localhost")
-_LOGGING_PORT: Optional[int] = _parse_optional_int(os.environ.get("TANGO_LOGGING_PORT", None))
+_LOGGING_HOST: str = os.environ.get(EnvVarNames.LOGGING_HOST_ENV_VAR, "localhost")
+_LOGGING_PORT: Optional[int] = _parse_optional_int(
+    os.environ.get(EnvVarNames.LOGGING_PORT_ENV_VAR, None)
+)
 _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
@@ -335,7 +341,7 @@ def initialize_logging(
 
     :param log_level:
         Can be one of "debug", "info", "warning", "error". Defaults to the value
-        of :data:`TANGO_LOG_LEVEL`.
+        of :data:`TANGO_LOG_LEVEL`, if set, or "error".
     :param enable_click_logs:
         Set to ``True`` to enable messages from the :data:`click_logger`.
     :param file_friendly_logging:
@@ -395,13 +401,13 @@ def _initialize_logging(
     # so that child processes can read the environment variables to determine the right
     # settings.
     TANGO_LOG_LEVEL = log_level
-    os.environ["TANGO_LOG_LEVEL"] = log_level
+    os.environ[EnvVarNames.LOG_LEVEL_ENV_VAR] = log_level
     if file_friendly_logging is not None:
         FILE_FRIENDLY_LOGGING = file_friendly_logging
-        os.environ["FILE_FRIENDLY_LOGGING"] = str(file_friendly_logging).lower()
+        os.environ[EnvVarNames.FILE_FRIENDLY_LOGGING_ENV_VAR] = str(file_friendly_logging).lower()
     if enable_click_logs is not None:
         TANGO_CLICK_LOGGER_ENABLED = enable_click_logs
-        os.environ["TANGO_CLICK_LOGGER_ENABLED"] = str(enable_click_logs).lower()
+        os.environ[EnvVarNames.CLICK_LOGGER_ENABLED_ENV_VAR] = str(enable_click_logs).lower()
 
     from .tqdm import logger as tqdm_logger
 
@@ -443,7 +449,7 @@ def _initialize_logging(
         # https://docs.python.org/3.7/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
         _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, 0)
         _LOGGING_PORT = _LOGGING_SERVER.server_address[1]
-        os.environ["TANGO_LOGGING_PORT"] = str(_LOGGING_PORT)
+        os.environ[EnvVarNames.LOGGING_PORT_ENV_VAR] = str(_LOGGING_PORT)
         _LOGGING_SERVER_THREAD = threading.Thread(
             target=_LOGGING_SERVER.serve_until_stopped, daemon=True
         )

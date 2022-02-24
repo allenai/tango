@@ -76,6 +76,7 @@ file or update fields in it.
 """
 import multiprocessing as mp
 import os
+import warnings
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
@@ -84,7 +85,11 @@ from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
 from tango.common.logging import click_logger, initialize_logging, teardown_logging
 from tango.common.params import Params
-from tango.common.util import import_extra_module, import_module_and_submodules
+from tango.common.util import (
+    find_integrations,
+    import_extra_module,
+    import_module_and_submodules,
+)
 from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
 
@@ -140,6 +145,24 @@ def main(
         if settings is not None
         else TangoGlobalSettings.default()
     )
+
+    if settings.environment:
+        from tango.common.aliases import EnvVarNames
+
+        # These environment variables should not be set this way since they'll be ignored.
+        blocked_env_variable_names = {
+            name for k, name in EnvVarNames.__dict__.items() if k.isupper()
+        }
+
+        for key, value in settings.environment.items():
+            if key not in blocked_env_variable_names:
+                os.environ[key] = value
+            else:
+                warnings.warn(
+                    f"Ignoring environment variable '{key}' from settings file. "
+                    f"Please use the corresponding settings field instead.",
+                    UserWarning,
+                )
 
     if start_method is not None:
         settings.multiprocessing_start_method = start_method
@@ -304,8 +327,6 @@ def info(settings: TangoGlobalSettings):
     Get info about the current tango installation.
     """
     import platform
-
-    from tango.common.util import find_integrations, import_module_and_submodules
 
     click_logger.info(f"Tango version {VERSION} (python {platform.python_version()})")
 
@@ -522,6 +543,37 @@ def multiprocessing_start_method(
     Set the Python multiprocessing start method.
     """
     settings.multiprocessing_start_method = start_method
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "key",
+    type=str,
+)
+@click.argument(
+    "value",
+    type=str,
+)
+@click.pass_obj
+def env(settings: TangoGlobalSettings, key: str, value: str) -> TangoGlobalSettings:
+    """
+    Add or update an environment variable.
+    """
+    from tango.common.aliases import EnvVarNames
+
+    # These environment variables should not be set this way since they'll be ignored.
+    blocked_env_variable_names = {name for k, name in EnvVarNames.__dict__.items() if k.isupper()}
+
+    if key in blocked_env_variable_names:
+        raise click.ClickException(
+            f"Cannot add environment variable '{key}' to settings. "
+            f"Please set the corresponding settings field instead."
+        )
+
+    if settings.environment is None:
+        settings.environment = {}
+    settings.environment[key] = value
     return settings
 
 
