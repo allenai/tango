@@ -150,9 +150,7 @@ def main(
         from tango.common.aliases import EnvVarNames
 
         # These environment variables should not be set this way since they'll be ignored.
-        blocked_env_variable_names = {
-            name for k, name in EnvVarNames.__dict__.items() if k.isupper()
-        }
+        blocked_env_variable_names = EnvVarNames.values()
 
         for key, value in settings.environment.items():
             if key not in blocked_env_variable_names:
@@ -563,7 +561,7 @@ def env(settings: TangoGlobalSettings, key: str, value: str) -> TangoGlobalSetti
     from tango.common.aliases import EnvVarNames
 
     # These environment variables should not be set this way since they'll be ignored.
-    blocked_env_variable_names = {name for k, name in EnvVarNames.__dict__.items() if k.isupper()}
+    blocked_env_variable_names = EnvVarNames.values()
 
     if key in blocked_env_variable_names:
         raise click.ClickException(
