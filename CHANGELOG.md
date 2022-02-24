@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
 - Added a utility function to get a `StepGraph` directly from a file.
+- Added `tango.settings` module and `tango settings` group of commands.
 - A format for storing sequences as `SqliteSparseSequence`.
 
 ### Changed
@@ -36,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MappedSequence` now works with slicing.
 - `MappedSequence` now works with Huggingface `Dataset`.
 - Uncacheable steps are now visible in Tango UI.
+- Fixed bug in `Registrable.list_available()` where an error might be raised if the default implementation hadn't been explicitly imported.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09

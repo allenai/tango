@@ -178,7 +178,7 @@ class Registrable(FromParams):
         """
         Search for and import modules where ``name`` might be registered.
         """
-        if could_be_class_name(name) or name in cls.list_available():
+        if could_be_class_name(name) or name in Registrable._registry[cls]:
             return None
 
         def try_import(module):
@@ -192,7 +192,7 @@ class Registrable(FromParams):
         if name in integrations:
             try_import(integrations[name])
             integrations_imported.add(name)
-            if name in cls.list_available():
+            if name in Registrable._registry[cls]:
                 return None
 
         if "::" in name:
@@ -200,12 +200,12 @@ class Registrable(FromParams):
             if maybe_integration in integrations:
                 try_import(integrations[maybe_integration])
                 integrations_imported.add(maybe_integration)
-                if name in cls.list_available():
+                if name in Registrable._registry[cls]:
                     return None
 
         for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
             try_import(module)
-            if name in cls.list_available():
+            if name in Registrable._registry[cls]:
                 return None
 
         # If we still haven't found the registered 'name', try importing all other integrations.
@@ -213,7 +213,7 @@ class Registrable(FromParams):
             if integration_name not in integrations_imported:
                 try_import(module)
                 integrations_imported.add(integration_name)
-                if name in cls.list_available():
+                if name in Registrable._registry[cls]:
                     return None
 
     @classmethod
@@ -292,8 +292,13 @@ class Registrable(FromParams):
 
         if default is None:
             return keys
-        elif default not in keys:
-            raise ConfigurationError(f"Default implementation {default} is not registered")
+
+        if default not in keys:
+            cls.search_modules(default)
+
+        keys = list(Registrable._registry[cls].keys())
+        if default not in keys:
+            raise ConfigurationError(f"Default implementation '{default}' is not registered")
         else:
             return [default] + [k for k in keys if k != default]
 
