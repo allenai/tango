@@ -4,7 +4,9 @@ from typing import Any, ClassVar, Dict, List, Optional
 
 import yaml
 
-from tango.common import FromParams, Params, PathOrStr
+from .common.aliases import PathOrStr
+from .common.from_params import FromParams
+from .common.params import Params
 
 
 @dataclass
@@ -23,7 +25,7 @@ class TangoGlobalSettings(FromParams):
     An list of modules where custom registered steps or classes can be found.
     """
 
-    log_level: Optional[str] = "warning"
+    log_level: Optional[str] = None
     """
     The log level to use. Options are "debug", "info", "warning", and "error".
 
@@ -45,6 +47,11 @@ class TangoGlobalSettings(FromParams):
     or "forkserver". Default is "spawn".
 
     See :func:`multiprocessing.set_start_method()` for more details.
+    """
+
+    environment: Optional[Dict[str, str]] = None
+    """
+    Environment variables that will be set each time ``tango`` is run.
     """
 
     _path: Optional[Path] = None

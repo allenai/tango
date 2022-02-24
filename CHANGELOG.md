@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on dual k80 GPUs via Beaker.
 - Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
+- Added the "environment" field to `TangoGlobalSettings` for setting environment variables each
+  time `tango` is run.
 - Added a utility function to get a `StepGraph` directly from a file.
 - Added `tango.settings` module and `tango settings` group of commands.
 - A format for storing sequences as `SqliteSparseSequence`.
@@ -31,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a small bug `LocalWorkspace` would fail to capture the conda environment in our Docker image.
 - Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
+- Fixed setting log level via the environment variable `TANGO_LOG_LEVEL`.
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 - Fixed some scenarios where Tango can hang after finishing all steps.
 - `distributed_port` and `log_every` parameters won't factor into `TorchTrainStep`'s unique ID.

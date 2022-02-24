@@ -5,7 +5,6 @@ import importlib
 import json
 import logging
 import lzma
-import pathlib
 from abc import abstractmethod
 from os import PathLike
 from pathlib import Path
@@ -409,7 +408,7 @@ class SqliteSequenceFormat(Format[Sequence[T]]):
     FILENAME = "data.sqlite"
 
     def write(self, artifact: Sequence[T], dir: Union[str, PathLike]):
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         try:
             (dir / self.FILENAME).unlink()
         except FileNotFoundError:
@@ -421,7 +420,7 @@ class SqliteSequenceFormat(Format[Sequence[T]]):
             sqlite.extend(artifact)
 
     def read(self, dir: Union[str, PathLike]) -> Sequence[T]:
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         return SqliteSparseSequence(dir / self.FILENAME, read_only=True)
 
 
@@ -480,7 +479,7 @@ class SqliteDictFormat(Format[DatasetDict]):
     VERSION = 3
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         with gzip.open(dir / "metadata.dill.gz", "wb") as f:
             dill.dump(artifact.metadata, f)
         for split_name, split in artifact.splits.items():
@@ -498,7 +497,7 @@ class SqliteDictFormat(Format[DatasetDict]):
                 sqlite.extend(split)
 
     def read(self, dir: Union[str, PathLike]) -> DatasetDict:
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         with gzip.open(dir / "metadata.dill.gz", "rb") as f:
             metadata = dill.load(f)
         splits = {
