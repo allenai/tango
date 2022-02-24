@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
 - Added a utility function to get a `StepGraph` directly from a file.
+- A format for storing sequences as `SqliteSparseSequence`.
 
 ### Changed
 
@@ -32,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 - Fixed some scenarios where Tango can hang after finishing all steps.
 - `distributed_port` and `log_every` parameters won't factor into `TorchTrainStep`'s unique ID.
+- `MappedSequence` now works with slicing.
+- `MappedSequence` now works with Huggingface `Dataset`.
 - Uncacheable steps are now visible in Tango UI.
 
 
