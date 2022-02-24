@@ -1,7 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
 
-import datasets
 import pytest
 
 from tango.common.sequences import (
@@ -111,11 +110,3 @@ def test_mapped_sequence():
     assert len(m) == len(my_very_long_sequence)
     for i in range(len(m)):
         assert m[i] == m[i:][0]
-
-
-def test_mapped_sequence_of_dataset():
-    ds = datasets.load_dataset("piqa", split="validation")
-    mapped_ds = MappedSequence(lambda x: x["goal"], ds)
-    assert len(ds) == len(mapped_ds)
-    assert ds[0]["goal"] == mapped_ds[0]
-    assert ds[0]["goal"] == mapped_ds[:10][0]

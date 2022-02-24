@@ -17,7 +17,6 @@ isort==5.10.1
 # Running tests
 pytest
 pytest-sphinx
-datasets  # We have a test that needs this.
 
 # Flaky tests
 flaky
