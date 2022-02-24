@@ -215,8 +215,22 @@ class MappedSequence(abc.Sequence):
         self.fn = fn
 
     def __getitem__(self, item):
-        item = self.inner.__getitem__(item)
-        return self.fn(item)
+        if isinstance(item, slice):
+            new_inner = None
+            try:
+                # special case for a special library
+                from datasets import Dataset
+
+                if isinstance(self.inner, Dataset):
+                    new_inner = self.inner.select(range(*item.indices(len(self.inner))))
+            except ImportError:
+                pass
+            if new_inner is None:
+                new_inner = self.inner[item]
+            return MappedSequence(self.fn, new_inner)
+        else:
+            item = self.inner.__getitem__(item)
+            return self.fn(item)
 
     def __len__(self):
         return self.inner.__len__()

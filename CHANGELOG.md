@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "workspace" field to `TangoGlobalSettings`.
 - Added a utility function to get a `StepGraph` directly from a file.
 - Added `tango.settings` module and `tango settings` group of commands.
+- A format for storing sequences as `SqliteSparseSequence`.
 
 ### Changed
 
@@ -33,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 - Fixed some scenarios where Tango can hang after finishing all steps.
 - `distributed_port` and `log_every` parameters won't factor into `TorchTrainStep`'s unique ID.
+- `MappedSequence` now works with slicing.
+- `MappedSequence` now works with Huggingface `Dataset`.
 - Uncacheable steps are now visible in Tango UI.
 - Fixed bug in `Registrable.list_available()` where an error might be raised if the default implementation hadn't been explicitly imported.
 
