@@ -24,6 +24,7 @@ faq
 api/commands
 api/components/index
 api/integrations/index
+api/settings
 api/exceptions
 api/logging
 api/sequences
