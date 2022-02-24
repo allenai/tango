@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
 - Added a utility function to get a `StepGraph` directly from a file.
+- Added `tango.settings` module and `tango settings` group of commands.
 
 ### Changed
 

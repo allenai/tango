@@ -231,8 +231,12 @@ class Workspace(Registrable):
     @classmethod
     def from_url(cls, url: str) -> "Workspace":
         """
-        Initialize a :class:`Workspace` from a workspace URL, e.g. ``local:///tmp/workspace``
+        Initialize a :class:`Workspace` from a workspace URL or path, e.g. ``local:///tmp/workspace``
         would give you a :class:`~tango.workspaces.LocalWorkspace` in the directory ``/tmp/workspace``.
+
+        .. tip::
+            Registered as a workspace constructor under the name "from_url".
+
         """
         parsed = urlparse(url)
         workspace_type = parsed.scheme or "local"
@@ -375,6 +379,9 @@ class Workspace(Registrable):
             yield None
 
         return do_nothing()
+
+
+Workspace.register("from_url", constructor="from_url")
 
 
 @dataclass
