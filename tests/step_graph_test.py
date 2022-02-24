@@ -64,3 +64,14 @@ class TestStepGraph(TangoTestCase):
         step_b = AddNumbersStep(a_number=step_a, b_number=2, step_name="stepB")
         with pytest.raises(ConfigurationError, match="Or a missing dependency"):
             StepGraph({"stepB": step_b})
+
+    def test_to_file(self):
+        step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")
+
+        from tempfile import NamedTemporaryFile
+
+        with NamedTemporaryFile(prefix="test-step-graph-to-file-", suffix=".jsonnet") as file_ref:
+            step_graph.to_file(file_ref.name)
+
+            new_step_graph = StepGraph.from_file(file_ref.name)
+            assert step_graph == new_step_graph

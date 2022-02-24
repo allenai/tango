@@ -203,8 +203,38 @@ class StepGraph(Mapping[str, Step]):
         return result
 
     @classmethod
-    def from_file(cls, filename: PathOrStr):
+    def from_file(cls, filename: PathOrStr) -> "StepGraph":
         params = Params.from_file(filename)
         for package_name in params.pop("include_package", []):
             import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+
+    @classmethod
+    def _to_config(cls, o: Any):
+        # TODO: get rid of repeated logic.
+        if isinstance(o, (list, tuple, set)):
+            return o.__class__(cls._to_config(i) for i in o)
+        elif isinstance(o, dict):
+            return {key: cls._to_config(value) for key, value in o.items()}
+        elif isinstance(o, Step):
+            return {"type": "ref", "ref": o.name}
+        elif o is not None and not isinstance(o, (bool, str, int, float)):
+            raise ValueError(o)
+        return o
+
+    def to_file(self, filename: PathOrStr) -> None:
+        step_dict = {}
+        for step_name, step in self.parsed_steps.items():
+            if step.config is not None:
+                step_dict[step_name] = {
+                    key: self._to_config(value) for key, value in step.config.items()
+                }
+            else:
+                # This will not contain "type". Currently, this blocks us from running this for graphs
+                # not constructed using configs.
+                # return step.to_params().as_dict()
+                # TODO: be more informative with the error.
+                raise RuntimeError(f"Could not construct the parameters for {step_name}.")
+
+        params = Params({"steps": step_dict})
+        params.to_file(filename)
