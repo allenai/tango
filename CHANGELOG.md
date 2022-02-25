@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time `tango` is run.
 - Added a utility function to get a `StepGraph` directly from a file.
 - Added `tango.settings` module and `tango settings` group of commands.
-- A format for storing sequences as `SqliteSparseSequence`.
+- A format for storing sequences as `SqliteSparseSequence`
+- A way to massage kwargs before they determine the unique ID of a `Step`
 
 ### Changed
 
@@ -41,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MappedSequence` now works with Huggingface `Dataset`.
 - Uncacheable steps are now visible in Tango UI.
 - Fixed bug in `Registrable.list_available()` where an error might be raised if the default implementation hadn't been explicitly imported.
+- Fixed issue where having a default argument to the `run()` method wasn't getting applied to the step's unique ID.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09
