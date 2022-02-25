@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   time `tango` is run.
 - Added a utility function to get a `StepGraph` directly from a file.
 - Added `tango.settings` module and `tango settings` group of commands.
-- A format for storing sequences as `SqliteSparseSequence`.
+- A format for storing sequences as `SqliteSparseSequence`
+- A way to massage kwargs before they determine the unique ID of a `Step`
 
 ### Changed
 
