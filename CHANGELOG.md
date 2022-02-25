@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
+
 ### Added
 
 - New example that finetunes a pre-trained ResNet model on the Cats & Dogs dataset.
