@@ -63,3 +63,14 @@ class TestStep(TangoTestCase):
         lower = CountLettersStep(text="foo")
         assert upper.unique_id == lower.unique_id
         assert upper.result() == lower.result()
+
+    def test_default_args(self):
+        class DefaultArgStep(Step[int]):
+            def run(self, left: int, right: int = 0) -> int:  # type: ignore
+                return left + right
+
+        explicit = DefaultArgStep(left=1, right=0)
+        implicit = DefaultArgStep(left=1)
+
+        assert explicit.unique_id == implicit.unique_id
+        assert explicit.result() == implicit.result()

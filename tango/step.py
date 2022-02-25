@@ -1,3 +1,4 @@
+import inspect
 import itertools
 import logging
 import random
@@ -122,7 +123,13 @@ class Step(Registrable, Generic[T]):
             assert _version_re.match(
                 self.VERSION
             ), f"Invalid characters in version '{self.VERSION}'"
-        self.kwargs = self.massage_kwargs(kwargs)
+
+        run_defaults = {
+            k: v.default
+            for k, v in inspect.signature(self.run).parameters.items()
+            if v.default is not inspect.Parameter.empty
+        }
+        self.kwargs = self.massage_kwargs({**run_defaults, **kwargs})
 
         if step_format is None:
             self.format = self.FORMAT
