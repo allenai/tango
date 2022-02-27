@@ -227,6 +227,12 @@ def cleanup(*args, **kwargs):
     help="Start a server that visualizes the current run",
     default=True,
 )
+@click.option(
+    "-n",
+    "--name",
+    type=str,
+    help="""Specify a name for the experiment""",
+)
 @click.pass_obj
 def run(
     settings: TangoGlobalSettings,
@@ -236,6 +242,7 @@ def run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     server: bool = True,
+    name: Optional[str] = None,
 ):
     """
     Run a tango experiment.
@@ -264,6 +271,7 @@ def run(
         overrides=overrides,
         include_package=include_package,
         start_server=server,
+        name=name,
     )
 
 
@@ -582,6 +590,7 @@ def _run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     start_server: bool = True,
+    name: Optional[str] = None,
 ) -> str:
     from tango.executor import Executor
     from tango.server.workspace_server import WorkspaceServer
@@ -614,7 +623,7 @@ def _run(
     # Initialize step graph and register run.
     step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
     params.assert_empty("'tango run'")
-    run = workspace.register_run(step for step in step_graph.values())
+    run = workspace.register_run((step for step in step_graph.values()), name)
 
     # Capture logs to file.
     with workspace.capture_logs_for_run(run.name):
