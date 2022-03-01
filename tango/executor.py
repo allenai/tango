@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Set, TypeVar
+from typing import List, Optional, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
@@ -24,8 +24,15 @@ class Executor:
         self.workspace = workspace
         self.include_package = include_package
 
-    def _execute_step(self, step, is_uncacheable_leaf_step=False):
+    def execute_step(self, step, is_uncacheable_leaf_step=False):
         # Note: did not add type information because of circular imports.
+
+        # TODO: we include this here because this might be called directly from main too. Refactor?
+        # Import included packages to find registered components.
+        if self.include_package is not None:
+            for package_name in self.include_package:
+                import_extra_module(package_name)
+
         if step.cache_results:
             step.ensure_result(self.workspace)
         elif is_uncacheable_leaf_step:
@@ -35,26 +42,9 @@ class Executor:
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
-        from tango import Step
-
-        # Import included packages to find registered components.
-        if self.include_package is not None:
-            for package_name in self.include_package:
-                import_extra_module(package_name)
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        # find uncacheable leaf steps
-        interior_steps: Set[Step] = set()
-        for step in ordered_steps:
-            for dependency in step.dependencies:
-                interior_steps.add(dependency)
-        uncacheable_leaf_steps = {
-            step for step in set(step_graph.values()) - interior_steps if not step.cache_results
-        }
+        uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
 
         for step in ordered_steps:
-            # if step.cache_results:
-            #     step.ensure_result(self.workspace)
-            # elif step in uncacheable_leaf_steps:
-            #     step.result(self.workspace)
-            self._execute_step(step, step in uncacheable_leaf_steps)
+            self.execute_step(step, step in uncacheable_leaf_steps)

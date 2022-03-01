@@ -202,6 +202,16 @@ class StepGraph(Mapping[str, Step]):
             result.append(step_dict[step_name])
         return result
 
+    def find_uncacheable_leaf_steps(self) -> Set[Step]:
+        interior_steps: Set[Step] = set()
+        for _, step in self.parsed_steps.items():
+            for dependency in step.dependencies:
+                interior_steps.add(dependency)
+        uncacheable_leaf_steps = {
+            step for step in set(self.values()) - interior_steps if not step.cache_results
+        }
+        return uncacheable_leaf_steps
+
     @classmethod
     def from_file(cls, filename: PathOrStr) -> "StepGraph":
         params = Params.from_file(filename)

@@ -277,7 +277,7 @@ def cleanup(*args, **kwargs):
     default=True,
 )
 @click.option(
-    "-n",
+    "-s",
     "--step-name",
     help="Execute a particular step (and its dependencies) in the experiment.",
     type=str,
@@ -444,6 +444,7 @@ def _run(
     step_name: Optional[str] = None,
 ) -> str:
     from tango.executor import Executor
+    from tango.multicore_executor import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
     from tango.step_graph import StepGraph
     from tango.workspace import Workspace
@@ -480,7 +481,7 @@ def _run(
             f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
             f"The config contains: {list(step_graph.keys())}."
         )
-        step_graph = step_graph.get_sub_graph(step_name)
+        # step_graph = step_graph.get_sub_graph(step_name)
 
     run = workspace.register_run(step for step in step_graph.values())
 
@@ -500,24 +501,32 @@ def _run(
             )
 
         # Initialize Executor and execute the step graph.
-        executor = Executor(workspace=workspace, include_package=include_package)
-        executor.execute_step_graph(step_graph)
-
-        # Print everything that has been computed.
-        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        for step in ordered_steps:
-            info = workspace.step_info(step)
-            if info.result_location is not None:
-                click_logger.info(
-                    click.style("\N{check mark} The output for ", fg="green")
-                    + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(" is in ", fg="green")
-                    + click.style(f"{info.result_location}", bold=True, fg="green")
-                )
-
-        click_logger.info(
-            click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
+        # executor = Executor(workspace=workspace, include_package=include_package)
+        executor = MulticoreExecutor(
+            workspace=workspace, include_package=include_package, parallelism=2
         )
+        if step_name is not None:
+            uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
+            executor.execute_step(step_graph[step_name], step_name in uncacheable_leaf_steps)
+        else:
+            executor.execute_step_graph(step_graph)
+
+            # Print everything that has been computed.
+            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+            for step in ordered_steps:
+                info = workspace.step_info(step)
+                if info.result_location is not None:
+                    click_logger.info(
+                        click.style("\N{check mark} The output for ", fg="green")
+                        + click.style(f'"{step.name}"', bold=True, fg="green")
+                        + click.style(" is in ", fg="green")
+                        + click.style(f"{info.result_location}", bold=True, fg="green")
+                    )
+
+            click_logger.info(
+                click.style("Finished run ", fg="green")
+                + click.style(run.name, fg="green", bold=True)
+            )
 
     return run.name
 
