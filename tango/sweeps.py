@@ -20,8 +20,14 @@ class Sweeper(Registrable):
             hyperparams_lsts.append(val)            
         hyperparam_combos = list(itertools.product(*hyperparams_lsts))
         return hyperparam_combos
-        
     
+    # TODO: wondering if this function should be here or in a test_file?
+    def override_hyperparameters(self):
+        pass
+    
+    # TODO: trying to figure the best path forward? should i use tests?
+    def run_experiments(self):
+        pass
 
 # wandb sweeper class
 @Sweeper.register("wandb")
