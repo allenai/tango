@@ -63,6 +63,7 @@ class MulticoreExecutor(Executor):
             return
         if len(self._running) < self.parallelism:
             step_name = self._queued_steps.pop(0)
+            # TODO: also check the StepState here for sanity, in case there are 2 concurrent experiment runs.
             # TODO: will all Workspace types have self.dir?
             command = f"tango run {config_path} -w {self.workspace.dir} -s {step_name} --no-server"  # type: ignore
             if self.include_package is not None:
@@ -119,6 +120,7 @@ class MulticoreExecutor(Executor):
         from tempfile import NamedTemporaryFile
 
         # TODO: use Tango global settings cache as "dir".
+        # TODO: try "with" again.
         file_ref = NamedTemporaryFile(
             prefix="step-graph-to-file-run", suffix=".jsonnet", delete=False
         )
