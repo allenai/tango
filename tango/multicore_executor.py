@@ -139,10 +139,10 @@ class MulticoreExecutor(Executor):
                 while len(self._queued_steps) > 0 and len(self._running) < self.parallelism:
                     self._try_to_execute_next_step(config_path=file_ref.name)
 
+                # For debugging.
                 import time
 
                 time.sleep(5)
-                # For debugging.
                 count -= 1
                 if count <= 0:
                     logger.debug("Coming out of the while loop because count exceeded.")
