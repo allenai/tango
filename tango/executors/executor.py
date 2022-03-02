@@ -27,7 +27,6 @@ class Executor:
     def execute_step(self, step, is_uncacheable_leaf_step=False):
         # Note: did not add type information because of circular imports.
 
-        # TODO: we include this here because this might be called directly from main too. Refactor?
         # Import included packages to find registered components.
         if self.include_package is not None:
             for package_name in self.include_package:

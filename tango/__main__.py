@@ -678,14 +678,10 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
         if step_name is not None:
+            # TODO: refactor to remove repeated code.
             uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
-            executor.execute_step(step_graph[step_name], step_name in uncacheable_leaf_steps)
-        else:
-            executor.execute_step_graph(step_graph)
-
-        # Print everything that has been computed.
-        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        for step in ordered_steps:
+            step = step_graph[step_name]
+            executor.execute_step(step, step_name in uncacheable_leaf_steps)
             info = workspace.step_info(step)
             if info.result_location is not None:
                 click_logger.info(
@@ -694,6 +690,20 @@ def _run(
                     + click.style(" is in ", fg="green")
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
+        else:
+            executor.execute_step_graph(step_graph)
+
+            # Print everything that has been computed.
+            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+            for step in ordered_steps:
+                info = workspace.step_info(step)
+                if info.result_location is not None:
+                    click_logger.info(
+                        click.style("\N{check mark} The output for ", fg="green")
+                        + click.style(f'"{step.name}"', bold=True, fg="green")
+                        + click.style(" is in ", fg="green")
+                        + click.style(f"{info.result_location}", bold=True, fg="green")
+                    )
 
         click_logger.info(
             click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
