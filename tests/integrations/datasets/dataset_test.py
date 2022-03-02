@@ -1,5 +1,6 @@
 import datasets
 
+from tango.common.sequences import MappedSequence
 from tango.common.testing import TangoTestCase
 from tango.integrations.datasets import (
     DatasetsFormat,
@@ -41,3 +42,11 @@ class TestDatasets(TangoTestCase):
         assert (result_dir / "train_data" / "data").is_dir()
         dataset = DatasetsFormat().read(result_dir / "train_data")
         assert len(dataset) == 2
+
+
+def test_mapped_sequence_of_dataset():
+    ds = datasets.load_dataset("piqa", split="validation")
+    mapped_ds = MappedSequence(lambda x: x["goal"], ds)
+    assert len(ds) == len(mapped_ds)
+    assert ds[0]["goal"] == mapped_ds[0]
+    assert ds[0]["goal"] == mapped_ds[:10][0]

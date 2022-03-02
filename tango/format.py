@@ -5,7 +5,6 @@ import importlib
 import json
 import logging
 import lzma
-import pathlib
 from abc import abstractmethod
 from os import PathLike
 from pathlib import Path
@@ -19,6 +18,7 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Sequence,
     TypeVar,
     Union,
     cast,
@@ -418,6 +418,29 @@ class TextFormatIterator(Iterator[str]):
             raise StopIteration()
 
 
+@Format.register("sqlite_sequence")
+class SqliteSequenceFormat(Format[Sequence[T]]):
+    VERSION = 3
+
+    FILENAME = "data.sqlite"
+
+    def write(self, artifact: Sequence[T], dir: Union[str, PathLike]):
+        dir = Path(dir)
+        try:
+            (dir / self.FILENAME).unlink()
+        except FileNotFoundError:
+            pass
+        if isinstance(artifact, SqliteSparseSequence):
+            artifact.copy_to(dir / self.FILENAME)
+        else:
+            sqlite = SqliteSparseSequence(dir / self.FILENAME)
+            sqlite.extend(artifact)
+
+    def read(self, dir: Union[str, PathLike]) -> Sequence[T]:
+        dir = Path(dir)
+        return SqliteSparseSequence(dir / self.FILENAME, read_only=True)
+
+
 @Format.register("sqlite")
 class SqliteDictFormat(Format[DatasetDict]):
     """This format works specifically on results of type :class:`~tango.common.DatasetDict`. It writes those
@@ -473,7 +496,7 @@ class SqliteDictFormat(Format[DatasetDict]):
     VERSION = 3
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         with gzip.open(dir / "metadata.dill.gz", "wb") as f:
             dill.dump(artifact.metadata, f)
         for split_name, split in artifact.splits.items():
@@ -491,7 +514,7 @@ class SqliteDictFormat(Format[DatasetDict]):
                 sqlite.extend(split)
 
     def read(self, dir: Union[str, PathLike]) -> DatasetDict:
-        dir = pathlib.Path(dir)
+        dir = Path(dir)
         with gzip.open(dir / "metadata.dill.gz", "rb") as f:
             metadata = dill.load(f)
         splits = {

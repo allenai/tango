@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
+
 ### Added
 
 - New example that finetunes a pre-trained ResNet model on the Cats & Dogs dataset.
@@ -14,8 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on dual k80 GPUs via Beaker.
 - Added the "-w/--workspace" option to `tango run` and `tango server` commands. This option takes a path or URL, and instantiates the workspace from the URL using the newly added `Workspace.from_url()` method.
 - Added the "workspace" field to `TangoGlobalSettings`.
+- Added the "environment" field to `TangoGlobalSettings` for setting environment variables each
+  time `tango` is run.
 - Added a utility function to get a `StepGraph` directly from a file.
-- Added CLI option to run a single step in a config using `--step-name` or `-n`.
+- Added `tango.settings` module and `tango settings` group of commands.
+- A format for storing sequences as `SqliteSparseSequence`
+- A way to massage kwargs before they determine the unique ID of a `Step`
+- Added CLI option to run a single step in a config using `--step-name` or `-s`.
 
 ### Changed
 
@@ -31,10 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed a small bug `LocalWorkspace` would fail to capture the conda environment in our Docker image.
 - Fixed activation of `FILE_FRIENDLY_LOGGING` when set from the corresponding environment variable.
+- Fixed setting log level via the environment variable `TANGO_LOG_LEVEL`.
 - Use relative paths within the `work_dir` for symbolic links to the latest and the best checkpoints in `TorchTrainStep`.
 - Fixed some scenarios where Tango can hang after finishing all steps.
 - `distributed_port` and `log_every` parameters won't factor into `TorchTrainStep`'s unique ID.
+- `MappedSequence` now works with slicing.
+- `MappedSequence` now works with Huggingface `Dataset`.
 - Uncacheable steps are now visible in Tango UI.
+- Fixed bug in `Registrable.list_available()` where an error might be raised if the default implementation hadn't been explicitly imported.
+- Fixed issue where having a default argument to the `run()` method wasn't getting applied to the step's unique ID.
 
 
 ## [v0.5.0](https://github.com/allenai/tango/releases/tag/v0.5.0) - 2022-02-09

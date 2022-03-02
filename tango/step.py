@@ -1,3 +1,4 @@
+import inspect
 import itertools
 import logging
 import random
@@ -122,7 +123,13 @@ class Step(Registrable, Generic[T]):
             assert _version_re.match(
                 self.VERSION
             ), f"Invalid characters in version '{self.VERSION}'"
-        self.kwargs = kwargs
+
+        run_defaults = {
+            k: v.default
+            for k, v in inspect.signature(self.run).parameters.items()
+            if v.default is not inspect.Parameter.empty
+        }
+        self.kwargs = self.massage_kwargs({**run_defaults, **kwargs})
 
         if step_format is None:
             self.format = self.FORMAT
@@ -183,6 +190,31 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
 
         self._config = step_config
+
+    @classmethod
+    def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Override this method in your step if you want to change the step's arguments before they are passed to the
+        :meth:`run()` method.
+
+        This can be useful if you want to normalize arguments that are passed to your step. For example,
+        you might not care about the case of a string that's passed in. You can lowercase the string in this
+        method, and the step will function as if it had been created with a lowercase string from the start.
+        This way you can make sure that the step's unique ID does not change when the case of the input changes.
+
+        .. note::
+            When the input to a step is another step, this method will see the step in the input, not the other
+            step's result.
+
+        .. warning::
+            This is an advanced feature of Tango that you won't need most of the time.
+
+        By default, this method does nothing and just returns its input unchanged.
+
+        :param kwargs: The original kwargs that were passed to the step during construction.
+        :return: New kwargs that will be passed to the step's :meth:`run()` method.
+        """
+        return kwargs
 
     @property
     def logger(self) -> logging.Logger:

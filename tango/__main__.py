@@ -22,7 +22,7 @@ You can see the the list of all available commands by running:
 
     Options:
       --version                       Show the version and exit.
-      --config FILE                   Path to a global tango.yml settings file.
+      --settings FILE                 Path to a global tango.yml settings file.
       --log-level [debug|info|warning|error]
                                       Set the global log level.
       --file-friendly-logging         Outputs progress bar status on separate lines and slows refresh rate.
@@ -31,9 +31,10 @@ You can see the the list of all available commands by running:
       --help                          Show this message and exit.
 
     Commands:
-      info    Get info about the current tango installation
-      run     Run a tango experiment
-      server  Run a local webserver that watches a workspace
+      info      Get info about the current tango installation.
+      run       Run a tango experiment.
+      server    Run a local webserver that watches a workspace.
+      settings  Commands for initializing and updating global settings.
 
 To see all of the available arguments and options for a particular command, run
 
@@ -66,116 +67,51 @@ such as which integrations are available.
 The ``server`` command spins up a web server that watches a workspace. You can use this to track the
 progress of your runs while they are happening.
 
+``tango settings``
+------------------
+
+The ``settings`` group of commands can be used to initialize a :class:`~tango.settings.TangoGlobalSettings`
+file or update fields in it.
+
 """
 import multiprocessing as mp
 import os
-from dataclasses import dataclass
+import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-from tango.common.aliases import PathOrStr
-from tango.common.from_params import FromParams
 from tango.common.logging import click_logger, initialize_logging, teardown_logging
 from tango.common.params import Params
-from tango.common.util import import_extra_module
+from tango.common.util import (
+    find_integrations,
+    import_extra_module,
+    import_module_and_submodules,
+)
+from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
 
+_CLICK_GROUP_DEFAULTS = {
+    "cls": HelpColorsGroup,
+    "help_options_color": "green",
+    "help_headers_color": "yellow",
+    "context_settings": {"max_content_width": 115},
+}
 
-@dataclass
-class TangoGlobalSettings(FromParams):
-    """
-    Defines global settings for tango.
-    """
-
-    workspace: Optional[Dict[str, Any]] = None
-    """
-    Parameters to initialize a :class:`tango.workspace.Workspace` with.
-    """
-
-    include_package: Optional[List[str]] = None
-    """
-    An list of modules where custom registered steps or classes can be found.
-    """
-
-    log_level: Optional[str] = "warning"
-    """
-    The log level to use. Options are "debug", "info", "warning", and "error".
-
-    .. note::
-        This does not affect the :data:`~tango.common.logging.click_logger`
-        or logs from :class:`~tango.common.Tqdm` progress bars.
-
-    """
-
-    file_friendly_logging: Optional[bool] = None
-    """
-    If this flag is set to ``True``, we add newlines to tqdm output, even on an interactive terminal, and we slow
-    down tqdm's output to only once every 10 seconds.
-    """
-
-    multiprocessing_start_method: str = "spawn"
-    """
-    The ``start_method`` to use when starting new multiprocessing workers. Can be "fork", "spawn",
-    or "forkserver". Default is "spawn".
-
-    See :func:`multiprocessing.set_start_method()` for more details.
-    """
-
-    _path: Optional[Path] = None
-
-    @classmethod
-    def default(cls) -> "TangoGlobalSettings":
-        """
-        Initialize the config from files by checking the default locations
-        in order, or just return the default if none of the files can be found.
-        """
-        for directory in (Path("."), Path.home() / ".config"):
-            for extension in ("yml", "yaml"):
-                path = directory / f"tango.{extension}"
-                if path.is_file():
-                    return cls.from_file(path)
-        return cls()
-
-    @classmethod
-    def find_or_default(cls, path: Optional[PathOrStr]) -> "TangoGlobalSettings":
-        """
-        Initialize the config from a given configuration file, or falls back to returning
-        the default configuration if no file is given.
-        """
-        if path is not None:
-            path = Path(path)
-            if not path.is_file():
-                raise FileNotFoundError(path)
-            return cls.from_file(path)
-        else:
-            return cls.default()
-
-    @property
-    def path(self) -> Optional[Path]:
-        """
-        The path to the file the config was read from.
-        """
-        return self._path
-
-    @classmethod
-    def from_file(cls, path: Path) -> "TangoGlobalSettings":
-        params = Params.from_file(path)
-        params["_path"] = path
-        return cls.from_params(params)
+_CLICK_COMMAND_DEFAULTS = {
+    "cls": HelpColorsCommand,
+    "help_options_color": "green",
+    "help_headers_color": "yellow",
+    "context_settings": {"max_content_width": 115},
+}
 
 
-@click.group(
-    cls=HelpColorsGroup,
-    help_options_color="green",
-    help_headers_color="yellow",
-    context_settings={"max_content_width": 115},
-)
+@click.group(**_CLICK_GROUP_DEFAULTS)
 @click.version_option(version=VERSION)
 @click.option(
-    "--config",
+    "--settings",
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
     help="Path to a global tango.yml settings file.",
 )
@@ -199,31 +135,51 @@ class TangoGlobalSettings(FromParams):
 @click.pass_context
 def main(
     ctx,
-    config: Optional[str] = None,
+    settings: Optional[str] = None,
     log_level: Optional[str] = None,
     file_friendly_logging: bool = False,
     start_method: Optional[str] = None,
 ):
-    config: TangoGlobalSettings = TangoGlobalSettings.find_or_default(config)
+    settings: TangoGlobalSettings = (
+        TangoGlobalSettings.from_file(settings)
+        if settings is not None
+        else TangoGlobalSettings.default()
+    )
+
+    if settings.environment:
+        from tango.common.aliases import EnvVarNames
+
+        # These environment variables should not be set this way since they'll be ignored.
+        blocked_env_variable_names = EnvVarNames.values()
+
+        for key, value in settings.environment.items():
+            if key not in blocked_env_variable_names:
+                os.environ[key] = value
+            else:
+                warnings.warn(
+                    f"Ignoring environment variable '{key}' from settings file. "
+                    f"Please use the corresponding settings field instead.",
+                    UserWarning,
+                )
 
     if start_method is not None:
-        config.multiprocessing_start_method = start_method
+        settings.multiprocessing_start_method = start_method
 
-    mp.set_start_method(config.multiprocessing_start_method)
+    mp.set_start_method(settings.multiprocessing_start_method)
 
     if log_level is not None:
-        config.log_level = log_level
+        settings.log_level = log_level
 
     if file_friendly_logging:
-        config.file_friendly_logging = file_friendly_logging
+        settings.file_friendly_logging = file_friendly_logging
 
     initialize_logging(
-        log_level=config.log_level,
-        file_friendly_logging=config.file_friendly_logging,
+        log_level=settings.log_level,
+        file_friendly_logging=settings.file_friendly_logging,
         enable_click_logs=True,
     )
 
-    ctx.obj = config
+    ctx.obj = settings
 
 
 @main.result_callback()
@@ -231,12 +187,7 @@ def cleanup(*args, **kwargs):
     teardown_logging()
 
 
-@main.command(
-    cls=HelpColorsCommand,
-    help_options_color="green",
-    help_headers_color="yellow",
-    context_settings={"max_content_width": 115},
-)
+@main.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "experiment",
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
@@ -298,7 +249,7 @@ def cleanup(*args, **kwargs):
 )
 @click.pass_obj
 def run(
-    config: TangoGlobalSettings,
+    settings: TangoGlobalSettings,
     experiment: str,
     workspace: Optional[str] = None,
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
@@ -310,7 +261,7 @@ def run(
     step_name: Optional[str] = None,
 ):
     """
-    Run a tango experiment
+    Run a tango experiment.
 
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
@@ -330,7 +281,7 @@ def run(
         workspace = "local://" + str(workspace_dir)
 
     _run(
-        config,
+        settings,
         experiment,
         workspace_url=workspace,
         overrides=overrides,
@@ -342,12 +293,7 @@ def run(
     )
 
 
-@main.command(
-    cls=HelpColorsCommand,
-    help_options_color="green",
-    help_headers_color="yellow",
-    context_settings={"max_content_width": 115},
-)
+@main.command(**_CLICK_COMMAND_DEFAULTS)
 @click.option(
     "-w",
     "--workspace",
@@ -365,12 +311,12 @@ def run(
 )
 @click.pass_obj
 def server(
-    config: TangoGlobalSettings,
+    settings: TangoGlobalSettings,
     workspace: Optional[str],
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
 ):
     """
-    Run a local webserver that watches a workspace
+    Run a local webserver that watches a workspace.
     """
     from tango.server.workspace_server import WorkspaceServer
     from tango.workspace import Workspace
@@ -385,8 +331,8 @@ def server(
         workspace_to_watch = LocalWorkspace(workspace_dir)
     elif workspace is not None:
         workspace_to_watch = Workspace.from_url(workspace)
-    elif config.workspace is not None:
-        workspace_to_watch = Workspace.from_params(config.workspace)
+    elif settings.workspace is not None:
+        workspace_to_watch = Workspace.from_params(settings.workspace)
     else:
         raise click.ClickException(
             "-w/--workspace or -d/--workspace-dir required unless a default workspace is specified "
@@ -398,32 +344,25 @@ def server(
     server.serve_forever()
 
 
-@main.command(
-    cls=HelpColorsCommand,
-    help_options_color="green",
-    help_headers_color="yellow",
-    context_settings={"max_content_width": 115},
-)
+@main.command(**_CLICK_COMMAND_DEFAULTS)
 @click.pass_obj
-def info(config: TangoGlobalSettings):
+def info(settings: TangoGlobalSettings):
     """
-    Get info about the current tango installation
+    Get info about the current tango installation.
     """
     import platform
 
-    from tango.common.util import find_integrations, import_module_and_submodules
-
     click_logger.info(f"Tango version {VERSION} (python {platform.python_version()})")
 
-    # Show info about config.
-    if config.path is not None:
-        click_logger.info("\nConfig:")
+    # Show info about settings.
+    if settings.path is not None:
+        click_logger.info("\nSettings:")
         click_logger.info(
-            click.style(f" \N{check mark} Loaded from {str(config.path)}", fg="green")
+            click.style(f" \N{check mark} Loaded from {str(settings.path)}", fg="green")
         )
-        if config.include_package:
+        if settings.include_package:
             click_logger.info("\n   Included packages:")
-            for package in config.include_package:
+            for package in settings.include_package:
                 is_found = True
                 try:
                     import_module_and_submodules(package)
@@ -451,8 +390,219 @@ def info(config: TangoGlobalSettings):
             click_logger.info(click.style(f" \N{ballot x} {name} (not installed)", fg="yellow"))
 
 
+@main.group(**_CLICK_GROUP_DEFAULTS)
+@click.pass_obj
+def settings(ctx):
+    """
+    Commands for initializing and updating global settings.
+    """
+
+
+@settings.command(**_CLICK_COMMAND_DEFAULTS)
+@click.option(
+    "-p",
+    "--path",
+    type=click.Path(exists=False, dir_okay=False, resolve_path=True),
+    default=None,
+    help="""The path to write the settings to.""",
+)
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    help="""Force overwrite the file if it exists.""",
+)
+@click.pass_obj
+def init(settings: TangoGlobalSettings, path: Optional[str] = None, force: bool = False):
+    """
+    Initialize the settings file.
+    """
+    path_to_write = Path(path or TangoGlobalSettings._DEFAULT_LOCATION)
+    if path_to_write.is_file() and not force:
+        raise click.ClickException("Settings file already exists! Use -f/--force to overwrite it.")
+    settings.to_file(path_to_write)
+    click_logger.info(
+        click.style("\N{check mark} Settings file written to ", fg="green")
+        + click.style(path_to_write, fg="green", bold=True)
+    )
+
+
+@settings.group(**_CLICK_GROUP_DEFAULTS)
+@click.pass_obj
+def set(settings: TangoGlobalSettings):
+    """
+    Set a value in the settings file.
+    """
+    if settings.path is None:
+        raise click.ClickException(
+            "Settings file not found! Did you forget to call 'tango settings init'?"
+        )
+
+
+@set.result_callback()
+def save_settings(settings: TangoGlobalSettings):
+    settings.save()
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "workspace",
+    type=str,
+)
+@click.option(
+    "--validate/--no-validate",
+    type=bool,
+    help="Validate that the workspace can be initialized.",
+    default=True,
+)
+@click.pass_obj
+def workspace(
+    settings: TangoGlobalSettings, workspace: str, validate: bool = True
+) -> TangoGlobalSettings:
+    """
+    Set the default workspace path or URL.
+    """
+    from urllib.parse import urlparse
+
+    if not urlparse(workspace).scheme:
+        settings.workspace = {"type": "local", "dir": str(Path(workspace).resolve())}
+    else:
+        settings.workspace = {"type": "from_url", "url": workspace}
+
+    if validate:
+        from tango.workspace import Workspace
+
+        for package_name in settings.include_package or []:
+            import_extra_module(package_name)
+
+        Workspace.from_params(settings.workspace.copy())
+
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "packages",
+    type=str,
+    nargs=-1,
+)
+@click.option(
+    "-a",
+    "--append",
+    is_flag=True,
+    help="Appends packages instead of overwriting.",
+)
+@click.option(
+    "--validate/--no-validate",
+    type=bool,
+    help="Validate that the workspace can be initialized.",
+    default=True,
+)
+@click.pass_obj
+def include_package(
+    settings: TangoGlobalSettings,
+    packages: List[str],
+    append: bool = False,
+    validate: bool = True,
+) -> TangoGlobalSettings:
+    """
+    Set or add modules to automatically import on 'tango run'.
+    """
+    new_include: List[str]
+    if append:
+        new_include = settings.include_package or []
+    else:
+        new_include = []
+    for package in packages:
+        if package not in new_include:
+            new_include.append(package)
+    settings.include_package = new_include
+    if validate:
+        for package in settings.include_package:
+            try:
+                import_module_and_submodules(package)
+            except (ModuleNotFoundError, ImportError):
+                raise click.ClickException(f"Failed to import '{package}'")
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "level",
+    type=click.Choice(["debug", "info", "warning", "error"], case_sensitive=False),
+)
+@click.pass_obj
+def log_level(settings: TangoGlobalSettings, level: str) -> TangoGlobalSettings:
+    """
+    Set the log level.
+    """
+    settings.log_level = level.lower()
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "value",
+    type=bool,
+)
+@click.pass_obj
+def file_friendly_logging(settings: TangoGlobalSettings, value: bool) -> TangoGlobalSettings:
+    """
+    Toggle file friendly logging mode.
+    """
+    settings.file_friendly_logging = value
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "start_method",
+    type=click.Choice(["fork", "spawn", "forkserver"], case_sensitive=True),
+)
+@click.pass_obj
+def multiprocessing_start_method(
+    settings: TangoGlobalSettings, start_method: str
+) -> TangoGlobalSettings:
+    """
+    Set the Python multiprocessing start method.
+    """
+    settings.multiprocessing_start_method = start_method
+    return settings
+
+
+@set.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument(
+    "key",
+    type=str,
+)
+@click.argument(
+    "value",
+    type=str,
+)
+@click.pass_obj
+def env(settings: TangoGlobalSettings, key: str, value: str) -> TangoGlobalSettings:
+    """
+    Add or update an environment variable.
+    """
+    from tango.common.aliases import EnvVarNames
+
+    # These environment variables should not be set this way since they'll be ignored.
+    blocked_env_variable_names = EnvVarNames.values()
+
+    if key in blocked_env_variable_names:
+        raise click.ClickException(
+            f"Cannot add environment variable '{key}' to settings. "
+            f"Please set the corresponding settings field instead."
+        )
+
+    if settings.environment is None:
+        settings.environment = {}
+    settings.environment[key] = value
+    return settings
+
+
 def _run(
-    config: TangoGlobalSettings,
+    settings: TangoGlobalSettings,
     experiment: str,
     workspace_url: Optional[str] = None,
     overrides: Optional[str] = None,
@@ -478,7 +628,7 @@ def _run(
     # custom Executor, StepCache, or Workspace.
     include_package: List[str] = list(include_package or [])
     include_package += params.pop("include_package", [])
-    include_package += config.include_package or []
+    include_package += settings.include_package or []
     for package_name in include_package:
         import_extra_module(package_name)
 
@@ -486,8 +636,8 @@ def _run(
     workspace: Workspace
     if workspace_url is not None:
         workspace = Workspace.from_url(workspace_url)
-    elif config.workspace is not None:
-        workspace = Workspace.from_params(config.workspace)
+    elif settings.workspace is not None:
+        workspace = Workspace.from_params(settings.workspace)
     else:
         workspace = default_workspace
 

@@ -9,11 +9,12 @@ import pytest
 
 from tango.common import Params
 from tango.common.testing import TangoTestCase
+from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
 from tango.workspace import StepExecutionMetadata
 
 
-class TestMain(TangoTestCase):
+class TestRun(TangoTestCase):
     def clean_log_lines(
         self, log_lines: List[str], file_friendly_logging: bool = False
     ) -> List[str]:
@@ -181,3 +182,48 @@ class TestMain(TangoTestCase):
         # Make sure tqdm output makes it into the log file.
         assert "progress from main process: 100%" in all_logs
         assert "progress from worker: 100%" in all_logs
+
+
+class TestSettings(TangoTestCase):
+    def setup_method(self):
+        super().setup_method()
+        self._wd_backup = os.getcwd()
+        os.chdir(self.TEST_DIR)
+        cmd = "tango settings init -p ./tango.yml".split(" ")
+        subprocess.run(cmd, check=True)
+
+    def teardown_method(self):
+        os.chdir(self._wd_backup)
+        super().teardown_method()
+
+    @property
+    def settings(self) -> TangoGlobalSettings:
+        return TangoGlobalSettings.from_file(self.TEST_DIR / "tango.yml")
+
+    def test_settings_set_workspace(self):
+        cmd = "tango settings set workspace ./workspace".split(" ")
+        subprocess.run(cmd, check=True)
+        assert self.settings.workspace == {
+            "type": "local",
+            "dir": str((self.TEST_DIR / "workspace").resolve()),
+        }
+
+    def test_settings_set_include_package(self):
+        cmd = "tango settings set include-package tango.steps".split(" ")
+        subprocess.run(cmd, check=True)
+        assert self.settings.include_package == ["tango.steps"]
+
+    def test_settings_set_include_package_invalid(self):
+        cmd = "tango settings set include-package foo".split(" ")
+        with pytest.raises(subprocess.CalledProcessError):
+            subprocess.run(cmd, check=True)
+
+    def test_settings_set_environment(self):
+        cmd = "tango settings set env FOO BAR".split(" ")
+        subprocess.run(cmd, check=True)
+        assert self.settings.environment == {"FOO": "BAR"}
+
+    def test_settings_set_environment_blocked_var(self):
+        cmd = "tango settings set env TANGO_LOG_LEVEL info".split(" ")
+        with pytest.raises(subprocess.CalledProcessError):
+            subprocess.run(cmd, check=True)
