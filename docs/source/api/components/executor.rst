@@ -4,5 +4,5 @@ Executor
 Base class
 ----------
 
-.. autoclass:: tango.executor.Executor
+.. autoclass:: tango.executors.executor.Executor
    :members: 
