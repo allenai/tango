@@ -612,8 +612,7 @@ def _run(
     parallelism: int = 1,
     multicore: bool = False,
 ) -> str:
-    from tango.executor import Executor
-    from tango.multicore_executor import MulticoreExecutor
+    from tango.executors import Executor, MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
     from tango.step_graph import StepGraph
     from tango.workspace import Workspace

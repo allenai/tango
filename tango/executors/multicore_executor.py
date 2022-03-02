@@ -5,7 +5,7 @@ import subprocess
 from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 
 from tango.common.util import import_extra_module
-from tango.executor import Executor
+from tango.executors.executor import Executor
 from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.workspace import StepState, Workspace
@@ -30,11 +30,18 @@ class MulticoreExecutor(Executor):
         self.include_package = include_package
         self.parallelism = parallelism
 
+        # TODO: ugly code.
+        self._num_tries_to_sync_states = 3
+        self._wait_seconds_to_sync_states = 3
+
+        self._reset_execution()
+
+    def _reset_execution(self):
         self._running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
         # # We save the steps that have completed/failed so that we only query step states once
         # # per loop.
         # self._done: Set[str] = set()
-        self._failed: Set[str] = set()
+        # self._failed: Set[str] = set()
         self._queued_steps: List[str] = []  # TODO: do we need a fancier Queue object?
 
     def _queue_step(self, step_name: str) -> None:
@@ -81,7 +88,7 @@ class MulticoreExecutor(Executor):
                 f"{self.parallelism} steps are already running. Will attempt to execute later."
             )
 
-    def _update_running_steps(self, step_graph: StepGraph) -> List[str]:
+    def _update_running_steps(self, step_states: Dict[str, StepState]) -> List[str]:
         done = []
         errors = []
         for step_name, process in self._running.items():
@@ -89,13 +96,10 @@ class MulticoreExecutor(Executor):
             if poll_status is not None:
                 logger.debug(f"The process for {step_name} has finished executing.")
                 # TODO: also check the step_info state. Only check that?
-                if (
-                    poll_status == 0
-                    and self._get_state(step_graph[step_name]) == StepState.COMPLETED
-                ):
+                if poll_status == 0 and step_states[step_name] == StepState.COMPLETED:
                     logger.debug(f"The process for {step_name} executed successfully.")
                     done.append(step_name)
-                elif self._get_state(step_graph[step_name]) == StepState.FAILED:
+                elif step_states[step_name] == StepState.FAILED:
                     logger.debug(f"The process for {step_name} failed during execution.")
                     errors.append(step_name)
                 else:
@@ -107,19 +111,24 @@ class MulticoreExecutor(Executor):
         for step_name in done:
             self._running.pop(step_name)
 
-        for step_name in errors:
-            self._failed.add(step_name)
+        # for step_name in errors:
+        #     self._failed.add(step_name)
 
         # TODO: deal with errors. Check StepInfo status update.
         if len(errors) > 0:
             raise RuntimeError("Raising this error for now. Deal with it better.")
         return errors
 
+    # def _sync_step_states(self, ):
+
     def execute_step_graph(self, step_graph: StepGraph):
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
 
+        self._reset_execution()
+
+        import time
         from tempfile import NamedTemporaryFile
 
         # TODO: use Tango global settings cache as "dir".
@@ -127,10 +136,14 @@ class MulticoreExecutor(Executor):
             step_graph.to_file(file_ref.name)
             assert os.path.exists(file_ref.name)
 
+            step_states: Dict[str, StepState] = {
+                step.name: self._get_state(step) for step in step_graph.values()
+            }
+
             # count = 7
-            while self._has_incomplete_steps(step_graph):  # uses StepInfo.
-                self._update_running_steps(step_graph)  # Uses StepInfo.
-                to_run = self._get_steps_to_run(step_graph)  # Uses StepInfo.
+            while self._has_incomplete_steps(step_graph, step_states):  # uses StepInfo.
+                self._update_running_steps(step_states)  # Uses StepInfo.
+                to_run = self._get_steps_to_run(step_graph, step_states)  # Uses StepInfo.
                 logger.debug(f"Steps ready to run: {to_run}")
                 for step_name in to_run:
                     self._queue_step(step_name)
@@ -140,6 +153,25 @@ class MulticoreExecutor(Executor):
                         config_path=file_ref.name
                     )  # maybe use StepInfo right before starting run.
 
+                # update the step_states.
+                # Although, this is not really elegant. The issue is: main multicore executor run queues a step,
+                # it loads up the config again, and begins execution in a different process. If we do this check
+                # before it has had time to update the StepState, it'll throw the out of sync error in
+                # LocalWorkspace.
+                attempts = 0
+                while attempts < self._num_tries_to_sync_states:
+                    attempts += 1
+                    try:
+                        step_states = {
+                            step.name: self._get_state(step) for step in step_graph.values()
+                        }
+                        break
+                    except IOError:
+                        step_states = {}
+                        time.sleep(self._wait_seconds_to_sync_states)
+                if not step_states:
+                    # TODO: better message.
+                    raise RuntimeError("A reasonable error message.")
                 # # For debugging.
                 # import time
                 #
@@ -149,14 +181,28 @@ class MulticoreExecutor(Executor):
                 #     logger.debug("Coming out of the while loop because count exceeded.")
                 #     break
 
-    def _has_incomplete_steps(self, step_graph: StepGraph) -> bool:
+    def _has_incomplete_steps(
+        self, step_graph: StepGraph, step_states: Dict[str, StepState]
+    ) -> bool:
         """
         TODO
         """
-        for step in step_graph.values():
-            if self.workspace.step_info(
-                step
-            ).state == StepState.INCOMPLETE and not self._failed_dependencies(step):
+
+        def _failed_dependencies(step: Step) -> bool:
+            for dependency in step.dependencies:
+                if step_states[dependency.name] == StepState.FAILED:
+                    return True
+            return False
+
+        for step_name, step_state in step_states.items():
+            if (
+                step_name in self._running
+                or step_name in self._queued_steps
+                or (
+                    step_state == StepState.INCOMPLETE
+                    and not _failed_dependencies(step_graph[step_name])
+                )
+            ):
                 return True
         return False
 
@@ -164,28 +210,25 @@ class MulticoreExecutor(Executor):
         # Note: This hits the sqlite db each time.
         return self.workspace.step_info(step).state
 
-    def _failed_dependencies(self, step: Step) -> bool:
-        for dependency in step.dependencies:
-            if self._get_state(dependency) == StepState.FAILED:
-                return True
-        return False
-
-    def _are_dependencies_available(self, step: Step) -> bool:
+    def _are_dependencies_available(self, step: Step, step_states: Dict[str, StepState]) -> bool:
         """
         TODO: Maybe this should be a `Step` class method?
         """
         for dependency in step.dependencies:
-            if self._get_state(dependency) not in [StepState.COMPLETED, StepState.UNCACHEABLE]:
+            if step_states[dependency.name] not in [StepState.COMPLETED, StepState.UNCACHEABLE]:
                 return False
         return True
 
-    def _get_steps_to_run(self, step_graph: StepGraph) -> Set[str]:
+    def _get_steps_to_run(
+        self, step_graph: StepGraph, step_states: Dict[str, StepState]
+    ) -> Set[str]:
         to_run: Set[str] = set()
         for step in step_graph.values():
             if (
-                self._are_dependencies_available(step)
+                self._are_dependencies_available(step, step_states)
                 and step.name not in self._running  # Not already running.
                 and step.name not in self._queued_steps  # Not queued to run.
+                and step_states[step.name] == StepState.INCOMPLETE
             ):
                 to_run.add(step.name)
         return to_run
