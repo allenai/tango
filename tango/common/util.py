@@ -194,7 +194,7 @@ def could_be_class_name(name: str) -> bool:
 
 
 def _is_valid_python_name(name: str) -> bool:
-    return bool(name and name[0].isalpha() and name.isalnum())
+    return bool(name and name[0].isalpha() and name.replace("_", "").isalnum())
 
 
 def threaded_generator(g, queue_size: int = 16):

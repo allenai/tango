@@ -68,6 +68,7 @@ def test_find_integrations():
         ("foo.Bar", True),
         ("foo.Bar.", False),
         ("1foo.Bar", False),
+        ("lib.my_package.MyClass", True),
     ],
 )
 def test_could_be_class_name(name: str, result: bool):
