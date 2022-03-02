@@ -31,6 +31,9 @@ class MulticoreExecutor(Executor):
         self.parallelism = parallelism
 
         self._running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
+        # # We save the steps that have completed/failed so that we only query step states once
+        # # per loop.
+        # self._done: Set[str] = set()
         self._failed: Set[str] = set()
         self._queued_steps: List[str] = []  # TODO: do we need a fancier Queue object?
 
@@ -120,35 +123,31 @@ class MulticoreExecutor(Executor):
         from tempfile import NamedTemporaryFile
 
         # TODO: use Tango global settings cache as "dir".
-        # TODO: try "with" again.
-        file_ref = NamedTemporaryFile(
-            prefix="step-graph-to-file-run", suffix=".jsonnet", delete=False
-        )
-        step_graph.to_file(file_ref.name)
-        assert os.path.exists(file_ref.name)
+        with NamedTemporaryFile(prefix="step-graph-to-file-run", suffix=".jsonnet") as file_ref:
+            step_graph.to_file(file_ref.name)
+            assert os.path.exists(file_ref.name)
 
-        try:
-            count = 7
-            while self._has_incomplete_steps(step_graph):
-                self._update_running_steps(step_graph)
-                to_run = self._get_steps_to_run(step_graph)
+            # count = 7
+            while self._has_incomplete_steps(step_graph):  # uses StepInfo.
+                self._update_running_steps(step_graph)  # Uses StepInfo.
+                to_run = self._get_steps_to_run(step_graph)  # Uses StepInfo.
                 logger.debug(f"Steps ready to run: {to_run}")
                 for step_name in to_run:
                     self._queue_step(step_name)
 
                 while len(self._queued_steps) > 0 and len(self._running) < self.parallelism:
-                    self._try_to_execute_next_step(config_path=file_ref.name)
+                    self._try_to_execute_next_step(
+                        config_path=file_ref.name
+                    )  # maybe use StepInfo right before starting run.
 
-                # For debugging.
-                import time
-
-                time.sleep(5)
-                count -= 1
-                if count <= 0:
-                    logger.debug("Coming out of the while loop because count exceeded.")
-                    break
-        finally:
-            os.remove(file_ref.name)
+                # # For debugging.
+                # import time
+                #
+                # time.sleep(5)
+                # count -= 1
+                # if count <= 0:
+                #     logger.debug("Coming out of the while loop because count exceeded.")
+                #     break
 
     def _has_incomplete_steps(self, step_graph: StepGraph) -> bool:
         """
@@ -185,7 +184,7 @@ class MulticoreExecutor(Executor):
         for step in step_graph.values():
             if (
                 self._are_dependencies_available(step)
-                and self._get_state(step) == StepState.INCOMPLETE  # Not already running.
+                and step.name not in self._running  # Not already running.
                 and step.name not in self._queued_steps  # Not queued to run.
             ):
                 to_run.add(step.name)

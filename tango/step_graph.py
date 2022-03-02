@@ -242,6 +242,7 @@ class StepGraph(Mapping[str, Step]):
             else:
                 # This will not contain "type". Currently, this blocks us from running this for graphs
                 # not constructed using configs.
+                # Check: does class name work as type? Then we can construct Params that way.
                 # return step.to_params().as_dict()
                 # TODO: be more informative with the error.
                 raise RuntimeError(f"Could not construct the parameters for {step_name}.")
