@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import subprocess
@@ -50,7 +49,6 @@ class MulticoreExecutor(Executor):
     def _try_to_execute_next_step(
         self,
         config_path: str,
-        overrides: Optional[Dict] = None,
     ) -> None:
         """
         If there are queued steps, try to start processes for them (limited by `parallelism`).
@@ -67,8 +65,6 @@ class MulticoreExecutor(Executor):
             if self.include_package is not None:
                 for package in self.include_package:
                     command += f" -i {package}"
-            if overrides is not None:
-                command += f" -o {json.dumps(overrides)}"
             process = subprocess.Popen(command, shell=True)
             self._running[step_name] = process
         else:

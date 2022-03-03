@@ -63,6 +63,8 @@ class TangoTestCase:
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
         step_name: Optional[str] = None,
+        parallelism: int = 1,
+        multicore: bool = False,
     ) -> Path:
         from tango.__main__ import TangoGlobalSettings, _run
 
@@ -84,6 +86,8 @@ class TangoTestCase:
             include_package=include_package,
             start_server=False,
             step_name=step_name,
+            parallelism=parallelism,
+            multicore=multicore,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name
