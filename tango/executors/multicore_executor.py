@@ -170,6 +170,12 @@ class MulticoreExecutor(Executor):
                 # Re-sync the StepState info.
                 step_states = self._sync_step_states(step_graph)
 
+        assert not self._running and not self._queued_steps
+
+    @property
+    def failed_steps(self) -> Set[str]:
+        return self._failed
+
     def _has_incomplete_steps(
         self, step_graph: StepGraph, step_states: Dict[str, StepState]
     ) -> bool:
@@ -196,8 +202,10 @@ class MulticoreExecutor(Executor):
                 step_name in self._running
                 or step_name in self._queued_steps
                 or (
-                    step_state == StepState.INCOMPLETE
+                    # If the workspace already has a previous run, we disregard the failure.
+                    step_state in [StepState.INCOMPLETE, StepState.FAILED]
                     and not _failed_dependencies(step_graph[step_name])
+                    # We check for failures in this run.
                     and step_name not in self._failed
                 )
             ):
@@ -239,7 +247,7 @@ class MulticoreExecutor(Executor):
                 and step.name not in self._running  # Not already running.
                 and step.name not in self._queued_steps  # Not queued to run.
                 and step.name not in self._failed  # Not already failed.
-                and step_states[step.name] == StepState.INCOMPLETE
+                and step_states[step.name] in [StepState.INCOMPLETE, StepState.FAILED]
             ):
                 to_run.add(step.name)
         return to_run

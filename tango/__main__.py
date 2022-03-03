@@ -677,11 +677,8 @@ def _run(
             )
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
-        if step_name is not None:
-            # TODO: refactor to remove repeated code.
-            uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
-            step = step_graph[step_name]
-            executor.execute_step(step, step_name in uncacheable_leaf_steps)
+
+        def log_step_summary(step):
             info = workspace.step_info(step)
             if info.result_location is not None:
                 click_logger.info(
@@ -690,20 +687,24 @@ def _run(
                     + click.style(" is in ", fg="green")
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
+
+        if step_name is not None:
+            uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
+            step = step_graph[step_name]
+            executor.execute_step(step, step_name in uncacheable_leaf_steps)
+            log_step_summary(step)
         else:
             executor.execute_step_graph(step_graph)
             # TODO: get status of all steps and print summary of failed steps too.
             # Print everything that has been computed.
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
             for step in ordered_steps:
-                info = workspace.step_info(step)
-                if info.result_location is not None:
+                if step.name in executor.failed_steps:
                     click_logger.info(
-                        click.style("\N{check mark} The output for ", fg="green")
-                        + click.style(f'"{step.name}"', bold=True, fg="green")
-                        + click.style(" is in ", fg="green")
-                        + click.style(f"{info.result_location}", bold=True, fg="green")
+                        click.style(f'\N{cross mark} "{step.name}" failed.', fg="red")
                     )
+                else:
+                    log_step_summary(step)
 
         click_logger.info(
             click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)

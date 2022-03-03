@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, TypeVar
+from typing import List, Optional, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
@@ -47,3 +47,7 @@ class Executor:
 
         for step in ordered_steps:
             self.execute_step(step, step in uncacheable_leaf_steps)
+
+    @property
+    def failed_steps(self) -> Set[str]:
+        return set()
