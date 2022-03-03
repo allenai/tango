@@ -199,6 +199,7 @@ class StepGraph(Mapping[str, Step]):
         }
         result: List[Step] = []
         for step_name in cls._get_ordered_steps(dependencies):
+            step_dict[step_name].name = step_name
             result.append(step_dict[step_name])
         return result
 
@@ -232,20 +233,26 @@ class StepGraph(Mapping[str, Step]):
             raise ValueError(o)
         return o
 
-    def to_file(self, filename: PathOrStr) -> None:
+    def to_config(self):
         step_dict = {}
         for step_name, step in self.parsed_steps.items():
-            if step.config is not None:
+            try:
                 step_dict[step_name] = {
                     key: self._to_config(value) for key, value in step.config.items()
                 }
-            else:
-                # This will not contain "type". Currently, this blocks us from running this for graphs
-                # not constructed using configs.
-                # Check: does class name work as type? Then we can construct Params that way.
-                # return step.to_params().as_dict()
-                # TODO: be more informative with the error.
-                raise RuntimeError(f"Could not construct the parameters for {step_name}.")
+            except ValueError:  # step.config throws an error.
+                # If the step_graph was not constructed using a config, we attempt to create
+                # the config using the step object.
+                # TODO: if the step object was constructed with non-defaults for things like `cache_results`,
+                # or `format`, the following code would ignore it.
+                step_dict[step_name] = {
+                    key: self._to_config(val) for key, val in step._to_params()["kwargs"].items()
+                }
+                step_dict[step_name]["type"] = step.__module__ + "." + step.__class__.__name__
 
+        return step_dict
+
+    def to_file(self, filename: PathOrStr) -> None:
+        step_dict = self.to_config()
         params = Params({"steps": step_dict})
         params.to_file(filename)

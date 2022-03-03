@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import subprocess
-from typing import Dict, List, Optional, Set, TypeVar
+from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.executors.executor import Executor
@@ -38,12 +38,12 @@ class MulticoreExecutor(Executor):
         self._reset_execution()
 
     def _reset_execution(self):
-        # self._running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
-        self._running: Set[str] = set()
+        self._running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
+        # self._running: Set[str] = set()
         # # We save the steps that have completed/failed so that we only query step states once
         # # per loop.
         # self._done: Set[str] = set()
-        # self._failed: Set[str] = set()
+        self._failed: Set[str] = set()
         self._queued_steps: List[str] = []  # TODO: do we need a fancier Queue object?
 
     def _queue_step(self, step_name: str) -> None:
@@ -83,8 +83,8 @@ class MulticoreExecutor(Executor):
                     command += f" -i {package}"
             if overrides is not None:
                 command += f" -o {json.dumps(overrides)}"
-            subprocess.Popen(command, shell=True)
-            self._running.add(step_name)
+            process = subprocess.Popen(command, shell=True)
+            self._running[step_name] = process
         else:
             logger.debug(
                 f"{self.parallelism} steps are already running. Will attempt to execute later."
@@ -93,24 +93,52 @@ class MulticoreExecutor(Executor):
     def _update_running_steps(self, step_states: Dict[str, StepState]) -> List[str]:
         done = []
         errors = []
-        for step_name in self._running:
-            if step_states[step_name] == StepState.COMPLETED:
-                done.append(step_name)
-            elif step_states[step_name] == StepState.FAILED:
-                errors.append(step_name)
-            else:
-                pass
+        for step_name, process in self._running.items():
+            poll_status = process.poll()
+            if poll_status is not None:
+                # We use poll_status to check if the process ended, but the StepState for checking
+                # completion/failure status because after the process ends, the lock release etc. takes a while.
+                if step_states[step_name] == StepState.COMPLETED:
+                    done.append(step_name)
+                elif (
+                    step_states[step_name] == StepState.FAILED
+                    or step_states[step_name] == StepState.INCOMPLETE
+                ):
+                    # TODO: look into why the step status changes from running back to incomplete sometimes.
+                    errors.append(step_name)
+                else:
+                    pass
 
-        for step_name in done:
-            self._running.remove(step_name)
+        # print("errors:", errors)
+        for step_name in done + errors:
+            self._running.pop(step_name)
 
-        # for step_name in errors:
-        #     self._failed.add(step_name)
+        for step_name in errors:
+            self._failed.add(step_name)
 
-        # TODO: deal with errors. Check StepInfo status update.
-        if len(errors) > 0:
-            raise RuntimeError("Raising this error for now. Deal with it better.")
+        # # # TODO: deal with errors.
+        # if len(errors) > 0:
+        #     raise RuntimeError("Raising this error for now. Deal with it better.")
         return errors
+
+    def _sync_step_states(self, step_graph: StepGraph) -> Dict[str, StepState]:
+        # update the step_states.
+        # Although, this is not really elegant. The issue is: main multicore executor run queues a step,
+        # it loads up the config again, and begins execution in a different process. If we do this check
+        # before it has had time to update the StepState, it'll throw the out of sync error in
+        # LocalWorkspace.
+        import time
+
+        attempts = 0
+        while attempts < self._num_tries_to_sync_states:
+            attempts += 1
+            try:
+                step_states = {step.name: self._get_state(step) for step in step_graph.values()}
+                break
+            except IOError:
+                step_states = {}
+                time.sleep(self._wait_seconds_to_sync_states)
+        return step_states
 
     def execute_step_graph(self, step_graph: StepGraph):
         """
@@ -119,7 +147,6 @@ class MulticoreExecutor(Executor):
 
         self._reset_execution()
 
-        import time
         from tempfile import NamedTemporaryFile
 
         # TODO: use Tango global settings cache as "dir".
@@ -127,13 +154,11 @@ class MulticoreExecutor(Executor):
             step_graph.to_file(file_ref.name)
             assert os.path.exists(file_ref.name)
 
-            step_states: Dict[str, StepState] = {
-                step.name: self._get_state(step) for step in step_graph.values()
-            }
-
-            while self._has_incomplete_steps(step_graph, step_states):  # uses StepInfo.
-                self._update_running_steps(step_states)  # Uses StepInfo.
-                to_run = self._get_steps_to_run(step_graph, step_states)  # Uses StepInfo.
+            step_states = self._sync_step_states(step_graph)
+            # count = 7
+            while self._has_incomplete_steps(step_graph, step_states):
+                self._update_running_steps(step_states)
+                to_run = self._get_steps_to_run(step_graph, step_states)
                 if to_run:
                     logger.debug(f"Steps ready to run: {to_run}")
                 for step_name in to_run:
@@ -144,25 +169,21 @@ class MulticoreExecutor(Executor):
                         config_path=file_ref.name
                     )  # maybe use StepInfo right before starting run.
 
-                # update the step_states.
-                # Although, this is not really elegant. The issue is: main multicore executor run queues a step,
-                # it loads up the config again, and begins execution in a different process. If we do this check
-                # before it has had time to update the StepState, it'll throw the out of sync error in
-                # LocalWorkspace.
-                attempts = 0
-                while attempts < self._num_tries_to_sync_states:
-                    attempts += 1
-                    try:
-                        step_states = {
-                            step.name: self._get_state(step) for step in step_graph.values()
-                        }
-                        break
-                    except IOError:
-                        step_states = {}
-                        time.sleep(self._wait_seconds_to_sync_states)
+                step_states = self._sync_step_states(step_graph)
                 if not step_states:
                     # TODO: better message.
                     raise RuntimeError("A reasonable error message.")
+
+                # import time
+                # time.sleep(0)
+
+                # if not self._running:
+                #     count -= 1
+                # if count <=0:
+                #     print(step_states)
+                #     print(self._running)
+                #     print(self._queued_steps)
+                #     raise RuntimeError("Breaking loop!")
 
     def _has_incomplete_steps(
         self, step_graph: StepGraph, step_states: Dict[str, StepState]
@@ -173,10 +194,16 @@ class MulticoreExecutor(Executor):
 
         def _failed_dependencies(step: Step) -> bool:
             for dependency in step.dependencies:
-                if step_states[dependency.name] == StepState.FAILED:
+                if (
+                    step_states[dependency.name] == StepState.FAILED
+                    or dependency.name in self._failed
+                ):
                     return True
             return False
 
+        print("Running: ", self._running)
+        print("Queued: ", self._queued_steps)
+        print("Step states: ", step_states)
         for step_name, step_state in step_states.items():
             if (
                 step_name in self._running
@@ -184,6 +211,7 @@ class MulticoreExecutor(Executor):
                 or (
                     step_state in [StepState.INCOMPLETE, StepState.RUNNING]
                     and not _failed_dependencies(step_graph[step_name])
+                    and step_name not in self._failed
                 )
             ):
                 return True
@@ -208,6 +236,7 @@ class MulticoreExecutor(Executor):
                 _are_dependencies_available(step)
                 and step.name not in self._running  # Not already running.
                 and step.name not in self._queued_steps  # Not queued to run.
+                and step.name not in self._failed  # Not already failed.
                 and step_states[step.name] == StepState.INCOMPLETE
             ):
                 to_run.add(step.name)

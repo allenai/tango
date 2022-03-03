@@ -1,4 +1,5 @@
 import re
+from tempfile import NamedTemporaryFile
 
 import pytest
 
@@ -68,10 +69,22 @@ class TestStepGraph(TangoTestCase):
     def test_to_file(self):
         step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")
 
-        from tempfile import NamedTemporaryFile
-
-        with NamedTemporaryFile(prefix="test-step-graph-to-file-", suffix=".jsonnet") as file_ref:
+        with NamedTemporaryFile(
+            prefix="test-step-graph-to-file-", suffix=".jsonnet", dir=self.TEST_DIR
+        ) as file_ref:
             step_graph.to_file(file_ref.name)
 
+            new_step_graph = StepGraph.from_file(file_ref.name)
+            assert step_graph == new_step_graph
+
+    def test_to_file_without_config(self):
+        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA")
+        step_b = AddNumbersStep(a_number=step_a, b_number=2, step_name="stepB")
+        step_graph = StepGraph({"stepA": step_a, "stepB": step_b})
+
+        with NamedTemporaryFile(
+            prefix="test-step-graph-to-file-without-config", suffix=".jsonnet", dir=self.TEST_DIR
+        ) as file_ref:
+            step_graph.to_file(file_ref.name)
             new_step_graph = StepGraph.from_file(file_ref.name)
             assert step_graph == new_step_graph

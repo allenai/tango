@@ -692,7 +692,7 @@ def _run(
                 )
         else:
             executor.execute_step_graph(step_graph)
-
+            # TODO: get status of all steps and print summary of failed steps too.
             # Print everything that has been computed.
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
             for step in ordered_steps:
