@@ -247,6 +247,7 @@ class MulticoreExecutor(Executor):
                 and step.name not in self._running  # Not already running.
                 and step.name not in self._queued_steps  # Not queued to run.
                 and step.name not in self._failed  # Not already failed.
+                # See comment in _has_incomplete_steps
                 and step_states[step.name] in [StepState.INCOMPLETE, StepState.FAILED]
             ):
                 to_run.add(step.name)

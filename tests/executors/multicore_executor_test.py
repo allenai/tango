@@ -1,5 +1,5 @@
 import time
-
+import pytest
 from tango.common.testing import TangoTestCase
 from tango.executors.multicore_executor import MulticoreExecutor
 from tango.step_graph import StepGraph
@@ -11,8 +11,8 @@ class TestMulticoreExecutor(TangoTestCase):
     def test_ready_to_run_parallel(self):
         step_graph = StepGraph(
             {
-                "step1": SleepPrintMaybeFail(string="hello", seconds=5, fail=False),
-                "step2": SleepPrintMaybeFail(string="hi", seconds=5, fail=False),
+                "step1": SleepPrintMaybeFail(string="hello", seconds=0, fail=False),
+                "step2": SleepPrintMaybeFail(string="hi", seconds=0, fail=False),
             }
         )
 
@@ -31,13 +31,13 @@ class TestMulticoreExecutor(TangoTestCase):
                 "step1": {
                     "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",
                     "string": {"type": "ref", "ref": "step1"},
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
             }
@@ -88,25 +88,26 @@ class TestMulticoreExecutor(TangoTestCase):
 
         assert len(executor.workspace.step_cache) == 3
 
-    def test_failing_step_no_downstream_task(self):
+    @pytest.mark.parametrize("parallelism", [1, 2, 3])
+    def test_failing_step_no_downstream_task(self, parallelism):
         step_graph = StepGraph.from_params(
             {
                 "step1": {
                     "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",
                     "string": {"type": "ref", "ref": "step1"},
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step3": {
                     "type": "sleep-print-maybe-fail",
                     "string": "This is going to fail!",
-                    "seconds": 3,
+                    "seconds": 0,
                     "fail": True,
                 },
             }
@@ -114,32 +115,33 @@ class TestMulticoreExecutor(TangoTestCase):
 
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
-            parallelism=2,
+            parallelism=parallelism,
             include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
         assert len(executor.workspace.step_cache) == 2
 
-    def test_failing_step_with_downstream_task(self):
+    @pytest.mark.parametrize("parallelism", [1, 2, 3])
+    def test_failing_step_with_downstream_task(self, parallelism):
         step_graph = StepGraph.from_params(
             {
                 "step1": {
                     "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": True,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",
                     "string": {"type": "ref", "ref": "step1"},
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step3": {
                     "type": "sleep-print-maybe-fail",
                     "string": "This is going to fail!",
-                    "seconds": 3,
+                    "seconds": 0,
                     "fail": False,
                 },
             }
@@ -147,7 +149,7 @@ class TestMulticoreExecutor(TangoTestCase):
 
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
-            parallelism=2,
+            parallelism=parallelism,
             include_package=["test_fixtures.package.steps"],
         )
 
@@ -160,19 +162,19 @@ class TestMulticoreExecutor(TangoTestCase):
                 "step1": {
                     "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",
                     "string": {"type": "ref", "ref": "step1"},
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step3": {
                     "type": "sleep-print-maybe-fail",
                     "string": "This is going to fail!",
-                    "seconds": 3,
+                    "seconds": 0,
                     "fail": True,
                     "cache_results": False,
                 },
@@ -194,20 +196,20 @@ class TestMulticoreExecutor(TangoTestCase):
                 "step1": {
                     "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": True,
                     "cache_results": False,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",
                     "string": {"type": "ref", "ref": "step1"},
-                    "seconds": 5,
+                    "seconds": 0,
                     "fail": False,
                 },
                 "step3": {
                     "type": "sleep-print-maybe-fail",
                     "string": "This is going to fail!",
-                    "seconds": 3,
+                    "seconds": 0,
                     "fail": False,
                 },
             }
@@ -221,3 +223,22 @@ class TestMulticoreExecutor(TangoTestCase):
 
         executor.execute_step_graph(step_graph)
         assert len(executor.workspace.step_cache) == 1
+
+    @pytest.mark.parametrize("parallelism", [1, 2, 3])
+    def test_steps_with_their_own_multiprocessing(self, parallelism):
+        step_graph = StepGraph.from_params(
+            {
+                "step1": {"type": "multiprocessing_step", "num_proc": 2},
+                "step2": {"type": "multiprocessing_step", "num_proc": 3},
+                "step3": {"type": "multiprocessing_step", "num_proc": 1},
+            }
+        )
+
+        executor = MulticoreExecutor(
+            workspace=LocalWorkspace(self.TEST_DIR),
+            parallelism=parallelism,
+            include_package=["test_fixtures.package.steps"],
+        )
+
+        executor.execute_step_graph(step_graph)
+        assert len(executor.workspace.step_cache) == 3
