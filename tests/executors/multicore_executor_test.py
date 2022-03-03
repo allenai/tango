@@ -170,10 +170,11 @@ class TestMulticoreExecutor(TangoTestCase):
                     "fail": False,
                 },
                 "step3": {
-                    "type": "sleep-print-maybe-fail-uncacheable",
+                    "type": "sleep-print-maybe-fail",
                     "string": "This is going to fail!",
                     "seconds": 3,
                     "fail": True,
+                    "cache_results": False,
                 },
             }
         )
@@ -191,10 +192,11 @@ class TestMulticoreExecutor(TangoTestCase):
         step_graph = StepGraph.from_params(
             {
                 "step1": {
-                    "type": "sleep-print-maybe-fail-uncacheable",
+                    "type": "sleep-print-maybe-fail",
                     "string": "string_to_pass_down",
                     "seconds": 5,
                     "fail": True,
+                    "cache_results": False,
                 },
                 "step2": {
                     "type": "sleep-print-maybe-fail",

@@ -243,12 +243,16 @@ class StepGraph(Mapping[str, Step]):
             except ValueError:  # step.config throws an error.
                 # If the step_graph was not constructed using a config, we attempt to create
                 # the config using the step object.
-                # TODO: if the step object was constructed with non-defaults for things like `cache_results`,
-                # or `format`, the following code would ignore it.
                 step_dict[step_name] = {
                     key: self._to_config(val) for key, val in step._to_params()["kwargs"].items()
                 }
                 step_dict[step_name]["type"] = step.__module__ + "." + step.__class__.__name__
+
+                # We only add cache_results and format to the config if the values are different from default.
+                if step.cache_results != step.CACHEABLE:
+                    step_dict[step_name]["cache_results"] = step.cache_results
+                if step.format != step.FORMAT:
+                    step_dict[step_name]["step_format"] = self._to_config(step.format._to_params())
 
         return step_dict
 

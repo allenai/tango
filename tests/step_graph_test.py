@@ -78,8 +78,12 @@ class TestStepGraph(TangoTestCase):
             assert step_graph == new_step_graph
 
     def test_to_file_without_config(self):
-        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA")
-        step_b = AddNumbersStep(a_number=step_a, b_number=2, step_name="stepB")
+        from tango.format import JsonFormat
+
+        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA", cache_results=False)
+        step_b = AddNumbersStep(
+            a_number=step_a, b_number=2, step_name="stepB", step_format=JsonFormat("gz")
+        )
         step_graph = StepGraph({"stepA": step_a, "stepB": step_b})
 
         with NamedTemporaryFile(
