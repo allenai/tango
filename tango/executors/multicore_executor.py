@@ -201,9 +201,9 @@ class MulticoreExecutor(Executor):
                     return True
             return False
 
-        print("Running: ", self._running)
-        print("Queued: ", self._queued_steps)
-        print("Step states: ", step_states)
+        # print("Running: ", self._running)
+        # print("Queued: ", self._queued_steps)
+        # print("Step states: ", step_states)
         for step_name, step_state in step_states.items():
             if (
                 step_name in self._running

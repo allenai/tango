@@ -65,6 +65,20 @@ class SleepPrintMaybeFail(Step):
         return string
 
 
+@Step.register("sleep-print-maybe-fail-uncacheable")
+class SleepPrintMaybeFailUncacheable(Step):
+    DETERMINISTIC = True
+    CACHEABLE = False
+
+    def run(self, string: str, seconds: int = 5, fail: bool = False) -> str:  # type: ignore
+        time.sleep(seconds)
+        self.logger.info(f"Step {self.name} is awake.")
+        print(string)
+        if fail:
+            raise RuntimeError("Step had to fail!")
+        return string
+
+
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     """
