@@ -185,6 +185,7 @@ class Step(Registrable, Generic[T]):
                 f"Step {self.name}'s cache_results parameter is set to an invalid value."
             )
 
+        self._workspace: Optional["Workspace"] = None
         self.work_dir_for_run: Optional[
             Path
         ] = None  # This is set only while the run() method runs.
@@ -336,6 +337,8 @@ class Step(Registrable, Generic[T]):
         if self.DETERMINISTIC:
             random.seed(784507111)
 
+        self._workspace = workspace
+
         if self.cache_results:
             self.work_dir_for_run = workspace.work_dir(self)
             dir_for_cleanup = None
@@ -358,6 +361,7 @@ class Step(Registrable, Generic[T]):
                     workspace.step_failed(self, e)
                 raise
         finally:
+            self._workspace = None
             self.work_dir_for_run = None
             if dir_for_cleanup is not None:
                 dir_for_cleanup.cleanup()
@@ -378,6 +382,20 @@ class Step(Registrable, Generic[T]):
                 "Did you call '.run()' directly? You should only run a step with '.result()'."
             )
         return self.work_dir_for_run
+
+    @property
+    def workspace(self) -> "Workspace":
+        """
+        The :class:`~tango.workspace.Workspace` being used.
+
+        This is a convenience property for you to call inside your :meth:`run()` method.
+        """
+        if self._workspace is None:
+            raise RuntimeError(
+                "You can only call this method while the step is running with a workspace. "
+                "Did you call '.run()' directly? You should only run a step with '.result()'."
+            )
+        return self._workspace
 
     @property
     def config(self) -> Dict[str, Any]:
