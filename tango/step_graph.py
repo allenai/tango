@@ -220,31 +220,30 @@ class StepGraph(Mapping[str, Step]):
             import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
 
-    @classmethod
-    def _to_config(cls, o: Any):
-        # TODO: get rid of repeated logic.
-        if isinstance(o, (list, tuple, set)):
-            return o.__class__(cls._to_config(i) for i in o)
-        elif isinstance(o, dict):
-            return {key: cls._to_config(value) for key, value in o.items()}
-        elif isinstance(o, Step):
-            return {"type": "ref", "ref": o.name}
-        elif o is not None and not isinstance(o, (bool, str, int, float)):
-            raise ValueError(o)
-        return o
-
     def to_config(self):
         step_dict = {}
+
+        def _to_config(o: Any):
+            if isinstance(o, (list, tuple, set)):
+                return o.__class__(_to_config(i) for i in o)
+            elif isinstance(o, dict):
+                return {key: _to_config(value) for key, value in o.items()}
+            elif isinstance(o, Step):
+                return {"type": "ref", "ref": o.name}
+            elif o is not None and not isinstance(o, (bool, str, int, float)):
+                raise ValueError(o)
+            return o
+
         for step_name, step in self.parsed_steps.items():
             try:
                 step_dict[step_name] = {
-                    key: self._to_config(value) for key, value in step.config.items()
+                    key: _to_config(value) for key, value in step.config.items()
                 }
             except ValueError:  # step.config throws an error.
                 # If the step_graph was not constructed using a config, we attempt to create
                 # the config using the step object.
                 step_dict[step_name] = {
-                    key: self._to_config(val) for key, val in step._to_params()["kwargs"].items()
+                    key: _to_config(val) for key, val in step._to_params()["kwargs"].items()
                 }
                 step_dict[step_name]["type"] = step.__module__ + "." + step.__class__.__name__
 
@@ -252,7 +251,7 @@ class StepGraph(Mapping[str, Step]):
                 if step.cache_results != step.CACHEABLE:
                     step_dict[step_name]["cache_results"] = step.cache_results
                 if step.format != step.FORMAT:
-                    step_dict[step_name]["step_format"] = self._to_config(step.format._to_params())
+                    step_dict[step_name]["step_format"] = _to_config(step.format._to_params())
 
         return step_dict
 
