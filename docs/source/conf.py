@@ -59,7 +59,6 @@ source_suffix = [".rst", ".md"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "datasets": ("https://huggingface.co/docs/datasets", None),
     "torch": ("https://pytorch.org/docs/stable", None),
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
     # Just leaving this here for when we do finally add a deepspeed integration:
@@ -67,6 +66,7 @@ intersphinx_mapping = {
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     # TODO: HF's new doc-builder project doesn't seem to generate the "object.inv" file needed by intersphinx.
     # Tracking issue here: https://github.com/huggingface/doc-builder/issues/81
+    #  "datasets": ("https://huggingface.co/docs/datasets", None),
     #  "transformers": ("https://huggingface.co/docs/transformers", None),
 }
 
