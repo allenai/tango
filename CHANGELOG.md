@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
+- Added the "-n/--name" option to `tango run`. This option allows the user to give the experiment an arbitrary name.
 
 ### Fixed
 
@@ -31,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `tango.settings` module and `tango settings` group of commands.
 - A format for storing sequences as `SqliteSparseSequence`
 - A way to massage kwargs before they determine the unique ID of a `Step`
-- Added the "-n/--name" option to `tango run`. This option allows the user to give the experiment an arbitrary name.
 
 ### Changed
 
