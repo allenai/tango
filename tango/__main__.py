@@ -231,7 +231,7 @@ def cleanup(*args, **kwargs):
     "-n",
     "--name",
     type=str,
-    help="""Specify a name for the experiment""",
+    help="""Specify the name for this run""",
 )
 @click.pass_obj
 def run(
