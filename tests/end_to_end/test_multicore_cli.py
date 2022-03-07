@@ -28,7 +28,6 @@ class TestExperiment(TangoTestCase):
         }
 
     def test_experiment(self, caplog):
-        num_other_files = 2
         self.run(
             self.config,
             include_package=["test_fixtures.package.steps"],
@@ -36,20 +35,25 @@ class TestExperiment(TangoTestCase):
             parallelism=2,
         )
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
-        assert len(list(latest_outputs.iterdir())) == num_other_files + 1
+        num_executed = 0
+        for out in latest_outputs.iterdir():
+            if (out / "execution-metadata.json").exists():
+                num_executed += 1
+        assert num_executed == 1
 
-    # def test_experiment_with_overrides(self, caplog):
-    #     # TODO: uncomment once run_name PR is merged, and changes to use a single run name are added.
-    #     import json
-    #
-    #     num_other_files = 2
-    #     self.run(
-    #         self.config,
-    #         include_package=["test_fixtures.package.steps"],
-    #         multicore=True,
-    #         parallelism=2,
-    #         overrides=json.dumps({"steps.step1.fail": False}),
-    #     )
-    #     latest_outputs = self.TEST_DIR / "workspace" / "latest"
-    #     print(list(latest_outputs.iterdir()))
-    #     assert len(list(latest_outputs.iterdir())) == num_other_files + 3
+    def test_experiment_with_overrides(self, caplog):
+        import json
+
+        self.run(
+            self.config,
+            include_package=["test_fixtures.package.steps"],
+            multicore=True,
+            parallelism=2,
+            overrides=json.dumps({"steps.step1.fail": False}),
+        )
+        latest_outputs = self.TEST_DIR / "workspace" / "latest"
+        num_executed = 0
+        for out in latest_outputs.iterdir():
+            if (out / "execution-metadata.json").exists():
+                num_executed += 1
+        assert num_executed == 3

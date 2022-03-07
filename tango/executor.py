@@ -37,7 +37,7 @@ class Executor:
         elif is_uncacheable_leaf_step:
             step.result(self.workspace)
 
-    def execute_step_graph(self, step_graph: StepGraph):
+    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None):
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """

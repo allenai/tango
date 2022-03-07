@@ -49,6 +49,7 @@ class MulticoreExecutor(Executor):
     def _try_to_execute_next_step(
         self,
         config_path: str,
+        run_name: Optional[str] = None,
     ) -> None:
         """
         If there are queued steps, try to start processes for them (limited by `parallelism`).
@@ -65,6 +66,8 @@ class MulticoreExecutor(Executor):
             if self.include_package is not None:
                 for package in self.include_package:
                     command += f" -i {package}"
+            if run_name is not None:
+                command += f" -n {run_name}"
             process = subprocess.Popen(command, shell=True)
             self._running[step_name] = process
         else:
@@ -130,7 +133,7 @@ class MulticoreExecutor(Executor):
                 time.sleep(self._wait_seconds_to_sync_states)
         return step_states
 
-    def execute_step_graph(self, step_graph: StepGraph):
+    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None):
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
@@ -161,7 +164,7 @@ class MulticoreExecutor(Executor):
 
                 # Begin processes for any queued steps (if not enough processes are already running).
                 while len(self._queued_steps) > 0 and len(self._running) < self.parallelism:
-                    self._try_to_execute_next_step(config_path=file_ref.name)
+                    self._try_to_execute_next_step(config_path=file_ref.name, run_name=run_name)
 
                 # Re-sync the StepState info.
                 step_states = self._sync_step_states(step_graph)

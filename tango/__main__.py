@@ -659,16 +659,34 @@ def _run(
             f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
             f"The config contains: {list(step_graph.keys())}."
         )
-        sub_graph = step_graph.get_sub_graph(step_name)
-        run = workspace.register_run((step for step in sub_graph.values()), name)
+        # TODO: cleanup this tree logic.
+        if name is not None:
+            try:
+                run = workspace.registered_run(name)
+            except KeyError:
+                sub_graph = step_graph.get_sub_graph(step_name)
+                run = workspace.register_run((step for step in sub_graph.values()), name)
+        else:
+            sub_graph = step_graph.get_sub_graph(step_name)
+            run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
         run = workspace.register_run((step for step in step_graph.values()), name)
+
     # Capture logs to file.
     with workspace.capture_logs_for_run(run.name):
-        click_logger.info(
-            click.style("Starting new run ", fg="green")
-            + click.style(run.name, fg="green", bold=True)
-        )
+        if step_name is None:
+            click_logger.info(
+                click.style("Starting new run ", fg="green")
+                + click.style(run.name, fg="green", bold=True)
+            )
+        else:
+            click_logger.info(
+                click.style("Starting run for step ", fg="green")
+                + click.style(step_name, fg="green", bold=True)
+                + click.style(" (", fg="green", bold=True)
+                + click.style(run.name, fg="green", bold=True)
+                + click.style(")", fg="green", bold=True)
+            )
 
         # Initialize server.
         if start_server:
@@ -702,22 +720,31 @@ def _run(
             step = step_graph[step_name]
             executor.execute_step(step, step_name in uncacheable_leaf_steps)
             log_step_summary(step)
+            click_logger.info(
+                click.style("Finished run for step ", fg="green")
+                + click.style(step_name, fg="green", bold=True)
+                + click.style(" (", fg="green", bold=True)
+                + click.style(run.name, fg="green", bold=True)
+                + click.style(")", fg="green", bold=True)
+            )
         else:
-            executor.execute_step_graph(step_graph)
+            executor.execute_step_graph(step_graph, run_name=run.name)
             # TODO: get status of all steps and print summary of failed steps too.
             # Print everything that has been computed.
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
             for step in ordered_steps:
                 if step.name in executor.failed_steps:
+                    # TODO: add needed_by
                     click_logger.info(
                         click.style(f'\N{cross mark} "{step.name}" failed.', fg="red")
                     )
                 else:
                     log_step_summary(step)
 
-        click_logger.info(
-            click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
-        )
+            click_logger.info(
+                click.style("Finished run ", fg="green")
+                + click.style(run.name, fg="green", bold=True)
+            )
 
     return run.name
 
