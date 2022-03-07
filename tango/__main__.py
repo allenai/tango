@@ -245,7 +245,7 @@ def cleanup(*args, **kwargs):
     "--step-name",
     help="Execute a particular step (and its dependencies) in the experiment.",
     type=str,
-    default=None
+    default=None,
 )
 @click.option(
     "-n",
@@ -659,9 +659,9 @@ def _run(
             f"The config contains: {list(step_graph.keys())}."
         )
         sub_graph = step_graph.get_sub_graph(step_name)
-        run = workspace.register_run(step for step in sub_graph.values(), name)
+        run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
-        run = workspace.register_run(step for step in step_graph.values(), name)
+        run = workspace.register_run((step for step in step_graph.values()), name)
     # Capture logs to file.
     with workspace.capture_logs_for_run(run.name):
         click_logger.info(
