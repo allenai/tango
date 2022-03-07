@@ -15,7 +15,7 @@ __all__ = [
     "Workspace",
 ]
 
-from tango.executors import Executor
+from tango.executor import Executor
 from tango.format import (
     DillFormat,
     DillFormatIterator,

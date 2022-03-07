@@ -3,7 +3,7 @@ import os
 import subprocess
 from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 
-from tango.executors.executor import Executor
+from tango.executor import Executor
 from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.workspace import StepState, Workspace

@@ -1,5 +1,4 @@
 """
-Built-in :class:`~tango.executors.Executor` implementations.
+Built-in :class:`~tango.executor.Executor` implementations.
 """
-from .executor import Executor
 from .multicore_executor import MulticoreExecutor

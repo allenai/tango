@@ -2,7 +2,7 @@ from pathlib import Path
 
 from tango.common.params import Params
 from tango.common.testing import TangoTestCase
-from tango.executors import Executor
+from tango.executor import Executor
 from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.workspace import StepExecutionMetadata
