@@ -64,10 +64,8 @@ intersphinx_mapping = {
     # Just leaving this here for when we do finally add a deepspeed integration:
     #  "deepspeed": ("https://deepspeed.readthedocs.io/en/latest/", None),
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
-    # TODO: HF's new doc-builder project doesn't seem to generate the "object.inv" file needed by intersphinx.
-    # Tracking issue here: https://github.com/huggingface/doc-builder/issues/81
-    #  "datasets": ("https://huggingface.co/docs/datasets", None),
-    #  "transformers": ("https://huggingface.co/docs/transformers", None),
+    "datasets": ("https://huggingface.co/docs/datasets", None),
+    "transformers": ("https://huggingface.co/docs/transformers", None),
 }
 
 
