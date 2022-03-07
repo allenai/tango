@@ -245,7 +245,13 @@ def cleanup(*args, **kwargs):
     "--step-name",
     help="Execute a particular step (and its dependencies) in the experiment.",
     type=str,
-    default=None,
+    default=None
+)
+@click.option(
+    "-n",
+    "--name",
+    type=str,
+    help="""Specify the name for this run""",
 )
 @click.pass_obj
 def run(
@@ -259,6 +265,7 @@ def run(
     parallelism: int = 1,
     multicore: bool = False,
     step_name: Optional[str] = None,
+    name: Optional[str] = None,
 ):
     """
     Run a tango experiment.
@@ -290,6 +297,7 @@ def run(
         parallelism=parallelism,
         multicore=multicore,
         step_name=step_name,
+        name=name,
     )
 
 
@@ -611,6 +619,7 @@ def _run(
     step_name: Optional[str] = None,
     parallelism: int = 1,
     multicore: bool = False,
+    name: Optional[str] = None,
 ) -> str:
     from tango.executors import Executor, MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
@@ -650,10 +659,9 @@ def _run(
             f"The config contains: {list(step_graph.keys())}."
         )
         sub_graph = step_graph.get_sub_graph(step_name)
-        run = workspace.register_run(step for step in sub_graph.values())
+        run = workspace.register_run(step for step in sub_graph.values(), name)
     else:
-        run = workspace.register_run(step for step in step_graph.values())
-
+        run = workspace.register_run(step for step in step_graph.values(), name)
     # Capture logs to file.
     with workspace.capture_logs_for_run(run.name):
         click_logger.info(
