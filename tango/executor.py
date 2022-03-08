@@ -44,7 +44,7 @@ class Executor:
         """
 
         ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
+        uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         for step in ordered_steps:
             self.execute_step(step, step in uncacheable_leaf_steps)

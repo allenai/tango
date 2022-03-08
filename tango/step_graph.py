@@ -125,7 +125,7 @@ class StepGraph(Mapping[str, Step]):
 
         return cls(step_dict)
 
-    def get_sub_graph(self, step_name: str) -> "StepGraph":
+    def sub_graph(self, step_name: str) -> "StepGraph":
         if step_name not in self.parsed_steps:
             raise KeyError(
                 f"{step_name} is not a part of this StepGraph. "
@@ -212,7 +212,7 @@ class StepGraph(Mapping[str, Step]):
             result.append(step_dict[step_name])
         return result
 
-    def find_uncacheable_leaf_steps(self) -> Set[Step]:
+    def uncacheable_leaf_steps(self) -> Set[Step]:
         interior_steps: Set[Step] = set()
         for _, step in self.parsed_steps.items():
             for dependency in step.dependencies:

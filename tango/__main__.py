@@ -664,10 +664,10 @@ def _run(
             try:
                 run = workspace.registered_run(name)
             except KeyError:
-                sub_graph = step_graph.get_sub_graph(step_name)
+                sub_graph = step_graph.sub_graph(step_name)
                 run = workspace.register_run((step for step in sub_graph.values()), name)
         else:
-            sub_graph = step_graph.get_sub_graph(step_name)
+            sub_graph = step_graph.sub_graph(step_name)
             run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
         run = workspace.register_run((step for step in step_graph.values()), name)
@@ -716,7 +716,7 @@ def _run(
                 )
 
         if step_name is not None:
-            uncacheable_leaf_steps = step_graph.find_uncacheable_leaf_steps()
+            uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
             step = step_graph[step_name]
             executor.execute_step(step, step_name in uncacheable_leaf_steps)
             log_step_summary(step)
