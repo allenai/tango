@@ -38,7 +38,6 @@ class MulticoreExecutor(Executor):
 
     def _reset_execution(self) -> None:
         self._running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
-        # self._done: Set[str] = set()
         self._failed: Set[str] = set()
         self._queued_steps: List[str] = []
 
