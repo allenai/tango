@@ -121,10 +121,9 @@ class DillFormat(Format[T], Generic[T]):
     VERSION = 1
 
     def __init__(self, compress: Optional[str] = None):
-        try:
-            self.compress = compress
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     def write(self, artifact: T, dir: PathOrStr):
         filename = self._get_artifact_path(dir)
@@ -205,10 +204,9 @@ class JsonFormat(Format[T], Generic[T]):
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-        try:
-            self.compress = compress
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     @staticmethod
     def _encoding_fallback(unencodable: Any):
@@ -343,10 +341,9 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-        try:
-            self.compress = compress
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     def write(self, artifact: Union[str, Iterable[str]], dir: PathOrStr):
         open_method = _OPEN_FUNCTIONS[self.compress]
