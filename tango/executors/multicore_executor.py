@@ -1,9 +1,9 @@
 import logging
-import time
 import os
 import subprocess
-from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
+import time
 from tempfile import NamedTemporaryFile
+from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 
 from tango.executor import Executor
 from tango.step import Step
