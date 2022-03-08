@@ -18,11 +18,10 @@ class StepGraph(Mapping[str, Step]):
     to :class:`Step`.
     """
 
-    def __init__(self, step_dict: Dict[str, Step], is_ordered: bool = False):
+    def __init__(self, step_dict: Dict[str, Step]):
         # TODO: What happens with anonymous steps in here?
 
-        # This is to avoid an extra call for ordering the steps if constructing through from_params.
-        # TODO: Perhaps there's a better way to do this? inspect to check if the caller is from_params?
+        is_ordered = self._is_ordered(step_dict)
         if not is_ordered:
             self.parsed_steps = {step.name: step for step in self.ordered_steps(step_dict)}
         else:
@@ -30,6 +29,16 @@ class StepGraph(Mapping[str, Step]):
 
         # Sanity-check the graph
         self._sanity_check()
+
+    @classmethod
+    def _is_ordered(cls, step_dict: Dict[str, Step]):
+        present = set()
+        for _, step in step_dict.items():
+            for dep in step.dependencies:
+                if dep.name not in present:
+                    return False
+            present.add(step.name)
+        return True
 
     @classmethod
     def _check_unsatisfiable_dependencies(cls, dependencies: Dict[str, Set[str]]) -> None:
@@ -114,7 +123,7 @@ class StepGraph(Mapping[str, Step]):
             step_params = cls._replace_step_dependencies(step_params, step_dict)
             step_dict[step_name] = Step.from_params(step_params, step_name=step_name)
 
-        return cls(step_dict, is_ordered=True)
+        return cls(step_dict)
 
     def get_sub_graph(self, step_name: str) -> "StepGraph":
         if step_name not in self.parsed_steps:
