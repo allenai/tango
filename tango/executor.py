@@ -38,7 +38,7 @@ class Executor:
         elif is_uncacheable_leaf_step:
             step.result(self.workspace)
 
-    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None):
+    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None) -> Set[str]:
         """
         Execute a :class:`tango.step_graph.StepGraph`.
         """
@@ -49,6 +49,4 @@ class Executor:
         for step in ordered_steps:
             self.execute_step(step, step in uncacheable_leaf_steps)
 
-    @property
-    def failed_steps(self) -> Set[str]:
         return set()

@@ -728,12 +728,12 @@ def _run(
                 + click.style(")", fg="green", bold=True)
             )
         else:
-            executor.execute_step_graph(step_graph, run_name=run.name)
+            failed_steps = executor.execute_step_graph(step_graph, run_name=run.name)
             # TODO: get status of all steps and print summary of failed steps too.
             # Print everything that has been computed.
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
             for step in ordered_steps:
-                if step.name in executor.failed_steps:
+                if step.name in failed_steps:
                     # TODO: add needed_by
                     click_logger.info(
                         click.style(f'\N{cross mark} "{step.name}" failed.', fg="red")
