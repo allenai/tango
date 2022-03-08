@@ -226,7 +226,7 @@ class MulticoreExecutor(Executor):
             1) All dependencies are available.
             2) Step is not already running or queued.
             3) Step has not run in the past and failed.
-            4) Step's state is INCOMPLETE
+            4) Step's state is INCOMPLETE (or FAILED from a previous run).
 
         (We only run uncacheable steps if they are needed for another step downstream,
         as part of the downstream step).
