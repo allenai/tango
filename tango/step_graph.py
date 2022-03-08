@@ -25,7 +25,10 @@ class StepGraph(Mapping[str, Step]):
         if not is_ordered:
             self.parsed_steps = {step.name: step for step in self.ordered_steps(step_dict)}
         else:
-            self.parsed_steps = {step_name: step for step_name, step in step_dict.items()}
+            self.parsed_steps = {}
+            for step_name, step in step_dict.items():
+                step.name = step_name
+                self.parsed_steps[step_name] = step
 
         # Sanity-check the graph
         self._sanity_check()
