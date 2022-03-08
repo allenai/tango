@@ -28,7 +28,7 @@ class Sweeper(Registrable):
     def get_combinations(self):
         hyperparams = self.sweep_config.config["hyperparameters"]
         hyperparams_lsts = []
-        for key, val in hyperparams.items():
+        for val in hyperparams.values():
             hyperparams_lsts.append(val)
         hyperparam_combos = list(itertools.product(*hyperparams_lsts))
         return hyperparam_combos
@@ -38,12 +38,13 @@ class Sweeper(Registrable):
         hyperparam_combos = self.get_combinations()
         for combination in hyperparam_combos:
             main_config = self.override_hyperparameters(combination)
+            # TODO: need to figure where & how to store results / way to track runs
             with run_experiment(main_config, include_package=[self.components]) as run_dir:
                 # TODO: fill in something here?
                 pass
 
     # TODO: wondering if this function should be here or in a test_file?
-    def override_hyperparameters(self, experiment_tuple: dict):
+    def override_hyperparameters(self, experiment_tuple: tuple):
         # Override all the hyperparameters in the current experiment_config
         overrides = {}
         for (i, key) in enumerate(self.sweep_config.config["hyperparameters"].keys()):
