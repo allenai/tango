@@ -78,7 +78,7 @@ class MulticoreExecutor(Executor):
     def _update_running_steps(self, step_states: Dict[str, StepState]) -> List[str]:
         """
         Check the running processes for status. We use poll_status to check if the process ended,
-        but the StepState for checking completion/failure status because after the process ends,
+        but the StepState for checking completion/failure status, because after the process ends,
         the lock release etc. sometimes takes a beat longer.
         """
         done = []

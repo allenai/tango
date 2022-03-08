@@ -228,7 +228,7 @@ def cleanup(*args, **kwargs):
     default=True,
 )
 @click.option(
-    "-p",
+    "-j",
     "--parallelism",
     type=int,
     help="The maximum number of steps to run in parallel (if possible)",
