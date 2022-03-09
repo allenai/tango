@@ -184,7 +184,7 @@ class MulticoreExecutor(Executor):
             if len(_running) < self.parallelism:
                 step_name = _queued_steps.pop(0)
                 # TODO: also check the StepState here for sanity, in case there are 2 concurrent experiment runs?
-                command = f"tango run {config_path} -s {step_name} --no-server"
+                command = f"tango --called-by-executor run {config_path} -s {step_name} --no-server"
                 if hasattr(self.workspace, "dir"):
                     command += f" -w {self.workspace.dir}"  # type: ignore
                 if self.include_package is not None:

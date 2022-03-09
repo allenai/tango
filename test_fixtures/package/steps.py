@@ -65,6 +65,18 @@ class SleepPrintMaybeFail(Step):
         return string
 
 
+@Step.register("logging-step")
+class LoggingStep(Step):
+    DETERMINISTIC = True
+    CACHEABLE = True
+
+    def run(self, string: str, num_log_lines: int = 50) -> str:  # type: ignore
+        for i in Tqdm.tqdm(list(range(num_log_lines)), desc="log progress"):
+            time.sleep(0.1)
+            self.logger.info(f"{i} - {string}")
+        return string
+
+
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     """
