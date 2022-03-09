@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
 
+### Changed
+
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+
+
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
 
 ### Added
@@ -43,7 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `tango.workspace.MemoryWorkspace` and `tango.local_workspace.LocalWorkspace` to `tango.workspaces.*`.
 - Moved `tango.step_cache.MemoryStepCache` and `tango.step_cache.LocalStepCache` to `tango.step_caches.*`.
 - Deprecated the `-d/--workspace-dir` command-line option. Please use `-w/--workspace` instead.
-- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 
 ### Fixed
 
