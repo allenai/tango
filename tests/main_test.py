@@ -243,11 +243,20 @@ class TestRun(TangoTestCase):
         assert "[step stringA] log progress: 100%" in all_logs
         assert "[step stringC] log progress: 100%" in all_logs
         assert "[step final_string] log progress: 100%" in all_logs
-        # And logs from steps that contain multiprocessing themselves.
-        assert "[step multiprocessing_result] progress from main process: 100%" in all_logs
 
-        # TODO: child process logs from steps that contain multiprocessing don't have [step <step_name>] prefix.
-        assert "progress from worker: 100%" in all_logs
+        # And logs from steps that contain multiprocessing themselves.
+        assert "[step multiprocessing_result rank 0] Hello from worker 0!" in all_logs
+        assert "[step multiprocessing_result rank 1] Hello from worker 1!" in all_logs
+        assert (
+            "[step multiprocessing_result rank 0] Hello from the click logger in worker 0!"
+            in all_logs
+        )
+        assert (
+            "[step multiprocessing_result rank 1] Hello from the click logger in worker 1!"
+            in all_logs
+        )
+
+        assert "[step multiprocessing_result] progress from main process: 100%" in all_logs
 
 
 class TestSettings(TangoTestCase):

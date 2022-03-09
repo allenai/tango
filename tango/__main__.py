@@ -189,7 +189,8 @@ def main(
         settings.file_friendly_logging = file_friendly_logging
 
     if called_by_executor:
-        # initialize_worker_logging(None)
+        # We only set this flag instead of calling `initialize_prefix_logging` here
+        # because we do not know the `step_name` yet.
         global _CALLED_BY_EXECUTOR
         _CALLED_BY_EXECUTOR = True
     else:
@@ -770,6 +771,11 @@ def _run(
             )
 
     if called_by_executor:
+        from tango.common.aliases import EnvVarNames
+
+        # We set this environment variable so that any steps that contain multiprocessing
+        # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
+        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
         initialize_prefix_logging(f"step {step_name}", main_process=False)
         log_and_execute_run()
     else:
