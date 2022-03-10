@@ -256,12 +256,6 @@ def cleanup(*args, **kwargs):
     default=1,
 )
 @click.option(
-    "-m",
-    "--multicore",
-    is_flag=True,
-    help="Run the multicore executor",  # TODO: this is only temporary for development!
-)
-@click.option(
     "-s",
     "--step-name",
     help="Execute a particular step (and its dependencies) in the experiment.",
@@ -284,7 +278,6 @@ def run(
     include_package: Optional[Sequence[str]] = None,
     server: bool = True,
     parallelism: int = 1,
-    multicore: bool = False,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
 ):
@@ -317,7 +310,6 @@ def run(
         include_package=include_package,
         start_server=server,
         parallelism=parallelism,
-        multicore=multicore,
         step_name=step_name,
         name=name,
         called_by_executor=_CALLED_BY_EXECUTOR,
@@ -641,7 +633,7 @@ def _run(
     start_server: bool = True,
     step_name: Optional[str] = None,
     parallelism: int = 1,
-    multicore: bool = False,
+    multicore: bool = True,
     name: Optional[str] = None,
     called_by_executor: bool = False,
 ) -> str:

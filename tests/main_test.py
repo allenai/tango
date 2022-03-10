@@ -169,43 +169,10 @@ class TestRun(TangoTestCase):
         assert result.returncode == 0
         assert f"Starting new run {name}" == clean_log_lines[0]
 
-    @pytest.mark.parametrize("start_method", ["fork", "spawn"])
-    @pytest.mark.parametrize("file_friendly_logging", [True, False])
-    def test_experiment_with_multiprocessing(self, file_friendly_logging, start_method):
-        cmd = (
-            [
-                "tango",
-                "--log-level",
-                "info",
-                "--start-method",
-                start_method,
-            ]
-            + ([] if not file_friendly_logging else ["--file-friendly-logging"])
-            + [
-                "run",
-                str(self.FIXTURES_ROOT / "experiment" / "multiprocessing.jsonnet"),
-                "-i",
-                "test_fixtures.package",
-                "-w",
-                str(self.TEST_DIR),
-            ]
-        )
-        result = subprocess.run(cmd, capture_output=True)
-        run_dir = next((self.TEST_DIR / "runs").iterdir())
-        _, clean_log_lines = self.check_logs(run_dir, result, file_friendly_logging)
-        all_logs = "\n".join(clean_log_lines)
-        assert "[rank 0] Hello from worker 0!" in clean_log_lines
-        assert "[rank 1] Hello from worker 1!" in clean_log_lines
-        assert "[rank 0] Hello from the click logger in worker 0!" in clean_log_lines
-        assert "[rank 1] Hello from the click logger in worker 1!" in clean_log_lines
-        # Make sure tqdm output makes it into the log file.
-        assert "progress from main process: 100%" in all_logs
-        assert "progress from worker: 100%" in all_logs
-
     @pytest.mark.parametrize("parallelism", [1, 2])
     @pytest.mark.parametrize("start_method", ["fork", "spawn"])
     @pytest.mark.parametrize("file_friendly_logging", [True, False])
-    def test_experiment_with_multicore_executor_and_multiprocessing(
+    def test_experiment_with_logging_and_multiprocessing(
         self, parallelism, start_method, file_friendly_logging
     ):
         cmd = (
@@ -224,7 +191,6 @@ class TestRun(TangoTestCase):
                 "test_fixtures.package",
                 "-w",
                 str(self.TEST_DIR),
-                "--multicore",
                 "-j",
                 str(parallelism),
             ]
