@@ -286,7 +286,6 @@ def run(
 
     EXPERIMENT is the path to experiment's JSON/Jsonnet/YAML configuration file.
     """
-    global _CALLED_BY_EXECUTOR
     if workspace_dir is not None:
         import warnings
 
