@@ -183,16 +183,23 @@ class MulticoreExecutor(Executor):
                 return
             if len(_running) < self.parallelism:
                 step_name = _queued_steps.pop(0)
-                # TODO: also check the StepState here for sanity, in case there are 2 concurrent experiment runs?
-                command = f"tango --called-by-executor run {config_path} -s {step_name} --no-server"
+                command: List[str] = [
+                    "tango",
+                    "--called-by-executor",
+                    "run",
+                    config_path,
+                    "-s",
+                    step_name,
+                    "--no-server",
+                ]
                 if hasattr(self.workspace, "dir"):
-                    command += f" -w {self.workspace.dir}"  # type: ignore
+                    command += ["-w", self.workspace.dir]  # type: ignore
                 if self.include_package is not None:
                     for package in self.include_package:
-                        command += f" -i {package}"
+                        command += ["-i", package]
                 if run_name is not None:
-                    command += f" -n {run_name}"
-                process = subprocess.Popen(command, shell=True)
+                    command += ["-n", run_name]
+                process = subprocess.Popen(command, shell=False)
                 _running[step_name] = process
             else:
                 logger.debug(
@@ -205,7 +212,6 @@ class MulticoreExecutor(Executor):
             step_graph.to_file(file_ref.name)
             assert os.path.exists(file_ref.name)
 
-            # step_states = self._sync_step_states(step_graph)
             step_states = _sync_step_states()
 
             while _has_incomplete_steps(step_states):
