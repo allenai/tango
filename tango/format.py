@@ -67,7 +67,7 @@ class Format(Registrable, Generic[T]):
         params_dict = super()._to_params()
         for key in ["logger", "__orig_class__"]:
             params_dict.pop(key, None)  # Removing unnecessary keys.
-        params_dict["type"] = self.__module__ + "." + self.__class__.__name__
+        params_dict["type"] = self.__module__ + "." + self.__class__.__qualname__
         return params_dict
 
 
