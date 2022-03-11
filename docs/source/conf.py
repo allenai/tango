@@ -4,14 +4,15 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+import sys
+from datetime import datetime
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-import os
-import sys
 
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -20,7 +21,7 @@ from tango.version import VERSION, VERSION_SHORT  # noqa: E402
 # -- Project information -----------------------------------------------------
 
 project = "AI2 Tango"
-copyright = "2021, Allen Institute for Artificial Intelligence"
+copyright = f"{datetime.today().year}, Allen Institute for Artificial Intelligence"
 author = "Allen Institute for Artificial Intelligence"
 version = VERSION_SHORT
 release = VERSION
@@ -59,7 +60,6 @@ source_suffix = [".rst", ".md"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "datasets": ("https://huggingface.co/docs/datasets", None),
     "torch": ("https://pytorch.org/docs/stable", None),
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
     # Just leaving this here for when we do finally add a deepspeed integration:
@@ -67,6 +67,7 @@ intersphinx_mapping = {
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     # TODO: HF's new doc-builder project doesn't seem to generate the "object.inv" file needed by intersphinx.
     # Tracking issue here: https://github.com/huggingface/doc-builder/issues/81
+    #  "datasets": ("https://huggingface.co/docs/datasets", None),
     #  "transformers": ("https://huggingface.co/docs/transformers", None),
 }
 

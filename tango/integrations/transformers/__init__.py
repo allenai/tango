@@ -66,6 +66,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForImageClassification::from_pretrained
             transformers::AutoModelForImageSegmentation::from_config
             transformers::AutoModelForImageSegmentation::from_pretrained
+            transformers::AutoModelForMaskedImageModeling::from_config
+            transformers::AutoModelForMaskedImageModeling::from_pretrained
             transformers::AutoModelForMaskedLM::from_config
             transformers::AutoModelForMaskedLM::from_pretrained
             transformers::AutoModelForMultipleChoice::from_config
@@ -78,6 +80,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForPreTraining::from_pretrained
             transformers::AutoModelForQuestionAnswering::from_config
             transformers::AutoModelForQuestionAnswering::from_pretrained
+            transformers::AutoModelForSemanticSegmentation::from_config
+            transformers::AutoModelForSemanticSegmentation::from_pretrained
             transformers::AutoModelForSeq2SeqLM::from_config
             transformers::AutoModelForSeq2SeqLM::from_pretrained
             transformers::AutoModelForSequenceClassification::from_config

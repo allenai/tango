@@ -150,6 +150,25 @@ class TestRun(TangoTestCase):
         result = subprocess.run(cmd)
         assert result.returncode == 0
 
+    def test_run_name(self):
+        name = "unique-tango-run-name"
+        cmd = [
+            "tango",
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
+            "-i",
+            "test_fixtures.package",
+            "-w",
+            str(self.TEST_DIR),
+            "--name",
+            name,
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        run_dir = next((self.TEST_DIR / "runs").iterdir())
+        _, clean_log_lines = self.check_logs(run_dir, result)
+        assert result.returncode == 0
+        assert f"Starting new run {name}" == clean_log_lines[0]
+
     @pytest.mark.parametrize("start_method", ["fork", "spawn"])
     @pytest.mark.parametrize("file_friendly_logging", [True, False])
     def test_experiment_with_multiprocessing(self, file_friendly_logging, start_method):
