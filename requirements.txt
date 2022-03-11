@@ -10,7 +10,7 @@ xxhash
 filelock>=3.4,<3.7
 click>=7.0,<9.0
 click-help-colors>=0.9.1,<0.10
-tqdm>=4.62,<4.63
+tqdm>=4.62,<4.64
 more-itertools>=8.0,<9.0
 sqlitedict
 glob2>=0.7
@@ -29,4 +29,4 @@ wandb>=0.12,<0.13            # needed by: wandb
 pytorch-lightning>=1.5,<1.6  # needed by: pytorch_lightning
 transformers>=4.12.3         # needed by: transformers
 sentencepiece>=0.1.96        # needed by: transformers
-fairscale==0.4.5             # needed by: fairscale
+fairscale==0.4.6             # needed by: fairscale
