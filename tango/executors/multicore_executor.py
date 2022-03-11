@@ -5,7 +5,7 @@ import time
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 
-from tango.executor import Executor
+from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.workspace import StepState, Workspace
@@ -36,12 +36,16 @@ class MulticoreExecutor(Executor):
         self._num_tries_to_sync_states = num_tries_to_sync_states
         self._wait_seconds_to_sync_states = wait_seconds_to_sync_states
 
-    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None) -> Set[str]:
+    def execute_step_graph(
+        self, step_graph: StepGraph, run_name: Optional[str] = None
+    ) -> ExecutorOutput:
         """
-        Execute a :class:`tango.step_graph.StepGraph`.
+        Execute a :class:`tango.step_graph.StepGraph`. This attempts to execute steps in parallel.
+        If a step fails, its dependent steps are not run, but unrelated steps are still executed.
         """
 
         _running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
+        _successful: Set[str] = set()
         _failed: Set[str] = set()
         _queued_steps: List[str] = []
 
@@ -129,6 +133,9 @@ class MulticoreExecutor(Executor):
 
             for step_name in done + errors:
                 _running.pop(step_name)
+
+            for step_name in done:
+                _successful.add(step_name)
 
             for step_name in errors:
                 _failed.add(step_name)
@@ -234,7 +241,8 @@ class MulticoreExecutor(Executor):
                 step_states = _sync_step_states()
 
         assert not _running and not _queued_steps
-        return _failed
+        _not_run = {step_name for step_name in step_graph} - _successful - _failed
+        return ExecutorOutput(successful=_successful, failed=_failed, not_run=_not_run)
 
     def _get_state(self, step: Step) -> StepState:
         """

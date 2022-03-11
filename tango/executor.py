@@ -1,5 +1,6 @@
 import logging
-from typing import TYPE_CHECKING, List, Optional, Set, TypeVar
+import traceback
+from typing import TYPE_CHECKING, List, NamedTuple, Optional, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
@@ -12,6 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 T = TypeVar("T")
+
+
+class ExecutorOutput(NamedTuple):
+    """
+    Describes the outcome of the execution.
+    """
+
+    successful: Set[str] = set()
+    """Steps which ran successfully."""
+
+    failed: Set[str] = set()
+    """Steps that failed."""
+
+    not_run: Set[str] = set()
+    """Steps that were not executed (potentially because of failed dependencies."""
 
 
 class Executor:
@@ -38,15 +54,32 @@ class Executor:
         elif is_uncacheable_leaf_step:
             step.result(self.workspace)
 
-    def execute_step_graph(self, step_graph: StepGraph, run_name: Optional[str] = None) -> Set[str]:
+    def execute_step_graph(
+        self, step_graph: StepGraph, run_name: Optional[str] = None
+    ) -> ExecutorOutput:
         """
-        Execute a :class:`tango.step_graph.StepGraph`.
+        Execute a :class:`tango.step_graph.StepGraph`. This attempts to execute
+        every step in order. If a step fails, its dependent steps are not run,
+        but unrelated steps are still executed.
         """
 
-        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
+        successful: Set[str] = set()
+        failed: Set[str] = set()
+        not_run: Set[str] = set()
+        error_tracebacks: List[str] = []
+        for step in step_graph.values():
+            if any([dep.name in failed for dep in step.recursive_dependencies]):
+                not_run.add(step.name)
+            else:
+                try:
+                    self.execute_step(step, step in uncacheable_leaf_steps)
+                    successful.add(step.name)
+                except Exception:
+                    failed.add(step.name)
+                    error_tracebacks.append(traceback.format_exc())
 
-        for step in ordered_steps:
-            self.execute_step(step, step in uncacheable_leaf_steps)
+        for stacktrace in error_tracebacks:
+            logger.error(stacktrace)
 
-        return set()
+        return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)

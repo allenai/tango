@@ -744,14 +744,23 @@ def _run(
                 + click.style(")", fg="green", bold=True)
             )
         else:
-            failed_steps = executor.execute_step_graph(step_graph, run_name=run.name)
+            executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
             # Print everything that has been computed.
             ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
             for step in ordered_steps:
-                if step.name in failed_steps:
+                if step.name in executor_output.failed:
                     # TODO: add needed_by
                     click_logger.info(
-                        click.style(f'\N{cross mark} "{step.name}" failed.', fg="red")
+                        click.style(
+                            f'\N{aegean check mark}"{step.name}" failed.', fg="red"
+                        )  # This symbol is x .
+                    )
+                elif step.name in executor_output.not_run:
+                    click_logger.info(
+                        click.style(
+                            f'\N{combining enclosing circle backslash} "{step.name}" was not executed.',
+                            fg="yellow",
+                        )
                     )
                 else:
                     log_step_summary(step)
