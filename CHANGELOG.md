@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
 - Added CLI option to run a single step in a config using `--step-name` or `-s`.
 - Added a `MultiCoreExecutor` that executes steps in parallel.
+- Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
 
 ### Fixed
 
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
