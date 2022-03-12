@@ -732,9 +732,8 @@ def _run(
                 )
 
         if step_name is not None:
-            uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
             step = step_graph[step_name]
-            executor.execute_step(step, step_name in uncacheable_leaf_steps)
+            executor.execute_step(step)
             log_step_summary(step)
             click_logger.info(
                 click.style("Finished run for step ", fg="green")

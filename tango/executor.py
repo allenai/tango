@@ -43,16 +43,13 @@ class Executor:
         self.workspace = workspace
         self.include_package = include_package
 
-    def execute_step(self, step: "Step", is_uncacheable_leaf_step: bool = False) -> None:
+    def execute_step(self, step: "Step") -> None:
         # Import included packages to find registered components.
         if self.include_package is not None:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        if step.cache_results:
-            step.ensure_result(self.workspace)
-        elif is_uncacheable_leaf_step:
-            step.result(self.workspace)
+        step.result(self.workspace)
 
     def execute_step_graph(
         self, step_graph: StepGraph, run_name: Optional[str] = None
@@ -63,7 +60,6 @@ class Executor:
         but unrelated steps are still executed.
         """
 
-        uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
         successful: Set[str] = set()
         failed: Set[str] = set()
         not_run: Set[str] = set()
@@ -73,7 +69,7 @@ class Executor:
                 not_run.add(step.name)
             else:
                 try:
-                    self.execute_step(step, step in uncacheable_leaf_steps)
+                    self.execute_step(step)
                     successful.add(step.name)
                 except Exception:
                     failed.add(step.name)
