@@ -1,6 +1,7 @@
 import logging
 import traceback
-from typing import TYPE_CHECKING, List, NamedTuple, Optional, Set, TypeVar
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, List, Optional, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
@@ -15,18 +16,19 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class ExecutorOutput(NamedTuple):
+@dataclass
+class ExecutorOutput:
     """
     Describes the outcome of the execution.
     """
 
-    successful: Set[str] = set()
+    successful: Set[str]
     """Steps which ran successfully."""
 
-    failed: Set[str] = set()
+    failed: Set[str]
     """Steps that failed."""
 
-    not_run: Set[str] = set()
+    not_run: Set[str]
     """Steps that were not executed (potentially because of failed dependencies."""
 
 
