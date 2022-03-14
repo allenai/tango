@@ -1,11 +1,13 @@
 name: Update dependency PR 
 on:
   pull_request:
-    types:
-      - opened
-    paths:
-      - 'requirements.txt'
-      - 'dev-requirements.txt'
+    branches:
+      - main
+    # types:
+    #   - opened
+    # paths:
+    #   - 'requirements.txt'
+    #   - 'dev-requirements.txt'
 
 jobs:
   torch:
