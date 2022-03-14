@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
 
+### Changed
+
+- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
+
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
