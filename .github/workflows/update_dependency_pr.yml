@@ -1,0 +1,24 @@
+name: Update dependency PR 
+on:
+  pull_request:
+    types:
+      - opened
+    paths:
+      - 'requirements.txt'
+      - 'dev-requirements.txt'
+
+jobs:
+  torch:
+    name: torch
+    runs-on: ubuntu-latest
+    if: startsWith(github.head_ref, 'dependabot/pip/torch-')
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'Hello! This is a PyTorch upgrade, which means you will also need to update:\n- [ ] The base image in `Dockerfile`\n- [ ] The base image in `Dockerfile.test`\n- [ ] The torch version in `.github/workflows/main.yml`'
+            })

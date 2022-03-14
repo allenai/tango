@@ -170,7 +170,7 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
         run: |
           . .venv/bin/activate
-          pip install torch==1.10.2+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
+          pip install torch==1.11.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
