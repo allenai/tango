@@ -1,20 +1,17 @@
 name: Update dependency PR 
 on:
   pull_request:
-    branches:
-      - main
-    # types:
-    #   - opened
-    # paths:
-    #   - 'requirements.txt'
-    #   - 'dev-requirements.txt'
+    types:
+      - opened
+    paths:
+      - 'requirements.txt'
+      - 'dev-requirements.txt'
 
 jobs:
   torch:
     name: torch
     runs-on: ubuntu-latest
-    # if: startsWith(github.head_ref, 'dependabot/pip/torch-')
-    if: startsWith(github.head_ref, 'ci-updates')
+    if: startsWith(github.head_ref, 'dependabot/pip/torch-')
     steps:
       - uses: actions/github-script@v6
         with:
@@ -23,5 +20,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Hello! This is a PyTorch upgrade, which means you will also need to update:\n- [ ] The base image in `Dockerfile`\n- [ ] The base image in `Dockerfile.test`\n- [ ] The torch version in `.github/workflows/main.yml`'
+              body: 'Hello! This is a [PyTorch](https://pytorch.org/) upgrade, which means you will also need to update:\n- [ ] The base image in `Dockerfile`\n- [ ] The base image in `Dockerfile.test`\n- [ ] The torch version hard-coded in `.github/workflows/main.yml`'
             })
