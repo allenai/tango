@@ -13,7 +13,8 @@ jobs:
   torch:
     name: torch
     runs-on: ubuntu-latest
-    if: startsWith(github.head_ref, 'dependabot/pip/torch-')
+    # if: startsWith(github.head_ref, 'dependabot/pip/torch-')
+    if: startsWith(github.head_ref, 'ci-updates')
     steps:
       - uses: actions/github-script@v6
         with:
