@@ -25,14 +25,18 @@ class _WithPromptEmbedding(nn.Module):
 
         # following Lester et al. 2021 in initializing using the top 5000 random vocabs
         r = random.Random(random_seed)
-        indices = r.sample(range(5000), prompt_length)
+        indices = torch.tensor(r.sample(range(5000), prompt_length))
         with torch.no_grad():
-            self.prompt_embedding.weight.copy_(self.original_embedding.weight[indices])
+            self.prompt_embedding.weight.copy_(self.original_embedding(indices))
 
     def forward(self, input: torch.Tensor):
         embedded_prompt = self.prompt_embedding(input[:, : self.prompt_length])
         embedded_rest = self.original_embedding(input[:, self.prompt_length :])
         return torch.cat([embedded_prompt, embedded_rest], dim=1)
+
+    @property
+    def embedding_dim(self):
+        return self.original_embedding.embedding_dim
 
 
 def make_soft_prompt_transformer(model: Model, prompt_length: int) -> Model:
