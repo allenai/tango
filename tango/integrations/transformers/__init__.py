@@ -192,4 +192,4 @@ from .model import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
 from .tokenizer import Tokenizer
-from .prefix_transformer import make_prefix_transformer
+from .soft_prompt_transformer import make_soft_prompt_transformer

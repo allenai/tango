@@ -45,9 +45,7 @@ def make_soft_prompt_transformer(model: Model, prompt_length: int) -> Model:
             t = kwargs[key]
         except KeyError:
             return
-        prefix = torch.full(
-            (t.size(0), prompt_length) + t.shape[2:], value, dtype=t.dtype, device=t.device
-        )
+        prefix = t.new_full((t.size(0), prompt_length) + t.shape[2:], value)
         kwargs[key] = torch.cat([prefix, t], dim=1)
 
     def patch_tensor_with_indices(
