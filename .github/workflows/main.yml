@@ -133,7 +133,7 @@ jobs:
             python: '3.10'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v2
@@ -226,7 +226,7 @@ jobs:
       BEAKER_CLUSTER: ai2/tango-gpu-tests
       IMAGE_NAME: petew/tango-testing
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Determine current commit SHA (pull request)
         if: github.event_name == 'pull_request'
@@ -333,7 +333,7 @@ jobs:
     needs: [checks, gpu_tests]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v1
