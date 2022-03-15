@@ -1,6 +1,6 @@
-import random
-from typing import Dict, Any
 import logging
+import random
+from typing import Any, Dict
 
 import torch
 from torch import nn
@@ -9,19 +9,16 @@ from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 
 from tango.integrations.torch import Model
 
-
 logger = logging.getLogger(__name__)
 
 
 class _WithPromptEmbedding(nn.Module):
-    def __init__(
-        self, original_embedding: nn.Embedding, prompt_length: int, random_seed: int = 1940
-    ):
+    def __init__(self, original_embedding: nn.Module, prompt_length: int, random_seed: int = 1940):
         super().__init__()
 
         self.prompt_length = prompt_length
         self.original_embedding = original_embedding
-        self.prompt_embedding = nn.Embedding(prompt_length, self.original_embedding.embedding_dim)
+        self.prompt_embedding = nn.Embedding(prompt_length, self.embedding_dim)
 
         # following Lester et al. 2021 in initializing using the top 5000 random vocabs
         r = random.Random(random_seed)
@@ -35,8 +32,8 @@ class _WithPromptEmbedding(nn.Module):
         return torch.cat([embedded_prompt, embedded_rest], dim=1)
 
     @property
-    def embedding_dim(self):
-        return self.original_embedding.embedding_dim
+    def embedding_dim(self) -> int:
+        return self.original_embedding.embedding_dim  # type: ignore
 
 
 def make_soft_prompt_transformer(model: Model, prompt_length: int) -> Model:
@@ -118,8 +115,8 @@ def make_soft_prompt_transformer(model: Model, prompt_length: int) -> Model:
             )
             return result
 
-    model.forward = new_forward
+    model.forward = new_forward  # type: ignore
     return model
 
 
-Model.register("transformers::with_soft_prompt")(make_soft_prompt_transformer)
+Model.register("transformers::with_soft_prompt")(make_soft_prompt_transformer)  # type: ignore
