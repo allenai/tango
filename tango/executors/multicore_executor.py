@@ -42,12 +42,15 @@ class MulticoreExecutor(Executor):
         """
         Execute a :class:`tango.step_graph.StepGraph`. This attempts to execute steps in parallel.
         If a step fails, its dependent steps are not run, but unrelated steps are still executed.
+        Step failures will be logged, but no exceptions will be raised.
         """
 
         _running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
         _successful: Set[str] = set()
         _failed: Set[str] = set()
         _queued_steps: List[str] = []
+
+        uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         def _sync_step_states() -> Dict[str, StepState]:
             """
@@ -92,6 +95,7 @@ class MulticoreExecutor(Executor):
                         return True
                 return False
 
+            uncacheable_leaf_step_names = {step.name for step in uncacheable_leaf_steps}
             for step_name, step_state in step_states.items():
                 if (
                     step_name in _running
@@ -102,6 +106,13 @@ class MulticoreExecutor(Executor):
                         and not _failed_dependencies(step_graph[step_name])
                         # We check for failures in this run.
                         and step_name not in _failed
+                    )
+                    or (
+                        # Uncacheable leaf steps need to run, but their StepState will always be UNCACHEABLE.
+                        step_name in uncacheable_leaf_step_names
+                        and step_name not in _successful
+                        and step_name not in _failed
+                        and not _failed_dependencies(step_graph[step_name])
                     )
                 ):
                     return True
@@ -118,7 +129,8 @@ class MulticoreExecutor(Executor):
             for step_name, process in _running.items():
                 poll_status = process.poll()
                 if poll_status is not None:
-                    if step_states[step_name] == StepState.COMPLETED:
+                    # We check for uncacheable leaf step too.
+                    if step_states[step_name] in [StepState.COMPLETED, StepState.UNCACHEABLE]:
                         done.append(step_name)
                     elif (
                         step_states[step_name] == StepState.FAILED
@@ -129,7 +141,10 @@ class MulticoreExecutor(Executor):
                         # it thinks that the process is not running.
                         errors.append(step_name)
                     else:
-                        pass
+                        logger.warning(
+                            f"Step '{step_name}' has the state {step_states[step_name]}, "
+                            "but the corresponding process has ended!"
+                        )
 
             for step_name in done + errors:
                 _running.pop(step_name)
@@ -149,7 +164,8 @@ class MulticoreExecutor(Executor):
                 1) All dependencies are available.
                 2) Step is not already running or queued.
                 3) Step has not run in the past and failed.
-                4) Step's state is INCOMPLETE (or FAILED from a previous run).
+                4) Step's state is INCOMPLETE (or FAILED from a previous run), or
+                   step's state is UNCACHEABLE and it is a leaf step.
 
             (We only run uncacheable steps if they are needed for another step downstream,
             as part of the downstream step).
@@ -172,7 +188,14 @@ class MulticoreExecutor(Executor):
                     and step.name not in _queued_steps  # Not queued to run.
                     and step.name not in _failed  # Not already failed.
                     # See comment in _has_incomplete_steps
-                    and step_states[step.name] in [StepState.INCOMPLETE, StepState.FAILED]
+                    and (
+                        step_states[step.name] in [StepState.INCOMPLETE, StepState.FAILED]
+                        or (
+                            step_states[step.name] == StepState.UNCACHEABLE
+                            and step in uncacheable_leaf_steps
+                            and step.name not in _successful
+                        )
+                    )
                 ):
                     to_run.add(step.name)
             return to_run
@@ -241,7 +264,19 @@ class MulticoreExecutor(Executor):
                 step_states = _sync_step_states()
 
         assert not _running and not _queued_steps
-        _not_run = {step_name for step_name in step_graph} - _successful - _failed
+        _not_run = set()
+        for step_name, step in step_graph.items():
+            if step_name in _successful or step_name in _failed:
+                # tried to execute directly
+                continue
+            elif not step.cache_results and step not in uncacheable_leaf_steps:
+                # uncacheable interior step; didn't execute directly.
+                continue
+            else:
+                # step wasn't executed because parents failed, or
+                # step is uncacheable leaf step, so we do care about what happened to it.
+                _not_run.add(step_name)
+
         return ExecutorOutput(successful=_successful, failed=_failed, not_run=_not_run)
 
     def _get_state(self, step: Step) -> StepState:

@@ -99,6 +99,8 @@ def run_experiment(
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
     include_package: Optional[List[str]] = None,
+    parallelism: int = 1,
+    multicore: bool = False,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
@@ -109,7 +111,13 @@ def run_experiment(
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config, overrides=overrides, include_package=include_package)
+        yield test_case.run(
+            config,
+            overrides=overrides,
+            include_package=include_package,
+            parallelism=parallelism,
+            multicore=multicore,
+        )
     finally:
         test_case.teardown_method()
         teardown_logging()

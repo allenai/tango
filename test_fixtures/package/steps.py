@@ -77,6 +77,28 @@ class LoggingStep(Step):
         return string
 
 
+@Step.register("make_number")
+class MakeNumber(Step):
+    DETERMINISTIC = True
+    CACHEABLE = True
+
+    def run(self, what_number: int) -> int:  # type: ignore
+        return what_number
+
+
+@Step.register("store_number_in_file")
+class StoreNumberInFile(Step):
+    DETERMINISTIC = True
+    CACHEABLE = False
+
+    def run(self, number: int, file_name: str) -> None:  # type: ignore
+        # Note: this is only for testing if the uncacheable step
+        # ran in the multicore setting. Normally, a step like this
+        # would be marked as CACHEABLE.
+        with open(file_name, "w") as file_ref:
+            file_ref.write(str(number))
+
+
 @Step.register("multiprocessing_step")
 class MultiprocessingStep(Step):
     """

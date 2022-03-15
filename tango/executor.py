@@ -51,7 +51,10 @@ class Executor:
             for package_name in self.include_package:
                 import_extra_module(package_name)
 
-        step.result(self.workspace)
+        if step.cache_results:
+            step.ensure_result(self.workspace)
+        else:
+            step.result(self.workspace)
 
     def execute_step_graph(
         self, step_graph: StepGraph, run_name: Optional[str] = None
@@ -59,15 +62,22 @@ class Executor:
         """
         Execute a :class:`tango.step_graph.StepGraph`. This attempts to execute
         every step in order. If a step fails, its dependent steps are not run,
-        but unrelated steps are still executed.
+        but unrelated steps are still executed. Step failures will be logged, but
+        no exceptions will be raised.
         """
 
         successful: Set[str] = set()
         failed: Set[str] = set()
         not_run: Set[str] = set()
         error_tracebacks: List[str] = []
+        uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
+
         for step in step_graph.values():
-            if any([dep.name in failed for dep in step.recursive_dependencies]):
+            if not step.cache_results and step not in uncacheable_leaf_steps:
+                # If a step is uncacheable and required for another step, it will be
+                # executed as part of the downstream step's execution.
+                continue
+            if any(dep.name in failed for dep in step.recursive_dependencies):
                 not_run.add(step.name)
             else:
                 try:
