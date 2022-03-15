@@ -182,9 +182,16 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::DataCollatorForWholeWordMask
             transformers::DataCollatorWithPadding
             transformers::DefaultDataCollator
+
 """
 
-__all__ = ["RunGeneration", "RunGenerationDataset", "Tokenizer", "Config"]
+__all__ = [
+    "RunGeneration",
+    "RunGenerationDataset",
+    "Tokenizer",
+    "Config",
+    "make_soft_prompt_transformer",
+]
 
 from .config import Config
 from .data import *  # noqa: F403
