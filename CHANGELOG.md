@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
+- Added the `transformers::with_prefix` integration, to make soft-prompted prefix transformers easy.
 
 ### Fixed
 
