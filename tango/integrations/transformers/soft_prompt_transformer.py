@@ -13,7 +13,7 @@ from tango.integrations.torch import Model
 logger = logging.getLogger(__name__)
 
 
-class WithPromptEmbedding(nn.Module):
+class _WithPromptEmbedding(nn.Module):
     def __init__(
         self, original_embedding: nn.Embedding, prompt_length: int, random_seed: int = 1940
     ):
@@ -38,7 +38,7 @@ class WithPromptEmbedding(nn.Module):
 def make_soft_prompt_transformer(model: Model, prompt_length: int) -> Model:
     assert isinstance(model, PreTrainedModel)
 
-    model.set_input_embeddings(WithPromptEmbedding(model.get_input_embeddings(), prompt_length))
+    model.set_input_embeddings(_WithPromptEmbedding(model.get_input_embeddings(), prompt_length))
 
     def patch_tensor(kwargs: Dict[str, torch.Tensor], key: str, value: Any = 0) -> None:
         try:
