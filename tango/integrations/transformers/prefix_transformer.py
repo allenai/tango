@@ -50,7 +50,9 @@ def make_prefix_transformer(model: Model, prefix_length: int) -> Model:
         )
         kwargs[key] = torch.cat([zero_prefix, t], dim=1)
 
-    def patch_tensor_with_indices(kwargs: Dict[str, torch.Tensor], key: str) -> None:
+    def patch_tensor_with_indices(
+        kwargs: Dict[str, torch.Tensor], key: str, offset: int = 0
+    ) -> None:
         try:
             t = kwargs[key]
         except KeyError:
@@ -60,7 +62,7 @@ def make_prefix_transformer(model: Model, prefix_length: int) -> Model:
                 torch.arange(0, prefix_length, dtype=t.dtype)
                 .unsqueeze(0)
                 .expand(t.size(0), prefix_length),
-                t + prefix_length,
+                t + offset,
             ],
             dim=1,
         )
@@ -77,7 +79,7 @@ def make_prefix_transformer(model: Model, prefix_length: int) -> Model:
         patch_tensor(kwargs, "labels")
         patch_tensor(kwargs, "attention_mask", 1)
         patch_tensor(kwargs, "token_type_ids")
-        patch_tensor_with_indices(kwargs, "position_ids")
+        patch_tensor_with_indices(kwargs, "position_ids", prefix_length)
 
         result = old_forward(*args, **kwargs)
 
