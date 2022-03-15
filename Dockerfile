@@ -1,6 +1,6 @@
 # This Dockerfile can be used to build a Docker image suitable for tango projects.
 
-ARG BASE_IMAGE=ghcr.io/allenai/pytorch:1.10.2-cuda11.3
+ARG BASE_IMAGE=ghcr.io/allenai/pytorch:1.11.0-cuda11.3
 FROM ${BASE_IMAGE}
 
 WORKDIR /stage
