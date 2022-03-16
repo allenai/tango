@@ -4,13 +4,14 @@ from tango.integrations.transformers import add_soft_prompt
 
 
 def test_soft_prompt():
-    model = transformers.AutoModelForCausalLM.from_pretrained("gpt2")
-    tokenizer = transformers.AutoTokenizer.from_pretrained("gpt2")
-    generated = model.generate(tokenizer.encode("It was the best of times.", return_tensors="pt"))
+    model = transformers.AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+    tokenizer = transformers.AutoTokenizer.from_pretrained("t5-small")
+    prompt = "translate English to German: That is good."
+    generated = model.generate(tokenizer.encode(prompt, return_tensors="pt"))
     original_output = tokenizer.decode(generated[0])
 
     add_soft_prompt(model, prompt_length=3)
-    generated = model.generate(tokenizer.encode("It was the best of times.", return_tensors="pt"))
+    generated = model.generate(tokenizer.encode(prompt, return_tensors="pt"))
     prompted_output = tokenizer.decode(generated[0])
 
     assert original_output != prompted_output

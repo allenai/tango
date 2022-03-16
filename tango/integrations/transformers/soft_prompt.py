@@ -5,7 +5,10 @@ from typing import Any, Dict, Optional
 import torch
 from torch import nn
 from transformers import PreTrainedModel
-from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPastAndCrossAttentions,
+    CausalLMOutputWithCrossAttentions,
+)
 
 from tango.integrations.torch import Model
 
@@ -87,7 +90,11 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
         )
 
     # Because PyTorch hooks don't support kwargs, we monkey patch the forward method 🙈
-    old_forward = model.forward
+    if hasattr(model, "get_encoder"):
+        model_to_patch = model.get_encoder()
+    else:
+        model_to_patch = model
+    old_forward = model_to_patch.forward
 
     def new_forward(*args, **kwargs):
 
@@ -116,21 +123,34 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
         result = old_forward(*args, **kwargs)
 
         # Massage the output to look like the prompt was never there
+        unpatch_tensor = lambda t: t[:, prompt_length:]  # noqa: E731
+        unpatch_attention_tensor = lambda t: t[:, :, prompt_length:]  # noqa: E731
+        unpatch_kv_tensor = unpatch_attention_tensor
         if isinstance(result, CausalLMOutputWithCrossAttentions):
-            unpatch_tensor = lambda t: t[:, prompt_length:]  # noqa: E731
             if result.logits is not None:
                 result.logits = unpatch_tensor(result.logits)
             if result.hidden_states is not None:
                 result.hidden_states = tuple(map(unpatch_tensor, result.hidden_states))
-
-            unpatch_attention_tensors = lambda t: t[:, :, prompt_length:]  # noqa: E731
             if result.attentions is not None:
-                result.attentions = tuple(map(unpatch_attention_tensors, result.attentions))
+                result.attentions = tuple(map(unpatch_attention_tensor, result.attentions))
             if result.cross_attentions is not None:
                 result.cross_attentions = tuple(
-                    map(unpatch_attention_tensors, result.cross_attentions)
+                    map(unpatch_attention_tensor, result.cross_attentions)
                 )
-
+            return result
+        elif isinstance(result, BaseModelOutputWithPastAndCrossAttentions):
+            if result.last_hidden_state is not None:
+                result.last_hidden_state = unpatch_tensor(result.last_hidden_state)
+            if result.past_key_values is not None:
+                result.past_key_values = tuple(map(unpatch_kv_tensor, result.past_key_values))
+            if result.hidden_states is not None:
+                result.hidden_states = tuple(map(unpatch_tensor, result.hidden_states))
+            if result.attentions is not None:
+                result.attentions = tuple(map(unpatch_attention_tensor, result.attentions))
+            if result.cross_attentions is not None:
+                result.cross_attentions = tuple(
+                    map(unpatch_attention_tensor, result.cross_attentions)
+                )
             return result
         else:
             logger.warning(
@@ -139,7 +159,7 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
             )
             return result
 
-    model.forward = new_forward  # type: ignore
+    model_to_patch.forward = new_forward  # type: ignore
 
 
 Model.register("transformers::with_soft_prompt")(add_soft_prompt)  # type: ignore
