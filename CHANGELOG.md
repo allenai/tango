@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
+- Added CLI option to run a single step in a config using `--step-name` or `-s`.
+- Added a `MultiCoreExecutor` that executes steps in parallel.
+- Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
 
 ### Changed
 
@@ -20,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
+
+### Changed
+
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
 

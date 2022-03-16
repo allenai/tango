@@ -63,6 +63,13 @@ class Format(Registrable, Generic[T]):
         """Reads an artifact from the directory at ``dir`` and returns it."""
         raise NotImplementedError()
 
+    def _to_params(self) -> Dict[str, Any]:
+        params_dict = super()._to_params()
+        for key in ["logger", "__orig_class__"]:
+            params_dict.pop(key, None)  # Removing unnecessary keys.
+        params_dict["type"] = self.__module__ + "." + self.__class__.__qualname__
+        return params_dict
+
 
 _OPEN_FUNCTIONS: Dict[Optional[str], Callable[[PathLike, str], IO]] = {
     None: open,
@@ -114,14 +121,14 @@ class DillFormat(Format[T], Generic[T]):
     VERSION = 1
 
     def __init__(self, compress: Optional[str] = None):
-        try:
-            self.open = _OPEN_FUNCTIONS[compress]
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     def write(self, artifact: T, dir: PathOrStr):
         filename = self._get_artifact_path(dir)
-        with self.open(filename, "wb") as f:
+        open_method = _OPEN_FUNCTIONS[self.compress]
+        with open_method(filename, "wb") as f:
             pickler = dill.Pickler(file=f)
             pickler.dump(self.VERSION)
             if hasattr(artifact, "__next__"):
@@ -134,7 +141,8 @@ class DillFormat(Format[T], Generic[T]):
 
     def read(self, dir: PathOrStr) -> T:
         filename = self._get_artifact_path(dir)
-        with self.open(filename, "rb") as f:
+        open_method = _OPEN_FUNCTIONS[self.compress]
+        with open_method(filename, "rb") as f:
             unpickler = dill.Unpickler(file=f)
             version = unpickler.load()
             if version > self.VERSION:
@@ -148,7 +156,7 @@ class DillFormat(Format[T], Generic[T]):
                 return unpickler.load()
 
     def _get_artifact_path(self, dir: PathOrStr) -> Path:
-        return Path(dir) / ("data.dill" + _SUFFIXES[self.open])
+        return Path(dir) / ("data.dill" + _SUFFIXES[_OPEN_FUNCTIONS[self.compress]])
 
 
 class DillFormatIterator(Iterator[T], Generic[T]):
@@ -196,10 +204,9 @@ class JsonFormat(Format[T], Generic[T]):
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-        try:
-            self.open = _OPEN_FUNCTIONS[compress]
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     @staticmethod
     def _encoding_fallback(unencodable: Any):
@@ -245,15 +252,16 @@ class JsonFormat(Format[T], Generic[T]):
         return o
 
     def write(self, artifact: T, dir: PathOrStr):
+        open_method = _OPEN_FUNCTIONS[self.compress]
         if hasattr(artifact, "__next__"):
             filename = self._get_artifact_path(dir, iterator=True)
-            with self.open(filename, "wt") as f:
+            with open_method(filename, "wt") as f:
                 for item in cast(Iterable, artifact):
                     json.dump(item, f, default=self._encoding_fallback)
                     f.write("\n")
         else:
             filename = self._get_artifact_path(dir, iterator=False)
-            with self.open(filename, "wt") as f:
+            with open_method(filename, "wt") as f:
                 json.dump(artifact, f, default=self._encoding_fallback)
 
     def read(self, dir: PathOrStr) -> T:
@@ -276,13 +284,16 @@ class JsonFormat(Format[T], Generic[T]):
         if iterator_exists and not non_iterator_exists:
             return JsonFormatIterator(iterator_filename)  # type: ignore
         elif not iterator_exists and non_iterator_exists:
-            with self.open(non_iterator_filename, "rt") as f:
+            open_method = _OPEN_FUNCTIONS[self.compress]
+            with open_method(non_iterator_filename, "rt") as f:
                 return json.load(f, object_hook=self._decoding_fallback)
         else:
             raise RuntimeError("This should be impossible.")
 
     def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
-        return Path(dir) / (("data.jsonl" if iterator else "data.json") + _SUFFIXES[self.open])
+        return Path(dir) / (
+            ("data.jsonl" if iterator else "data.json") + _SUFFIXES[_OPEN_FUNCTIONS[self.compress]]
+        )
 
 
 class JsonFormatIterator(Iterator[T], Generic[T]):
@@ -330,21 +341,21 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
-        try:
-            self.open = _OPEN_FUNCTIONS[compress]
-        except KeyError:
+        if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
+        self.compress = compress
 
     def write(self, artifact: Union[str, Iterable[str]], dir: PathOrStr):
+        open_method = _OPEN_FUNCTIONS[self.compress]
         if hasattr(artifact, "__next__"):
             filename = self._get_artifact_path(dir, iterator=True)
-            with self.open(filename, "wt") as f:
+            with open_method(filename, "wt") as f:
                 for item in cast(Iterable, artifact):
                     f.write(str(item))
                     f.write("\n")
         else:
             filename = self._get_artifact_path(dir, iterator=False)
-            with self.open(filename, "wt") as f:
+            with open_method(filename, "wt") as f:
                 f.write(str(artifact))
 
     def read(self, dir: PathOrStr) -> Union[str, Iterable[str]]:
@@ -367,13 +378,16 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         if iterator_exists and not non_iterator_exists:
             return TextFormatIterator(iterator_filename)  # type: ignore
         elif not iterator_exists and non_iterator_exists:
-            with self.open(non_iterator_filename, "rt") as f:
+            open_method = _OPEN_FUNCTIONS[self.compress]
+            with open_method(non_iterator_filename, "rt") as f:
                 return f.read()
         else:
             raise RuntimeError("This should be impossible.")
 
     def _get_artifact_path(self, dir: PathOrStr, iterator: bool = False) -> Path:
-        return Path(dir) / (("texts.txt" if iterator else "text.txt") + _SUFFIXES[self.open])
+        return Path(dir) / (
+            ("texts.txt" if iterator else "text.txt") + _SUFFIXES[_OPEN_FUNCTIONS[self.compress]]
+        )
 
 
 class TextFormatIterator(Iterator[str]):

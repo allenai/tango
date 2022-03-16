@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterator, List, Mapping, Set
+from typing import Any, Dict, Iterator, List, Mapping, Set, Type
 
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
@@ -18,18 +18,33 @@ class StepGraph(Mapping[str, Step]):
     to :class:`Step`.
     """
 
-    def __init__(self, params: Dict[str, Params]):
+    def __init__(self, step_dict: Dict[str, Step]):
         # TODO: What happens with anonymous steps in here?
 
-        # Determine the order in which to create steps so that all dependent steps are available when we need them.
-        # This algorithm for resolving step dependencies is O(n^2). Since we're
-        # anticipating the number of steps in a single config to be in the dozens at most (#famouslastwords),
-        # we choose simplicity over cleverness.
-        dependencies = {
-            step_name: self._find_step_dependencies(step_params)
-            for step_name, step_params in params.items()
-        }
+        is_ordered = self._is_ordered(step_dict)
+        if not is_ordered:
+            self.parsed_steps = {step.name: step for step in self.ordered_steps(step_dict)}
+        else:
+            self.parsed_steps = {}
+            for step_name, step in step_dict.items():
+                step.name = step_name
+                self.parsed_steps[step_name] = step
 
+        # Sanity-check the graph
+        self._sanity_check()
+
+    @classmethod
+    def _is_ordered(cls, step_dict: Dict[str, Step]):
+        present = set()
+        for _, step in step_dict.items():
+            for dep in step.dependencies:
+                if dep.name not in present:
+                    return False
+            present.add(step.name)
+        return True
+
+    @classmethod
+    def _check_unsatisfiable_dependencies(cls, dependencies: Dict[str, Set[str]]) -> None:
         # Check whether some of those dependencies can never be satisfied.
         unsatisfiable_dependencies = {
             dep
@@ -48,8 +63,10 @@ class StepGraph(Mapping[str, Step]):
                     f"Some dependencies can't be found in the config: {', '.join(unsatisfiable_dependencies)}"
                 )
 
+    @classmethod
+    def _get_ordered_steps(cls, dependencies: Dict[str, Set[str]]) -> List[str]:
         done: Set[str] = set()
-        todo = list(params.keys())
+        todo = list(dependencies.keys())
         ordered_steps = list()
         while len(todo) > 0:
             new_todo = []
@@ -62,24 +79,16 @@ class StepGraph(Mapping[str, Step]):
             if len(todo) == len(new_todo):
                 raise ConfigurationError(
                     "Could not make progress parsing the steps. "
-                    "You probably have a circular reference between the steps."
+                    "You probably have a circular reference between the steps, "
+                    "Or a missing dependency."
                 )
             todo = new_todo
         del dependencies
         del done
         del todo
+        return ordered_steps
 
-        # Parse the steps
-        self.parsed_steps: Dict[str, Step] = {}
-        for step_name in ordered_steps:
-            step_params = params.pop(step_name)
-            if step_name in self.parsed_steps:
-                raise ConfigurationError(f"Duplicate step name {step_name}")
-
-            step_params = self._replace_step_dependencies(step_params, self.parsed_steps)
-            self.parsed_steps[step_name] = Step.from_params(step_params, step_name=step_name)
-
-        # Sanity-check the graph
+    def _sanity_check(self) -> None:
         for step in self.parsed_steps.values():
             if step.cache_results:
                 nondeterministic_dependencies = [
@@ -91,6 +100,43 @@ class StepGraph(Mapping[str, Step]):
                         f"Task {step.name} is set to cache results, but depends on non-deterministic "
                         f"step {nd_step.name}. This will produce confusing results."
                     )
+
+    @classmethod
+    def from_params(cls: Type["StepGraph"], params: Dict[str, Params]) -> "StepGraph":  # type: ignore[override]
+        # Determine the order in which to create steps so that all dependent steps are available when we need them.
+        # This algorithm for resolving step dependencies is O(n^2). Since we're
+        # anticipating the number of steps in a single config to be in the dozens at most (#famouslastwords),
+        # we choose simplicity over cleverness.
+        dependencies = {
+            step_name: cls._find_step_dependencies(step_params)
+            for step_name, step_params in params.items()
+        }
+        cls._check_unsatisfiable_dependencies(dependencies)
+
+        # We need ordered dependencies to construct the steps with refs.
+        ordered_steps = cls._get_ordered_steps(dependencies)
+
+        # Parse the steps
+        step_dict: Dict[str, Step] = {}
+        for step_name in ordered_steps:
+            step_params = params.pop(step_name)
+            if step_name in step_dict:
+                raise ConfigurationError(f"Duplicate step name {step_name}")
+
+            step_params = cls._replace_step_dependencies(step_params, step_dict)
+            step_dict[step_name] = Step.from_params(step_params, step_name=step_name)
+
+        return cls(step_dict)
+
+    def sub_graph(self, step_name: str) -> "StepGraph":
+        if step_name not in self.parsed_steps:
+            raise KeyError(
+                f"{step_name} is not a part of this StepGraph. "
+                f"Available steps are: {list(self.parsed_steps.keys())}"
+            )
+        step_dict = {dep.name: dep for dep in self.parsed_steps[step_name].recursive_dependencies}
+        step_dict[step_name] = self.parsed_steps[step_name]
+        return StepGraph(step_dict)
 
     @staticmethod
     def _dict_is_ref(d: dict) -> bool:
@@ -151,28 +197,77 @@ class StepGraph(Mapping[str, Step]):
         """
         return iter(self.parsed_steps)
 
-    def ordered_steps(self) -> List[Step]:
+    @classmethod
+    def ordered_steps(cls, step_dict: Dict[str, Step]) -> List[Step]:
         """
         Returns the steps in this step graph in an order that can be executed one at a time.
 
         This does not take into account which steps may be cached. It simply returns an executable
         order of steps.
         """
+        dependencies = {
+            step_name: set([dep.name for dep in step.dependencies])
+            for step_name, step in step_dict.items()
+        }
         result: List[Step] = []
-        steps_run: Set[Step] = set()
-        steps_not_run = list(self.parsed_steps.values())
-        while len(steps_not_run) > 0:
-            step = steps_not_run.pop(0)
-            if len(step.dependencies & steps_run) == len(step.dependencies):
-                steps_run.add(step)
-                result.append(step)
-            else:
-                steps_not_run.append(step)
+        for step_name in cls._get_ordered_steps(dependencies):
+            step_dict[step_name].name = step_name
+            result.append(step_dict[step_name])
         return result
 
+    def uncacheable_leaf_steps(self) -> Set[Step]:
+        interior_steps: Set[Step] = set()
+        for _, step in self.parsed_steps.items():
+            for dependency in step.dependencies:
+                interior_steps.add(dependency)
+        uncacheable_leaf_steps = {
+            step for step in set(self.values()) - interior_steps if not step.cache_results
+        }
+        return uncacheable_leaf_steps
+
     @classmethod
-    def from_file(cls, filename: PathOrStr):
+    def from_file(cls, filename: PathOrStr) -> "StepGraph":
         params = Params.from_file(filename)
         for package_name in params.pop("include_package", []):
             import_extra_module(package_name)
-        return StepGraph(params.pop("steps", keep_as_dict=True))
+        return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+
+    def to_config(self):
+        step_dict = {}
+
+        def _to_config(o: Any):
+            if isinstance(o, (list, tuple, set)):
+                return o.__class__(_to_config(i) for i in o)
+            elif isinstance(o, dict):
+                return {key: _to_config(value) for key, value in o.items()}
+            elif isinstance(o, Step):
+                return {"type": "ref", "ref": o.name}
+            elif o is not None and not isinstance(o, (bool, str, int, float)):
+                raise ValueError(o)
+            return o
+
+        for step_name, step in self.parsed_steps.items():
+            try:
+                step_dict[step_name] = {
+                    key: _to_config(value) for key, value in step.config.items()
+                }
+            except ValueError:  # step.config throws an error.
+                # If the step_graph was not constructed using a config, we attempt to create
+                # the config using the step object.
+                step_dict[step_name] = {
+                    key: _to_config(val) for key, val in step._to_params()["kwargs"].items()
+                }
+                step_dict[step_name]["type"] = step.__module__ + "." + step.__class__.__name__
+
+                # We only add cache_results and format to the config if the values are different from default.
+                if step.cache_results != step.CACHEABLE:
+                    step_dict[step_name]["cache_results"] = step.cache_results
+                if step.format != step.FORMAT:
+                    step_dict[step_name]["step_format"] = _to_config(step.format._to_params())
+
+        return step_dict
+
+    def to_file(self, filename: PathOrStr) -> None:
+        step_dict = self.to_config()
+        params = Params({"steps": step_dict})
+        params.to_file(filename)

@@ -1,28 +1,33 @@
 import re
+from tempfile import NamedTemporaryFile
 
 import pytest
 
-import test_fixtures.package.steps  # noqa: F401
 from tango.common.exceptions import ConfigurationError
 from tango.common.testing import TangoTestCase
 from tango.step_graph import StepGraph
+from test_fixtures.package.steps import (  # noqa: F401
+    AddNumbersStep,
+    ConcatStringsStep,
+    StringStep,
+)
 
 
 class TestStepGraph(TangoTestCase):
     def test_ordered_steps(self):
-        step_graph = StepGraph(
+        step_graph = StepGraph.from_params(
             {
-                "step1": {
+                "stepB": {
                     "type": "add_numbers",
                     "a_number": 2,
                     "b_number": 3,
                 },
-                "step2": {
+                "stepC": {
                     "type": "add_numbers",
-                    "a_number": {"type": "ref", "ref": "step1"},
+                    "a_number": {"type": "ref", "ref": "stepB"},
                     "b_number": 5,
                 },
-                "step3": {
+                "stepA": {
                     "type": "add_numbers",
                     "a_number": 3,
                     "b_number": 1,
@@ -30,8 +35,8 @@ class TestStepGraph(TangoTestCase):
             }
         )
 
-        result = step_graph.ordered_steps()
-        assert [res.name for res in result] == ["step1", "step2", "step3"]
+        result = StepGraph.ordered_steps(step_graph.parsed_steps)
+        assert [res.name for res in result] == ["stepB", "stepC", "stepA"]
 
     def test_from_file(self):
         step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")
@@ -40,7 +45,7 @@ class TestStepGraph(TangoTestCase):
 
     def test_missing_type(self):
         with pytest.raises(ConfigurationError, match=re.escape('key "type" is required')):
-            StepGraph(
+            StepGraph.from_params(
                 {
                     "step3": {
                         "a_number": 3,
@@ -48,3 +53,42 @@ class TestStepGraph(TangoTestCase):
                     },
                 }
             )
+
+    def test_direct_construction(self):
+        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA")
+        step_b = AddNumbersStep(a_number=step_a, b_number=2, step_name="stepB")
+        step_graph = StepGraph({"stepA": step_a, "stepB": step_b})
+        assert list(step_graph.parsed_steps.keys()) == ["stepA", "stepB"]
+
+    def test_direct_construction_missing_dependency(self):
+        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA")
+        step_b = AddNumbersStep(a_number=step_a, b_number=2, step_name="stepB")
+        with pytest.raises(ConfigurationError, match="Or a missing dependency"):
+            StepGraph({"stepB": step_b})
+
+    def test_to_file(self):
+        step_graph = StepGraph.from_file(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet")
+
+        with NamedTemporaryFile(
+            prefix="test-step-graph-to-file-", suffix=".jsonnet", dir=self.TEST_DIR
+        ) as file_ref:
+            step_graph.to_file(file_ref.name)
+
+            new_step_graph = StepGraph.from_file(file_ref.name)
+            assert step_graph == new_step_graph
+
+    def test_to_file_without_config(self):
+        from tango.format import JsonFormat
+
+        step_a = AddNumbersStep(a_number=3, b_number=2, step_name="stepA", cache_results=False)
+        step_b = AddNumbersStep(
+            a_number=step_a, b_number=2, step_name="stepB", step_format=JsonFormat("gz")
+        )
+        step_graph = StepGraph({"stepA": step_a, "stepB": step_b})
+
+        with NamedTemporaryFile(
+            prefix="test-step-graph-to-file-without-config", suffix=".jsonnet", dir=self.TEST_DIR
+        ) as file_ref:
+            step_graph.to_file(file_ref.name)
+            new_step_graph = StepGraph.from_file(file_ref.name)
+            assert step_graph == new_step_graph

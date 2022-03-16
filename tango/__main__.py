@@ -83,7 +83,12 @@ from typing import List, Optional, Sequence, Union
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-from tango.common.logging import click_logger, initialize_logging, teardown_logging
+from tango.common.logging import (
+    click_logger,
+    initialize_logging,
+    initialize_prefix_logging,
+    teardown_logging,
+)
 from tango.common.params import Params
 from tango.common.util import (
     find_integrations,
@@ -106,6 +111,10 @@ _CLICK_COMMAND_DEFAULTS = {
     "help_headers_color": "yellow",
     "context_settings": {"max_content_width": 115},
 }
+
+_CALLED_BY_EXECUTOR: bool = (
+    False  # Flag used internally to determine if CLI was called by the MulticoreExecutor.
+)
 
 
 @click.group(**_CLICK_GROUP_DEFAULTS)
@@ -132,6 +141,11 @@ _CLICK_COMMAND_DEFAULTS = {
     type=click.Choice(["fork", "spawn", "forkserver"], case_sensitive=True),
     show_choices=True,
 )
+@click.option(
+    "--called-by-executor",
+    is_flag=True,
+    hidden=True,
+)
 @click.pass_context
 def main(
     ctx,
@@ -139,6 +153,7 @@ def main(
     log_level: Optional[str] = None,
     file_friendly_logging: bool = False,
     start_method: Optional[str] = None,
+    called_by_executor: bool = False,
 ):
     settings: TangoGlobalSettings = (
         TangoGlobalSettings.from_file(settings)
@@ -173,11 +188,17 @@ def main(
     if file_friendly_logging:
         settings.file_friendly_logging = file_friendly_logging
 
-    initialize_logging(
-        log_level=settings.log_level,
-        file_friendly_logging=settings.file_friendly_logging,
-        enable_click_logs=True,
-    )
+    if called_by_executor:
+        # We only set this flag instead of calling `initialize_prefix_logging` here
+        # because we do not know the `step_name` yet.
+        global _CALLED_BY_EXECUTOR
+        _CALLED_BY_EXECUTOR = True
+    else:
+        initialize_logging(
+            log_level=settings.log_level,
+            file_friendly_logging=settings.file_friendly_logging,
+            enable_click_logs=True,
+        )
 
     ctx.obj = settings
 
@@ -228,6 +249,20 @@ def cleanup(*args, **kwargs):
     default=True,
 )
 @click.option(
+    "-j",
+    "--parallelism",
+    type=int,
+    help="The maximum number of steps to run in parallel (if possible)",
+    default=1,
+)
+@click.option(
+    "-s",
+    "--step-name",
+    help="Execute a particular step (and its dependencies) in the experiment.",
+    type=str,
+    default=None,
+)
+@click.option(
     "-n",
     "--name",
     type=str,
@@ -242,6 +277,8 @@ def run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     server: bool = True,
+    parallelism: int = 1,
+    step_name: Optional[str] = None,
     name: Optional[str] = None,
 ):
     """
@@ -271,7 +308,10 @@ def run(
         overrides=overrides,
         include_package=include_package,
         start_server=server,
+        parallelism=parallelism,
+        step_name=step_name,
         name=name,
+        called_by_executor=_CALLED_BY_EXECUTOR,
     )
 
 
@@ -590,9 +630,14 @@ def _run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     start_server: bool = True,
+    step_name: Optional[str] = None,
+    parallelism: int = 1,
+    multicore: bool = True,
     name: Optional[str] = None,
+    called_by_executor: bool = False,
 ) -> str:
     from tango.executor import Executor
+    from tango.executors import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
     from tango.step_graph import StepGraph
     from tango.workspace import Workspace
@@ -621,16 +666,43 @@ def _run(
         workspace = default_workspace
 
     # Initialize step graph and register run.
-    step_graph = StepGraph(params.pop("steps", keep_as_dict=True))
+    step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
     params.assert_empty("'tango run'")
-    run = workspace.register_run((step for step in step_graph.values()), name)
 
-    # Capture logs to file.
-    with workspace.capture_logs_for_run(run.name):
-        click_logger.info(
-            click.style("Starting new run ", fg="green")
-            + click.style(run.name, fg="green", bold=True)
+    if step_name is not None:
+        assert step_name in step_graph, (
+            f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
+            f"The config contains: {list(step_graph.keys())}."
         )
+
+        if called_by_executor and name is not None:
+            try:
+                run = workspace.registered_run(name)
+            except KeyError:
+                raise RuntimeError(
+                    "The CLI was called by `MulticoreExecutor.execute_step_graph`, but "
+                    f"'{name}' is not already registered as a run. This should never happen!"
+                )
+        else:
+            sub_graph = step_graph.sub_graph(step_name)
+            run = workspace.register_run((step for step in sub_graph.values()), name)
+    else:
+        run = workspace.register_run((step for step in step_graph.values()), name)
+
+    def log_and_execute_run():
+        if step_name is None:
+            click_logger.info(
+                click.style("Starting new run ", fg="green")
+                + click.style(run.name, fg="green", bold=True)
+            )
+        else:
+            click_logger.info(
+                click.style("Starting run for step ", fg="green")
+                + click.style(step_name, fg="green", bold=True)
+                + click.style(" (", fg="green", bold=True)
+                + click.style(run.name, fg="green", bold=True)
+                + click.style(")", fg="green", bold=True)
+            )
 
         # Initialize server.
         if start_server:
@@ -640,13 +712,16 @@ def _run(
                 "Server started at " + click.style(server.address_for_display(run.name), bold=True)
             )
 
+        executor: Executor
         # Initialize Executor and execute the step graph.
-        executor = Executor(workspace=workspace, include_package=include_package)
-        executor.execute_step_graph(step_graph)
+        if multicore:
+            executor = MulticoreExecutor(
+                workspace=workspace, include_package=include_package, parallelism=parallelism
+            )
+        else:
+            executor = Executor(workspace=workspace, include_package=include_package)
 
-        # Print everything that has been computed.
-        ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-        for step in ordered_steps:
+        def log_step_summary(step):
             info = workspace.step_info(step)
             if info.result_location is not None:
                 click_logger.info(
@@ -656,9 +731,56 @@ def _run(
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
 
-        click_logger.info(
-            click.style("Finished run ", fg="green") + click.style(run.name, fg="green", bold=True)
-        )
+        if step_name is not None:
+            step = step_graph[step_name]
+            executor.execute_step(step)
+            log_step_summary(step)
+            click_logger.info(
+                click.style("Finished run for step ", fg="green")
+                + click.style(step_name, fg="green", bold=True)
+                + click.style(" (", fg="green", bold=True)
+                + click.style(run.name, fg="green", bold=True)
+                + click.style(")", fg="green", bold=True)
+            )
+        else:
+            executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
+            # Print everything that has been computed.
+            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
+            for step in ordered_steps:
+                if step.name in executor_output.failed:
+                    # TODO: add needed_by
+                    click_logger.info(
+                        click.style(
+                            f'\N{aegean check mark}"{step.name}" failed.', fg="red"
+                        )  # This symbol is x .
+                    )
+                elif step.name in executor_output.not_run:
+                    click_logger.info(
+                        click.style(
+                            f'\N{combining enclosing circle backslash} "{step.name}" was not executed.',
+                            fg="yellow",
+                        )
+                    )
+                else:
+                    log_step_summary(step)
+
+            click_logger.info(
+                click.style("Finished run ", fg="green")
+                + click.style(run.name, fg="green", bold=True)
+            )
+
+    if called_by_executor:
+        from tango.common.aliases import EnvVarNames
+
+        # We set this environment variable so that any steps that contain multiprocessing
+        # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
+        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
+        initialize_prefix_logging(f"step {step_name}", main_process=False)
+        log_and_execute_run()
+    else:
+        # Capture logs to file.
+        with workspace.capture_logs_for_run(run.name):
+            log_and_execute_run()
 
     return run.name
 

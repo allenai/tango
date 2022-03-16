@@ -1,15 +1,6 @@
 from tango import Step
-from tango.common.testing import TangoTestCase
-
-
-@Step.register("make_number")
-class MakeNumber(Step):
-    DETERMINISTIC = True
-    CACHEABLE = True
-
-    def run(self, what_number: int) -> int:  # type: ignore
-        return what_number
-
+from tango.common.testing import TangoTestCase, run_experiment
+from test_fixtures.package.steps import MakeNumber  # noqa:F401
 
 stored_number = None
 
@@ -43,3 +34,30 @@ class TestExperiment(TangoTestCase):
         assert stored_number is None
         self.run(config)
         assert stored_number == 3
+
+
+class TestExperimentMulticore(TangoTestCase):
+    def test_experiment(self, caplog):
+        file_name = self.TEST_DIR / "number_file.txt"
+        assert not file_name.exists()
+        with run_experiment(
+            {
+                "steps": {
+                    "a_number": {
+                        "type": "make_number",
+                        "what_number": 3,
+                    },
+                    "store_number": {
+                        "type": "store_number_in_file",
+                        "number": {"type": "ref", "ref": "a_number"},
+                        "file_name": str(file_name),
+                    },
+                }
+            },
+            multicore=True,
+            include_package=["test_fixtures.package.steps"],
+        ):
+            with open(file_name) as file_ref:
+                number = file_ref.read()
+
+            assert int(number) == 3
