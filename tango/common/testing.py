@@ -62,6 +62,9 @@ class TangoTestCase:
         config: Union[PathOrStr, Dict[str, Any], Params],
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
+        step_name: Optional[str] = None,
+        parallelism: int = 1,
+        multicore: bool = False,
     ) -> Path:
         from tango.__main__ import TangoGlobalSettings, _run
 
@@ -82,6 +85,9 @@ class TangoTestCase:
             overrides=overrides,
             include_package=include_package,
             start_server=False,
+            step_name=step_name,
+            parallelism=parallelism,
+            multicore=multicore,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name
@@ -93,6 +99,8 @@ def run_experiment(
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
     include_package: Optional[List[str]] = None,
+    parallelism: int = 1,
+    multicore: bool = False,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
@@ -103,7 +111,13 @@ def run_experiment(
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
-        yield test_case.run(config, overrides=overrides, include_package=include_package)
+        yield test_case.run(
+            config,
+            overrides=overrides,
+            include_package=include_package,
+            parallelism=parallelism,
+            multicore=multicore,
+        )
     finally:
         test_case.teardown_method()
         teardown_logging()

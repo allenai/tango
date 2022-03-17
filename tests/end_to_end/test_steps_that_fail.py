@@ -1,8 +1,6 @@
 from collections import Counter
 from typing import MutableMapping
 
-import pytest
-
 from tango import Step
 from tango.common.testing import TangoTestCase
 
@@ -63,8 +61,7 @@ class TestExperiment(TangoTestCase):
         global step_execution_count
 
         step_should_fail = True
-        with pytest.raises(RuntimeError):
-            self.run(config)
+        self.run(config)
 
         assert step_execution_count["a"] == 1
         assert step_execution_count["fail"] == 1

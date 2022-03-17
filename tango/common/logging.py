@@ -215,6 +215,16 @@ class WorkerLogFilter(logging.Filter):
         return True
 
 
+class PrefixLogFilter(logging.Filter):
+    def __init__(self, prefix):
+        super().__init__()
+        self._prefix = prefix
+
+    def filter(self, record):
+        record.msg = f"[{self._prefix}] {record.msg}"
+        return True
+
+
 class LogRecordStreamHandler(socketserver.StreamRequestHandler):
     """Handler for a streaming logging request.
 
@@ -280,6 +290,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
                 self.handle_request()
 
 
+_LOGGING_PREFIX: str = os.environ.get(EnvVarNames.LOGGING_PREFIX.value, "")
 _LOGGING_HOST: str = os.environ.get(EnvVarNames.LOGGING_HOST_ENV_VAR.value, "localhost")
 _LOGGING_PORT: Optional[int] = _parse_optional_int(
     os.environ.get(EnvVarNames.LOGGING_PORT_ENV_VAR.value, None)
@@ -372,7 +383,26 @@ def initialize_worker_logging(worker_rank: Optional[int] = None):
         The rank/ID of the worker.
 
     """
-    return _initialize_logging(worker_rank=worker_rank, main_process=False)
+    if worker_rank is not None:
+        if worker_rank != -1:
+            prefix = f"rank {worker_rank}"
+        else:
+            prefix = None
+    else:
+        prefix = None
+    return initialize_prefix_logging(prefix=prefix, main_process=False)
+
+
+def initialize_prefix_logging(prefix: Optional[str] = None, main_process: bool = False):
+    """
+    Initialize logging with a prefix.
+
+    :param prefix:
+        The string prefix to add to the log message.
+    :param main_process:
+        Whether it is for the main/worker process.
+    """
+    return _initialize_logging(prefix=prefix, main_process=main_process)
 
 
 def _initialize_logging(
@@ -380,11 +410,11 @@ def _initialize_logging(
     log_level: Optional[str] = None,
     enable_click_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
-    worker_rank: Optional[int] = None,
+    prefix: Optional[str] = None,
     main_process: bool = True,
 ):
     global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLICK_LOGGER_ENABLED
-    global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD
+    global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD, _LOGGING_PREFIX
 
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
@@ -465,8 +495,12 @@ def _initialize_logging(
                 "did you forget to call 'initialize_logging()' from the main process?"
             )
         socket_handler = logging.handlers.SocketHandler(_LOGGING_HOST, _LOGGING_PORT)
-        if worker_rank is not None:
-            socket_handler.addFilter(WorkerLogFilter(worker_rank))
+        if prefix:
+            prefix = _LOGGING_PREFIX + " " + prefix if _LOGGING_PREFIX else prefix
+        else:
+            prefix = _LOGGING_PREFIX
+        if prefix:
+            socket_handler.addFilter(PrefixLogFilter(prefix))
 
         for logger in (root_logger, click_logger, tqdm_logger):
             logger.handlers.clear()
