@@ -26,7 +26,13 @@ def _get_callargs_with_decorators(fn, *args, **kwargs):
     return getcallargs(fn, *args, **kwargs)
 
 
-def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -> None:
+def add_soft_prompt(
+    model: Model,
+    prompt_length: int,
+    *,
+    only_prompt_is_trainable: bool = True,
+    random_seed: int = 1940,
+) -> None:
     """
     Takes a regular huggingface transformer, and equips it with a soft prompt.
 
@@ -46,6 +52,8 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
 
     :param model: the original huggingface transformer. This model is augmented in-place!
     :param prompt_length: the length of the soft prompt, in tokens
+    :param only_prompt_is_trainable: freezes the original model's weights, leaving only the prompt trainable
+    :param random_seed: random seed used to initialize the prompt embeddings
 
     """
     assert isinstance(model, PreTrainedModel)
@@ -64,6 +72,10 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
     indices = torch.tensor(r.sample(range(5000), prompt_length))
     with torch.no_grad():
         prompt_embedding.copy_(original_embedding(indices).unsqueeze(0))
+
+    if only_prompt_is_trainable:
+        for param in model.parameters():
+            param.requires_grad = False
 
     # find unique parameter name
     parameter_name = "prompt_embedding"
