@@ -1,18 +1,29 @@
 import logging
 import random
+from inspect import getcallargs
 from typing import Any, Dict, Optional
 
 import torch
 from torch import nn
 from transformers import PreTrainedModel
+from transformers.file_utils import ModelOutput
 from transformers.modeling_outputs import (
-    BaseModelOutputWithPastAndCrossAttentions,
     CausalLMOutputWithCrossAttentions,
+    Seq2SeqModelOutput,
 )
 
 from tango.integrations.torch import Model
 
 logger = logging.getLogger(__name__)
+
+
+def _get_callargs_with_decorators(fn, *args, **kwargs):
+    while True:
+        try:
+            fn = fn.__wrapped__
+        except AttributeError:
+            break
+    return getcallargs(fn, *args, **kwargs)
 
 
 def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -> None:
@@ -89,18 +100,17 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
             dim=1,
         )
 
-    # Because PyTorch hooks don't support kwargs, we monkey patch the forward method 🙈
-    if hasattr(model, "get_encoder"):
-        model_to_patch = model.get_encoder()
-    else:
-        model_to_patch = model
-    old_forward = model_to_patch.forward
+    old_forward = model.forward
 
     def new_forward(*args, **kwargs):
 
         # Massage the input to include the prompt
         if kwargs.get("past_key_values") is not None:
             # If we have already been running this model, we don't need to do anything with the prefix now.
+            return old_forward(*args, **kwargs)
+        if kwargs.get("encoder_outputs") is not None:
+            # For encoder/decoder models, this runs only on the encoder. If we already have encoder outputs,
+            # we don't have to do anything.
             return old_forward(*args, **kwargs)
 
         inputs_embeds: Optional[torch.Tensor] = None
@@ -138,14 +148,14 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
                     map(unpatch_attention_tensor, result.cross_attentions)
                 )
             return result
-        elif isinstance(result, BaseModelOutputWithPastAndCrossAttentions):
+        elif isinstance(result, Seq2SeqModelOutput):
             if result.last_hidden_state is not None:
                 result.last_hidden_state = unpatch_tensor(result.last_hidden_state)
             if result.past_key_values is not None:
                 result.past_key_values = tuple(map(unpatch_kv_tensor, result.past_key_values))
-            if result.hidden_states is not None:
+            if result.encoder_hidden_states is not None:
                 result.hidden_states = tuple(map(unpatch_tensor, result.hidden_states))
-            if result.attentions is not None:
+            if result.encoder_attentions is not None:
                 result.attentions = tuple(map(unpatch_attention_tensor, result.attentions))
             if result.cross_attentions is not None:
                 result.cross_attentions = tuple(
@@ -159,7 +169,42 @@ def add_soft_prompt(model: Model, prompt_length: int, random_seed: int = 1940) -
             )
             return result
 
-    model_to_patch.forward = new_forward  # type: ignore
+    model.forward = new_forward  # type: ignore
+
+    # For encoder/decoder models, HF doesn't call `forward()` like it should when you use `generate()`. Instead it
+    # calls the encoder separately, and then passes the results into `forward()`. So in that case, we have to patch
+    # this too.
+    if model.config.is_encoder_decoder:
+        old_generate = model.generate
+
+        def new_generate(*args, **kwargs):
+            args = (model,) + args
+            kwargs = _get_callargs_with_decorators(old_generate, *args, **kwargs)
+            del kwargs["self"]
+
+            if kwargs.get("encoder_outputs") is not None:
+                # For encoder/decoder models, this runs only on the encoder. If we already have encoder outputs,
+                # we don't have to do anything.
+                return old_generate(**kwargs)
+
+            inputs_embeds: Optional[torch.Tensor] = None
+            inputs = kwargs.pop("inputs", None)
+            if inputs is not None:
+                inputs_embeds = original_embedding(inputs)
+
+            inputs_embeds = kwargs.pop("inputs_embeds", inputs_embeds)
+            if inputs_embeds is not None:
+                inputs_embeds = torch.cat(
+                    [prompt_embedding.expand(inputs_embeds.size(0), -1, -1), inputs_embeds], dim=1
+                )
+
+            kwargs["encoder_outputs"]: ModelOutput = model.get_encoder()(
+                inputs_embeds=inputs_embeds, return_dict=True
+            )
+
+            return old_generate(**kwargs)
+
+        model.generate = new_generate  # type: ignore
 
 
 Model.register("transformers::with_soft_prompt")(add_soft_prompt)  # type: ignore
