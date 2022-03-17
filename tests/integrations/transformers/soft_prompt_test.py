@@ -7,12 +7,16 @@ def test_soft_prompt():
     model = transformers.AutoModelForSeq2SeqLM.from_pretrained("t5-small")
     tokenizer = transformers.AutoTokenizer.from_pretrained("t5-small")
     prompt = "translate English to German: That is good."
-    generated = model.generate(tokenizer.encode(prompt, return_tensors="pt"))
-    original_output = tokenizer.decode(generated[0])
+    generated = model.generate(
+        tokenizer.encode(prompt, return_tensors="pt"), num_beams=10, num_return_sequences=5
+    )
+    original_output = [tokenizer.decode(g) for g in generated]
 
     add_soft_prompt(model, prompt_length=3)
-    generated = model.generate(tokenizer.encode(prompt, return_tensors="pt"))
-    prompted_output = tokenizer.decode(generated[0])
+    generated = model.generate(
+        tokenizer.encode(prompt, return_tensors="pt"), num_beams=10, num_return_sequences=5
+    )
+    prompted_output = [tokenizer.decode(g) for g in generated]
 
     assert original_output != prompted_output
 
