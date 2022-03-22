@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 from itertools import islice
 from typing import Any, Dict, List, Optional, Set, cast
@@ -666,6 +667,10 @@ def _train(
         callback.post_train_loop(step, current_epoch)
 
     if config.is_local_main_process:
+        # It's possible this file already exists if the step previously failed after
+        # already saving the final weights.
+        if config.final_weights_path.is_file():
+            os.remove(config.final_weights_path)
         training_engine.save_complete_weights_from_checkpoint(
             config.best_state_path, config.final_weights_path
         )
