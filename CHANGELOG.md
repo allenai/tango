@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
+- Added a Weights & Baises remote `Workspace` implementation: `WandbWorkspace`, registered as "wandb".
+  This can be instantiated from a workspace URL in the form "wandb://entity/project".
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
+- Added a method `Workspace.step_result_for_run` which gives the result of a step given the run name and step name within that run.
+- Added property `Workspace.url`, which returns a URL for the workspace that can be used to instantiate the exact same workspace using `Workspace.from_url()`. Subclasses must implement this.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
 - Added CLI option to run a single step in a config using `--step-name` or `-s`.
 - Added a `MultiCoreExecutor` that executes steps in parallel.
@@ -20,16 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
+- `StepInfo` start and end times will be always be in UTC now.
+- `WandbTrainCallback` now logs system metrics from each worker process in distributed training.
+- `StepCache.__contains__()` and `StepCache.__getitem__()` now take accept either a `Step` or `StepInfo` as an argument (`Union[Step, StepInfo]`).
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
 - Fixed bug where `TorchTrainStep` working directory would be left in an unrecoverable state if training failed after saving the final model weights.
-
-### Changed
-
-- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
-- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25

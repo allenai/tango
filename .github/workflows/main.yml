@@ -19,6 +19,7 @@ env:
   CACHE_PREFIX: v3
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.7
+  WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
 
 jobs:
   checks:
@@ -67,7 +68,7 @@ jobs:
             extras: dev
             requires_torch: false
             run: |
-              pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+              pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Datasets integration
             extras: dev,datasets
@@ -99,6 +100,12 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
 
+          - name: W&B integration
+            extras: dev,torch,wandb
+            requires_torch: true
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/wandb tests/integrations/wandb
+
           - name: Example - train_lm
             extras: dev,all
             requires_torch: true
@@ -113,7 +120,7 @@ jobs:
               extras: dev
               requires_torch: false
               run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.8'
 
           - task:
@@ -121,7 +128,7 @@ jobs:
               extras: dev
               requires_torch: false
               run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.9'
 
           - task:
@@ -129,7 +136,7 @@ jobs:
               extras: dev
               requires_torch: false
               run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.10'
 
     steps:

@@ -17,6 +17,7 @@ from tango.common.tqdm import Tqdm
 from tango.common.util import get_extra_imported_modules, import_extra_module
 from tango.format import Format
 from tango.step import Step
+from tango.workspace import Workspace
 
 from .data import DataLoader
 from .exceptions import StopEarly
@@ -206,6 +207,7 @@ class TorchTrainStep(Step):
         config = TrainConfig(
             self.unique_id,
             self.work_dir,
+            step_name=self.name,
             train_split=train_split,
             validation_split=validation_split,
             seed=seed,
@@ -233,6 +235,7 @@ class TorchTrainStep(Step):
             mp.spawn(
                 _train,
                 args=(
+                    self.workspace,
                     config,
                     model,
                     training_engine,
@@ -249,6 +252,7 @@ class TorchTrainStep(Step):
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
+                self.workspace,
                 config,
                 model,
                 training_engine,
@@ -274,6 +278,7 @@ class TorchTrainStep(Step):
 
 def _train(
     worker_id: int,
+    workspace: Workspace,
     config: TrainConfig,
     model: Lazy[Model],
     training_engine: Lazy[TrainingEngine],
@@ -366,6 +371,7 @@ def _train(
     # Initialize callbacks.
     callbacks: List[TrainCallback] = [
         callback.construct(
+            workspace=workspace,
             train_config=config,
             training_engine=training_engine,
             dataset_dict=dataset_dict,

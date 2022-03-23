@@ -21,7 +21,7 @@ class TestTrainStep(TangoTestCase):
     @pytest.mark.parametrize("with_validation", [True, False])
     def test_basic_train(self, with_validation: bool):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "torch" / "train.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
@@ -46,7 +46,7 @@ class TestTrainStep(TangoTestCase):
 
     def test_basic_train_with_epochs(self):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "torch" / "train.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
@@ -63,7 +63,7 @@ class TestTrainStep(TangoTestCase):
 
     def test_basic_train_with_streaming_data(self):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations/torch/train.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "torch" / "train.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
@@ -73,7 +73,7 @@ class TestTrainStep(TangoTestCase):
 
     def test_train_distributed(self):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations/torch/train_dist.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "torch" / "train_dist.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.torch",
