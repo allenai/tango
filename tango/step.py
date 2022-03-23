@@ -112,6 +112,11 @@ class Step(Registrable, Generic[T]):
     the model output, not about how many outputs you can produce at the same time.
     """
 
+    _UNIQUE_ID_SUFFIX: Optional[str] = None
+    """
+    Used internally for testing.
+    """
+
     def __init__(
         self,
         step_name: Optional[str] = None,
@@ -331,7 +336,7 @@ class Step(Registrable, Generic[T]):
         """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
+    def _run_with_work_dir(self, workspace: "Workspace", needed_by: Optional["Step"] = None) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
@@ -351,18 +356,31 @@ class Step(Registrable, Generic[T]):
         os.environ["TEMP"] = str(self.work_dir_for_run)
 
         try:
-            if self.cache_results:
-                workspace.step_starting(self)
+            kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+
+            if click_logger.isEnabledFor(logging.INFO):
+                message = click.style("\N{black circle} Starting step ", fg="blue")
+                message += click.style(f'"{self.name}"', bold=True, fg="blue")
+                if needed_by is None:
+                    message += click.style(" ...", fg="blue")
+                else:
+                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
+                click_logger.info(message)
+
+            workspace.step_starting(self)
+
             try:
                 result = self.run(**kwargs)
-                if self.cache_results:
-                    result = workspace.step_finished(self, result)
+                result = workspace.step_finished(self, result)
+                click_logger.info(
+                    click.style("\N{check mark} Finished step ", fg="green")
+                    + click.style(f'"{self.name}"', bold=True, fg="green")
+                )
                 return result
             except BaseException as e:
                 # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
                 # Maybe have a `workspace.step_interrupted()` method?
-                if self.cache_results:
-                    workspace.step_failed(self, e)
+                workspace.step_failed(self, e)
                 raise
         finally:
             if old_temp is None:
@@ -450,6 +468,8 @@ class Step(Registrable, Generic[T]):
                 self.unique_id_cache += det_hash(
                     _random_for_step_names.getrandbits((58 ** 32).bit_length())
                 )[:32]
+            if self._UNIQUE_ID_SUFFIX is not None:
+                self.unique_id_cache += f"-{self._UNIQUE_ID_SUFFIX}"
 
         return self.unique_id_cache
 
@@ -520,21 +540,7 @@ class Step(Registrable, Generic[T]):
                 click_logger.info(message)
             return workspace.step_cache[self]
 
-        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-
-        if click_logger.isEnabledFor(logging.INFO):
-            message = click.style("\N{black circle} Starting step ", fg="blue")
-            message += click.style(f'"{self.name}"', bold=True, fg="blue")
-            if needed_by is None:
-                message += click.style(" ...", fg="blue")
-            else:
-                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
-            click_logger.info(message)
-        result = self._run_with_work_dir(workspace, **kwargs)
-        click_logger.info(
-            click.style("\N{check mark} Finished step ", fg="green")
-            + click.style(f'"{self.name}"', bold=True, fg="green")
-        )
+        result = self._run_with_work_dir(workspace, needed_by=needed_by)
         return result
 
     def ensure_result(

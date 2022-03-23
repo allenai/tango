@@ -6,17 +6,19 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
 from urllib.parse import ParseResult
 
+import dill
 import petname
 from sqlitedict import SqliteDict
 
 from tango.common import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.logging import file_handler
-from tango.common.util import exception_to_string
+from tango.common.util import exception_to_string, utc_now_datetime
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import LocalStepCache
-from tango.workspace import Run, StepExecutionMetadata, StepInfo, StepState, Workspace
+from tango.step_info import StepInfo, StepState
+from tango.workspace import Run, StepExecutionMetadata, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,7 @@ class LocalWorkspace(Workspace):
             with SqliteDict(self.step_info_file) as d:
                 for stepinfo_file in self.cache.dir.glob("*/stepinfo.dill"):
                     with stepinfo_file.open("rb") as f:
-                        stepinfo = StepInfo.deserialize(f.read())
+                        stepinfo = dill.load(f)
 
                     # The `StepInfo` class changed from one version to the next. The deserialized version
                     # ends up being a `StepInfo` instance that is missing the `cacheable` member. This
@@ -89,6 +91,19 @@ class LocalWorkspace(Workspace):
             settings["version"] = 2
             with open(self.dir / "settings.json", "w") as settings_file:
                 json.dump(settings, settings_file)
+
+    def __getstate__(self):
+        """
+        We override `__getstate__()` to customize how instances of this class are pickled
+        since we don't want to persist certain attributes.
+        """
+        out = super().__getstate__()
+        out["locks"] = {}
+        return out
+
+    @property
+    def url(self) -> str:
+        return "local://" + str(self.dir)
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
@@ -178,14 +193,7 @@ class LocalWorkspace(Workspace):
                     for dep in step.dependencies:
                         find_or_add_step_info(dep)
 
-                    step_info = StepInfo(
-                        step.unique_id,
-                        step.name if step.name != step.unique_id else None,
-                        step.__class__.__name__,
-                        step.VERSION,
-                        {dep.unique_id for dep in step.dependencies},
-                        step.cache_results,
-                    )
+                    step_info = StepInfo.new_from_step(step)
                     d[unique_id] = step_info
                     del step
 
@@ -242,7 +250,7 @@ class LocalWorkspace(Workspace):
         self.locks[step] = lock
 
         try:
-            step_info.start_time = datetime.now()
+            step_info.start_time = utc_now_datetime()
             step_info.end_time = None
             step_info.error = None
             step_info.result_location = None
@@ -295,7 +303,7 @@ class LocalWorkspace(Workspace):
             metadata.save(self.step_dir(step))
 
         # Mark the step as finished
-        step_info.end_time = datetime.now()
+        step_info.end_time = utc_now_datetime()
         step_info.result_location = str(self.step_dir(step).absolute())
         with SqliteDict(self.step_info_file) as d:
             d[step.unique_id] = step_info
@@ -317,7 +325,7 @@ class LocalWorkspace(Workspace):
             step_info = self.step_info(step)
             if step_info.state != StepState.RUNNING:
                 raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
-            step_info.end_time = datetime.now()
+            step_info.end_time = utc_now_datetime()
             step_info.error = exception_to_string(e)
             with SqliteDict(self.step_info_file) as d:
                 d[step.unique_id] = step_info
@@ -387,14 +395,7 @@ class LocalWorkspace(Workspace):
                     step_info.name = step.name
                     d[step.unique_id] = step_info
                 except KeyError:
-                    d[step.unique_id] = StepInfo(
-                        step.unique_id,
-                        step.name,
-                        step.__class__.__name__,
-                        step.VERSION,
-                        {dep.unique_id for dep in step.dependencies},
-                        step.cache_results,
-                    )
+                    d[step.unique_id] = StepInfo.new_from_step(step)
                 step_unique_ids[step.name] = step.unique_id
 
             d.commit()

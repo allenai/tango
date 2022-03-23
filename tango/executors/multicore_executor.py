@@ -8,7 +8,8 @@ from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
-from tango.workspace import StepState, Workspace
+from tango.step_info import StepState
+from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -220,10 +221,10 @@ class MulticoreExecutor(Executor):
                     config_path,
                     "-s",
                     step_name,
+                    "-w",
+                    self.workspace.url,
                     "--no-server",
                 ]
-                if hasattr(self.workspace, "dir"):
-                    command += ["-w", self.workspace.dir]  # type: ignore
                 if self.include_package is not None:
                     for package in self.include_package:
                         command += ["-i", package]

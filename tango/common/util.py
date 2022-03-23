@@ -5,11 +5,24 @@ import string
 import sys
 import traceback
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Optional, Set, Tuple, Union
 
+import pytz
+
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived
+
+
+def tango_cache_dir() -> Path:
+    """
+    Returns a directory suitable for caching things from Tango, defaulting
+    to ``$HOME/.cache/tango``.
+    """
+    cache_dir = Path.home() / ".cache" / "tango"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
 
 
 def _handle_sigterm(sig, frame):
@@ -243,3 +256,7 @@ def exception_to_string(e: BaseException) -> str:
     else:
         formatted = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
     return "".join(formatted)
+
+
+def utc_now_datetime() -> datetime:
+    return datetime.utcnow().replace(tzinfo=pytz.utc)

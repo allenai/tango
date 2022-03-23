@@ -7,9 +7,8 @@ import sys
 import time
 from abc import abstractclassmethod, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
-from enum import Enum
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
@@ -20,163 +19,21 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Set,
     TypeVar,
     Union,
     cast,
 )
 from urllib.parse import ParseResult, urlparse
 
-import dill
-
-from tango.common import FromParams, Registrable
-from tango.step import Step
-from tango.step_cache import StepCache
-from tango.version import VERSION
+from .common import FromParams, Registrable
+from .step import Step
+from .step_cache import StepCache
+from .step_info import StepInfo
+from .version import VERSION
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
-
-
-class StepState(Enum):
-    """Describes the possible state a step can be in."""
-
-    INCOMPLETE = "incomplete"
-    """The step has not run yet."""
-
-    RUNNING = "running"
-    """The step is running right now."""
-
-    COMPLETED = "completed"
-    """The step finished running successfully."""
-
-    FAILED = "failed"
-    """The step ran, but failed."""
-
-    UNCACHEABLE = "uncacheable"
-    """The step is uncacheable. It will be executed as many times as the results are needed,
-    so we don't keep track of the state."""
-
-
-@dataclass
-class StepInfo:
-    """Stores step information without being the :class:`.Step` itself.
-
-    It's not always possible to get a :class:`.Step` object, because :class:`.Step` objects can't be serialized.
-    But you can always serialize a :class:`.StepInfo` object.
-    """
-
-    unique_id: str
-    """
-    The unique ID of the step
-    """
-
-    step_name: Optional[str]
-    """
-    The name of the step, if it has one. Anonymous steps are identified only by their unique ID.
-
-    The same step can have different names in different runs. The last run wins, so don't rely
-    on this property in your code. It is just here to aid readability.
-    """
-
-    step_class_name: str
-    """
-    The name of the :class:`.Step` class
-    """
-
-    version: Optional[str]
-    """
-    The version string of the :class:`.Step`, if it has one
-    """
-
-    dependencies: Set[str]
-    """
-    The unique ids of all the steps that this step depends on
-    """
-
-    cacheable: bool
-    """
-    Whether or not the step is cacheable.
-    """
-
-    start_time: Optional[datetime] = None
-    """
-    The time this step started running
-    """
-
-    end_time: Optional[datetime] = None
-    """
-    The time this step stopped running. This will be set whether the step succeeded or failed.
-    """
-
-    error: Optional[str] = None
-    """
-    If the step failed, this is where the error goes.
-
-    .. note::
-        Some ``Workspace`` implementations need to serialize ``StepInfo`` (using pickle or dill, for example),
-        but some exceptions can't be pickled. In those cases ``error`` will just be a string representation
-        of the exception.
-    """
-
-    result_location: Optional[str] = None
-    """
-    Location of the result. This could be a path or a URL.
-    """
-
-    @property
-    def duration(self) -> Optional[timedelta]:
-        """
-        The time it took to run this step.
-        """
-        if self.start_time is not None and self.end_time is not None:
-            return self.end_time - self.start_time
-        else:
-            return None
-
-    @property
-    def state(self) -> StepState:
-        """
-        Returns the state of the step
-        """
-        if self.cacheable:
-            if self.start_time is None and self.end_time is None and self.error is None:
-                return StepState.INCOMPLETE
-            if self.start_time is not None and self.end_time is None and self.error is None:
-                return StepState.RUNNING
-            if self.start_time is not None and self.end_time is not None and self.error is None:
-                return StepState.COMPLETED
-            if self.start_time is not None and self.end_time is not None and self.error is not None:
-                return StepState.FAILED
-        else:
-            return StepState.UNCACHEABLE
-        raise RuntimeError(f"{self.__class__.__name__} is in an invalid state.")
-
-    def serialize(self) -> bytes:
-        """
-        Returns a serialized form of the ``StepInfo``.
-        """
-        instance_to_dump = self
-        if isinstance(self.error, BaseException):
-            # See if we can pickle and unpickle the exception.
-            # When we can't, we'll fallback to storing the exception as a string
-            # representation of it.
-            dump = dill.dumps(self.error)
-            try:
-                dill.loads(dump)
-            except TypeError:
-                # Fails with TypeError for some exceptions that take multiple positional
-                # arguments.
-                instance_to_dump = replace(self, error=repr(self.error))
-        return dill.dumps(instance_to_dump)
-
-    @classmethod
-    def deserialize(cls, data: bytes) -> "StepInfo":
-        """
-        Deserialize the result of :meth:`serialize()` into a ``StepInfo`` instance.
-        """
-        return dill.loads(data)
 
 
 @dataclass
@@ -192,7 +49,7 @@ class Run:
 
     steps: Dict[str, StepInfo]
     """
-    A mapping from step names to :class:`StepInfo`, for all the target steps in the run.
+    A mapping from step names to :class:`~tango.step_info.StepInfo`, for all the target steps in the run.
 
     This only contains the targets of a run. Usually, that means it contains all named steps.
     Un-named dependencies (or dependencies that are not targets) are not contained in ``steps``.
@@ -227,6 +84,23 @@ class Workspace(Registrable):
 
     def __init__(self):
         self._delayed_cleanup_temp_dirs: List[TemporaryDirectory] = []
+
+    def __getstate__(self):
+        """
+        We override `__getstate__()` to customize how instances of this class are pickled
+        since we don't want to persist certain attributes.
+        """
+        out = {k: v for k, v in self.__dict__.items() if k not in {"_delayed_cleanup_temp_dirs"}}
+        out["_delayed_cleanup_temp_dirs"] = []
+        return out
+
+    @property
+    def url(self) -> str:
+        """
+        Get a URL for the workspace that can be used to instantiate the same workspace
+        using :meth:`.from_url()`.
+        """
+        raise NotImplementedError
 
     @classmethod
     def from_url(cls, url: str) -> "Workspace":
@@ -277,7 +151,9 @@ class Workspace(Registrable):
     @abstractmethod
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         """
-        Returns a :class:`.StepInfo` for a given step
+        Returns a :class:`~tango.step_info.StepInfo` for a given step.
+
+        :raises KeyError: If the step has not been registered as part of a run yet.
         """
         raise NotImplementedError()
 
@@ -342,13 +218,19 @@ class Workspace(Registrable):
 
         :return: A :class:`Run` object representing the named run
 
-        Note that the :class:`Run` object only contains the targets of a run. Usually, that means it
-        contains all named steps. Un-named dependencies (or dependencies that are not targets)
-        are not contained in the result.
-
-        This method throws ``KeyError`` if there is no run with the given name.
+        :raises KeyError: If there is no run with the given name.
         """
         raise NotImplementedError()
+
+    def step_result_for_run(self, run_name: str, step_name: str) -> Any:
+        """
+        Get the result of a step from a run.
+
+        :raises KeyError: If there is no run or step with the given name.
+        """
+        run = self.registered_run(run_name)
+        step_info = run.steps[step_name]
+        return self.step_cache[step_info]
 
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
@@ -451,10 +333,15 @@ class GitMetadata(FromParams):
                 .strip()
                 .split("\n")
             ):
-                if "(fetch)" in line:
-                    _, line = line.split("\t")
-                    remote = line.split(" ")[0]
-                    break
+                remotes: Dict[str, str] = {}
+                if line.endswith("(fetch)"):
+                    name, info = line.split("\t")
+                    url = info.split(" ")[0]
+                    remotes[name] = url
+                if "origin" in remotes:
+                    remote = remotes["origin"]
+                elif remotes:
+                    remote = list(remotes.values())[0]
             return cls(commit=commit, remote=remote)
         except (subprocess.CalledProcessError, FileNotFoundError):
             return None

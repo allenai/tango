@@ -1,12 +1,15 @@
 import collections
 import logging
+import warnings
 import weakref
 from pathlib import Path
-from typing import Any, MutableMapping, Optional, OrderedDict, Union
+from typing import Any, MutableMapping, Optional, OrderedDict, Union, cast
 
 from tango.common.aliases import PathOrStr
+from tango.common.params import Params
 from tango.step import Step
 from tango.step_cache import CacheMetadata, StepCache
+from tango.step_info import StepInfo
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,7 @@ class LocalStepCache(StepCache):
     """
 
     LRU_CACHE_MAX_SIZE = 8
+    METADATA_FILE_NAME = "cache-metadata.json"
 
     def __init__(self, dir: PathOrStr):
         self.dir = Path(dir)
@@ -37,11 +41,29 @@ class LocalStepCache(StepCache):
 
         # We keep an in-memory cache as well so we don't have to de-serialize stuff
         # we happen to have in memory already.
-        self.weak_cache: MutableMapping[str, Any] = weakref.WeakValueDictionary()
-
+        self.weak_cache: MutableMapping[str, Any]
         # Not all Python objects can be referenced weakly, and even if they can they
         # might get removed too quickly, so we also keep an LRU cache.
-        self.strong_cache: OrderedDict[str, Any] = collections.OrderedDict()
+        self.strong_cache: OrderedDict[str, Any]
+        self._init_mem_caches()
+
+    def _init_mem_caches(self):
+        self.weak_cache = weakref.WeakValueDictionary()
+        self.strong_cache = collections.OrderedDict()
+
+    def __getstate__(self):
+        """
+        We override `__getstate__()` to customize how instances of this class are pickled
+        since we don't want to persist values in the weak and strong in-memory caches
+        during pickling. And WeakValueDictionary can't be pickled anyway.
+        """
+        out = {k: v for k, v in self.__dict__.items() if k not in {"weak_cache", "strong_cache"}}
+        return out
+
+    def __setstate__(self, state):
+        for k, v in state.items():
+            setattr(self, k, v)
+        self._init_mem_caches()
 
     def _add_to_cache(self, key: str, o: Any) -> None:
         if hasattr(o, "__next__"):
@@ -68,44 +90,52 @@ class LocalStepCache(StepCache):
         except KeyError:
             return None
 
+    def _metadata_path(self, step_or_unique_id: Union[Step, StepInfo, str]) -> Path:
+        return self.step_dir(step_or_unique_id) / self.METADATA_FILE_NAME
+
     def __contains__(self, step: object) -> bool:
-        if isinstance(step, Step) and step.cache_results:
+        if isinstance(step, (Step, StepInfo)):
             key = step.unique_id
             if key in self.strong_cache:
                 return True
             if key in self.weak_cache:
                 return True
-            metadata_file = self.step_dir(step) / "cache-metadata.json"
-            return metadata_file.exists()
+            return self._metadata_path(
+                cast(Union[Step, StepInfo], step)  # cast is for mypy :/
+            ).exists()
         else:
             return False
 
-    def __getitem__(self, step: Step) -> Any:
+    def __getitem__(self, step: Union[Step, StepInfo]) -> Any:
         key = step.unique_id
         result = self._get_from_cache(key)
         if result is None:
             if step not in self:
                 raise KeyError(step)
-            result = step.format.read(self.step_dir(step))
+            metadata = CacheMetadata.from_params(Params.from_file(self._metadata_path(step)))
+            result = metadata.format.read(self.step_dir(step))
             self._add_to_cache(key, result)
         return result
 
     def __setitem__(self, step: Step, value: Any) -> None:
         if not step.cache_results:
-            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
+            warnings.warn(
+                f"Tried to cache step '{step.name}' despite being marked as uncacheable",
+                UserWarning,
+            )
             return
 
         location = self.step_dir(step)
         location.mkdir(parents=True, exist_ok=True)
 
-        metadata_location = location / "cache-metadata.json"
+        metadata_location = self._metadata_path(step)
         if metadata_location.exists():
             raise ValueError(f"{metadata_location} already exists! Will not overwrite.")
         temp_metadata_location = metadata_location.with_suffix(".temp")
 
         try:
             step.format.write(value, location)
-            metadata = CacheMetadata(step=step.unique_id)
+            metadata = CacheMetadata(step=step.unique_id, format=step.format)
             metadata.to_params().to_file(temp_metadata_location)
             self._add_to_cache(step.unique_id, value)
             temp_metadata_location.rename(metadata_location)
@@ -117,17 +147,27 @@ class LocalStepCache(StepCache):
             raise
 
     def __len__(self) -> int:
-        return sum(1 for _ in self.dir.glob("*/cache-metadata.json"))
+        return sum(1 for _ in self.dir.glob(f"*/{self.METADATA_FILE_NAME}"))
 
-    def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
+    def step_dir(self, step_or_unique_id: Union[Step, StepInfo, str]) -> Path:
         """Returns the directory that contains the results of the step.
 
         You can use this even for a step that's not cached yet. In that case it will return the directory where
         the results will be written."""
-        if isinstance(step_or_unique_id, Step):
-            if not step_or_unique_id.cache_results:
+        if isinstance(step_or_unique_id, (Step, StepInfo)):
+            cacheable = (
+                step_or_unique_id.cache_results
+                if isinstance(step_or_unique_id, Step)
+                else step_or_unique_id.cacheable
+            )
+            if not cacheable:
+                class_name = (
+                    step_or_unique_id.__class__.__name__
+                    if isinstance(step_or_unique_id, Step)
+                    else step_or_unique_id.step_class_name
+                )
                 raise RuntimeError(
-                    f"Uncacheable steps (like '{step_or_unique_id.name}') don't have step directories."
+                    f"Uncacheable steps (like '{class_name}') don't have step directories."
                 )
             unique_id = step_or_unique_id.unique_id
         else:

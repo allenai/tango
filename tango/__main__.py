@@ -727,7 +727,10 @@ def _run(
                 click_logger.info(
                     click.style("\N{check mark} The output for ", fg="green")
                     + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(" is in ", fg="green")
+                    + click.style(
+                        " is in " if Path(info.result_location).exists() else " is at ",
+                        fg="green",
+                    )
                     + click.style(f"{info.result_location}", bold=True, fg="green")
                 )
 

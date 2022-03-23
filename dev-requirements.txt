@@ -9,6 +9,7 @@ flake8
 mypy==0.941
 types-PyYAML
 types-setuptools
+types-pytz
 
 # Automatic code formatting
 black==21.12b0
