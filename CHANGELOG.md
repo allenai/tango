@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CLI option to run a single step in a config using `--step-name` or `-s`.
 - Added a `MultiCoreExecutor` that executes steps in parallel.
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
+- We now set the `TEMP` environment variable to a step's work directory while a step executes, so that arbitrary code can benefit from it.
 
 ### Changed
 
