@@ -845,7 +845,8 @@ class FromParams(CustomDetHash):
             )
 
     def det_hash_object(self) -> Any:
+        r = (self.__class__.__qualname__, self.to_params())
         if hasattr(self, "VERSION"):
-            return getattr(self, "VERSION"), self.to_params()
+            return r + (getattr(self, "VERSION"),)
         else:
-            return self.to_params()
+            return r
