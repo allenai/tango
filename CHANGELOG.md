@@ -16,18 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `MultiCoreExecutor` that executes steps in parallel.
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
 
-### Changed
-
-- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
-
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
+- Some unrelated objects might unexpectedly hash to the same thing. This is now fixed.
 
 ### Changed
 
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 - `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
