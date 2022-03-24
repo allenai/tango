@@ -1,6 +1,7 @@
 import inspect
 import itertools
 import logging
+import os
 import random
 import re
 import warnings
@@ -346,6 +347,9 @@ class Step(Registrable, Generic[T]):
             dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
+        old_temp = os.environ.get("TEMP")
+        os.environ["TEMP"] = str(self.work_dir_for_run)
+
         try:
             if self.cache_results:
                 workspace.step_starting(self)
@@ -361,6 +365,11 @@ class Step(Registrable, Generic[T]):
                     workspace.step_failed(self, e)
                 raise
         finally:
+            if old_temp is None:
+                del os.environ["TEMP"]
+            else:
+                os.environ["TEMP"] = old_temp
+
             self._workspace = None
             self.work_dir_for_run = None
             if dir_for_cleanup is not None:
