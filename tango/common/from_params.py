@@ -447,7 +447,8 @@ def construct_arg(
                 if origin != Step and _params_contain_step(popped_params):
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
-                    result = annotation.from_params(popped_params, **subextras)
+                    # TODO: temporary, until Pete's PR is merged.
+                    result = annotation.from_params(popped_params)  # , **subextras)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
