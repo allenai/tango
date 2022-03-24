@@ -36,7 +36,7 @@ For example,
 .. testoutput::
     :options: +ELLIPSIS
 
-    [... INFO root] Running script!
+    [...] INFO     Running script! ...
 
 If you want to have logs written to a file, you can use the :func:`file_handler` context manager.
 
@@ -87,16 +87,14 @@ import struct
 import sys
 import threading
 from contextlib import contextmanager
-from typing import ContextManager, Generator, Optional
-
-import click
+from typing import ContextManager, Generator, List, Optional
 
 from .aliases import EnvVarNames, PathOrStr
 from .exceptions import SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(
-    os.environ.get(EnvVarNames.FILE_FRIENDLY_LOGGING_ENV_VAR.value, False)
+    os.environ.get(EnvVarNames.FILE_FRIENDLY_LOGGING.value, False)
 )
 """
 If this flag is set to ``True``, we remove special styling characters from log messages,
@@ -119,7 +117,7 @@ For example,
 
 """
 
-TANGO_LOG_LEVEL: Optional[str] = os.environ.get(EnvVarNames.LOG_LEVEL_ENV_VAR.value, None)
+TANGO_LOG_LEVEL: Optional[str] = os.environ.get(EnvVarNames.LOG_LEVEL.value, None)
 """
 The log level to use globally. The value can be set from the corresponding environment variable
 (``TANGO_LOG_LEVEL``) or field in a :class:`~tango.__main__.TangoGlobalSettings` file (``log_level``),
@@ -132,76 +130,48 @@ For example,
     $ tango --log-level info run ...
 
 .. note::
-    This does not affect the :data:`~tango.common.logging.click_logger`
+    This does not affect the :data:`~tango.common.logging.cli_logger`
     or logs from :class:`~tango.common.Tqdm` progress bars.
 
 """
 
-# Click logger disabled by default in case nobody calls initialize_logging().
-TANGO_CLICK_LOGGER_ENABLED: bool = _parse_bool(
-    os.environ.get(EnvVarNames.CLICK_LOGGER_ENABLED_ENV_VAR.value, False)
+TANGO_CONSOLE_WIDTH: Optional[int] = _parse_optional_int(
+    os.environ.get(EnvVarNames.CONSOLE_WIDTH.value, None)
 )
 
+# Click logger disabled by default in case nobody calls initialize_logging().
+TANGO_CLI_LOGGER_ENABLED: bool = _parse_bool(
+    os.environ.get(EnvVarNames.CLI_LOGGER_ENABLED.value, False)
+)
 
-class TangoLogger(logging.Logger):
+# Keep track of exceptions logged so we don't log duplicates from our custom excepthook.
+_EXCEPTIONS_LOGGED: List[BaseException] = []
+
+
+class LevelFilter(logging.Filter):
     """
-    A custom subclass of :class:`logging.Logger` that does some additional cleaning
-    of messages when :attr:`FILE_FRIENDLY_LOGGING` is on.
-
-    This is the default logger class used when :func:`initialize_logging()` is called.
-    """
-
-    def __init__(self, name):
-        super().__init__(name)
-        self._seen_msgs = set()
-
-    def log(self, level, msg, *args, **kwargs):
-        msg = msg if not FILE_FRIENDLY_LOGGING else click.unstyle(msg)
-        super().log(level, msg, *args, **kwargs)
-
-    def debug_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.debug(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def info_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.info(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def warning_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.warning(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def error_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.error(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-    def critical_once(self, msg, *args, **kwargs):
-        if msg not in self._seen_msgs:
-            self.critical(msg, *args, **kwargs)
-            self._seen_msgs.add(msg)
-
-
-class TangoFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord):
-        out = super().format(record)
-        if FILE_FRIENDLY_LOGGING:
-            out = click.unstyle(out)
-        return out
-
-
-class WarningFilter(logging.Filter):
-    """
-    Filters out everything that is at the WARNING level or higher. This is meant to be used
-    with a stdout handler when a stderr handler is also configured. That way WARNING and ERROR
+    Filters out everything that is above `max_level` or higher. This is meant to be used
+    with a stdout handler when a stderr handler is also configured. That way WARNING or ERROR
     messages aren't duplicated.
     """
 
+    def __init__(self, max_level: int, name=""):
+        self.max_level = max_level
+        super().__init__(name)
+
     def filter(self, record):
-        return record.levelno < logging.WARNING
+        return record.levelno <= self.max_level
+
+
+class CliFilter(logging.Filter):
+    def __init__(self, filter_out: bool):
+        self.filter_out = filter_out
+
+    def filter(self, record):
+        if self.filter_out:
+            return record.name != "tango.__main__"
+        else:
+            return record.name == "tango.__main__"
 
 
 class WorkerLogFilter(logging.Filter):
@@ -221,7 +191,12 @@ class PrefixLogFilter(logging.Filter):
         self._prefix = prefix
 
     def filter(self, record):
-        record.msg = f"[{self._prefix}] {record.msg}"
+        if record.name == "tango.__main__":
+            from rich.markup import escape
+
+            record.msg = escape(f"[{self._prefix}] ") + record.msg
+        else:
+            record.msg = f"[{self._prefix}] {record.msg}"
         return True
 
 
@@ -291,50 +266,77 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
 
 
 _LOGGING_PREFIX: str = os.environ.get(EnvVarNames.LOGGING_PREFIX.value, "")
-_LOGGING_HOST: str = os.environ.get(EnvVarNames.LOGGING_HOST_ENV_VAR.value, "localhost")
+_LOGGING_HOST: str = os.environ.get(EnvVarNames.LOGGING_HOST.value, "localhost")
 _LOGGING_PORT: Optional[int] = _parse_optional_int(
-    os.environ.get(EnvVarNames.LOGGING_PORT_ENV_VAR.value, None)
+    os.environ.get(EnvVarNames.LOGGING_PORT.value, None)
 )
 _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
 
-logging.setLoggerClass(TangoLogger)
+def get_handler(
+    level: int,
+    stderr: bool = False,
+    enable_markup: bool = False,
+    show_time: bool = True,
+    show_level: bool = True,
+    show_path: bool = True,
+) -> logging.Handler:
+    import click
+    from rich.console import Console
+    from rich.logging import RichHandler
+
+    handler = RichHandler(
+        level=level,
+        console=Console(
+            color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
+            stderr=stderr,
+            width=TANGO_CONSOLE_WIDTH,
+        ),
+        rich_tracebacks=False,
+        tracebacks_show_locals=False,
+        tracebacks_suppress=[click],
+        markup=enable_markup,
+        show_time=show_time,
+        show_level=show_level,
+        show_path=show_path,
+    )
+    return handler
 
 
-click_logger = logging.getLogger("click")
+cli_logger = logging.getLogger("tango.__main__")
 """
-A logger that logs messages through
-`click <https://click.palletsprojects.com/>`_'s
-``click.echo()`` function.
+A logger that emits messages directly to stdout/stderr using
+`rich <https://github.com/Textualize/rich>`_'s
+:class:`~rich.console.Console` class.
 
-This provides a convenient way for command-line apps to log pretty, styled messages.
+This provides a convenient way for command-line apps to log pretty, styled messages
+uses the `markup style <https://rich.readthedocs.io/en/latest/markup.html>`_ provided by `rich`.
 """
 
-click_logger.propagate = False
+cli_logger.propagate = False
+cli_logger.disabled = TANGO_CLI_LOGGER_ENABLED
 
 
-class ClickLoggerHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        if FILE_FRIENDLY_LOGGING:
-            click.echo(click.unstyle(record.getMessage()))
-        else:
-            click.echo(record.getMessage())
-
-
-click_logger.addHandler(ClickLoggerHandler())
-click_logger.disabled = TANGO_CLICK_LOGGER_ENABLED
-
-
-def get_formatter() -> TangoFormatter:
-    log_format = "[%(process)d %(asctime)s %(levelname)s %(name)s] %(message)s"
-    return TangoFormatter(log_format)
+def excepthook(exctype, value, traceback):
+    """
+    Used to patch `sys.excepthook` in order to log exceptions.
+    """
+    global _EXCEPTIONS_LOGGED
+    # For interruptions, call the original exception handler.
+    if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
+        sys.__excepthook__(exctype, value, traceback)
+        return
+    if value not in _EXCEPTIONS_LOGGED:
+        _EXCEPTIONS_LOGGED.append(value)
+        root_logger = logging.getLogger()
+        root_logger.error("Uncaught exception", exc_info=(exctype, value, traceback))
 
 
 def initialize_logging(
     *,
     log_level: Optional[str] = None,
-    enable_click_logs: Optional[bool] = None,
+    enable_cli_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
 ):
     """
@@ -353,8 +355,8 @@ def initialize_logging(
     :param log_level:
         Can be one of "debug", "info", "warning", "error". Defaults to the value
         of :data:`TANGO_LOG_LEVEL`, if set, or "error".
-    :param enable_click_logs:
-        Set to ``True`` to enable messages from the :data:`click_logger`.
+    :param enable_cli_logs:
+        Set to ``True`` to enable messages from the :data:`cli_logger`.
     :param file_friendly_logging:
         Enable or disable file friendly logging. Defaults to the value of :data:`FILE_FRIENDLY_LOGGING`.
 
@@ -369,7 +371,7 @@ def initialize_logging(
 
     _initialize_logging(
         log_level=log_level,
-        enable_click_logs=enable_click_logs,
+        enable_cli_logs=enable_cli_logs,
         file_friendly_logging=file_friendly_logging,
         main_process=is_main_process,
     )
@@ -408,12 +410,12 @@ def initialize_prefix_logging(prefix: Optional[str] = None, main_process: bool =
 def _initialize_logging(
     *,
     log_level: Optional[str] = None,
-    enable_click_logs: Optional[bool] = None,
+    enable_cli_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
     main_process: bool = True,
 ):
-    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLICK_LOGGER_ENABLED
+    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLI_LOGGER_ENABLED
     global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD, _LOGGING_PREFIX
 
     if log_level is None:
@@ -422,8 +424,8 @@ def _initialize_logging(
         log_level = "error"
     if file_friendly_logging is None:
         file_friendly_logging = FILE_FRIENDLY_LOGGING
-    if enable_click_logs is None:
-        enable_click_logs = TANGO_CLICK_LOGGER_ENABLED
+    if enable_cli_logs is None:
+        enable_cli_logs = TANGO_CLI_LOGGER_ENABLED
 
     level = logging._nameToLevel[log_level.upper()]
 
@@ -431,15 +433,13 @@ def _initialize_logging(
     # so that child processes can read the environment variables to determine the right
     # settings.
     TANGO_LOG_LEVEL = log_level
-    os.environ[EnvVarNames.LOG_LEVEL_ENV_VAR.value] = log_level
+    os.environ[EnvVarNames.LOG_LEVEL.value] = log_level
     if file_friendly_logging is not None:
         FILE_FRIENDLY_LOGGING = file_friendly_logging
-        os.environ[EnvVarNames.FILE_FRIENDLY_LOGGING_ENV_VAR.value] = str(
-            file_friendly_logging
-        ).lower()
-    if enable_click_logs is not None:
-        TANGO_CLICK_LOGGER_ENABLED = enable_click_logs
-        os.environ[EnvVarNames.CLICK_LOGGER_ENABLED_ENV_VAR.value] = str(enable_click_logs).lower()
+        os.environ[EnvVarNames.FILE_FRIENDLY_LOGGING.value] = str(file_friendly_logging).lower()
+    if enable_cli_logs is not None:
+        TANGO_CLI_LOGGER_ENABLED = enable_cli_logs
+        os.environ[EnvVarNames.CLI_LOGGER_ENABLED.value] = str(enable_cli_logs).lower()
 
     from .tqdm import logger as tqdm_logger
 
@@ -448,9 +448,9 @@ def _initialize_logging(
     # important to say.
     for loud_logger in {"filelock", "sqlitedict"}:
         logging.getLogger(loud_logger).setLevel(max(level, logging.WARNING))
-    # We always want to see all click messages if we're running from the command line, and none otherwise.
-    click_logger.setLevel(logging.DEBUG)
-    click_logger.disabled = not enable_click_logs
+    # We always want to see all CLI messages if we're running from the command line, and none otherwise.
+    cli_logger.setLevel(logging.DEBUG)
+    cli_logger.disabled = not enable_cli_logs
     # We also want to enable the tqdm logger so that the progress bar lines end up in the log file.
     tqdm_logger.setLevel(logging.DEBUG)
 
@@ -459,21 +459,30 @@ def _initialize_logging(
     root_logger.handlers.clear()
 
     if main_process:
-        formatter = get_formatter()
-
         # Create stdout and stderr handlers so that we can route DEBUG and INFO
         # messages to stdout, and WARNING and ERROR messages to stderr.
-        stdout_handler = logging.StreamHandler(sys.stdout)
-        stdout_handler.setLevel(level)
-        stdout_handler.addFilter(WarningFilter())
-        stdout_handler.setFormatter(formatter)
-
-        stderr_handler = logging.StreamHandler(sys.stderr)
-        stderr_handler.setLevel(logging.WARNING)
-        stderr_handler.setFormatter(formatter)
-
+        stdout_handler = get_handler(level)
+        stdout_handler.addFilter(LevelFilter(logging.INFO))
+        stderr_handler = get_handler(max(level, logging.WARNING), stderr=True)
+        stderr_handler.addFilter(LevelFilter(logging.WARNING))
         root_logger.addHandler(stdout_handler)
         root_logger.addHandler(stderr_handler)
+
+        # Configure cli_logger so that if log level <= INFO, it will behave
+        # like a regular logger, otherwise it prints directly to stdout.
+        cli_logger.handlers.clear()
+        if enable_cli_logs:
+            for handler_level in (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR):
+                cli_handler = get_handler(
+                    handler_level,
+                    stderr=handler_level >= logging.WARNING,
+                    enable_markup=True,
+                    show_time=level <= handler_level,
+                    show_level=(level <= handler_level) or handler_level >= logging.WARNING,
+                    show_path=level <= handler_level,
+                )
+                cli_handler.addFilter(LevelFilter(handler_level))
+                cli_logger.addHandler(cli_handler)
 
         # Main process: set formatter and handlers, initialize logging socket and server.
         # Set up logging socket to emit log records from worker processes/threads.
@@ -481,7 +490,7 @@ def _initialize_logging(
         # https://docs.python.org/3.7/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
         _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, 0)
         _LOGGING_PORT = _LOGGING_SERVER.server_address[1]
-        os.environ[EnvVarNames.LOGGING_PORT_ENV_VAR.value] = str(_LOGGING_PORT)
+        os.environ[EnvVarNames.LOGGING_PORT.value] = str(_LOGGING_PORT)
         _LOGGING_SERVER_THREAD = threading.Thread(
             target=_LOGGING_SERVER.serve_until_stopped, daemon=True
         )
@@ -502,18 +511,11 @@ def _initialize_logging(
         if prefix:
             socket_handler.addFilter(PrefixLogFilter(prefix))
 
-        for logger in (root_logger, click_logger, tqdm_logger):
+        for logger in (root_logger, cli_logger, tqdm_logger):
             logger.handlers.clear()
             logger.addHandler(socket_handler)
 
     # Write uncaught exceptions to the logs.
-    def excepthook(exctype, value, traceback):
-        # For interruptions, call the original exception handler.
-        if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
-            sys.__excepthook__(exctype, value, traceback)
-            return
-        root_logger.critical("Uncaught exception", exc_info=(exctype, value, traceback))
-
     sys.excepthook = excepthook
 
     # Ensure warnings issued by the 'warnings' module will be redirected to the logging system.
@@ -537,27 +539,34 @@ def teardown_logging():
     if _LOGGING_SERVER is not None:
         _LOGGING_SERVER = None
 
+    sys.excepthook = sys.__excepthook__  # type: ignore[assignment]
+
 
 @contextmanager
-def insert_handler(handler: logging.Handler) -> Generator[None, None, None]:
+def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     """
     A context manager that can be used to route logs to a specific handler temporarily.
     """
+    global _EXCEPTIONS_LOGGED
+
     root_logger = logging.getLogger()
 
     from .tqdm import logger as tqdm_logger
 
-    formatter = get_formatter()
-    handler.setFormatter(formatter)
-
-    for logger in (root_logger, click_logger, tqdm_logger):
-        logger.addHandler(handler)
+    for logger in (root_logger, cli_logger, tqdm_logger):
+        for handler in handlers:
+            logger.addHandler(handler)
 
     try:
         yield None
+    except BaseException as e:
+        root_logger.exception(e)
+        _EXCEPTIONS_LOGGED.append(e)
+        raise
     finally:
-        for logger in (root_logger, click_logger, tqdm_logger):
-            logger.removeHandler(handler)
+        for logger in (root_logger, cli_logger, tqdm_logger):
+            for handler in handlers:
+                logger.removeHandler(handler)
 
 
 def file_handler(filepath: PathOrStr) -> ContextManager[None]:
@@ -582,5 +591,26 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         teardown_logging()
 
     """
-    handler = logging.FileHandler(str(filepath))
-    return insert_handler(handler)
+    import click
+    import rich
+    from rich.console import Console
+    from rich.logging import RichHandler
+
+    log_file = open(filepath, "w")
+    handlers: List[logging.Handler] = []
+    console = Console(
+        color_system=None,
+        file=log_file,
+        force_terminal=False,
+        width=TANGO_CONSOLE_WIDTH,
+    )
+    for is_cli_handler in (True, False):
+        handler = RichHandler(
+            console=console,
+            tracebacks_suppress=[click],
+            markup=is_cli_handler,
+            highlighter=rich.highlighter.NullHighlighter(),
+        )
+        handler.addFilter(CliFilter(filter_out=not is_cli_handler))
+        handlers.append(handler)
+    return insert_handlers(*handlers)
