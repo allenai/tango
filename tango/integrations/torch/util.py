@@ -1,5 +1,6 @@
 import random
 import warnings
+from collections import UserDict
 from typing import Dict, Optional, TypeVar, Union
 
 import numpy as np
@@ -15,7 +16,7 @@ T = TypeVar("T")
 def move_to_device(o: T, device: torch.device) -> T:
     if isinstance(o, torch.Tensor):
         return o.to(device)  # type: ignore[return-value]
-    elif isinstance(o, dict):
+    elif isinstance(o, dict) or isinstance(o, UserDict):
         return {k: move_to_device(v, device) for k, v in o.items()}  # type: ignore[return-value]
     elif isinstance(o, list):
         return [move_to_device(x, device) for x in o]  # type: ignore[return-value]
