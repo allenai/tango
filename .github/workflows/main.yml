@@ -155,7 +155,7 @@ jobs:
           echo "WEEK_NUMBER=$(date +%V)" >> $GITHUB_ENV
           echo "EXTRAS_HASH=$(python scripts/hash_extras.py ${{ matrix.task.extras }})" >> $GITHUB_ENV
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         id: virtualenv-cache
         with:
           path: .venv
