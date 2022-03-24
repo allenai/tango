@@ -34,11 +34,3 @@ class TestSnliText2Text(TangoTestCase):
     #         assert "source" in processed["train"][0].keys()
     #         # assert "target" in processed["train"][0].keys()
     #         assert processed["train"][0]["source"].startswith("nli premise:")
-
-
-if __name__ == "__main__":
-    config = Params.from_file("config.jsonnet")
-    with run_experiment(
-        config, include_package=["snli_steps.py", "tango.integrations.transformers.finetune"]
-    ) as run_dir:
-        assert (run_dir / "processed_data").is_dir()

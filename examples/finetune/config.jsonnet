@@ -2,17 +2,8 @@
 # Model settings #
 ##################
 
-//local pretrained_model = "sshleifer/tiny-gpt2";
-local pretrained_model = "t5-small"; //"patrickvonplaten/t5-tiny-random";
-local model_type = "seq2seq"; //TODO: autodetect.
-
-# This doesn't seem to work with gpt2, but works fine with gpt-j.
-local load_with_low_cpu_mem_usage = false; //std.startsWith(pretrained_model, "EleutherAI/gpt-j");
-
-########################
-# Put in correct place #
-########################
-
+local pretrained_model = "patrickvonplaten/t5-tiny-random";
+local load_with_low_cpu_mem_usage = false;
 
 ####################
 # Trainer settings #
@@ -69,7 +60,6 @@ local training_engine = {
 };
 
 local collate_fn = {
-    //type: "transformers::DefaultDataCollator"
     type: "transformers::DataCollatorForSeq2Seq",
     tokenizer: { pretrained_model_name_or_path: pretrained_model }
 };
@@ -98,14 +88,14 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             type: "datasets::load",
             path: "snli",
         },
-        /*"subset_data": {
+        "subset_data": {
             type: "subset-data",
             data: { type: "ref", ref: "raw_data" },
             max_samples: 10,
-        },*/
+        },
         processed_data: {
             type: "snli-text2text",
-            data: { type: "ref", ref: "raw_data" },
+            data: { type: "ref", ref: "subset_data" },
         },
         "tokenized_data": {
             type: "tokenize_text2text",

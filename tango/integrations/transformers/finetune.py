@@ -1,12 +1,11 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import datasets as ds
-from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM
 
 from tango.integrations.datasets import DatasetsFormat
 from tango.integrations.torch import Model
-from tango.integrations.torch.util import set_seed_all
 from tango.integrations.transformers.tokenizer import Tokenizer
 from tango.step import Step
 
@@ -30,66 +29,11 @@ class FinetuneWrapper(Model):
 
         if tokenizer:
             # TODO: is this required? This is the only reason why we have tokenizer here.
-            self.model.resize_token_embeddings(len(tokenizer))
+            self.model.resize_token_embeddings(len(tokenizer))  # type: ignore
 
     def forward(self, *args, **kwargs):
         # TODO: decode and compute other metrics?
         return self.model.forward(*args, **kwargs)
-
-
-# def _model_for_finetuning(
-#     model_name: str,
-#     tokenizer: Optional[Tokenizer] = None,
-#     max_source_length: Optional[int] = 1024,
-#     resize_position_embeddings: Optional[bool] = None,
-#     seed: int = 42,
-# ):
-#     set_seed_all(seed)
-#     tokenizer = tokenizer or AutoTokenizer.from_pretrained(model_name)
-#
-#     try:
-#         model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-#         seq2seq_model = True  # Seq2Seq models don't return their own prefix.
-#     except ValueError:
-#         model = AutoModelForCausalLM.from_pretrained(model_name)
-#         seq2seq_model = False
-#
-#     # TODO: is this required? This is the only reason why we have tokenizer here.
-#     model.resize_token_embeddings(len(tokenizer))
-#
-#     # TODO: MBart specific tokenizer update.
-#
-#     if model.config.decoder_start_token_id is None:
-#         raise ValueError("Make sure that `config.decoder_start_token_id` is correctly defined")
-#
-#     if (
-#         hasattr(model.config, "max_position_embeddings")
-#         and model.config.max_position_embeddings < max_source_length
-#     ):
-#         if resize_position_embeddings is None:
-#             logger.warning(
-#                 f"Increasing the model's number of position embedding vectors from {model.config.max_position_embeddings} "
-#                 f"to {max_source_length}."
-#             )
-#             model.resize_position_embeddings(max_source_length)
-#         elif resize_position_embeddings:
-#             model.resize_position_embeddings(max_source_length)
-#         else:
-#             raise ValueError(
-#                 f"`max_source_length` is set to {max_source_length}, but the model only has {model.config.max_position_embeddings}"
-#                 f" position encodings. Consider either reducing `max_source_length` to {model.config.max_position_embeddings} or to automatically "
-#                 "resize the model's position encodings by setting `resize_position_embeddings`."
-#             )
-#
-#         return model
-
-
-# @Step.register("get-model-for-finetuning")
-# class GetModelForFinetuning(Step):
-#     DETERMINISTIC = True
-#     CACHEABLE = False
-#
-#     def run(self, model):
 
 
 @Step.register("tokenize_text2text")
@@ -133,11 +77,11 @@ class TokenizeText2TextData(Step):
                     targets, max_length=max_target_length, padding=padding, truncation=True
                 )
 
-            # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-            # padding in the loss.
+            # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100
+            # when we want to ignore padding in the loss.
             if padding == "max_length" and ignore_pad_token_for_loss:
                 labels["input_ids"] = [
-                    [(l if l != tokenizer.pad_token_id else -100) for l in label]
+                    [(lb if lb != tokenizer.pad_token_id else -100) for lb in label]
                     for label in labels["input_ids"]
                 ]
 

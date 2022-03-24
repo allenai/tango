@@ -1,9 +1,8 @@
-from typing import Any, Dict, List, Union
+from typing import Union
 
 import datasets as ds
 
 from tango.integrations.datasets import DatasetsFormat
-from tango.integrations.transformers import Tokenizer
 from tango.step import Step
 
 
@@ -15,7 +14,7 @@ class SubsetData(Step):
 
     FORMAT = DatasetsFormat()
 
-    def run(
+    def run(  # type: ignore
         self,
         data: Union[ds.DatasetDict, ds.Dataset],
         max_samples: int = 5,
@@ -38,7 +37,7 @@ class SnliText2Text(Step):
 
     FORMAT = DatasetsFormat()
 
-    def run(
+    def run(  # type: ignore
         self,
         data: Union[ds.DatasetDict, ds.Dataset],
         source_prefix: str = "nli",
@@ -59,13 +58,17 @@ class SnliText2Text(Step):
 
         def _seq2seq_mapper(example):
             return {
-                "source": f'{source_prefix} {premise_prefix}: {example["premise"]} {hypothesis_prefix}: {example["hypothesis"]}',
-                "target": f'{label_prefix}: {label_map[example["label"]]}',
+                "source": (
+                    f'{source_prefix} {premise_prefix}: {example["premise"]} '
+                    f'{hypothesis_prefix}: {example["hypothesis"]} {label_prefix}: '
+                ),
+                "target": f'{label_map[example["label"]]}',
             }
 
         def _causal_mapper(example):
             text = (
-                f'{source_prefix} {premise_prefix}: {example["premise"]} {hypothesis_prefix}: {example["hypothesis"]} '
+                f'{source_prefix} {premise_prefix}: {example["premise"]} '
+                f'{hypothesis_prefix}: {example["hypothesis"]} '
                 f'{label_prefix}: {label_map[example["label"]]}'
             )
             return {"source": text, "target": text}
