@@ -3,7 +3,7 @@
 ##################
 
 //local pretrained_model = "sshleifer/tiny-gpt2";
-local pretrained_model = "patrickvonplaten/t5-tiny-random";
+local pretrained_model = "t5-small"; //"patrickvonplaten/t5-tiny-random";
 local model_type = "seq2seq"; //TODO: autodetect.
 
 # This doesn't seem to work with gpt2, but works fine with gpt-j.
@@ -98,14 +98,14 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             type: "datasets::load",
             path: "snli",
         },
-        "subset_data": {
+        /*"subset_data": {
             type: "subset-data",
             data: { type: "ref", ref: "raw_data" },
             max_samples: 10,
-        },
+        },*/
         processed_data: {
             type: "snli-text2text",
-            data: { type: "ref", ref: "subset_data" },
+            data: { type: "ref", ref: "raw_data" },
         },
         "tokenized_data": {
             type: "tokenize_text2text",
@@ -117,12 +117,12 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             model: {
                 type: "fairscale::with_wrapped_modules",
                 model: {
-                    //type: "transformers::AutoModelForSeq2SeqLM::from_pretrained",
-                    "type": "transformers::finetune-wrapper",
+                    type: "transformers::AutoModelForSeq2SeqLM::from_pretrained",
+                    //type: "transformers::finetune-wrapper",
                     pretrained_model_name_or_path: pretrained_model,
                     low_cpu_mem_usage: load_with_low_cpu_mem_usage,
                 },
-                modules_to_wrap: ["model\\.encoder\\.block\\.[0-9]+", "model\\.decoder\\.block\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
+                modules_to_wrap: ["encoder\\.block\\.[0-9]+", "decoder\\.block\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },
