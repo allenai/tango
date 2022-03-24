@@ -421,8 +421,6 @@ def construct_arg(
         if origin is None and isinstance(popped_params, annotation):
             return popped_params
         elif popped_params is not None:
-            subextras = create_extras(annotation, extras)
-
             # In some cases we allow a string instead of a param dict, so
             # we need to handle that case separately.
             if isinstance(popped_params, str):
@@ -447,7 +445,7 @@ def construct_arg(
                 if origin != Step and _params_contain_step(popped_params):
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
-                    result = annotation.from_params(popped_params, **subextras)
+                    result = annotation.from_params(popped_params)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
