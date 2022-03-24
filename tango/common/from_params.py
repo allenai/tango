@@ -343,7 +343,7 @@ def pop_and_construct_arg(
     if popped_params is None:
         return None
 
-    return construct_arg(class_name, name, popped_params, annotation, default, **extras)
+    return construct_arg(class_name, name, popped_params, annotation, default)
 
 
 def _params_contain_step(o: Any) -> bool:
@@ -373,7 +373,6 @@ def construct_arg(
     annotation: Type,
     default: Any,
     try_from_step: bool = True,
-    **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
@@ -407,7 +406,6 @@ def construct_arg(
                 Step[annotation],  # type: ignore
                 default,
                 try_from_step=False,
-                **extras,
             )
         except (ValueError, TypeError, ConfigurationError, AttributeError, IndexError):
             popped_params = backup_params
@@ -445,8 +443,7 @@ def construct_arg(
                 if origin != Step and _params_contain_step(popped_params):
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
-                    subextras = create_extras(annotation, extras)
-                    result = annotation.from_params(popped_params, **subextras)
+                    result = annotation.from_params(popped_params)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
@@ -526,7 +523,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
 
         return value_dict
@@ -541,7 +537,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_list.append(value)
 
@@ -559,7 +554,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_set.add(value)
 
@@ -580,7 +574,6 @@ def construct_arg(
                     popped_params,
                     arg_annotation,
                     default,
-                    **extras,
                 )
             except (ValueError, TypeError, ConfigurationError, AttributeError) as e:
                 # Our attempt to construct the argument may have modified popped_params, so we
@@ -615,7 +608,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_list.append(value)
 
@@ -626,11 +618,10 @@ def construct_arg(
     ):
         # Constructing arbitrary classes from params
         arbitrary_class = origin or annotation
-        subextras = create_extras(arbitrary_class, extras)
         constructor_to_inspect = arbitrary_class.__init__
         constructor_to_call = arbitrary_class
         params_contain_step = _params_contain_step(popped_params)
-        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, subextras)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params)
         from tango.step import WithUnresolvedSteps
 
         if origin != Step and params_contain_step:
