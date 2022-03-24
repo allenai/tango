@@ -965,6 +965,40 @@ class TestFromParams(TangoTestCase):
 
         MyRegistrableClass.from_params({"type": "func_constructor", "options": {"a": 1, "b": 2}})
 
+    def test_from_params_passes_no_extra_args_in_factory_construction(self):
+        class InnerBase(Registrable):
+            pass
+
+        from typing import Callable
+
+        def innerbase_with_x_factory(cls) -> Callable[..., InnerBase]:
+            def factory(x: int, **kwargs) -> InnerBase:
+                return cls(x=x, **kwargs)
+
+            return factory
+
+        class Inner(InnerBase):
+            def __init__(self, x: int):
+                self.x = x
+
+        InnerBase.register("inner")(innerbase_with_x_factory(Inner))
+
+        class OuterBase(Registrable):
+            default_implementation = "default"
+
+            def __init__(self, y: str, i: InnerBase, c: int):
+                self.i = i
+                self.y = y
+                self.c = c
+
+        OuterBase.register("default")(OuterBase)
+
+        config = {"c": 4, "i": {"type": "inner", "x": 5}}
+
+        outer_lazy = Lazy(OuterBase, Params(config))
+        outer = outer_lazy.construct(y="placeholder")
+        assert outer.i.x == 5
+
 
 class MyClass(FromParams):
     def __init__(self, my_int: int, my_bool: bool = False) -> None:
