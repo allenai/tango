@@ -116,6 +116,7 @@ class TestRun(TangoTestCase):
         if raise_error:
             assert "[step noisy_step] Uncaught exception" in cleaned_log_lines
             assert "Traceback (most recent call last):" in cleaned_log_lines
+            assert "ValueError: Oh no!" in cleaned_log_lines
 
     def test_deterministic_experiment(self):
         cmd = [

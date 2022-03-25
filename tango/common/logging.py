@@ -155,12 +155,16 @@ class LevelFilter(logging.Filter):
     messages aren't duplicated.
     """
 
-    def __init__(self, max_level: int, name=""):
+    def __init__(self, max_level: int, min_level: Optional[int] = None, name=""):
         self.max_level = max_level
+        self.min_level = min_level
         super().__init__(name)
 
     def filter(self, record):
-        return record.levelno <= self.max_level
+        if self.min_level is not None:
+            return self.min_level <= record.levelno <= self.max_level
+        else:
+            return record.levelno <= self.max_level
 
 
 class CliFilter(logging.Filter):
@@ -464,7 +468,7 @@ def _initialize_logging(
         stdout_handler = get_handler(level)
         stdout_handler.addFilter(LevelFilter(logging.INFO))
         stderr_handler = get_handler(max(level, logging.WARNING), stderr=True)
-        stderr_handler.addFilter(LevelFilter(logging.WARNING))
+        stderr_handler.addFilter(LevelFilter(logging.CRITICAL, min_level=logging.WARNING))
         root_logger.addHandler(stdout_handler)
         root_logger.addHandler(stderr_handler)
 
