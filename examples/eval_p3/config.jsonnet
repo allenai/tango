@@ -30,7 +30,7 @@ local dataset_steps = std.foldl(
             "max_length": 200,
             "input": {"ref": "dataset_" + dataset_name},
             "batch_size": batch_size,
-            "model_name": model,
+            "model": model,
             "prompt_field": "inputs_pretokenized",
             "output_field": "generation",
             "splits": ["validation"]
