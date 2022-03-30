@@ -74,9 +74,10 @@ The ``settings`` group of commands can be used to initialize a :class:`~tango.se
 file or update fields in it.
 
 """
-
+import logging
 import multiprocessing as mp
 import os
+import sys
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Sequence, Union
@@ -123,6 +124,9 @@ _CLICK_COMMAND_DEFAULTS = {
 _CALLED_BY_EXECUTOR: bool = (
     False  # Flag used internally to determine if CLI was called by the MulticoreExecutor.
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @click.group(**_CLICK_GROUP_DEFAULTS)
@@ -667,8 +671,16 @@ def _run(
     else:
         workspace = default_workspace
 
-    if multicore is None and not isinstance(workspace, MemoryWorkspace):
-        multicore = True
+    if multicore is None:
+        if isinstance(workspace, MemoryWorkspace):
+            # Memory workspace does not work with multiple cores.
+            multicore = False
+        elif "pydevd" in sys.modules:
+            # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
+            logger.warning("Debugger detected, disabling multicore.")
+            multicore = False
+        else:
+            multicore = True
 
     # Initialize step graph and register run.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
