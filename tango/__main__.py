@@ -697,8 +697,6 @@ def _run(
     def log_and_execute_run():
         if step_name is None:
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
-        else:
-            cli_logger.info("[green]Starting run for step [bold]%s[/] (%s)[/]", step_name, run.name)
 
         # Initialize server.
         if start_server:
@@ -717,37 +715,23 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-        def log_step_summary(step):
-            info = workspace.step_info(step)
-            if info.result_location is not None:
-                from rich.syntax import Syntax
-
-                example = Syntax(
-                    f'>>> workspace.step_result_for_run("{run.name}", "{step.name}")', "python"
-                )
-                cli_logger.info(
-                    '[green]\N{check mark} The output for [bold]"%s"[/] '
-                    "is in [underline]%s[/][/]\n"
-                    "Use your workspace to get the result:\n\n%s",
-                    step.name,
-                    info.result_location,
-                    example.highlight(example.code).markup,
-                )
-
         if step_name is not None:
             step = step_graph[step_name]
             executor.execute_step(step)
             if not called_by_executor:
-                log_step_summary(step)
                 cli_logger.info(
-                    "[green]Finished run for step [bold]%s[/] (%s)[/]", step_name, run.name
+                    "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
+                    step_name,
+                    run.name,
                 )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
             if executor_output.failed:
-                cli_logger.error("Run [bold]%s[/] finished with errors", run.name)
+                cli_logger.error(
+                    "[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name
+                )
             elif not called_by_executor:
-                cli_logger.info("[green]Finished run [bold]%s[/][/]", run.name)
+                cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
             _display_run_results(run, step_graph, workspace, executor_output)
 
             if executor_output.failed:
@@ -774,9 +758,7 @@ def _display_run_results(
 ) -> None:
     from rich.table import Table
 
-    table = Table(
-        title=f"Results for [bold]{run.name}[/]:", title_justify="left", caption_style="italic"
-    )
+    table = Table(caption_style="italic")
     table.add_column("Step Name", justify="left", style="cyan")
     table.add_column("Status", justify="left")
     table.add_column("Cached Result", justify="left")

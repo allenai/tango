@@ -328,6 +328,7 @@ def get_handler(
         show_level=show_level,
         show_path=show_path,
         omit_repeated_times=False,
+        highlighter=rich.highlighter.NullHighlighter(),
     )
     return handler
 
@@ -361,7 +362,11 @@ def excepthook(exctype, value, traceback):
     if value not in _EXCEPTIONS_LOGGED:
         _EXCEPTIONS_LOGGED.append(value)
         root_logger = logging.getLogger()
-        root_logger.error("Uncaught exception", exc_info=(exctype, value, traceback))
+        root_logger.error(
+            "Uncaught exception",
+            exc_info=(exctype, value, traceback),
+            extra={"highlighter": rich.highlighter.ReprHighlighter()},
+        )
 
 
 def initialize_logging(
