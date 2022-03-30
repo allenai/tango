@@ -24,10 +24,11 @@ class DatasetRemixStep(Step[DatasetDict]):
     Examples
     --------
 
-    .. testsetup::
+    .. testcode::
+        :hide:
 
-        from tango.common.dataset_dict import DatasetDict
-        from tango.steps import DatasetRemixStep
+        from tango.common.logging import initialize_logging
+        initialize_logging(enable_cli_logs=True)
 
     .. testcode::
 
@@ -44,10 +45,11 @@ class DatasetRemixStep(Step[DatasetDict]):
         remixed_dataset = remix_step.result()
 
     .. testoutput::
+        :hide:
         :options: +ELLIPSIS
 
-        ● Starting step ...
-        ✓ Finished step ...
+        ...
+
     """
 
     DETERMINISTIC = True
@@ -156,10 +158,11 @@ class DatasetCombineStep(Step[DatasetDict]):
     Examples
     --------
 
-    .. testsetup::
+    .. testcode::
+        :hide:
 
-        from tango.common.dataset_dict import DatasetDict
-        from tango.steps import DatasetCombineStep
+        from tango.common.logging import initialize_logging
+        initialize_logging(enable_cli_logs=True)
 
     .. testcode::
 
@@ -178,8 +181,8 @@ class DatasetCombineStep(Step[DatasetDict]):
         :hide:
         :options: +ELLIPSIS
 
-        ● Starting step ...
-        ✓ Finished step ...
+        ...
+
     """
 
     DETERMINISTIC = True

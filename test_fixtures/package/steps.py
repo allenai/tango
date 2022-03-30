@@ -36,6 +36,28 @@ class ConcatStringsStep(Step):
         return join_with.join([string1, string2])
 
 
+@Step.register("noisy_step")
+class NoisyStep(Step):
+    CACHEABLE = True
+    DETERMINISTIC = True
+
+    def run(self, raise_error: bool = False) -> None:  # type: ignore
+        self.logger.debug("debug message")
+        common_logging.cli_logger.debug("debug message from cli_logger")
+
+        self.logger.info("info message")
+        common_logging.cli_logger.info("info message from cli_logger")
+
+        self.logger.warning("warning message")
+        common_logging.cli_logger.warning("warning message from cli_logger")
+
+        self.logger.error("error message")
+        common_logging.cli_logger.error("error message from cli_logger")
+
+        if raise_error:
+            raise ValueError("Oh no!")
+
+
 @Step.register("random_string")
 class RandomStringStep(Step):
     def run(self, length: int = 10) -> str:  # type: ignore
@@ -125,6 +147,6 @@ def _worker_function(worker_id: int):
     common_logging.initialize_worker_logging(worker_id)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
-    common_logging.click_logger.info("Hello from the click logger in worker %d!", worker_id)
+    common_logging.cli_logger.info("Hello from the cli logger in worker %d!", worker_id)
     for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):
         time.sleep(0.1)
