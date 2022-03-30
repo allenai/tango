@@ -327,6 +327,7 @@ def excepthook(exctype, value, traceback):
     Used to patch `sys.excepthook` in order to log exceptions.
     """
     global _EXCEPTIONS_LOGGED
+    # Ignore `CliRunError` because we don't need a traceback for those.
     if issubclass(exctype, (CliRunError,)):
         return
     # For interruptions, call the original exception handler.
@@ -566,6 +567,7 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     try:
         yield None
     except BaseException as e:
+        # We don't log `CliRunError` because we don't need a traceback for those.
         if not isinstance(e, CliRunError):
             root_logger.exception(e)
             _EXCEPTIONS_LOGGED.append(e)
