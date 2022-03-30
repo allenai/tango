@@ -90,7 +90,7 @@ from contextlib import contextmanager
 from typing import ContextManager, Generator, List, Optional
 
 from .aliases import EnvVarNames, PathOrStr
-from .exceptions import SigTermReceived
+from .exceptions import CliRunError, SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(
@@ -327,8 +327,10 @@ def excepthook(exctype, value, traceback):
     Used to patch `sys.excepthook` in order to log exceptions.
     """
     global _EXCEPTIONS_LOGGED
+    if issubclass(exctype, (CliRunError,)):
+        return
     # For interruptions, call the original exception handler.
-    if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
+    if issubclass(exctype, (KeyboardInterrupt, SigTermReceived, CliRunError)):
         sys.__excepthook__(exctype, value, traceback)
         return
     if value not in _EXCEPTIONS_LOGGED:
@@ -564,8 +566,9 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     try:
         yield None
     except BaseException as e:
-        root_logger.exception(e)
-        _EXCEPTIONS_LOGGED.append(e)
+        if not isinstance(e, CliRunError):
+            root_logger.exception(e)
+            _EXCEPTIONS_LOGGED.append(e)
         raise
     finally:
         for logger in (root_logger, cli_logger, tqdm_logger):

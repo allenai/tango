@@ -84,6 +84,7 @@ from typing import List, Optional, Sequence, Union
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
+from tango.common.exceptions import CliRunError
 from tango.common.logging import (
     cli_logger,
     initialize_logging,
@@ -752,9 +753,9 @@ def _run(
                     log_step_summary(step)
 
             if executor_output.failed:
-                raise click.ClickException("Run finished with errors")
-
-            if not called_by_executor:
+                cli_logger.error("Run finished with errors")
+                raise CliRunError
+            elif not called_by_executor:
                 cli_logger.info("[green]Finished run [bold]%s[/][/]", run.name)
 
     if called_by_executor:
