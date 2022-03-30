@@ -30,7 +30,7 @@ class TangoGlobalSettings(FromParams):
     The log level to use. Options are "debug", "info", "warning", and "error".
 
     .. note::
-        This does not affect the :data:`~tango.common.logging.click_logger`
+        This does not affect the :data:`~tango.common.logging.cli_logger`
         or logs from :class:`~tango.common.Tqdm` progress bars.
 
     """

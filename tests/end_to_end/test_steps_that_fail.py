@@ -1,6 +1,9 @@
 from collections import Counter
 from typing import MutableMapping
 
+import click
+import pytest
+
 from tango import Step
 from tango.common.testing import TangoTestCase
 
@@ -40,6 +43,7 @@ class StepFail(Step):
 
 class TestExperiment(TangoTestCase):
     def test_experiment(self, caplog):
+        global step_should_fail
         config = {
             "steps": {
                 "a_number": {
@@ -61,7 +65,8 @@ class TestExperiment(TangoTestCase):
         global step_execution_count
 
         step_should_fail = True
-        self.run(config)
+        with pytest.raises(click.ClickException):
+            self.run(config)
 
         assert step_execution_count["a"] == 1
         assert step_execution_count["fail"] == 1
