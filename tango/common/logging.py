@@ -315,7 +315,7 @@ def get_handler(
     console = Console(
         color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
         stderr=stderr,
-        width=TANGO_CONSOLE_WIDTH,
+        width=TANGO_CONSOLE_WIDTH or 160,
     )
     handler = RichHandler(
         level=level,
@@ -634,6 +634,8 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         force_terminal=False,
         width=TANGO_CONSOLE_WIDTH,
     )
+    if TANGO_CONSOLE_WIDTH is None and not console.is_terminal:
+        console.width = 160
     for is_cli_handler in (True, False):
         handler = RichHandler(
             console=console,
