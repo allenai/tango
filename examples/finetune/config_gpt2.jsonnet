@@ -2,10 +2,12 @@
 # Model settings #
 ##################
 
-local pretrained_model = "patrickvonplaten/t5-tiny-random";
+local pretrained_model = "sshleifer/tiny-gpt2"; //""patrickvonplaten/t5-tiny-random";
 local load_with_low_cpu_mem_usage = false;
 
-local modules_to_wrap = ["encoder\\.block\\.[0-9]+", "decoder\\.block\\.[0-9]+"];  # tell FairScale to wrap the transformer's blocks individually
+//local modules_to_wrap = ["encoder\\.block\\.[0-9]+", "decoder\\.block\\.[0-9]+"];
+local modules_to_wrap = ["transformer\\.h\\.[0-9]+"];
+
 
 ####################
 # Trainer settings #
@@ -62,8 +64,9 @@ local training_engine = {
 };
 
 local collate_fn = {
-    type: "transformers::DataCollatorForSeq2Seq",
-    tokenizer: { pretrained_model_name_or_path: pretrained_model }
+    type: "transformers::DefaultDataCollator",
+    //tokenizer: { pretrained_model_name_or_path: pretrained_model },
+    //mlm: false,
 };
 
 local distributed_dataloader = {
@@ -98,11 +101,16 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         processed_data: {
             type: "snli-text2text",
             data: { type: "ref", ref: "subset_data" },
+            seq2seq: false,
         },
         "tokenized_data": {
             type: "tokenize_text2text",
             data: { type: "ref", ref: "processed_data" },
-            tokenizer: { pretrained_model_name_or_path: pretrained_model }
+            tokenizer: { pretrained_model_name_or_path: pretrained_model },
+            max_source_length: 500,
+            max_target_length: 500,
+            pad_to_max_length: true,
+            seq2seq: false,
         },
         trained_model: {
             type: "torch::train",
@@ -138,7 +146,7 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         },
         "generations": {
             "type": "transformers::run_generation_dataset",
-            "max_length": 5,
+            //"max_length": 2,
             "input": {"type": "ref", "ref": "processed_data"},
             "batch_size": batch_size,
             "model": {"type": "ref", "ref": "trained_model"},

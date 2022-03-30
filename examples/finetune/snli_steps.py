@@ -60,9 +60,9 @@ class SnliText2Text(Step):
             return {
                 "source": (
                     f'{source_prefix} {premise_prefix}: {example["premise"]} '
-                    f'{hypothesis_prefix}: {example["hypothesis"]} {label_prefix}: '
+                    f'{hypothesis_prefix}: {example["hypothesis"]} '
                 ),
-                "target": f'{label_map[example["label"]]}',
+                "target": f'{label_prefix}: {label_map[example["label"]]}',
             }
 
         def _causal_mapper(example):
@@ -78,7 +78,7 @@ class SnliText2Text(Step):
         else:
             old_cols = list(data.column_names.values())[0]
 
-        _mapper = _seq2seq_mapper if seq2seq else _causal_mapper
+        _mapper = _seq2seq_mapper  # if seq2seq else _causal_mapper
 
         dataset = data.map(
             _mapper,
