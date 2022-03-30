@@ -89,6 +89,13 @@ import threading
 from contextlib import contextmanager
 from typing import ContextManager, Generator, List, Optional
 
+import rich
+from rich.console import Console
+from rich.logging import RichHandler as _RichHandler
+from rich.padding import Padding
+from rich.syntax import Syntax
+from rich.table import Table
+
 from .aliases import EnvVarNames, PathOrStr
 from .exceptions import CliRunError, SigTermReceived
 from .util import _parse_bool, _parse_optional_int
@@ -278,6 +285,23 @@ _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
 
+class RichHandler(_RichHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        if isinstance(record.msg, Table):
+            if record.msg.title is not None:
+                attrdict = {k: v for k, v in record.__dict__.items() if k != "msg"}
+                attrdict["msg"] = "[italic]" + record.msg.title + "[/]"
+                self.emit(logging.makeLogRecord(attrdict))
+            record.msg.title = None
+            self.console.print(Padding(record.msg, (1, 0, 1, 1)))
+        elif isinstance(record.msg, Syntax):
+            self.console.print(Padding(record.msg, (1, 0, 1, 1)))
+        elif hasattr(record.msg, "__rich__") or hasattr(record.msg, "__rich_console__"):
+            self.console.print(record.msg)
+        else:
+            super().emit(record)
+
+
 def get_handler(
     level: int,
     stderr: bool = False,
@@ -287,16 +311,15 @@ def get_handler(
     show_path: bool = True,
 ) -> logging.Handler:
     import click
-    from rich.console import Console
-    from rich.logging import RichHandler
 
+    console = Console(
+        color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
+        stderr=stderr,
+        width=TANGO_CONSOLE_WIDTH,
+    )
     handler = RichHandler(
         level=level,
-        console=Console(
-            color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
-            stderr=stderr,
-            width=TANGO_CONSOLE_WIDTH,
-        ),
+        console=console,
         rich_tracebacks=False,
         tracebacks_show_locals=False,
         tracebacks_suppress=[click],
@@ -304,6 +327,7 @@ def get_handler(
         show_time=show_time,
         show_level=show_level,
         show_path=show_path,
+        omit_repeated_times=False,
     )
     return handler
 
@@ -601,9 +625,6 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
 
     """
     import click
-    import rich
-    from rich.console import Console
-    from rich.logging import RichHandler
 
     log_file = open(filepath, "w")
     handlers: List[logging.Handler] = []
@@ -619,6 +640,7 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
             tracebacks_suppress=[click],
             markup=is_cli_handler,
             highlighter=rich.highlighter.NullHighlighter(),
+            omit_repeated_times=False,
         )
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)

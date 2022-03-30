@@ -3,7 +3,7 @@ import os
 import subprocess
 import time
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional, OrderedDict, Set, TypeVar
+from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
@@ -23,7 +23,7 @@ class MulticoreExecutor(Executor):
     def __init__(
         self,
         workspace: Workspace,
-        include_package: Optional[List[str]] = None,
+        include_package: Optional[Sequence[str]] = None,
         parallelism: int = 1,
         num_tries_to_sync_states: int = 3,
         wait_seconds_to_sync_states: int = 3,
