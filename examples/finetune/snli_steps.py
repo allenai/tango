@@ -54,15 +54,15 @@ class SnliText2Text(Step):
 
         data = data.filter(filter_no_gold, with_indices=True)
 
-        label_map = {0: "entails", 1: "neutral", 2: "contradiction"}
+        label_map = {0: "entailment", 1: "neutral", 2: "contradiction"}
 
         def _seq2seq_mapper(example):
             return {
                 "source": (
                     f'{source_prefix} {premise_prefix}: {example["premise"]} '
-                    f'{hypothesis_prefix}: {example["hypothesis"]} '
+                    f'{hypothesis_prefix}: {example["hypothesis"]} {label_prefix}: '
                 ),
-                "target": f'{label_prefix}: {label_map[example["label"]]}',
+                "target": f'{label_map[example["label"]]}',
             }
 
         def _causal_mapper(example):
