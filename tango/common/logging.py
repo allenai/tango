@@ -356,7 +356,13 @@ def excepthook(exctype, value, traceback):
     if issubclass(exctype, (CliRunError,)):
         return
     # For interruptions, call the original exception handler.
-    if issubclass(exctype, (KeyboardInterrupt, SigTermReceived, CliRunError)):
+    if issubclass(
+        exctype,
+        (
+            KeyboardInterrupt,
+            SigTermReceived,
+        ),
+    ):
         sys.__excepthook__(exctype, value, traceback)
         return
     if value not in _EXCEPTIONS_LOGGED:
