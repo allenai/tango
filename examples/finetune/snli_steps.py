@@ -56,7 +56,7 @@ class SnliText2Text(Step):
 
         label_map = {0: "entailment", 1: "neutral", 2: "contradiction"}
 
-        def _seq2seq_mapper(example):
+        def _mapper(example):
             return {
                 "source": (
                     f'{source_prefix} {premise_prefix}: {example["premise"]} '
@@ -65,20 +65,10 @@ class SnliText2Text(Step):
                 "target": f'{label_map[example["label"]]}',
             }
 
-        def _causal_mapper(example):
-            text = (
-                f'{source_prefix} {premise_prefix}: {example["premise"]} '
-                f'{hypothesis_prefix}: {example["hypothesis"]} '
-                f'{label_prefix}: {label_map[example["label"]]}'
-            )
-            return {"source": text, "target": text}
-
         if isinstance(data, ds.Dataset):
             old_cols = data.column_names
         else:
             old_cols = list(data.column_names.values())[0]
-
-        _mapper = _seq2seq_mapper  # if seq2seq else _causal_mapper
 
         dataset = data.map(
             _mapper,

@@ -137,13 +137,6 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             device_count: devices,
             training_engine: training_engine,
         },
-        final_metrics: {
-            type: "torch::eval",
-            model: { type: "ref", ref: "trained_model" },
-            dataset_dict: { type: "ref", ref: "tokenized_data" },
-            dataloader: single_device_dataloader,
-            test_split: "test",
-        },
         "generations": {
             "type": "transformers::run_generation_dataset",
             //"max_length": 2,
