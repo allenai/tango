@@ -271,3 +271,8 @@ class StepGraph(Mapping[str, Step]):
         step_dict = self.to_config()
         params = Params({"steps": step_dict})
         params.to_file(filename)
+
+    def __repr__(self) -> str:
+        result = [f'"{name}": {step}' for name, step in self.items()]
+        result = ", ".join(result)
+        return f"{self.__class__.__name__}({result})"
