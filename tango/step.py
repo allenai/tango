@@ -562,7 +562,7 @@ class Step(Registrable, Generic[T]):
                 yield from dependencies_internal(o.kwargs)
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-            elif isinstance(o, dict):
+            elif isinstance(o, (dict, Params)):
                 yield from dependencies_internal(o.values())
             elif isinstance(o, Iterable):
                 yield from itertools.chain(*(dependencies_internal(i) for i in o))
