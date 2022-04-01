@@ -16,19 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `MultiCoreExecutor` that executes steps in parallel.
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
 - We now set the `TEMP` environment variable to a step's work directory while a step executes, so that arbitrary code can benefit from it.
+- `StepGraph` now prints itself in a readable way.
+- Tango now automatically detects when it's running under a debugger, and disables multicore support accordingly. Many debuggers can't properly follow sub-processes, so this is a convenience for people who love debuggers.
 
 ### Changed
 
 - Renamed `click_logger` to `cli_logger`, and we now use [rich](https://github.com/Textualize/rich)'s logging `Handler` as the default handler, which means prettier output, better tracebacks, and you can use rich's markup syntax with the `cli_logger` to easily add style to text.
-- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 - `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
 
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
 - Fixed bug where `TorchTrainStep` working directory would be left in an unrecoverable state if training failed after saving the final model weights.
 - Fixed bug in `FromParams` where `**kwargs` might be passed down to the constructors of arguments.
+- Fixed bug in the way dependencies are tracked between steps
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
