@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterator, List, Mapping, Set, Type, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Set, Type, Union
 
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
@@ -226,8 +226,10 @@ class StepGraph(Mapping[str, Step]):
         return uncacheable_leaf_steps
 
     @classmethod
-    def from_file(cls, filename: PathOrStr) -> "StepGraph":
-        params = Params.from_file(filename)
+    def from_file(
+        cls, filename: PathOrStr, ext_vars: Optional[Dict[str, Any]] = None
+    ) -> "StepGraph":
+        params = Params.from_file(filename, ext_vars=ext_vars)
         for package_name in params.pop("include_package", []):
             import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))

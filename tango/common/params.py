@@ -472,7 +472,7 @@ class Params(MutableMapping):
         cls,
         params_file: PathOrStr,
         params_overrides: Union[str, Dict[str, Any]] = "",
-        ext_vars: dict = None,
+        ext_vars: Optional[Dict[str, Any]] = None,
     ) -> "Params":
         """
         Load a ``Params`` object from a configuration file.
