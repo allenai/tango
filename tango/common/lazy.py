@@ -2,12 +2,13 @@ import copy
 import inspect
 from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union
 
+from .det_hash import CustomDetHash
 from .params import Params
 
 T = TypeVar("T")
 
 
-class Lazy(Generic[T]):
+class Lazy(Generic[T], CustomDetHash):
     """
     This class is for use when constructing objects using :class:`~tango.common.FromParams`,
     when an argument to a constructor has a `sequential dependency` with another argument to the same
@@ -85,3 +86,9 @@ class Lazy(Generic[T]):
         # this will overwrite the ones in self._constructor_extras with what's in kwargs.
         contructor_kwargs = {**self._constructor_extras, **kwargs}
         return self.constructor(**contructor_kwargs)
+
+    def det_hash_object(self) -> Any:
+        if hasattr(self._constructor, "VERSION"):
+            return self._constructor.VERSION, self
+        else:
+            return self
