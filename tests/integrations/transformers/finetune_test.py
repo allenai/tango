@@ -28,7 +28,7 @@ class TestTokenizeText2TextData(TangoTestCase):
             {"field1": ["hello", "hi"], "field2": ["world", "me"], "meta_field": [1, 0]}
         )
         data_dict = DatasetDict({"train": dataset})
-        tokenizer = AutoTokenizer.from_pretrained("patrickvonplaten/t5-tiny-random")
+        tokenizer = AutoTokenizer.from_pretrained("sshleifer/tiny-gpt2")
         step = TokenizeText2TextData()
 
         tokenized = step.run(
@@ -43,4 +43,4 @@ class TestTokenizeText2TextData(TangoTestCase):
         assert len(tokenized["train"]) == 2
         assert "input_ids" in tokenized["train"].column_names
         assert "labels" in tokenized["train"].column_names
-        assert tokenized["train"][0]["input_ids"] == [21820, 32100, 296, 1, 0]
+        assert tokenized["train"][0]["input_ids"] == [31373, 50257, 6894, 50256, 50256]

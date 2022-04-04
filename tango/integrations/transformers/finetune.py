@@ -156,7 +156,6 @@ def tokenize_data(
 
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
-            # TODO: remove source seq loss.
             labels = tokenizer(
                 targets, max_length=max_target_length, padding=padding, truncation=True
             )
