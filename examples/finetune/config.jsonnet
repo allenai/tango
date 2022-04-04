@@ -119,15 +119,15 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             device_count: devices,
             training_engine: training_engine,
         },
-        "generations": {
-            "type": "transformers::run_generation_dataset",
-            "max_length": 5,
-            "input": {"type": "ref", "ref": "processed_data"},
-            "batch_size": batch_size,
-            "model": {"type": "ref", "ref": "trained_model"},
-            "prompt_field": "source",
-            "output_field": "generation",
-            "splits": ["validation"]
-        },
+        generations: {
+            type: "transformers::run_generation_dataset",
+            max_length: 5,
+            input: {"type": "ref", "ref": "processed_data"},
+            batch_size: batch_size,
+            model: {"type": "ref", "ref": "trained_model"},
+            prompt_field: "source",
+            output_field: "generation",
+            splits: ["validation"]
+        }
     }
 }

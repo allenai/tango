@@ -83,5 +83,5 @@ class Lazy(Generic[T]):
         """
         # If there are duplicate keys between self._constructor_extras and kwargs,
         # this will overwrite the ones in self._constructor_extras with what's in kwargs.
-        contructor_kwargs = {**self._constructor_extras, **kwargs}
-        return self.constructor(**contructor_kwargs)
+        constructor_kwargs = {**self._constructor_extras, **kwargs}
+        return self.constructor(**constructor_kwargs)

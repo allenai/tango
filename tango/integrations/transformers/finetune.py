@@ -13,7 +13,7 @@ from transformers import (
     PreTrainedModel,
 )
 
-from tango.common import Lazy
+from tango.common import Lazy, Params
 from tango.common.exceptions import ConfigurationError
 from tango.common.util import get_extra_imported_modules
 from tango.format import Format
@@ -46,7 +46,7 @@ class FinetuneWrapper(PreTrainedModel):
     def from_pretrained(  # type: ignore
         cls,
         pretrained_model_name_or_path: Union[str, PathLike],
-        num_tokens: Optional[int] = None,  # TODO: this seems to not be working correctly.
+        num_tokens: Optional[int] = None,
         **kwargs,
     ) -> PreTrainedModel:
         """
@@ -60,7 +60,7 @@ class FinetuneWrapper(PreTrainedModel):
         except ValueError:
             model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path, **kwargs)
 
-        if num_tokens:
+        if num_tokens is not None:
             model.resize_token_embeddings(num_tokens)
         return model
 
@@ -143,7 +143,9 @@ def tokenize_data(
                     inputs.append(examples[source_field][i])
                     targets.append(examples[target_field][i])
                 else:
-                    text = examples[source_field][i] + " " + examples[target_field][i]
+                    text = (
+                        examples[source_field][i] + tokenizer.sep_token + examples[target_field][i]
+                    )
                     inputs.append(text)
                     targets.append(text)
                     input_lengths.append(len(examples[source_field][i]))
@@ -446,14 +448,21 @@ class FinetuneStep(Step):
 
         # Setup the tokenizer
         _add_special_tokens(tokenizer)
+
+        # Hacky way to deal with resizing the model embeddings.
+        model_params_dict = model._params.as_dict()
+        if "fairscale" in model_params_dict["type"]:
+            model_params_dict["model"]["num_tokens"] = len(tokenizer)  # type: ignore
+        else:
+            model_params_dict["num_tokens"] = len(tokenizer)  # type: ignore
+
         model = Lazy(
             model._constructor,
-            model._params,
+            Params(model_params_dict),
             constructor_extras=model._constructor_extras,
-            num_tokens=len(tokenizer),  # type: ignore
         )
 
-        # Hacky way to get the config to check in order to check if the model is seq2seq or causal.
+        # Get the config to check in order to check if the model is seq2seq or causal.
         config = AutoConfig.from_pretrained(tokenizer.name_or_path)
         seq2seq: bool = type(config) in SEQ2SEQ
 
