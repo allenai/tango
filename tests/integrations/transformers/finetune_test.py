@@ -43,3 +43,4 @@ class TestTokenizeText2TextData(TangoTestCase):
         assert "input_ids" in tokenized["train"].column_names
         assert "labels" in tokenized["train"].column_names
         assert tokenized["train"][0]["input_ids"] == [31373, 50257, 6894, 50256]
+        assert tokenized["train"][0]["labels"] == [-100, -100, 6894, 50256]

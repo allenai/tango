@@ -148,11 +148,20 @@ def tokenize_data(
             inputs, max_length=max_source_length, padding=padding, truncation=True
         )
 
-        # Setup the tokenizer for targets
-        with tokenizer.as_target_tokenizer():
-            labels = tokenizer(
-                targets, max_length=max_target_length, padding=padding, truncation=True
-            )
+        if not concat_source_target:
+            # Setup the tokenizer for targets
+            with tokenizer.as_target_tokenizer():
+                labels = tokenizer(
+                    targets, max_length=max_target_length, padding=padding, truncation=True
+                )
+        else:
+            labels = {"input_ids": []}
+            sep_token_idx = tokenizer.convert_tokens_to_ids([tokenizer.sep_token])[0]
+            for input_ids in model_inputs["input_ids"]:
+                label_start_idx = input_ids.index(sep_token_idx)
+                label_ids = [-100] * len(input_ids)
+                label_ids[label_start_idx + 1 :] = input_ids[label_start_idx + 1 :]
+                labels["input_ids"].append(label_ids)
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100
         # when we want to ignore padding in the loss.
