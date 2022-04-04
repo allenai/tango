@@ -8,6 +8,10 @@ from tango.step import Step
 
 @Step.register("subset-data")
 class SubsetData(Step):
+    """
+    Creates a subset of the data; mostly to be used for testing/debugging.
+    """
+
     DETERMINISTIC = True
     CACHEABLE = True
     VERSION = "001"
@@ -20,9 +24,16 @@ class SubsetData(Step):
         max_samples: int = 5,
     ) -> Union[ds.DatasetDict, ds.Dataset]:
         """
-        Unlike `ds.Dataset.select`, this works on both `ds.Dataset` and `ds.DatasetDict`.
+        Returns a copy of the `data` with number of samples limited to `max_samples` for
+        each split.
+
+        :param data:
+            The dataset or dataset dict object.
+        :param max_samples:
+            The maximum number of samples to return per split.
         """
 
+        # Unlike `ds.Dataset.select`, this works on both `ds.Dataset` and `ds.DatasetDict`.
         def filter_fn(example, indices):
             return indices < max_samples
 
@@ -31,6 +42,25 @@ class SubsetData(Step):
 
 @Step.register("snli-text2text")
 class SnliText2Text(Step):
+    """
+    Converts the snli dataset to a text-to-text format.
+
+    Examples
+    --------
+
+    original_instance = {
+        "premise": "Two cats are sitting on a wall.",
+        "hypothesis": "The cats are chasing a mouse.",
+        "label": 2  # contradiction
+    }
+
+    returned_instance = {
+        "source": "nli premise: Two cats are sitting on a wall. hypothesis: The cats are chasing a mouse. label: "
+        "target": "contradiction"
+    }
+
+    """
+
     DETERMINISTIC = True
     CACHEABLE = True
     VERSION = "001"
@@ -45,8 +75,22 @@ class SnliText2Text(Step):
         hypothesis_prefix: str = "hypothesis",
         label_prefix: str = "label",
         num_workers: int = 1,
-        seq2seq: bool = True,
     ) -> Union[ds.DatasetDict, ds.Dataset]:
+        """
+        :param data:
+            The snli `Dataset` or `DatasetDict` object.
+        :param source_prefix:
+            The str to add before the start of the source sequence.
+        :param premise_prefix:
+            The str to add before the start of the `premise` in the source sequence.
+        :param hypothesis_prefix:
+            The str to add before the start of the `hypothesis` in the source sequence.
+        :param label_prefix:
+            The str to add as the prompt for the label.
+        :param num_workers:
+            The number of workers to use for processing the data.
+        """
+
         def filter_no_gold(example, indices):
             if example["label"] == -1:
                 return False
@@ -75,7 +119,7 @@ class SnliText2Text(Step):
             batched=False,
             num_proc=num_workers,
             remove_columns=old_cols,  # remove all old columns
-            desc="Converting data to seq2seq format",
+            desc="Converting data to text-to-text format",
         )
 
         return dataset

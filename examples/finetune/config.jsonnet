@@ -2,10 +2,10 @@
 # Model settings #
 ##################
 
-local pretrained_model = "patrickvonplaten/t5-tiny-random";
+local pretrained_model = "t5-base";
 local load_with_low_cpu_mem_usage = false;
 
-local modules_to_wrap = ["encoder\\.block\\.[0-9]+", "decoder\\.block\\.[0-9]+"];  # tell FairScale to wrap the transformer's blocks individually
+local modules_to_wrap = ["[a-zA-Z_.]+\\.[0-9]+"];  # TODO: works for t5 and gpt2. confirm with other models too.
 
 ####################
 # Trainer settings #
@@ -61,14 +61,8 @@ local training_engine = {
     [if fsdp then "fsdp_config" else null]: fsdp_config,
 };
 
-local collate_fn = {
-    type: "transformers::DataCollatorForSeq2Seq",
-    tokenizer: { pretrained_model_name_or_path: pretrained_model }
-};
-
 local distributed_dataloader = {
     batch_size: batch_size,
-    collate_fn: collate_fn,
     sampler: {
         type: "torch::DistributedSampler",
         shuffle: true,
@@ -79,7 +73,6 @@ local distributed_dataloader = {
 local single_device_dataloader = {
     shuffle: true,
     batch_size: batch_size,
-    collate_fn: collate_fn,
 };
 
 local dataloader = if devices > 1 then distributed_dataloader else single_device_dataloader;
@@ -90,26 +83,20 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
             type: "datasets::load",
             path: "snli",
         },
-        "subset_data": {
+        /*"subset_data": {
             type: "subset-data",
             data: { type: "ref", ref: "raw_data" },
             max_samples: 10,
-        },
+        },*/
         processed_data: {
             type: "snli-text2text",
-            data: { type: "ref", ref: "subset_data" },
-        },
-        "tokenized_data": {
-            type: "tokenize_text2text",
-            data: { type: "ref", ref: "processed_data" },
-            tokenizer: { pretrained_model_name_or_path: pretrained_model }
+            data: { type: "ref", ref: "raw_data" },
         },
         trained_model: {
-            type: "torch::train",
+            type: "transformers::finetune",
             model: {
                 type: "fairscale::with_wrapped_modules",
                 model: {
-                    //type: "transformers::AutoModelForSeq2SeqLM::from_pretrained",
                     type: "transformers::finetune::from_pretrained",
                     pretrained_model_name_or_path: pretrained_model,
                     low_cpu_mem_usage: load_with_low_cpu_mem_usage,
@@ -118,7 +105,10 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },
-            dataset_dict: { type: "ref", ref: "tokenized_data" },
+            tokenizer: {
+                pretrained_model_name_or_path: pretrained_model
+            },
+            dataset_dict: { type: "ref", ref: "processed_data" },
             train_dataloader: dataloader,
             validation_split: "validation",
             grad_accum: grad_accum,

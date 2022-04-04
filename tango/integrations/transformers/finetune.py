@@ -1,10 +1,11 @@
 import logging
 from os import PathLike
-from typing import Any, List, Optional, Union, cast
+from typing import List, Optional, Union, cast
 
 import datasets as ds
 import torch
 from transformers import (
+    AutoConfig,
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     DataCollatorForSeq2Seq,
@@ -27,7 +28,7 @@ from tango.integrations.torch import (
     TrainingEngine,
 )
 from tango.integrations.torch.train import _train
-from tango.integrations.transformers.tokenizer import Tokenizer
+from tango.integrations.transformers import Tokenizer
 from tango.step import Step
 
 logger = logging.getLogger(__name__)
@@ -37,13 +38,23 @@ CAUSAL = AutoModelForCausalLM._model_mapping.keys()  # type: ignore
 
 
 class FinetuneWrapper(PreTrainedModel):
+    """
+    Wrapper `PreTrainedModel` class that returns either a `Seq2SeqLM` or `CausalLM` model.
+    """
+
     @classmethod
     def from_pretrained(  # type: ignore
         cls,
         pretrained_model_name_or_path: Union[str, PathLike],
-        num_tokens: Optional[int] = None,
+        num_tokens: Optional[int] = None,  # TODO: this seems to not be working correctly.
         **kwargs,
     ) -> PreTrainedModel:
+        """
+        :param pretrained_model_name_or_path:
+            The name of the model to return. Any name that works in the transformers library works here.
+        :param num_tokens:
+            The number of token embeddings to have.
+        """
         try:
             model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path, **kwargs)
         except ValueError:
@@ -80,15 +91,44 @@ def tokenize_data(
     max_target_length: Optional[int] = 1024,
     pad_to_max_length: bool = False,
     ignore_pad_token_for_loss: bool = True,
-    seq2seq: bool = True,
+    concat_source_target: bool = False,
 ) -> ds.DatasetDict:
     """
-    If it's seq2seq, we use `DataCollatorForSeq2Seq`, and take care of padding there.
-    If it's causal, we use the `DefaultDataCollator`, and take care of padding here.
+    Returns a `DatasetDict` with tokenized source and target fields.
+
+    :param data:
+        The original dataset dict containing the source and target fields.
+    :param tokenizer:
+        The tokenizer to use.
+    :param num_workers:
+        The number of workers to use for processing the data.
+    :param source_field:
+        The string name of the field containing the source sequence.
+    :param target_field:
+        The string name of the field containing the target sequence.
+    :param max_source_length:
+        The maximum number of tokens in the source sequence.
+    :param max_target_length:
+        The maximum number of tokens in the target sequence.
+    :param pad_to_max_length:
+        Whether to pad to the maximum length when tokenizing.
+    :param ignore_pad_token_for_loss:
+        Whether to ignore the padded tokens for calculating loss.
+        If set to True, all the pad tokens in the labels are replaced
+        by -100, which is ignored by the loss function.
+    :param concat_source_target:
+        If the downstream model is decoder-only, like "gpt2", the source
+        and target sequences need to be concatenated and fed to the model
+        together.
+
+    .. tip::
+        If concat_source_target is set to True, we pad all sequences to max
+        length here. Otherwise, we leave it to the appropriate
+        :class:`~tango.integrations.torch.DataCollator` object.
     """
 
-    if not seq2seq:
-        pad_to_max_length = True  # TODO: address this.
+    if concat_source_target:
+        pad_to_max_length = True
     padding = "max_length" if pad_to_max_length else False
 
     _add_special_tokens(tokenizer)
@@ -99,13 +139,11 @@ def tokenize_data(
         input_lengths = []
         for i in range(len(examples[source_field])):
             if examples[source_field][i] is not None and examples[target_field][i] is not None:
-                if seq2seq:
+                if not concat_source_target:
                     inputs.append(examples[source_field][i])
                     targets.append(examples[target_field][i])
                 else:
-                    text = (
-                        examples[source_field][i] + tokenizer.sep_token + examples[target_field][i]
-                    )
+                    text = examples[source_field][i] + " " + examples[target_field][i]
                     inputs.append(text)
                     targets.append(text)
                     input_lengths.append(len(examples[source_field][i]))
@@ -145,6 +183,13 @@ def tokenize_data(
 
 @Step.register("tokenize_text2text")
 class TokenizeText2TextData(Step):
+    """
+    A step that tokenizes data containing source and target sequences.
+
+    .. tip::
+        Registered as a :class:`~tango.step.Step` under the name "tokenize_text2text".
+    """
+
     DETERMINISTIC = True
     CACHEABLE = True
     FORMAT = DatasetsFormat()
@@ -160,9 +205,41 @@ class TokenizeText2TextData(Step):
         max_target_length: Optional[int] = 1024,
         pad_to_max_length: bool = False,
         ignore_pad_token_for_loss: bool = True,
-        seq2seq: bool = True,
+        concat_source_target: bool = False,
     ) -> ds.DatasetDict:
+        """
+        Returns a `DatasetDict` with tokenized source and target fields.
 
+        :param data:
+            The original dataset dict containing the source and target fields.
+        :param tokenizer:
+            The tokenizer to use.
+        :param num_workers:
+            The number of workers to use for processing the data.
+        :param source_field:
+            The string name of the field containing the source sequence.
+        :param target_field:
+            The string name of the field containing the target sequence.
+        :param max_source_length:
+            The maximum number of tokens in the source sequence.
+        :param max_target_length:
+            The maximum number of tokens in the target sequence.
+        :param pad_to_max_length:
+            Whether to pad to the maximum length when tokenizing.
+        :param ignore_pad_token_for_loss:
+            Whether to ignore the padded tokens for calculating loss.
+            If set to True, all the pad tokens in the labels are replaced
+            by -100, which is ignored by the loss function.
+        :param concat_source_target:
+            If the downstream model is decoder-only, like "gpt2", the source
+            and target sequences need to be concatenated and fed to the model
+            together.
+
+        .. tip::
+            If concat_source_target is set to True, we pad all sequences to max
+            length here. Otherwise, we leave it to the appropriate
+            :class:`~tango.integrations.torch.DataCollator` object.
+        """
         return tokenize_data(
             data,
             tokenizer=tokenizer,
@@ -173,7 +250,7 @@ class TokenizeText2TextData(Step):
             max_target_length=max_target_length,
             pad_to_max_length=pad_to_max_length,
             ignore_pad_token_for_loss=ignore_pad_token_for_loss,
-            seq2seq=seq2seq,
+            concat_source_target=concat_source_target,
         )
 
 
@@ -223,7 +300,7 @@ class FinetuneStep(Step):
     def run(  # type: ignore[override]
         self,
         model: Lazy[Model],
-        tokenizer: Tokenizer,  # TODO: restrict the type
+        tokenizer: Tokenizer,
         training_engine: Lazy[TrainingEngine],
         dataset_dict: ds.DatasetDict,
         train_dataloader: Lazy[DataLoader],
@@ -235,7 +312,6 @@ class FinetuneStep(Step):
         target_field: str = "target",
         max_source_length: Optional[int] = 1024,
         max_target_length: Optional[int] = 1024,
-        seq2seq: bool = True,
         seed: int = 42,
         train_steps: Optional[int] = None,
         train_epochs: Optional[int] = None,
@@ -258,6 +334,8 @@ class FinetuneStep(Step):
         :param model:
             The model to train. It should return a ``dict`` that includes the ``loss``
             during training and the ``val_metric_name`` during validation.
+        :param tokenizer:
+            The tokenizer to use for tokenizing source and target sequences.
         :param training_engine:
             The :class:`TrainingEngine` to use to train the model.
         :param dataset_dict:
@@ -276,6 +354,14 @@ class FinetuneStep(Step):
             :class:`dict` objects. If not specified, but ``validation_split`` is given,
             the validation ``DataLoader`` will be constructed from the same parameters
             as the train ``DataLoader``.
+        :param source_field:
+            The string name of the field containing the source sequence.
+        :param target_field:
+            The string name of the field containing the target sequence.
+        :param max_source_length:
+            The maximum number of tokens in the source sequence.
+        :param max_target_length:
+            The maximum number of tokens in the target sequence.
         :param seed:
             Used to set the RNG states at the beginning of training.
         :param train_steps:
@@ -367,7 +453,9 @@ class FinetuneStep(Step):
             num_tokens=len(tokenizer),  # type: ignore
         )
 
-        # seq2seq: bool = model.config_class in SEQ2SEQ # TODO: without model construction.
+        # Hacky way to get the config to check in order to check if the model is seq2seq or causal.
+        config = AutoConfig.from_pretrained(tokenizer.name_or_path)
+        seq2seq: bool = type(config) in SEQ2SEQ
 
         dataset_dict = tokenize_data(
             dataset_dict,
@@ -376,7 +464,7 @@ class FinetuneStep(Step):
             target_field=target_field,
             max_source_length=max_source_length,
             max_target_length=max_target_length,
-            seq2seq=seq2seq,
+            concat_source_target=not seq2seq,
         )
 
         if is_distributed:
