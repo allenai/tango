@@ -37,10 +37,9 @@ class TestTokenizeText2TextData(TangoTestCase):
             source_field="field1",
             target_field="field2",
             concat_source_target=True,
-            max_source_length=5,
         )
         assert isinstance(tokenized, DatasetDict)
         assert len(tokenized["train"]) == 2
         assert "input_ids" in tokenized["train"].column_names
         assert "labels" in tokenized["train"].column_names
-        assert tokenized["train"][0]["input_ids"] == [31373, 50257, 6894, 50256, 50256]
+        assert tokenized["train"][0]["input_ids"] == [31373, 50257, 6894, 50256]

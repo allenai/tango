@@ -9,7 +9,6 @@ from transformers import (
     AutoModelForCausalLM,
     AutoModelForSeq2SeqLM,
     DataCollatorForSeq2Seq,
-    DefaultDataCollator,
     PreTrainedModel,
 )
 
@@ -120,15 +119,7 @@ def tokenize_data(
         If the downstream model is decoder-only, like "gpt2", the source
         and target sequences need to be concatenated and fed to the model
         together.
-
-    .. tip::
-        If concat_source_target is set to True, we pad all sequences to max
-        length here. Otherwise, we leave it to the appropriate
-        :class:`~tango.integrations.torch.DataCollator` object.
     """
-
-    if concat_source_target:
-        pad_to_max_length = True
     padding = "max_length" if pad_to_max_length else False
 
     _add_special_tokens(tokenizer)
@@ -144,7 +135,10 @@ def tokenize_data(
                     targets.append(examples[target_field][i])
                 else:
                     text = (
-                        examples[source_field][i] + tokenizer.sep_token + examples[target_field][i]
+                        examples[source_field][i]
+                        + tokenizer.sep_token
+                        + examples[target_field][i]
+                        + tokenizer.eos_token
                     )
                     inputs.append(text)
                     targets.append(text)
@@ -487,10 +481,7 @@ class FinetuneStep(Step):
             )
 
         collate_fn: DataCollator
-        if seq2seq:
-            collate_fn = cast(DataCollator, DataCollatorForSeq2Seq(tokenizer=tokenizer))
-        else:
-            collate_fn = cast(DataCollator, DefaultDataCollator())
+        collate_fn = cast(DataCollator, DataCollatorForSeq2Seq(tokenizer=tokenizer))
 
         train_dataloader = Lazy(
             train_dataloader._constructor,
