@@ -87,7 +87,7 @@ class MulticoreExecutor(Executor):
             """
 
             def _failed_dependencies(step: Step) -> bool:
-                for dependency in step.dependencies:
+                for dependency in step.recursive_dependencies:
                     if (
                         step_states[dependency.name] == StepState.FAILED
                         or dependency.name in _failed

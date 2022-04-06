@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
 - Fixed bug where `TorchTrainStep` working directory would be left in an unrecoverable state if training failed after saving the final model weights.
 - Fixed bug in `FromParams` where `**kwargs` might be passed down to the constructors of arguments.
-- Fixed bug in the way dependencies are tracked between steps
+- Fixed bug in the way dependencies are tracked between steps.
+- Fixed bug that caused `MulticoreExecutor` to hang in case of a failing step that was required recursively (not directly) downstream.
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25
