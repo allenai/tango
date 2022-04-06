@@ -1,7 +1,6 @@
 import inspect
 import itertools
 import logging
-import os
 import random
 import re
 import warnings
@@ -24,8 +23,6 @@ from typing import (
     cast,
 )
 
-import click
-
 try:
     from typing import get_args, get_origin  # type: ignore
 except ImportError:
@@ -45,7 +42,7 @@ from tango.common.from_params import (
     pop_and_construct_arg,
 )
 from tango.common.lazy import Lazy
-from tango.common.logging import click_logger
+from tango.common.logging import cli_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
@@ -347,9 +344,6 @@ class Step(Registrable, Generic[T]):
             dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
-        old_temp = os.environ.get("TEMP")
-        os.environ["TEMP"] = str(self.work_dir_for_run)
-
         try:
             if self.cache_results:
                 workspace.step_starting(self)
@@ -365,11 +359,6 @@ class Step(Registrable, Generic[T]):
                     workspace.step_failed(self, e)
                 raise
         finally:
-            if old_temp is None:
-                del os.environ["TEMP"]
-            else:
-                os.environ["TEMP"] = old_temp
-
             self._workspace = None
             self.work_dir_for_run = None
             if dir_for_cleanup is not None:
@@ -509,32 +498,35 @@ class Step(Registrable, Generic[T]):
             workspace = default_workspace
 
         if self.cache_results and self in workspace.step_cache:
-            if click_logger.isEnabledFor(logging.INFO):
-                message = click.style("\N{check mark} Found output for step ", fg="green")
-                message += click.style(f'"{self.name}"', bold=True, fg="green")
-                message += click.style(" in cache", fg="green")
-                if needed_by is None:
-                    message += click.style(" ...", fg="green")
-                else:
-                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="green")
-                click_logger.info(message)
+            if needed_by:
+                cli_logger.info(
+                    '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
+                    '(needed by "%s")...[/green]',
+                    self.name,
+                    needed_by.name,
+                )
+            else:
+                cli_logger.info(
+                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                    self.name,
+                )
             return workspace.step_cache[self]
 
         kwargs = self._replace_steps_with_results(self.kwargs, workspace)
 
-        if click_logger.isEnabledFor(logging.INFO):
-            message = click.style("\N{black circle} Starting step ", fg="blue")
-            message += click.style(f'"{self.name}"', bold=True, fg="blue")
-            if needed_by is None:
-                message += click.style(" ...", fg="blue")
-            else:
-                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
-            click_logger.info(message)
+        if needed_by:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                self.name,
+            )
         result = self._run_with_work_dir(workspace, **kwargs)
-        click_logger.info(
-            click.style("\N{check mark} Finished step ", fg="green")
-            + click.style(f'"{self.name}"', bold=True, fg="green")
-        )
+        cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
         return result
 
     def ensure_result(
@@ -561,7 +553,7 @@ class Step(Registrable, Generic[T]):
                 yield from dependencies_internal(o.kwargs)
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-            elif isinstance(o, dict):
+            elif isinstance(o, (dict, Params)):
                 yield from dependencies_internal(o.values())
             elif isinstance(o, Iterable):
                 yield from itertools.chain(*(dependencies_internal(i) for i in o))
