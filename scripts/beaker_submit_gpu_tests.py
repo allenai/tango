@@ -8,7 +8,7 @@ import sys
 import rich
 from rich import pretty, print, traceback
 
-rich.get_console().width = max(rich.get_console().width, 160)
+rich.get_console().width = max(rich.get_console().width, 180)
 pretty.install()
 traceback.install()
 
