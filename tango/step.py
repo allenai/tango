@@ -115,6 +115,7 @@ class Step(Registrable, Generic[T]):
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
         step_config: Optional[Dict[str, Any]] = None,
+        step_unique_id: Optional[str] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -136,7 +137,7 @@ class Step(Registrable, Generic[T]):
         else:
             self.format = step_format
 
-        self.unique_id_cache: Optional[str] = None
+        self.unique_id_cache = step_unique_id
         if step_name is None:
             self.name = self.unique_id
         else:

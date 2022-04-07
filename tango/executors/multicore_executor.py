@@ -239,7 +239,7 @@ class MulticoreExecutor(Executor):
         # Creates a temporary file in which to store the config. This is passed as a command line
         # argument to child step processes.
         with NamedTemporaryFile(prefix="step-graph-to-file-run", suffix=".jsonnet") as file_ref:
-            step_graph.to_file(file_ref.name)
+            step_graph.to_file(file_ref.name, include_unique_id=True)
             assert os.path.exists(file_ref.name)
 
             step_states = _sync_step_states()
