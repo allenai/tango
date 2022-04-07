@@ -15,10 +15,13 @@ on:
       - 'v*.*.*'
 
 env:
-  # Change this to invalidate existing cache.
-  CACHE_PREFIX: v3
+  CACHE_PREFIX: v3  # Change this to invalidate existing cache.
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.7
+  BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+  BEAKER_WORKSPACE: ai2/tango-testing
+  BEAKER_CLUSTER: ai2/tango-gpu-tests
+  BEAKER_IMAGE: petew/tango-testing
 
 jobs:
   checks:
@@ -68,6 +71,14 @@ jobs:
             requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+
+          - name: GPU Tests
+            extras: dev
+            requires_torch: false
+            run: |
+              timestamp=$(date +%H%M%S)
+              experiment_name="gpu-tests-${COMMIT_SHA}-${timestamp}"
+              python -m scripts.beaker_submit_gpu_tests "$experiment_name" "$COMMIT_SHA"
 
           - name: Datasets integration
             extras: dev,datasets
@@ -139,6 +150,16 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python }}
+
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
 
       - name: Install prerequisites
         run: |
@@ -215,117 +236,6 @@ jobs:
         run: |
           . .venv/bin/activate
           pip uninstall -y ai2-tango
-
-  gpu_tests:
-    name: GPU Tests
-    runs-on: [ubuntu-latest]
-    timeout-minutes: 20
-    env:
-      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
-      BEAKER_WORKSPACE: ai2/tango-testing
-      BEAKER_CLUSTER: ai2/tango-gpu-tests
-      IMAGE_NAME: petew/tango-testing
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Determine current commit SHA (pull request)
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
-
-      - name: Determine current commit SHA (push)
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
-
-      - name: Install beaker client
-        shell: bash
-        run: |
-          mkdir -p "$HOME/bin"
-
-          # Download and install from latest GitHub release.
-          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
-            | grep 'browser_download_url.*linux' \
-            | cut -d '"' -f 4 \
-            | wget -qi - \
-          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
-
-          # Add to path.
-          echo "$HOME/bin" >> "$GITHUB_PATH"
-
-      - name: Verify beaker install
-        run: |
-          beaker account whoami
-
-      - name: Create beaker experiment config
-        run: |
-          cat >beaker_config.yml << EOL
-          version: v2-alpha
-          description: GPU Tests
-          tasks:
-            - name: tests
-              image:
-                beaker: ${{ env.IMAGE_NAME }}
-              command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
-              envVars:
-                - name: COMMIT_SHA
-                  value: $COMMIT_SHA
-              result:
-                path: '/results'
-              resources:
-                gpuCount: 2
-              context:
-                cluster: ${{ env.BEAKER_CLUSTER }}
-                priority: normal
-          EOL
-          cat beaker_config.yml
-
-      - name: Submit beaker job
-        run: |
-          TIMESTAMP=$(date +%H%M%S)
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "gpu-tests-${COMMIT_SHA}-${TIMESTAMP}" | awk '{print $2}')
-          if [ -z "$EXPERIMENT" ]; then
-            exit 1
-          else
-            echo "EXPERIMENT=$EXPERIMENT" >> $GITHUB_ENV
-            echo "Experiment $EXPERIMENT submitted. See progress at https://beaker.org/ex/$EXPERIMENT"
-          fi
-
-      - name: Wait for job to finish
-        run: |
-          beaker experiment await $EXPERIMENT tests finalized --timeout 20m
-          # Check the job's exit code.
-          test $(beaker experiment get $EXPERIMENT --format=json | jq '.[0].jobs[0].status.exitCode') -eq 0
-
-      - name: Get logs
-        if: always()
-        run: |
-          # EXPERIMENT could be empty if the submission step failed.
-          # We'll exit right away if that's the case.
-          if [ -z "$EXPERIMENT" ]; then
-            echo "No logs to show"
-            exit 0
-          fi
-
-          # Download logs from beaker.
-          beaker experiment results $EXPERIMENT --prefix out.log --output results
-
-          # If the experiment failed during startup, there might not be any logs.
-          if [ -f results/tests/out.log ]; then
-            echo ""
-            echo ">>> Logs:"
-            echo ""
-            cat results/tests/out.log
-          else
-            echo "No logs to show"
-          fi
-
-      - name: Stop job
-        if: cancelled()
-        run: |
-          if [ ! -z "$EXPERIMENT" ]; then
-            beaker experiment stop $EXPERIMENT
-          fi
 
   release:
     name: Release
