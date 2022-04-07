@@ -25,7 +25,7 @@ env:
 
 jobs:
   checks:
-    name: python ${{ matrix.python }} - ${{ matrix.task.name }}
+    name: ${{ matrix.task.name }}
     runs-on: [ubuntu-latest]
     timeout-minutes: 30
     strategy:
@@ -33,19 +33,19 @@ jobs:
       matrix:
         python: ['3.7']
         task:
-          - name: Lint
+          - name: python 3.7 - Lint
             extras: dev,all
             requires_torch: true
             run: |
               flake8 .
 
-          - name: Type check
+          - name: python 3.7 - Type check
             extras: dev,all
             requires_torch: true
             run: |
               mypy .
 
-          - name: Build
+          - name: python 3.7 - Build
             extras: dev,all
             requires_torch: true
             run: |
@@ -53,20 +53,20 @@ jobs:
               python setup.py check
               python setup.py bdist_wheel sdist
 
-          - name: Style
+          - name: python 3.7 - Style
             extras: dev
             requires_torch: false
             run: |
               isort --check .
               black --check .
 
-          - name: Docs
+          - name: python 3.7 - Docs
             extras: dev,all
             requires_torch: true
             run: |
               cd docs && make html SPHINXOPTS="-W --keep-going"
 
-          - name: Test
+          - name: python 3.7 - Test
             extras: dev
             requires_torch: false
             run: |
@@ -80,37 +80,37 @@ jobs:
               experiment_name="gpu-tests-${COMMIT_SHA}-${timestamp}"
               python -m scripts.beaker_submit_gpu_tests "$experiment_name" "$COMMIT_SHA"
 
-          - name: Datasets integration
+          - name: python 3.7 - Datasets integration
             extras: dev,datasets
             requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/datasets tests/integrations/datasets
 
-          - name: PyTorch integration
+          - name: python 3.7 - PyTorch integration
             extras: dev,torch
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
-          - name: PyTorch Lightning integration
+          - name: python 3.7 - PyTorch Lightning integration
             extras: dev,pytorch_lightning
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
-          - name: Transformers integration
+          - name: python 3.7 - Transformers integration
             extras: dev,transformers
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
 
-          - name: FairScale integration
+          - name: python 3.7 - FairScale integration
             extras: dev,fairscale
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
 
-          - name: Example - train_lm
+          - name: python 3.7 - Example - train_lm
             extras: dev,all
             requires_torch: true
             run: |
@@ -120,7 +120,7 @@ jobs:
         include:
           # Run the core tests on other Python versions as well.
           - task:
-              name: Test
+              name: python 3.8 - Test
               extras: dev
               requires_torch: false
               run: |
@@ -128,7 +128,7 @@ jobs:
             python: '3.8'
 
           - task:
-              name: Test
+              name: python 3.9 - Test
               extras: dev
               requires_torch: false
               run: |
@@ -136,7 +136,7 @@ jobs:
             python: '3.9'
 
           - task:
-              name: Test
+              name: python 3.10 - Test
               extras: dev
               requires_torch: false
               run: |
@@ -240,7 +240,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [checks, gpu_tests]
+    needs: [checks]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v1  # needs v1 for now
