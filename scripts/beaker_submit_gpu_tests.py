@@ -89,6 +89,7 @@ def main(name: str, commit_sha: str):
 
         print("- Pulling logs...", end="\n\n")
         logs = "".join([line.decode() for line in beaker.experiment.logs(experiment)])
+        rich.get_console().rule("Logs")
         print(logs)
 
         sys.exit(experiment.jobs[0].status.exit_code)
