@@ -120,7 +120,7 @@ class WorkspaceServer(ThreadingHTTPServer):
 
     @classmethod
     def on_free_port(cls, workspace: Workspace, start_port: int = 8080) -> "WorkspaceServer":
-        for port in range(start_port, 2 ** 16):
+        for port in range(start_port, 2**16):
             try:
                 return cls(("", port), workspace)
             except OSError as e:
