@@ -1,6 +1,6 @@
-import click
 import pytest
 
+from tango.common.exceptions import CliRunError
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
@@ -37,7 +37,7 @@ class TestExperiment(TangoTestCase):
         teardown_logging()
 
     def test_experiment(self, caplog):
-        with pytest.raises(click.ClickException):
+        with pytest.raises(CliRunError):
             self.run(
                 self.config,
                 include_package=["test_fixtures.package.steps"],
