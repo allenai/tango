@@ -88,7 +88,16 @@ setup(
     author_email="contact@allenai.org",
     license="Apache",
     packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests", "test_fixtures", "test_fixtures.*"],
+        exclude=[
+            "*.tests",
+            "*.tests.*",
+            "tests.*",
+            "tests",
+            "test_fixtures",
+            "test_fixtures.*",
+            "scripts",
+            "scripts.*",
+        ],
     ),
     package_data={"tango.server": ["*.svg", "*.css", "*.js", "*.html"], "tango": ["py.typed"]},
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
