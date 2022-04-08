@@ -770,7 +770,7 @@ def _display_run_results(
 ) -> None:
     from rich.table import Table
 
-    table = Table(caption_style="")
+    table = Table(caption_style="italic")
     table.add_column("Step Name", justify="left", style="cyan")
     table.add_column("Status", justify="left")
     table.add_column("Cached Result", justify="left")
@@ -799,15 +799,13 @@ def _display_run_results(
 
     caption_parts: List[str] = []
     if executor_output.failed:
-        caption_parts.append(
-            f"[red]\N{ballot x}[/] [italic]{len(executor_output.failed)} failed[/]"
-        )
+        caption_parts.append(f"[red]\N{ballot x}[/] {len(executor_output.failed)} failed")
     if executor_output.successful:
         caption_parts.append(
-            f"[green]\N{check mark}[/] [italic]{len(executor_output.successful)} succeeded[/]"
+            f"[green]\N{check mark}[/] {len(executor_output.successful)} succeeded"
         )
     if executor_output.not_run:
-        caption_parts.append(f"[italic]{len(executor_output.not_run)} not run[/]")
+        caption_parts.append(f"{len(executor_output.not_run)} not run")
     table.caption = ", ".join(caption_parts)
 
     cli_logger.info(table)
