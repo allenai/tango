@@ -2,17 +2,10 @@
 Usage: python -m scripts.beaker_submit_gpu_tests NAME COMMIT_SHA
 """
 
-import signal
 import sys
 
 import rich
-from rich import pretty, print, traceback
-
-rich.get_console().width = max(rich.get_console().width, 180)
-pretty.install()
-traceback.install()
-
-from beaker import (  # noqa: E402
+from beaker import (
     EnvVar,
     ExperimentSpec,
     ImageSource,
@@ -22,26 +15,23 @@ from beaker import (  # noqa: E402
     TaskSpec,
 )
 
-from .beaker_common import (  # noqa: E402
-    BEAKER_CLOUD_CLUSTER,
-    BEAKER_IMAGE,
-    BEAKER_ON_PREM_CLUSTERS,
-    beaker,
-)
-
-
-class TermInterrupt(Exception):
-    pass
-
-
-def handle_sigterm(sig, frame):
-    raise TermInterrupt
+from tango.common.exceptions import SigTermReceived
+from tango.common.logging import cli_logger, initialize_logging
+from tango.common.util import install_sigterm_handler
 
 
 def main(name: str, commit_sha: str):
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    initialize_logging(log_level="info", enable_cli_logs=True, console_width=180)
+    install_sigterm_handler()
 
-    print(f"- Authenticated as {beaker.account.name}", end="\n\n")
+    from .beaker_common import (
+        BEAKER_CLOUD_CLUSTER,
+        BEAKER_IMAGE,
+        BEAKER_ON_PREM_CLUSTERS,
+        beaker,
+    )
+
+    cli_logger.info(f"Authenticated as {beaker.account.name}")
 
     # Find a cluster to use. We default to using our scalable cloud cluster,
     # but we'll also check to see if we can find an on-prem cluster with enough
@@ -51,9 +41,7 @@ def main(name: str, commit_sha: str):
         for node_util in beaker.cluster.utilization(on_prem_cluster):
             if node_util.free.gpu_count is not None and node_util.free.gpu_count >= 2:
                 beaker_cluster = on_prem_cluster
-                print(
-                    f"- Found on-prem cluster with enough free GPUs ({on_prem_cluster})", end="\n\n"
-                )
+                cli_logger.info(f"Found on-prem cluster with enough free GPUs ({on_prem_cluster})")
                 break
         else:
             continue
@@ -74,27 +62,26 @@ def main(name: str, commit_sha: str):
         ],
     )
 
-    print("- Experiment spec:", spec.to_json(), "")
+    cli_logger.info("Experiment spec: %s", spec.to_json())
 
-    print("- Submitting experiment...", end="\n\n")
+    cli_logger.info("Submitting experiment...")
     experiment = beaker.experiment.create(name, spec)
-    print(
-        f"- Experiment {experiment.id} submitted.\nSee progress at https://beaker.org/ex/{experiment.id}",
-        end="\n\n",
+    cli_logger.info(
+        f"Experiment {experiment.id} submitted.\nSee progress at https://beaker.org/ex/{experiment.id}",
     )
 
     try:
-        print("- Waiting for job to finish...", end="\n\n")
+        cli_logger.info("Waiting for job to finish...")
         experiment = beaker.experiment.await_all(experiment, timeout=20 * 60)
 
-        print("- Pulling logs...", end="\n\n")
+        cli_logger.info("Pulling logs...")
         logs = "".join([line.decode() for line in beaker.experiment.logs(experiment)])
         rich.get_console().rule("Logs")
-        print(logs)
+        cli_logger.info(logs)
 
         sys.exit(experiment.jobs[0].status.exit_code)
-    except (KeyboardInterrupt, TermInterrupt):
-        print("- Canceling job...", end="\n\n")
+    except (KeyboardInterrupt, SigTermReceived):
+        cli_logger.info("Canceling job...")
         beaker.experiment.stop(experiment)
 
 

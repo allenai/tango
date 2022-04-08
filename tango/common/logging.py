@@ -315,8 +315,10 @@ def get_handler(
     console = Console(
         color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
         stderr=stderr,
-        width=TANGO_CONSOLE_WIDTH or 160,
+        width=TANGO_CONSOLE_WIDTH,
     )
+    if TANGO_CONSOLE_WIDTH is None and not console.is_terminal:
+        console.width = 160
     handler = RichHandler(
         level=level,
         console=console,
@@ -380,6 +382,7 @@ def initialize_logging(
     log_level: Optional[str] = None,
     enable_cli_logs: Optional[bool] = None,
     file_friendly_logging: Optional[bool] = None,
+    console_width: Optional[int] = None,
 ):
     """
     Initialize logging, which includes setting the global log level, format, and configuring
@@ -401,6 +404,9 @@ def initialize_logging(
         Set to ``True`` to enable messages from the :data:`cli_logger`.
     :param file_friendly_logging:
         Enable or disable file friendly logging. Defaults to the value of :data:`FILE_FRIENDLY_LOGGING`.
+    :param console_width:
+        Manually set the console width. Defaults to automatically determining the console
+        width or the value of the environment variable ``TANGO_CONSOLE_WIDTH``.
 
     """
     import multiprocessing as mp
@@ -416,6 +422,7 @@ def initialize_logging(
         enable_cli_logs=enable_cli_logs,
         file_friendly_logging=file_friendly_logging,
         main_process=is_main_process,
+        console_width=console_width,
     )
 
 
@@ -456,8 +463,9 @@ def _initialize_logging(
     file_friendly_logging: Optional[bool] = None,
     prefix: Optional[str] = None,
     main_process: bool = True,
+    console_width: Optional[int] = None,
 ):
-    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLI_LOGGER_ENABLED
+    global FILE_FRIENDLY_LOGGING, TANGO_LOG_LEVEL, TANGO_CLI_LOGGER_ENABLED, TANGO_CONSOLE_WIDTH
     global _LOGGING_HOST, _LOGGING_PORT, _LOGGING_SERVER, _LOGGING_SERVER_THREAD, _LOGGING_PREFIX
 
     if log_level is None:
@@ -468,6 +476,8 @@ def _initialize_logging(
         file_friendly_logging = FILE_FRIENDLY_LOGGING
     if enable_cli_logs is None:
         enable_cli_logs = TANGO_CLI_LOGGER_ENABLED
+    if console_width is None:
+        console_width = TANGO_CONSOLE_WIDTH
 
     level = logging._nameToLevel[log_level.upper()]
 
@@ -482,6 +492,9 @@ def _initialize_logging(
     if enable_cli_logs is not None:
         TANGO_CLI_LOGGER_ENABLED = enable_cli_logs
         os.environ[EnvVarNames.CLI_LOGGER_ENABLED.value] = str(enable_cli_logs).lower()
+    if console_width is not None:
+        TANGO_CONSOLE_WIDTH = console_width
+        os.environ[EnvVarNames.CONSOLE_WIDTH.value] = str(console_width)
 
     from .tqdm import logger as tqdm_logger
 
@@ -643,10 +656,8 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         color_system=None,
         file=log_file,
         force_terminal=False,
-        width=TANGO_CONSOLE_WIDTH,
+        width=TANGO_CONSOLE_WIDTH or 160,
     )
-    if TANGO_CONSOLE_WIDTH is None and not console.is_terminal:
-        console.width = 160
     for is_cli_handler in (True, False):
         handler = RichHandler(
             console=console,
