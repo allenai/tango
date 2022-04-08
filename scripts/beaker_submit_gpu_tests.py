@@ -8,27 +8,6 @@ import sys
 import rich
 from rich import pretty, print, traceback
 
-rich.get_console().width = max(rich.get_console().width, 180)
-pretty.install()
-traceback.install()
-
-from beaker import (  # noqa: E402
-    EnvVar,
-    ExperimentSpec,
-    ImageSource,
-    ResultSpec,
-    TaskContext,
-    TaskResources,
-    TaskSpec,
-)
-
-from .beaker_common import (  # noqa: E402
-    BEAKER_CLOUD_CLUSTER,
-    BEAKER_IMAGE,
-    BEAKER_ON_PREM_CLUSTERS,
-    beaker,
-)
-
 
 class TermInterrupt(Exception):
     pass
@@ -39,9 +18,24 @@ def handle_sigterm(sig, frame):
 
 
 def main(name: str, commit_sha: str):
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    from beaker import (
+        EnvVar,
+        ExperimentSpec,
+        ImageSource,
+        ResultSpec,
+        TaskContext,
+        TaskResources,
+        TaskSpec,
+    )
 
-    print(f"- Authenticated as {beaker.account.name}", end="\n\n")
+    from .beaker_common import (
+        BEAKER_CLOUD_CLUSTER,
+        BEAKER_IMAGE,
+        BEAKER_ON_PREM_CLUSTERS,
+        beaker,
+    )
+
+    print(f"- Authenticated as {beaker.account.name}")
 
     # Find a cluster to use. We default to using our scalable cloud cluster,
     # but we'll also check to see if we can find an on-prem cluster with enough
@@ -51,9 +45,7 @@ def main(name: str, commit_sha: str):
         for node_util in beaker.cluster.utilization(on_prem_cluster):
             if node_util.free.gpu_count is not None and node_util.free.gpu_count >= 2:
                 beaker_cluster = on_prem_cluster
-                print(
-                    f"- Found on-prem cluster with enough free GPUs ({on_prem_cluster})", end="\n\n"
-                )
+                print(f"\n- Found on-prem cluster with enough free GPUs ({on_prem_cluster})")
                 break
         else:
             continue
@@ -74,23 +66,22 @@ def main(name: str, commit_sha: str):
         ],
     )
 
-    print("- Experiment spec:", spec.to_json(), "")
+    print("\n- Experiment spec:", spec.to_json())
 
-    print("- Submitting experiment...", end="\n\n")
+    print("\n- Submitting experiment...")
     experiment = beaker.experiment.create(name, spec)
     print(
-        f"- Experiment {experiment.id} submitted.\nSee progress at https://beaker.org/ex/{experiment.id}",
-        end="\n\n",
+        f"Experiment {experiment.id} submitted.\nSee progress at https://beaker.org/ex/{experiment.id}",
     )
 
     try:
-        print("- Waiting for job to finish...", end="\n\n")
+        print("\n- Waiting for job to finish...")
         experiment = beaker.experiment.await_all(experiment, timeout=20 * 60)
 
-        print("- Pulling logs...", end="\n\n")
+        print("\n- Pulling logs...")
         logs = "".join([line.decode() for line in beaker.experiment.logs(experiment)])
         rich.get_console().rule("Logs")
-        print(logs)
+        rich.get_console().print(logs, highlight=False)
 
         sys.exit(experiment.jobs[0].status.exit_code)
     except (KeyboardInterrupt, TermInterrupt):
@@ -99,4 +90,9 @@ def main(name: str, commit_sha: str):
 
 
 if __name__ == "__main__":
+    rich.get_console().width = max(rich.get_console().width, 180)
+    pretty.install()
+    traceback.install()
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     main(*sys.argv[1:])
