@@ -252,7 +252,7 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install --upgrade pip setuptools wheel twine
+          pip install -r dev-requirements.txt
 
       - name: Prepare environment
         run: |
