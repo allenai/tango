@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
 - `StepGraph` now prints itself in a readable way.
 - Tango now automatically detects when it's running under a debugger, and disables multicore support accordingly. Many debuggers can't properly follow sub-processes, so this is a convenience for people who love debuggers.
+- Added more models to the stuff we can import from the transformers library.
 
 ### Changed
 
