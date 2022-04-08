@@ -6,7 +6,7 @@
 flake8
 
 # Static type checking
-mypy==0.941
+mypy==0.942
 types-PyYAML
 types-setuptools
 
@@ -53,6 +53,9 @@ sphinx-autodoc-typehints
 
 # For working with version numbers.
 packaging
+
+# For running GPU tests on Beaker.
+beaker-py>=0.5.2,<0.6
 
 ##################################################
 ###### Extra dev dependencies for examples #######
