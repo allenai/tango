@@ -89,8 +89,15 @@ import threading
 from contextlib import contextmanager
 from typing import ContextManager, Generator, List, Optional
 
+import rich
+from rich.console import Console
+from rich.logging import RichHandler as _RichHandler
+from rich.padding import Padding
+from rich.syntax import Syntax
+from rich.table import Table
+
 from .aliases import EnvVarNames, PathOrStr
-from .exceptions import SigTermReceived
+from .exceptions import CliRunError, SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(
@@ -278,6 +285,23 @@ _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
 
+class RichHandler(_RichHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        if isinstance(record.msg, Table):
+            if record.msg.title is not None:
+                attrdict = {k: v for k, v in record.__dict__.items() if k != "msg"}
+                attrdict["msg"] = "[italic]" + record.msg.title + "[/]"
+                self.emit(logging.makeLogRecord(attrdict))
+            record.msg.title = None
+            self.console.print(Padding(record.msg, (1, 0, 1, 1)))
+        elif isinstance(record.msg, Syntax):
+            self.console.print(Padding(record.msg, (1, 0, 1, 1)))
+        elif hasattr(record.msg, "__rich__") or hasattr(record.msg, "__rich_console__"):
+            self.console.print(record.msg)
+        else:
+            super().emit(record)
+
+
 def get_handler(
     level: int,
     stderr: bool = False,
@@ -287,16 +311,17 @@ def get_handler(
     show_path: bool = True,
 ) -> logging.Handler:
     import click
-    from rich.console import Console
-    from rich.logging import RichHandler
 
+    console = Console(
+        color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
+        stderr=stderr,
+        width=TANGO_CONSOLE_WIDTH,
+    )
+    if TANGO_CONSOLE_WIDTH is None and not console.is_terminal:
+        console.width = 160
     handler = RichHandler(
         level=level,
-        console=Console(
-            color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
-            stderr=stderr,
-            width=TANGO_CONSOLE_WIDTH,
-        ),
+        console=console,
         rich_tracebacks=False,
         tracebacks_show_locals=False,
         tracebacks_suppress=[click],
@@ -304,6 +329,8 @@ def get_handler(
         show_time=show_time,
         show_level=show_level,
         show_path=show_path,
+        omit_repeated_times=False,
+        highlighter=rich.highlighter.NullHighlighter(),
     )
     return handler
 
@@ -327,14 +354,27 @@ def excepthook(exctype, value, traceback):
     Used to patch `sys.excepthook` in order to log exceptions.
     """
     global _EXCEPTIONS_LOGGED
+    # Ignore `CliRunError` because we don't need a traceback for those.
+    if issubclass(exctype, (CliRunError,)):
+        return
     # For interruptions, call the original exception handler.
-    if issubclass(exctype, (KeyboardInterrupt, SigTermReceived)):
+    if issubclass(
+        exctype,
+        (
+            KeyboardInterrupt,
+            SigTermReceived,
+        ),
+    ):
         sys.__excepthook__(exctype, value, traceback)
         return
     if value not in _EXCEPTIONS_LOGGED:
         _EXCEPTIONS_LOGGED.append(value)
         root_logger = logging.getLogger()
-        root_logger.error("Uncaught exception", exc_info=(exctype, value, traceback))
+        root_logger.error(
+            "Uncaught exception",
+            exc_info=(exctype, value, traceback),
+            extra={"highlighter": rich.highlighter.ReprHighlighter()},
+        )
 
 
 def initialize_logging(
@@ -564,8 +604,10 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     try:
         yield None
     except BaseException as e:
-        root_logger.exception(e)
-        _EXCEPTIONS_LOGGED.append(e)
+        # We don't log `CliRunError` because we don't need a traceback for those.
+        if not isinstance(e, CliRunError):
+            root_logger.exception(e)
+            _EXCEPTIONS_LOGGED.append(e)
         raise
     finally:
         for logger in (root_logger, cli_logger, tqdm_logger):
@@ -596,9 +638,6 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
 
     """
     import click
-    import rich
-    from rich.console import Console
-    from rich.logging import RichHandler
 
     log_file = open(filepath, "w")
     handlers: List[logging.Handler] = []
@@ -606,7 +645,7 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         color_system=None,
         file=log_file,
         force_terminal=False,
-        width=TANGO_CONSOLE_WIDTH,
+        width=TANGO_CONSOLE_WIDTH or 160,
     )
     for is_cli_handler in (True, False):
         handler = RichHandler(
@@ -614,6 +653,7 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
             tracebacks_suppress=[click],
             markup=is_cli_handler,
             highlighter=rich.highlighter.NullHighlighter(),
+            omit_repeated_times=False,
         )
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)
