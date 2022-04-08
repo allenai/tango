@@ -1,10 +1,10 @@
 from collections import Counter
 from typing import MutableMapping
 
-import click
 import pytest
 
 from tango import Step
+from tango.common.exceptions import CliRunError
 from tango.common.testing import TangoTestCase
 
 step_execution_count: MutableMapping[str, int] = Counter()
@@ -65,7 +65,7 @@ class TestExperiment(TangoTestCase):
         global step_execution_count
 
         step_should_fail = True
-        with pytest.raises(click.ClickException):
+        with pytest.raises(CliRunError):
             self.run(config)
 
         assert step_execution_count["a"] == 1
