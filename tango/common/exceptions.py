@@ -35,3 +35,9 @@ class SigTermReceived(TangoError):
     """
     Raised when a SIGTERM is caught.
     """
+
+
+class CliRunError(TangoError):
+    """
+    Raised when `tango run` command fails.
+    """

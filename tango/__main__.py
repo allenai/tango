@@ -80,11 +80,12 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
+from tango.common.exceptions import CliRunError
 from tango.common.logging import (
     cli_logger,
     initialize_logging,
@@ -98,7 +99,13 @@ from tango.common.util import (
     import_module_and_submodules,
 )
 from tango.settings import TangoGlobalSettings
+from tango.step_graph import StepGraph
 from tango.version import VERSION
+from tango.workspace import Workspace
+
+if TYPE_CHECKING:
+    from tango.executor import ExecutorOutput
+    from tango.workspace import Run
 
 _CLICK_GROUP_DEFAULTS = {
     "cls": HelpColorsGroup,
@@ -346,7 +353,6 @@ def server(
     Run a local webserver that watches a workspace.
     """
     from tango.server.workspace_server import WorkspaceServer
-    from tango.workspace import Workspace
     from tango.workspaces import LocalWorkspace
 
     workspace_to_watch: Workspace
@@ -496,8 +502,6 @@ def workspace(
         settings.workspace = {"type": "from_url", "url": workspace}
 
     if validate:
-        from tango.workspace import Workspace
-
         for package_name in settings.include_package or []:
             import_extra_module(package_name)
 
@@ -643,8 +647,6 @@ def _run(
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
-    from tango.step_graph import StepGraph
-    from tango.workspace import Workspace
     from tango.workspaces import MemoryWorkspace, default_workspace
 
     # Read params.
@@ -707,8 +709,6 @@ def _run(
     def log_and_execute_run():
         if step_name is None:
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
-        else:
-            cli_logger.info("[green]Starting run for step [bold]%s[/] (%s)[/]", step_name, run.name)
 
         # Initialize server.
         if start_server:
@@ -727,47 +727,27 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-        def log_step_summary(step):
-            info = workspace.step_info(step)
-            if info.result_location is not None:
-                from rich.syntax import Syntax
-
-                example = Syntax(
-                    f'>>> workspace.step_result_for_run("{run.name}", "{step.name}")', "python"
-                )
-                cli_logger.info(
-                    '[green]\N{check mark} The output for [bold]"%s"[/] '
-                    "is in [underline]%s[/][/]\n"
-                    "Use your workspace to get the result:\n\n%s",
-                    step.name,
-                    info.result_location,
-                    example.highlight(example.code).markup,
-                )
-
         if step_name is not None:
             step = step_graph[step_name]
             executor.execute_step(step)
             if not called_by_executor:
-                log_step_summary(step)
                 cli_logger.info(
-                    "[green]Finished run for step [bold]%s[/] (%s)[/]", step_name, run.name
+                    "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
+                    step_name,
+                    run.name,
                 )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
-            # Print everything that has been computed.
-            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-            for step in ordered_steps:
-                if step.name in executor_output.failed:
-                    # TODO: add needed_by
-                    cli_logger.error('[red]\N{ballot x} step "%s" failed.[/]', step.name)
-                elif not called_by_executor:
-                    log_step_summary(step)
+            if executor_output.failed:
+                cli_logger.error(
+                    "[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name
+                )
+            elif not called_by_executor:
+                cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
+            _display_run_results(run, step_graph, workspace, executor_output)
 
             if executor_output.failed:
-                raise click.ClickException("Run finished with errors")
-
-            if not called_by_executor:
-                cli_logger.info("[green]Finished run [bold]%s[/][/]", run.name)
+                raise CliRunError
 
     if called_by_executor:
         from tango.common.aliases import EnvVarNames
@@ -783,6 +763,68 @@ def _run(
             log_and_execute_run()
 
     return run.name
+
+
+def _display_run_results(
+    run: "Run", step_graph: StepGraph, workspace: Workspace, executor_output: "ExecutorOutput"
+) -> None:
+    from rich.table import Table
+
+    table = Table(caption_style="italic")
+    table.add_column("Step Name", justify="left", style="cyan")
+    table.add_column("Status", justify="left")
+    table.add_column("Cached Result", justify="left")
+    last_cached_step: Optional[str] = None
+    for step in sorted(step_graph.values(), key=lambda step: step.name):
+        step_info = workspace.step_info(step)
+
+        status_str: str
+        if step.name in executor_output.failed:
+            status_str = "[red]\N{ballot x} failed[/]"
+        elif step.name in executor_output.not_run:
+            status_str = "[yellow]- not run[/]"
+        elif step.name in executor_output.successful:
+            status_str = "[green]\N{check mark} succeeded[/]"
+        else:
+            continue
+
+        result_str: str
+        if step_info.result_location is not None:
+            last_cached_step = step.name
+            result_str = f"[cyan]{step_info.result_location}[/]"
+        else:
+            result_str = "[grey62]N/A[/]"
+
+        table.add_row(step.name, status_str, result_str)
+
+    caption_parts: List[str] = []
+    if executor_output.failed:
+        caption_parts.append(f"[red]\N{ballot x}[/] {len(executor_output.failed)} failed")
+    if executor_output.successful:
+        caption_parts.append(
+            f"[green]\N{check mark}[/] {len(executor_output.successful)} succeeded"
+        )
+    if executor_output.not_run:
+        caption_parts.append(f"{len(executor_output.not_run)} not run")
+    table.caption = ", ".join(caption_parts)
+
+    cli_logger.info(table)
+
+    if not executor_output.failed and last_cached_step is not None:
+        from rich.syntax import Syntax
+
+        example = Syntax(
+            "\n".join(
+                [
+                    ">>> from tango import Workspace",
+                    ">>> workspace = Workspace.from_url(...)",
+                    f'>>> workspace.step_result_for_run("{run.name}", "{last_cached_step}")',
+                ]
+            ),
+            "python",
+        )
+        cli_logger.info("Use your workspace to get the cached result of a step, .e.g.")
+        cli_logger.info(example)
 
 
 if __name__ == "__main__":
