@@ -246,7 +246,7 @@ jobs:
                   "image": {"beaker": "${{ env.BEAKER_IMAGE }}"},
                   "context": {"cluster": "${{ env.BEAKER_CLUSTER }}"},
                   "resources": {"gpuCount": 2},
-                  "envVars": [{"name": "COMMIT_SHA", "${{ env.COMMIT_SHA }}"}],
+                  "envVars": [{"name": "COMMIT_SHA", "value": "${{ env.COMMIT_SHA }}"}],
                   "command": ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"],
                   "result": {"path": "/unused"}
                 }
