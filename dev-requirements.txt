@@ -54,9 +54,6 @@ sphinx-autodoc-typehints
 # For working with version numbers.
 packaging
 
-# For running GPU tests on Beaker.
-beaker-py>=0.5.2,<0.6
-
 ##################################################
 ###### Extra dev dependencies for examples #######
 ##################################################
