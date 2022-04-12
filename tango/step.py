@@ -77,6 +77,14 @@ class Step(Registrable, Generic[T]):
     :param step_format: gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
     :param step_config: is the original raw part of the experiment config corresponding to this step.
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
+    :param step_unique_id_override: overrides the construction of the step's unique id using the hash
+      of inputs.
+
+    .. important::
+        Overriding the unique id means that the step will always map to this value, regardless of the inputs,
+        and therefore, the step cache will only hold a single copy of the step's output (from the last execution).
+        Thus, in most cases, this should not be used when constructing steps. We include this option for the case
+        when the executor creates subprocesses, which also need to access the __same__ ``Step`` object.
     """
 
     DETERMINISTIC: bool = True
@@ -115,7 +123,7 @@ class Step(Registrable, Generic[T]):
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
         step_config: Optional[Dict[str, Any]] = None,
-        step_unique_id: Optional[str] = None,
+        step_unique_id_override: Optional[str] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -137,7 +145,7 @@ class Step(Registrable, Generic[T]):
         else:
             self.format = step_format
 
-        self.unique_id_cache = step_unique_id
+        self.unique_id_cache = step_unique_id_override
         if step_name is None:
             self.name = self.unique_id
         else:

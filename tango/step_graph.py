@@ -266,7 +266,7 @@ class StepGraph(Mapping[str, Step]):
                     step_dict[step_name]["step_format"] = _to_config(step.format._to_params())
 
             if include_unique_id:
-                step_dict[step_name]["step_unique_id"] = step.unique_id
+                step_dict[step_name]["step_unique_id_override"] = step.unique_id
 
         return step_dict
 
