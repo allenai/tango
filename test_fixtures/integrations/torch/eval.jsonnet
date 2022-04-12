@@ -1,7 +1,7 @@
 {
     "steps": {
         "data": {
-            "type": "generate_data",
+            "type": "random_data",
         },
         "eval": {
             "type": "torch::eval",

@@ -1,7 +1,7 @@
 {
     "steps": {
         "data": {
-            "type": "generate_data",
+            "type": "random_data",
         },
         "train": {
             "type": "torch::train",
