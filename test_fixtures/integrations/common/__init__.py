@@ -5,7 +5,7 @@ from tango import Step
 from tango.common import DatasetDict, IterableDatasetDict
 
 
-@Step.register("random_data")
+@Step.register("generate_data")
 class GenerateData(Step):
     DETERMINISTIC = True
     CACHEABLE = False
