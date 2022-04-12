@@ -84,7 +84,7 @@ class Step(Registrable, Generic[T]):
         Overriding the unique id means that the step will always map to this value, regardless of the inputs,
         and therefore, the step cache will only hold a single copy of the step's output (from the last execution).
         Thus, in most cases, this should not be used when constructing steps. We include this option for the case
-        when the executor creates subprocesses, which also need to access the __same__ ``Step`` object.
+        when the executor creates subprocesses, which also need to access the *same* ``Step`` object.
     """
 
     DETERMINISTIC: bool = True
