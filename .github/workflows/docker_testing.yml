@@ -60,7 +60,6 @@ jobs:
        # The image might not exist yet though, so it's okay if the delete fails.
 
       - name: Delete existing commit image
-        if: github.event_name != 'pull_request'
         continue-on-error: true
         uses: allenai/beaker-action@v0.2.0
         with:
@@ -69,7 +68,6 @@ jobs:
           args: delete petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }}
 
       - name: Upload new commit image
-        if: github.event_name != 'pull_request'
         uses: allenai/beaker-action@v0.2.0
         with:
           token: ${{ secrets.BEAKER_TOKEN }}
