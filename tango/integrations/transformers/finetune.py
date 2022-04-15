@@ -156,9 +156,8 @@ def tokenize_data(
                 )
         else:
             labels = {"input_ids": []}
-            sep_token_idx = tokenizer.convert_tokens_to_ids([tokenizer.sep_token])[0]
             for input_ids in model_inputs["input_ids"]:
-                label_start_idx = input_ids.index(sep_token_idx)
+                label_start_idx = input_ids.index(tokenizer.sep_token_id)
                 label_ids = [-100] * len(input_ids)
                 label_ids[label_start_idx + 1 :] = input_ids[label_start_idx + 1 :]
                 labels["input_ids"].append(label_ids)
@@ -185,13 +184,13 @@ def tokenize_data(
     return data
 
 
-@Step.register("tokenize_text2text")
+@Step.register("transformers::tokenize_text2text")
 class TokenizeText2TextData(Step):
     """
     A step that tokenizes data containing source and target sequences.
 
     .. tip::
-        Registered as a :class:`~tango.step.Step` under the name "tokenize_text2text".
+        Registered as a :class:`~tango.step.Step` under the name "transformers::tokenize_text2text".
     """
 
     DETERMINISTIC = True
