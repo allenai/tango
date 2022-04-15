@@ -153,6 +153,8 @@ __all__ = [
     "StopEarly",
     "TrainingEngine",
     "TorchTrainingEngine",
+    "TorchFSDPConfig",
+    "ModuleWrapper",
 ]
 
 from .data import ConcatTensorDictsCollator, DataCollator, DataLoader, Sampler
@@ -160,7 +162,9 @@ from .eval import TorchEvalStep
 from .eval_callback import EvalCallback
 from .exceptions import StopEarly
 from .format import TorchFormat
+from .fsdp_config import TorchFSDPConfig
 from .model import Model
+from .module_wrapper import ModuleWrapper
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep
 from .train_callback import StopEarlyCallback, TrainCallback

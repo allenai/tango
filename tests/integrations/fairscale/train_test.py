@@ -56,7 +56,7 @@ class TestFairScaleTrain(TangoTestCase):
     )
     def test_train_tiny_gpt2(self, fsdp: bool, activation_checkpoint: bool, amp: bool):
         overrides: Dict[str, Any] = {
-            "steps.trained_model.model.activation_checkpointing": activation_checkpoint,
+            "steps.trained_model.module_wrapper.activation_checkpointing": activation_checkpoint,
         }
         training_engine: Dict[str, Any] = {
             "amp": amp,
@@ -71,10 +71,10 @@ class TestFairScaleTrain(TangoTestCase):
             training_engine["type"] = "fairscale"
             fsdp_config = {"reshard_after_forward": True, "mixed_precision": amp}
             training_engine["fsdp_config"] = fsdp_config
-            overrides["steps.trained_model.model.fsdp_config"] = fsdp_config
+            overrides["steps.trained_model.module_wrapper.fsdp_config"] = fsdp_config
         else:
             training_engine["type"] = "torch"
-            overrides["steps.trained_model.model.fsdp_config"] = None
+            overrides["steps.trained_model.module_wrapper.fsdp_config"] = None
         overrides["steps.trained_model.training_engine"] = training_engine
         run_dir = self.run(
             self.FIXTURES_ROOT / "integrations" / "fairscale" / "config.jsonnet",

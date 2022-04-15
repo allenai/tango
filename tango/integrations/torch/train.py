@@ -22,6 +22,7 @@ from .data import DataLoader
 from .exceptions import StopEarly
 from .format import TorchFormat
 from .model import Model
+from .module_wrapper import ModuleWrapper
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
 from .training_engine import TrainingEngine
@@ -73,7 +74,7 @@ class TorchTrainStep(Step):
 
     def run(  # type: ignore[override]
         self,
-        model: Lazy[Model],
+        model: Model,
         training_engine: Lazy[TrainingEngine],
         dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
@@ -96,6 +97,7 @@ class TorchTrainStep(Step):
         auto_aggregate_val_metric: bool = True,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
         remove_stale_checkpoints: bool = True,
+        module_wrapper: Optional[ModuleWrapper] = None,
     ) -> Model:
         """
         Run a basic training loop to train the ``model``.
@@ -168,6 +170,9 @@ class TorchTrainStep(Step):
         :param remove_stale_checkpoints:
             If ``True`` (the default), stale checkpoints will be removed throughout training so that
             only the latest and best checkpoints are kept.
+        :param module_wrapper:
+            The :class:`ModuleWrapper` to use.
+            TODO: update docstring.
 
         :returns:
             The trained model on CPU with the weights from the best checkpoint loaded.
@@ -241,11 +246,14 @@ class TorchTrainStep(Step):
                     validation_dataloader,
                     callbacks,
                     get_extra_imported_modules(),
+                    module_wrapper,
                 ),
                 nprocs=num_workers,
             )
             self.logger.info("Constructing final model")
-            final_model = model.construct()
+            # if isinstance(model, Lazy):
+            # model: Model = model.construct()
+            final_model = model
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
@@ -256,6 +264,7 @@ class TorchTrainStep(Step):
                 train_dataloader,
                 validation_dataloader=validation_dataloader,
                 callbacks=callbacks,
+                module_wrapper=module_wrapper,
             )
             assert final_model is not None
             final_model = final_model.cpu()
@@ -275,13 +284,14 @@ class TorchTrainStep(Step):
 def _train(
     worker_id: int,
     config: TrainConfig,
-    model: Lazy[Model],
+    model: Model,
     training_engine: Lazy[TrainingEngine],
     dataset_dict: DatasetDictBase,
     train_dataloader: Lazy[DataLoader],
     validation_dataloader: Optional[Lazy[DataLoader]] = None,
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     include_package: Optional[Set[str]] = None,
+    module_wrapper: Optional[ModuleWrapper] = None,
 ) -> Optional[Model]:
     config.worker_id = worker_id
 
@@ -296,6 +306,12 @@ def _train(
 
         common_logging.initialize_worker_logging(config.worker_id)
     logger = logging.getLogger(TorchTrainStep.__name__)
+
+    if isinstance(model, Lazy):
+        model: Model = model.construct()
+
+    # if module_wrapper is not None:
+    #     model = module_wrapper.with_wrapped_modules(model)
 
     training_engine: TrainingEngine = training_engine.construct(
         train_config=config,

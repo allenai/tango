@@ -4,11 +4,11 @@ from typing import Any, Dict, Optional
 import torch
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 
-from tango.common import FromParams
+from tango.integrations.torch import TorchFSDPConfig
 
 
 @dataclass
-class FSDPConfig(FromParams):
+class FSDPConfig(TorchFSDPConfig):
     """
     Defines all of the configurable options for FairScale's :class:`~fairscale.nn.FullyShardedDataParallel`.
 

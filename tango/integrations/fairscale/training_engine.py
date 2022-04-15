@@ -91,7 +91,7 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
     def __init__(
         self,
         train_config: TrainConfig,
-        model: Lazy[Model],
+        model: Model,
         optimizer: Lazy[Optimizer],
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
@@ -120,8 +120,8 @@ class FairScaleTrainingEngine(TorchTrainingEngine):
         if amp:
             self.grad_scaler = ShardedGradScaler()
 
-    def _construct_model(self, model: Lazy[Model]) -> Model:
-        model: Model = model.construct()
+    def _construct_model(self, model: Model) -> Model:
+        # model: Model = model.construct()
         if not self.fsdp_config.move_params_to_cpu:
             model.to(self.train_config.worker_local_default_device)
         return FSDP(model, **self.fsdp_config.as_kwargs())

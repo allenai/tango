@@ -60,6 +60,15 @@ local dataloader = {
         trained_model: {
             type: "torch::train",
             model: {
+                type: "simple_regression_model",
+            },
+            module_wrapper: {
+                type: "fairscale",
+                modules_to_wrap: ["blocks\\.[0-9]+"],
+                fsdp_config: fsdp_config,
+                activation_checkpointing: activation_checkpointing,
+            },
+            /*model: {
                 type: "fairscale::with_wrapped_modules",
                 model: {
                     type: "simple_regression_model",
@@ -67,7 +76,7 @@ local dataloader = {
                 modules_to_wrap: ["blocks\\.[0-9]+"],
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
-            },
+            },*/
             training_engine: training_engine,
             dataset_dict: { type: "ref", ref: "regression_data" },
             train_dataloader: dataloader,

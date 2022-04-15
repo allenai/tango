@@ -5,9 +5,21 @@ import torch
 import torch.nn as nn
 from fairscale.nn.checkpoint import checkpoint_wrapper
 
-from tango.integrations.torch import Model
+from tango.integrations.torch import Model, ModuleWrapper
 
 from .fsdp_config import FSDPConfig
+
+
+@ModuleWrapper.register("fairscale")
+class FairscaleModuleWrapper(ModuleWrapper):
+    def with_wrapped_modules(self, model: Model) -> Model:
+        # TODO: move logic here.
+        return with_wrapped_modules(
+            model=model,
+            modules_to_wrap=self.modules_to_wrap,
+            fsdp_config=self.fsdp_config,
+            activation_checkpointing=self.activation_checkpointing,
+        )  # type: ignore[arg-type]
 
 
 @Model.register("fairscale::with_wrapped_modules")  # type: ignore[arg-type]
