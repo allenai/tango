@@ -111,9 +111,8 @@ would produce the following output:
     ✓ Finished step "data"
     ● Starting step "train"...
     ✓ Finished step "train"
-    ✓ The output for "train" is in ...
+    ✓ Finished run boss-alien
     ...
-    Finished run boss-alien
 
 Tips
 ----

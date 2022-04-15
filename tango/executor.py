@@ -1,7 +1,7 @@
 import logging
 import traceback
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Set, TypeVar
+from typing import TYPE_CHECKING, List, Optional, Sequence, Set, TypeVar
 
 from tango.common.util import import_extra_module
 from tango.step_graph import StepGraph
@@ -40,7 +40,7 @@ class Executor:
     def __init__(
         self,
         workspace: Workspace,
-        include_package: Optional[List[str]] = None,
+        include_package: Optional[Sequence[str]] = None,
     ) -> None:
         self.workspace = workspace
         self.include_package = include_package

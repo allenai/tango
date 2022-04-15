@@ -437,7 +437,7 @@ class Step(Registrable, Generic[T]):
                 )[:32]
             else:
                 self.unique_id_cache += det_hash(
-                    _random_for_step_names.getrandbits((58 ** 32).bit_length())
+                    _random_for_step_names.getrandbits((58**32).bit_length())
                 )[:32]
 
         return self.unique_id_cache
