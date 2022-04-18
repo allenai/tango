@@ -13,7 +13,7 @@ fi
 # Clone and install tango.
 git clone https://github.com/allenai/tango.git
 cd tango
-git checkout "$COMMIT_SHA"
+git checkout --quiet "$COMMIT_SHA"
 /opt/conda/bin/pip install --no-cache-dir '.[dev,all]'
 
 # Create directory for results.
