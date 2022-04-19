@@ -232,7 +232,7 @@ class StepGraph(Mapping[str, Step]):
             import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
 
-    def to_config(self):
+    def to_config(self, include_unique_id: bool = False) -> Dict[str, Dict]:
         step_dict = {}
 
         def _to_config(o: Any):
@@ -265,10 +265,20 @@ class StepGraph(Mapping[str, Step]):
                 if step.format != step.FORMAT:
                     step_dict[step_name]["step_format"] = _to_config(step.format._to_params())
 
+            if include_unique_id:
+                step_dict[step_name]["step_unique_id_override"] = step.unique_id
+
         return step_dict
 
-    def to_file(self, filename: PathOrStr) -> None:
-        step_dict = self.to_config()
+    def to_file(self, filename: PathOrStr, include_unique_id: bool = False) -> None:
+        """
+        Note: In normal use cases, `include_unique_id` should always be False.
+        We do not want to save the unique id in the config, because we want the
+        output to change if we modify other kwargs in the config file. We include
+        this flag for `MulticoreExecutor`, to ensure that steps have the same
+        unique id in the main process and the created subprocesses.
+        """
+        step_dict = self.to_config(include_unique_id=include_unique_id)
         params = Params({"steps": step_dict})
         params.to_file(filename)
 
