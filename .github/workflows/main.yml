@@ -201,14 +201,14 @@ jobs:
 
       - name: Upload package distribution files
         if: matrix.task.name == 'Build' && matrix.python == env.DEFAULT_PYTHON
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: package
           path: dist
 
       - name: Upload docs build
         if: matrix.task.name == 'Docs' && matrix.python == env.DEFAULT_PYTHON
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docs
           path: docs/build
