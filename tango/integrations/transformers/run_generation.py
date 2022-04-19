@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Union, cast
 
 import more_itertools
 import torch
@@ -15,6 +15,9 @@ from transformers import (
     GPT2Tokenizer,
     OpenAIGPTLMHeadModel,
     OpenAIGPTTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
     TransfoXLLMHeadModel,
     TransfoXLTokenizer,
     XLMTokenizer,
@@ -27,6 +30,7 @@ from tango import Format, JsonFormat, SqliteDictFormat, Step
 from tango.common import DatasetDict
 from tango.common.sequences import MappedSequence, SqliteSparseSequence
 from tango.common.tqdm import Tqdm
+from tango.integrations.torch import Model
 from tango.integrations.torch.util import resolve_device, set_seed_all
 
 logger = logging.getLogger(__name__)
@@ -61,6 +65,9 @@ man is chased outside and beaten. Twenty years later, Rasputin sees a vision of
 the Virgin Mary, prompting him to become a priest. Rasputin quickly becomes famous,
 with people, even a bishop, begging for his blessing. <eod> </s> <eos>"""
 
+SEQ2SEQ = AutoModelForSeq2SeqLM._model_mapping.keys()  # type: ignore
+CAUSAL = AutoModelForCausalLM._model_mapping.keys()  # type: ignore
+
 
 def adjust_length_to_model(length, model):
     max_sequence_length = (
@@ -78,7 +85,9 @@ def adjust_length_to_model(length, model):
 
 
 def _generate(
-    model_name: str,
+    model: Model,
+    # TODO: Change type to `Tokenizer` once HF includes `convert_tokens_to_ids` in `PretrainedTokenizerBase` class.
+    tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast],
     prompts: Iterable[str],
     *,
     batch_size: int = 4,
@@ -93,10 +102,15 @@ def _generate(
     num_return_sequences: int = 1,
     fp16: bool = False,
 ) -> Iterable[List[str]]:
+
+    if not isinstance(model.config, tuple(SEQ2SEQ + CAUSAL)):
+        raise NotImplementedError(
+            "This function is only defined for huggingface models seq2seq/causal models."
+        )
+
     device = resolve_device()
     set_seed_all(seed)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer_kwargs: Dict[str, Any] = {}
     tokenizer.padding_side = "left"
 
@@ -111,12 +125,8 @@ def _generate(
     eos_token_id = tokenizer.convert_tokens_to_ids(tokenizer.eos_token)
     pad_token_id = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
 
-    try:
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-        seq2seq_model = True  # Seq2Seq models don't return their own prefix.
-    except ValueError:
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-        seq2seq_model = False
+    # Seq2Seq models don't return their own prefix.
+    seq2seq_model = model.config_class in SEQ2SEQ
 
     # HF does not do this? WTF?
     model.eval()
@@ -144,27 +154,27 @@ def _generate(
     prepare_batch_fn = prepare_batch_with_prefix
     num_prefix_tokens: Optional[int] = None
 
-    # model-specific exceptions
-    if model.config_class.model_type == "xlm":
-        use_lang_emb = hasattr(model.config, "use_lang_emb") and model.config.use_lang_emb
-        if hasattr(model.config, "lang2id") and use_lang_emb:
-            model.config.lang_id = xlm_language
-        # Original HF code ignores the prefix, but it looks like a bug?
-        prepare_batch_fn = prepare_batch_without_prefix
-        num_prefix_tokens = 0
-    elif model.config_class.model_type in {"xlnet", "transfo-xl"}:
-        prefix = prefix if prefix else PREFIX
-    if model.__class__.__name__ in ["TransfoXLLMHeadModel"]:
-        # This actually doesn't work in the current version of transformers, which is probably a bug in the
-        # transformers library.
-        tokenizer_kwargs = {"add_space_before_punct_symbol": True}
+    # transformer model-specific exceptions
+    if isinstance(model, PreTrainedModel) and model.config_class:
+        if model.config_class.model_type == "xlm":
+            use_lang_emb = hasattr(model.config, "use_lang_emb") and model.config.use_lang_emb
+            if hasattr(model.config, "lang2id") and use_lang_emb:
+                model.config.lang_id = xlm_language
+            # Original HF code ignores the prefix, but it looks like a bug?
+            prepare_batch_fn = prepare_batch_without_prefix
+            num_prefix_tokens = 0
+        elif model.config_class.model_type in {"xlnet", "transfo-xl"}:
+            prefix = prefix if prefix else PREFIX
+        if model.__class__.__name__ in ["TransfoXLLMHeadModel"]:
+            # This actually doesn't work in the current version of transformers, which is probably a bug in the
+            # transformers library.
+            tokenizer_kwargs = {"add_space_before_punct_symbol": True}
 
     if num_prefix_tokens is None:
         num_prefix_tokens = len(tokenizer.tokenize(prefix))
 
     batches = more_itertools.chunked(Tqdm.tqdm(prompts, desc="Pre-processing prompts"), batch_size)
     encoded_batches = map(prepare_batch_fn, batches)
-    # encoded_batches = threaded_generator(encoded_batches)
 
     for encoded_batch in Tqdm.tqdm(encoded_batches, desc="Processing batches"):
         if seq2seq_model:
@@ -172,7 +182,7 @@ def _generate(
         else:
             length = adjust_length_to_model(max_length + encoded_batch["input_ids"].size(1), model)
         with torch.inference_mode():
-            generated_sequences = model.generate(
+            generated_sequences: torch.Tensor = model.generate(  # type: ignore
                 **encoded_batch,
                 max_length=length,
                 temperature=temperature,
@@ -199,24 +209,34 @@ def _generate(
             return t[start:end]
 
         # strip padding
-        generated_sequences = [
+        generated_sequences_list = [
             [strip_special_tokens(sequence) for sequence in per_prompt_sequences]
             for per_prompt_sequences in generated_sequences
         ]
 
         # strip prefix
         if not seq2seq_model:
-            generated_sequences = [
+            generated_sequences_list = [
                 [sequence[num_prefix_tokens:] for sequence in per_prompt_sequences]
-                for per_prompt_sequences in generated_sequences
+                for per_prompt_sequences in generated_sequences_list
             ]
 
         texts = [
             tokenizer.batch_decode(per_prompt_sequences, clean_up_tokenization_spaces=True)
-            for per_prompt_sequences in generated_sequences
+            for per_prompt_sequences in generated_sequences_list
         ]
 
         yield from texts
+
+
+def _generate_with_model_name(model_name: str, *args, **kwargs) -> Iterable[List[str]]:
+    try:
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    except ValueError:
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    return _generate(model, tokenizer, *args, **kwargs)
 
 
 @Step.register("transformers::run_generation")
@@ -236,9 +256,10 @@ class RunGeneration(Step[Iterable[List[str]]]):
 
     def run(  # type: ignore
         self,
-        model_name: str,
+        model: Union[str, Model],
         prompts: Iterable[str],
         *,
+        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
         batch_size: int = 4,
         max_length: int = 20,
         temperature: float = 1.0,
@@ -254,11 +275,14 @@ class RunGeneration(Step[Iterable[List[str]]]):
         """
         Run a Huggingface seq2seq model in inference mode.
 
-        :param model_name:
+        :param model:
             The name of the model to run. Any name that works in the transformers library works here.
+            Or, you can directly provide the model to run.
         :param prompts:
             The prompts to run through the model. You can specify prompts directly in the config, but
             more commonly the prompts are produced by another step that reads a dataset, for example.
+        :param tokenizer:
+            The tokenizer to run.
         :param batch_size:
             The number of sequences to process at one time. This has no bearing on the output, so
             you can change this number without invalidating cached results.
@@ -292,9 +316,17 @@ class RunGeneration(Step[Iterable[List[str]]]):
         :returns:
             Returns an iterator of lists of string. Each list contains the predictions for one prompt.
         """
+        if isinstance(model, str):
+            try:
+                model = cast(Model, AutoModelForSeq2SeqLM.from_pretrained(model))
+            except ValueError:
+                model = cast(Model, AutoModelForCausalLM.from_pretrained(model))
+
+        tokenizer = tokenizer or AutoTokenizer.from_pretrained(model.name_or_path)
 
         return _generate(
-            model_name,
+            model,
+            tokenizer,
             prompts,
             batch_size=batch_size,
             max_length=max_length,
@@ -328,10 +360,11 @@ class RunGenerationDataset(Step[DatasetDict]):
 
     def run(  # type: ignore
         self,
-        model_name: str,
+        model: Union[str, Model],
         input: Union[DatasetDict, HfDatasetDict],
         prompt_field: str,
         *,
+        tokenizer: Optional[Union[PreTrainedTokenizer, PreTrainedTokenizerFast]] = None,
         output_field: Optional[str] = None,
         splits: Optional[Union[str, Set[str]]] = None,
         batch_size: int = 4,
@@ -349,12 +382,15 @@ class RunGenerationDataset(Step[DatasetDict]):
         """
         Augment an input dataset with generations from a Huggingface seq2seq model.
 
-        :param model_name:
+        :param model:
             The name of the model to run. Any name that works in the transformers library works here.
+            Or, you can directly provide the model to run.
         :param input:
             The input dataset.
         :param prompt_field:
             The field in the dataset that contains the text of the prompts.
+        :param tokenizer:
+            The tokenizer to run.
         :param output_field:
             The field in the dataset that we will write the predictions into. In the result, this field
             will contain ``List[str]``.
@@ -393,6 +429,15 @@ class RunGenerationDataset(Step[DatasetDict]):
         :returns:
             Returns a dataset with an extra field containing the predictions.
         """
+
+        if isinstance(model, str):
+            try:
+                model = cast(Model, AutoModelForSeq2SeqLM.from_pretrained(model))
+            except ValueError:
+                model = cast(Model, AutoModelForCausalLM.from_pretrained(model))
+
+        tokenizer = tokenizer or AutoTokenizer.from_pretrained(model.name_or_path)
+
         if isinstance(input, HfDatasetDict):
             input = DatasetDict(input, {})
         if splits is None:
@@ -417,7 +462,8 @@ class RunGenerationDataset(Step[DatasetDict]):
                         input_split = input_split[len(output_split) :]
                 prompts = MappedSequence(lambda i: i[prompt_field], input_split)
                 generations = _generate(
-                    model_name,
+                    model,
+                    tokenizer,
                     prompts,
                     batch_size=batch_size,
                     max_length=max_length,

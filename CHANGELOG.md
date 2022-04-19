@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `StepGraph` now prints itself in a readable way.
 - Tango now automatically detects when it's running under a debugger, and disables multicore support accordingly. Many debuggers can't properly follow sub-processes, so this is a convenience for people who love debuggers.
 - Added more models to the stuff we can import from the transformers library.
+- Added new example for finetuning text-to-text models.
 
 ### Changed
 
@@ -25,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 - `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 - Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
+- `RunGeneration` now allows model object as input.
 
 ### Fixed
 
