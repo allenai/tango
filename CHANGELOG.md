@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
+
 ### Added
 
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
