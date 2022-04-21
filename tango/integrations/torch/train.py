@@ -173,6 +173,38 @@ class TorchTrainStep(Step):
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """
+
+        devices = self._get_devices(device_count)
+
+        return self._train(
+            model=model,
+            training_engine=training_engine,
+            dataset_dict=dataset_dict,
+            train_dataloader=train_dataloader,
+            train_split=train_split,
+            validation_split=validation_split,
+            validation_dataloader=validation_dataloader,
+            seed=seed,
+            train_steps=train_steps,
+            train_epochs=train_epochs,
+            validation_steps=validation_steps,
+            grad_accum=grad_accum,
+            log_every=log_every,
+            checkpoint_every=checkpoint_every,
+            validate_every=validate_every,
+            devices=devices,
+            distributed_port=distributed_port,
+            val_metric_name=val_metric_name,
+            minimize_val_metric=minimize_val_metric,
+            auto_aggregate_val_metric=auto_aggregate_val_metric,
+            callbacks=callbacks,
+            remove_stale_checkpoints=remove_stale_checkpoints,
+        )
+
+    def _get_devices(self, device_count: int) -> List[int]:
+        """
+        Validates the device count, and returns the list of devices.
+        """
         # Validate device(s).
         if device_count <= 0:
             raise ConfigurationError("Invalid value for 'device_count'. Must be at least 1.")
@@ -185,18 +217,46 @@ class TorchTrainStep(Step):
             self.logger.info(
                 "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
             )
+        return devices
 
-        if validate_every is not None and validation_split is None:
-            raise ConfigurationError(
-                "You have set a validation interval, but no validation split. "
-                "That's probably unintentional."
-            )
+    def _train(
+        self,
+        model: Lazy[Model],
+        training_engine: Lazy[TrainingEngine],
+        dataset_dict: DatasetDictBase,
+        train_dataloader: Lazy[DataLoader],
+        *,
+        train_split: str = "train",
+        validation_split: Optional[str] = None,
+        validation_dataloader: Optional[Lazy[DataLoader]] = None,
+        seed: int = 42,
+        train_steps: Optional[int] = None,
+        train_epochs: Optional[int] = None,
+        validation_steps: Optional[int] = None,
+        grad_accum: int = 1,
+        log_every: int = 10,
+        checkpoint_every: int = 100,
+        validate_every: Optional[int] = None,
+        devices: Optional[List[int]] = None,
+        distributed_port: int = 54761,
+        val_metric_name: str = "loss",
+        minimize_val_metric: bool = True,
+        auto_aggregate_val_metric: bool = True,
+        callbacks: Optional[List[Lazy[TrainCallback]]] = None,
+        remove_stale_checkpoints: bool = True,
+    ) -> Model:
 
         is_distributed = False
         num_workers = 1
         if devices and len(devices) > 1:
             is_distributed = True
             num_workers = len(devices)
+
+        if validate_every is not None and validation_split is None:
+            raise ConfigurationError(
+                "You have set a validation interval, but no validation split. "
+                "That's probably unintentional."
+            )
 
         if (train_steps is not None) == (train_epochs is not None):
             raise ConfigurationError(
