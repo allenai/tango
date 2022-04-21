@@ -3,7 +3,6 @@ from os import PathLike
 from typing import List, Optional, Union, cast
 
 import datasets as ds
-import torch
 from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
@@ -13,8 +12,6 @@ from transformers import (
 )
 
 from tango.common import Lazy, Params
-from tango.common.exceptions import ConfigurationError
-from tango.common.util import get_extra_imported_modules
 from tango.format import Format
 from tango.integrations.datasets import DatasetsFormat, convert_to_tango_dataset_dict
 from tango.integrations.torch import (
@@ -23,10 +20,9 @@ from tango.integrations.torch import (
     Model,
     TorchFormat,
     TrainCallback,
-    TrainConfig,
     TrainingEngine,
 )
-from tango.integrations.torch.train import _train
+from tango.integrations.torch.train import TorchTrainStep
 from tango.integrations.transformers import Tokenizer
 from tango.step import Step
 
@@ -258,7 +254,7 @@ class TokenizeText2TextData(Step):
 
 
 @Step.register("transformers::finetune")
-class FinetuneStep(Step):
+class FinetuneStep(TorchTrainStep):
     """
     Mostly similar to :class:`~tango.integrations.torch.train.TorchTrainStep` with additional
     preprocessing for data.
@@ -417,35 +413,11 @@ class FinetuneStep(Step):
             The trained model on CPU with the weights from the best checkpoint loaded.
 
         """
-        # Validate device(s).
-        if device_count <= 0:
-            raise ConfigurationError("Invalid value for 'device_count'. Must be at least 1.")
-        devices: List[int]
-        if torch.cuda.is_available() and torch.cuda.device_count() >= device_count:
-            devices = list(range(device_count))
-            self.logger.info("Training on %d GPU%s", device_count, "s" if device_count > 1 else "")
-        else:
-            devices = [-1] * device_count
-            self.logger.info(
-                "Training on CPU with %d worker%s", device_count, "s" if device_count > 1 else ""
-            )
-
-        if validate_every is not None and validation_split is None:
-            raise ConfigurationError(
-                "You have set a validation interval, but no validation split. "
-                "That's probably unintentional."
-            )
+        devices = self._get_devices(device_count)
 
         is_distributed = False
-        num_workers = 1
         if devices and len(devices) > 1:
             is_distributed = True
-            num_workers = len(devices)
-
-        if (train_steps is not None) == (train_epochs is not None):
-            raise ConfigurationError(
-                "One of 'train_steps' or 'train_epochs' needs to be specified, but not both."
-            )
 
         # Setup the tokenizer
         _add_special_tokens(tokenizer)
@@ -498,70 +470,27 @@ class FinetuneStep(Step):
             collate_fn=collate_fn,
         )
 
-        config = TrainConfig(
-            self.unique_id,
-            self.work_dir,
+        return self._train(
+            model=model,
+            training_engine=training_engine,
+            dataset_dict=convert_to_tango_dataset_dict(dataset_dict),
+            train_dataloader=train_dataloader,
             train_split=train_split,
             validation_split=validation_split,
+            validation_dataloader=validation_dataloader,
             seed=seed,
             train_steps=train_steps,
             train_epochs=train_epochs,
+            validation_steps=validation_steps,
             grad_accum=grad_accum,
             log_every=log_every,
             checkpoint_every=checkpoint_every,
             validate_every=validate_every,
-            validation_steps=validation_steps,
-            is_distributed=is_distributed,
             devices=devices,
             distributed_port=distributed_port,
             val_metric_name=val_metric_name,
             minimize_val_metric=minimize_val_metric,
             auto_aggregate_val_metric=auto_aggregate_val_metric,
+            callbacks=callbacks,
             remove_stale_checkpoints=remove_stale_checkpoints,
-            world_size=num_workers,
         )
-
-        final_model: Model
-        if is_distributed:
-            import torch.multiprocessing as mp
-
-            mp.spawn(
-                _train,
-                args=(
-                    config,
-                    model,
-                    training_engine,
-                    convert_to_tango_dataset_dict(dataset_dict),
-                    train_dataloader,
-                    validation_dataloader,
-                    callbacks,
-                    get_extra_imported_modules(),
-                ),
-                nprocs=num_workers,
-            )
-            self.logger.info("Constructing final model")
-            final_model = model.construct()
-        else:
-            final_model = _train(  # type: ignore[assignment]
-                0,
-                config,
-                model,
-                training_engine,
-                convert_to_tango_dataset_dict(dataset_dict),
-                train_dataloader,
-                validation_dataloader=validation_dataloader,
-                callbacks=callbacks,
-            )
-            assert final_model is not None
-            final_model = final_model.cpu()
-
-        # Load best checkpoint before returning model.
-        if config.final_weights_path.is_file():
-            self.logger.info(
-                f"Loading best weights from {str(config.final_weights_path.resolve())}"
-            )
-            state = torch.load(config.final_weights_path, map_location="cpu")
-            # We use `strict=False` because there might be missing keys due to weight tying.
-            final_model.load_state_dict(state, strict=False)
-
-        return final_model
