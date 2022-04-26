@@ -20,7 +20,7 @@ env:
   DEFAULT_PYTHON: 3.7
   BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
   BEAKER_WORKSPACE: ai2/tango-testing
-  BEAKER_CLUSTER: ai2/tango-gpu-tests
+  BEAKER_DEFAULT_CLUSTER: ai2/tango-gpu-tests
   BEAKER_IMAGE: petew/tango-testing
 
 jobs:
@@ -234,24 +234,25 @@ jobs:
           echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
 
       - name: GPU Tests
-        uses: allenai/beaker-run-action@v1.0
+        uses: allenai/beaker-run-action@v1.1
         with:
           spec: |
-            {
-              "version": "v2-alpha",
-              "description": "GPU Tests",
-              "tasks": [
-                {
-                  "name": "tests",
-                  "image": {"beaker": "${{ env.BEAKER_IMAGE }}"},
-                  "context": {"cluster": "${{ env.BEAKER_CLUSTER }}"},
-                  "resources": {"gpuCount": 2},
-                  "envVars": [{"name": "COMMIT_SHA", "value": "${{ env.COMMIT_SHA }}"}],
-                  "command": ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"],
-                  "result": {"path": "/unused"}
-                }
-              ]
-            }
+            version: v2
+            description: GPU Tests
+            tasks:
+              - name: tests
+                image:
+                  beaker: ${{ env.BEAKER_IMAGE }}
+                context:
+                  cluster: ${{ env.BEAKER_DEFAULT_CLUSTER }}
+                resources:
+                  gpuCount: 2
+                envVars:
+                  - name: COMMIT_SHA
+                    value: ${{ env.COMMIT_SHA }}
+                command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
+                result:
+                  path: /unused
           token: ${{ secrets.BEAKER_TOKEN }}
           workspace: ${{ env.BEAKER_WORKSPACE }}
           clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale
