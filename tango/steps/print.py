@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from tango.common.logging import click_logger
+from tango.common.logging import cli_logger
 from tango.step import Step
 
 
@@ -21,8 +21,8 @@ class PrintStep(Step):
         out = str(input)
         if self.logger.isEnabledFor(logging.INFO):
             self.logger.info(out)
-        elif click_logger.isEnabledFor(logging.INFO):
-            click_logger.info(out)
+        elif cli_logger.isEnabledFor(logging.INFO):
+            cli_logger.info(out)
         else:
             print(out)
         return out

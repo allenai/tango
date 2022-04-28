@@ -29,7 +29,6 @@ import dill
 from tango.common import DatasetDict, filename_is_safe
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
-from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
 from tango.common.sequences import SqliteSparseSequence
 
@@ -203,7 +202,7 @@ class JsonFormat(Format[T], Generic[T]):
     VERSION = 2
 
     def __init__(self, compress: Optional[str] = None):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        self.logger = logging.getLogger(self.__class__.__name__)
         if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
         self.compress = compress
@@ -340,7 +339,7 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
     VERSION = 1
 
     def __init__(self, compress: Optional[str] = None):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        self.logger = logging.getLogger(self.__class__.__name__)
         if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
         self.compress = compress

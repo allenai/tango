@@ -88,7 +88,7 @@ You could then run this experiment with a config that looks like this:
     BasicRegression.__reduce__ = _return_zero
 
     with run_experiment(
-        "test_fixtures/integrations/torch/train.jsonnet"
+        "test_fixtures/integrations/torch/train.jsonnet", name="boss-alien"
     ) as run_dir:
         assert (run_dir / "train").is_dir(), "Output for the 'train' step was not produced."
     # Restore state of registry.
@@ -106,13 +106,13 @@ would produce the following output:
 .. testoutput::
     :options: +ELLIPSIS
 
-    Starting new run ...
-    ● Starting step "data" (needed by "train") ...
+    Starting new run boss-alien
+    ● Starting step "data" (needed by "train")...
     ✓ Finished step "data"
-    ● Starting step "train" ...
+    ● Starting step "train"...
     ✓ Finished step "train"
-    ✓ The output for "train" is in ...
-    Finished run ...
+    ✓ Finished run boss-alien
+    ...
 
 Tips
 ----

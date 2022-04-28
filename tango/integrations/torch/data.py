@@ -65,8 +65,20 @@ class Sampler(torch.utils.data.Sampler, Registrable):
 
 @Sampler.register("torch::BatchSampler")
 class BatchSampler(torch.utils.data.BatchSampler, Sampler):
-    def __init__(self, sampler: Sampler, batch_size: int, drop_last: bool) -> None:
-        super().__init__(sampler, batch_size, drop_last)
+    def __init__(
+        self,
+        dataset: torch.utils.data.Dataset,
+        sampler: Union[Lazy[Sampler], Sampler],
+        batch_size: int,
+        drop_last: bool,
+    ) -> None:
+        super().__init__(
+            sampler.construct(data_source=dataset, dataset=dataset)
+            if isinstance(sampler, Lazy)
+            else sampler,
+            batch_size,
+            drop_last,
+        )
 
 
 # Register all remaining samplers.

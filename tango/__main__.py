@@ -74,17 +74,20 @@ The ``settings`` group of commands can be used to initialize a :class:`~tango.se
 file or update fields in it.
 
 """
+import logging
 import multiprocessing as mp
 import os
+import sys
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
+from tango.common.exceptions import CliRunError
 from tango.common.logging import (
-    click_logger,
+    cli_logger,
     initialize_logging,
     initialize_prefix_logging,
     teardown_logging,
@@ -96,7 +99,13 @@ from tango.common.util import (
     import_module_and_submodules,
 )
 from tango.settings import TangoGlobalSettings
+from tango.step_graph import StepGraph
 from tango.version import VERSION
+from tango.workspace import Workspace
+
+if TYPE_CHECKING:
+    from tango.executor import ExecutorOutput
+    from tango.workspace import Run
 
 _CLICK_GROUP_DEFAULTS = {
     "cls": HelpColorsGroup,
@@ -115,6 +124,9 @@ _CLICK_COMMAND_DEFAULTS = {
 _CALLED_BY_EXECUTOR: bool = (
     False  # Flag used internally to determine if CLI was called by the MulticoreExecutor.
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @click.group(**_CLICK_GROUP_DEFAULTS)
@@ -197,7 +209,7 @@ def main(
         initialize_logging(
             log_level=settings.log_level,
             file_friendly_logging=settings.file_friendly_logging,
-            enable_click_logs=True,
+            enable_cli_logs=True,
         )
 
     ctx.obj = settings
@@ -341,7 +353,6 @@ def server(
     Run a local webserver that watches a workspace.
     """
     from tango.server.workspace_server import WorkspaceServer
-    from tango.workspace import Workspace
     from tango.workspaces import LocalWorkspace
 
     workspace_to_watch: Workspace
@@ -362,7 +373,9 @@ def server(
         )
 
     server = WorkspaceServer.on_free_port(workspace_to_watch)
-    click_logger.info("Server started at " + click.style(server.address_for_display(), bold=True))
+    cli_logger.info(
+        "Server started at [bold underline]%s[/bold underline]", server.address_for_display()
+    )
     server.serve_forever()
 
 
@@ -374,16 +387,15 @@ def info(settings: TangoGlobalSettings):
     """
     import platform
 
-    click_logger.info(f"Tango version {VERSION} (python {platform.python_version()})")
+    cli_logger.info("Tango version %s (python %s)", VERSION, platform.python_version())
+    cli_logger.info("")
 
     # Show info about settings.
     if settings.path is not None:
-        click_logger.info("\nSettings:")
-        click_logger.info(
-            click.style(f" \N{check mark} Loaded from {str(settings.path)}", fg="green")
-        )
+        cli_logger.info("[underline]Settings:[/]")
+        cli_logger.info("[green] \N{check mark} Loaded from %s[/]", settings.path)
         if settings.include_package:
-            click_logger.info("\n   Included packages:")
+            cli_logger.info("   Included packages:")
             for package in settings.include_package:
                 is_found = True
                 try:
@@ -391,14 +403,13 @@ def info(settings: TangoGlobalSettings):
                 except (ModuleNotFoundError, ImportError):
                     is_found = False
                 if is_found:
-                    click_logger.info(click.style(f"   \N{check mark} {package}", fg="green"))
+                    cli_logger.info("   [green]\N{check mark} %s[/]", package)
                 else:
-                    click_logger.info(
-                        click.style(f"   \N{ballot x} {package} (not found)", fg="red")
-                    )
+                    cli_logger.info("   [red]\N{ballot x} %s (not found)[/]", package)
+        cli_logger.info("")
 
     # Show info about integrations.
-    click_logger.info("\nIntegrations:")
+    cli_logger.info("[underline]Integrations:[/]")
     for integration in find_integrations():
         name = integration.split(".")[-1]
         is_installed = True
@@ -407,9 +418,9 @@ def info(settings: TangoGlobalSettings):
         except (ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
-            click_logger.info(click.style(f" \N{check mark} {name}", fg="green"))
+            cli_logger.info(" [green]\N{check mark} %s[/]", name)
         else:
-            click_logger.info(click.style(f" \N{ballot x} {name} (not installed)", fg="yellow"))
+            cli_logger.info(" [yellow]\N{ballot x} %s (not installed)[/]", name)
 
 
 @main.group(**_CLICK_GROUP_DEFAULTS)
@@ -443,9 +454,8 @@ def init(settings: TangoGlobalSettings, path: Optional[str] = None, force: bool 
     if path_to_write.is_file() and not force:
         raise click.ClickException("Settings file already exists! Use -f/--force to overwrite it.")
     settings.to_file(path_to_write)
-    click_logger.info(
-        click.style("\N{check mark} Settings file written to ", fg="green")
-        + click.style(path_to_write, fg="green", bold=True)
+    cli_logger.info(
+        "[green]\N{check mark} Settings file written to [bold]%s[/bold][/green]", path_to_write
     )
 
 
@@ -492,8 +502,6 @@ def workspace(
         settings.workspace = {"type": "from_url", "url": workspace}
 
     if validate:
-        from tango.workspace import Workspace
-
         for package_name in settings.include_package or []:
             import_extra_module(package_name)
 
@@ -632,16 +640,14 @@ def _run(
     start_server: bool = True,
     step_name: Optional[str] = None,
     parallelism: int = 1,
-    multicore: bool = True,
+    multicore: Optional[bool] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
 ) -> str:
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
-    from tango.step_graph import StepGraph
-    from tango.workspace import Workspace
-    from tango.workspaces import default_workspace
+    from tango.workspaces import MemoryWorkspace, default_workspace
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -664,6 +670,17 @@ def _run(
         workspace = Workspace.from_params(settings.workspace)
     else:
         workspace = default_workspace
+
+    if multicore is None:
+        if isinstance(workspace, MemoryWorkspace):
+            # Memory workspace does not work with multiple cores.
+            multicore = False
+        elif "pydevd" in sys.modules:
+            # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
+            logger.warning("Debugger detected, disabling multicore.")
+            multicore = False
+        else:
+            multicore = True
 
     # Initialize step graph and register run.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
@@ -691,25 +708,14 @@ def _run(
 
     def log_and_execute_run():
         if step_name is None:
-            click_logger.info(
-                click.style("Starting new run ", fg="green")
-                + click.style(run.name, fg="green", bold=True)
-            )
-        else:
-            click_logger.info(
-                click.style("Starting run for step ", fg="green")
-                + click.style(step_name, fg="green", bold=True)
-                + click.style(" (", fg="green", bold=True)
-                + click.style(run.name, fg="green", bold=True)
-                + click.style(")", fg="green", bold=True)
-            )
+            cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
 
         # Initialize server.
         if start_server:
             server = WorkspaceServer.on_free_port(workspace)
             server.serve_in_background()
-            click_logger.info(
-                "Server started at " + click.style(server.address_for_display(run.name), bold=True)
+            cli_logger.info(
+                "Server started at [bold]%s[/bold]", server.address_for_display(run.name)
             )
 
         executor: Executor
@@ -721,56 +727,27 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-        def log_step_summary(step):
-            info = workspace.step_info(step)
-            if info.result_location is not None:
-                click_logger.info(
-                    click.style("\N{check mark} The output for ", fg="green")
-                    + click.style(f'"{step.name}"', bold=True, fg="green")
-                    + click.style(
-                        " is in " if Path(info.result_location).exists() else " is at ",
-                        fg="green",
-                    )
-                    + click.style(f"{info.result_location}", bold=True, fg="green")
-                )
-
         if step_name is not None:
             step = step_graph[step_name]
             executor.execute_step(step)
-            log_step_summary(step)
-            click_logger.info(
-                click.style("Finished run for step ", fg="green")
-                + click.style(step_name, fg="green", bold=True)
-                + click.style(" (", fg="green", bold=True)
-                + click.style(run.name, fg="green", bold=True)
-                + click.style(")", fg="green", bold=True)
-            )
+            if not called_by_executor:
+                cli_logger.info(
+                    "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
+                    step_name,
+                    run.name,
+                )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
-            # Print everything that has been computed.
-            ordered_steps = sorted(step_graph.values(), key=lambda step: step.name)
-            for step in ordered_steps:
-                if step.name in executor_output.failed:
-                    # TODO: add needed_by
-                    click_logger.info(
-                        click.style(
-                            f'\N{aegean check mark}"{step.name}" failed.', fg="red"
-                        )  # This symbol is x .
-                    )
-                elif step.name in executor_output.not_run:
-                    click_logger.info(
-                        click.style(
-                            f'\N{combining enclosing circle backslash} "{step.name}" was not executed.',
-                            fg="yellow",
-                        )
-                    )
-                else:
-                    log_step_summary(step)
+            if executor_output.failed:
+                cli_logger.error(
+                    "[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name
+                )
+            elif not called_by_executor:
+                cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
+            _display_run_results(run, step_graph, workspace, executor_output)
 
-            click_logger.info(
-                click.style("Finished run ", fg="green")
-                + click.style(run.name, fg="green", bold=True)
-            )
+            if executor_output.failed:
+                raise CliRunError
 
     if called_by_executor:
         from tango.common.aliases import EnvVarNames
@@ -786,6 +763,70 @@ def _run(
             log_and_execute_run()
 
     return run.name
+
+
+def _display_run_results(
+    run: "Run", step_graph: StepGraph, workspace: Workspace, executor_output: "ExecutorOutput"
+) -> None:
+    from rich.table import Table
+
+    table = Table(caption_style="")
+    table.add_column("Step Name", justify="left", style="cyan")
+    table.add_column("Status", justify="left")
+    table.add_column("Cached Result", justify="left")
+    last_cached_step: Optional[str] = None
+    for step in sorted(step_graph.values(), key=lambda step: step.name):
+        step_info = workspace.step_info(step)
+
+        status_str: str
+        if step.name in executor_output.failed:
+            status_str = "[red]\N{ballot x} failed[/]"
+        elif step.name in executor_output.not_run:
+            status_str = "[yellow]- not run[/]"
+        elif step.name in executor_output.successful:
+            status_str = "[green]\N{check mark} succeeded[/]"
+        else:
+            continue
+
+        result_str: str
+        if step_info.result_location is not None:
+            last_cached_step = step.name
+            result_str = f"[cyan]{step_info.result_location}[/]"
+        else:
+            result_str = "[grey62]N/A[/]"
+
+        table.add_row(step.name, status_str, result_str)
+
+    caption_parts: List[str] = []
+    if executor_output.failed:
+        caption_parts.append(
+            f"[red]\N{ballot x}[/] [italic]{len(executor_output.failed)} failed[/]"
+        )
+    if executor_output.successful:
+        caption_parts.append(
+            f"[green]\N{check mark}[/] [italic]{len(executor_output.successful)} succeeded[/]"
+        )
+    if executor_output.not_run:
+        caption_parts.append(f"[italic]{len(executor_output.not_run)} not run[/]")
+    table.caption = ", ".join(caption_parts)
+
+    cli_logger.info(table)
+
+    if not executor_output.failed and last_cached_step is not None:
+        from rich.syntax import Syntax
+
+        example = Syntax(
+            "\n".join(
+                [
+                    ">>> from tango import Workspace",
+                    ">>> workspace = Workspace.from_url(...)",
+                    f'>>> workspace.step_result_for_run("{run.name}", "{last_cached_step}")',
+                ]
+            ),
+            "python",
+        )
+        cli_logger.info("Use your workspace to get the cached result of a step, .e.g.")
+        cli_logger.info(example)
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ class TestTrainStep(TangoTestCase):
         )
 
         assert (result_dir / "train" / "data.pt").is_file()
-        assert (result_dir / "train" / "work" / "epoch=4-step=39.ckpt").is_file()
+        assert (result_dir / "train" / "work" / "epoch=4-step=40.ckpt").is_file()
 
     @pytest.mark.parametrize("with_validation", [True, False])
     def test_train_with_data_module(self, with_validation):
@@ -36,4 +36,4 @@ class TestTrainStep(TangoTestCase):
         )
 
         assert (result_dir / "train" / "data.pt").is_file()
-        assert (result_dir / "train" / "work" / "epoch=4-step=39.ckpt").is_file()
+        assert (result_dir / "train" / "work" / "epoch=4-step=40.ckpt").is_file()

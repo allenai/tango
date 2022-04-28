@@ -13,6 +13,7 @@ from tango.common import Lazy, Registrable, Tqdm
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
+from .util import move_to_device
 
 
 class TrainingEngine(Registrable):
@@ -57,19 +58,6 @@ class TrainingEngine(Registrable):
     def _construct_lr_scheduler(self, lr_scheduler: Lazy[LRScheduler]) -> LRScheduler:
         lr_scheduler: LRScheduler = lr_scheduler.construct(optimizer=self.optimizer)
         return lr_scheduler
-
-    @classmethod
-    def _move_to_device(cls, o: Any, device: torch.device) -> Any:
-        if isinstance(o, torch.Tensor):
-            return o.to(device)
-        elif isinstance(o, dict):
-            return {k: cls._move_to_device(v, device) for k, v in o.items()}
-        elif isinstance(o, list):
-            return [cls._move_to_device(x, device) for x in o]
-        elif isinstance(o, tuple):
-            return tuple((cls._move_to_device(x, device) for x in o))
-        else:
-            return o
 
     @abstractmethod
     def forward_train(
@@ -205,7 +193,7 @@ class TorchTrainingEngine(TrainingEngine):
             self.optimizer.zero_grad(set_to_none=True)
 
         # Move tensors to right device.
-        micro_batch = self._move_to_device(micro_batch, self.device)
+        micro_batch = move_to_device(micro_batch, self.device)
 
         with torch.autocast(self.train_config.device_type, enabled=self.amp, dtype=self.amp_dtype):
             outputs = self.model(**micro_batch)
@@ -215,7 +203,7 @@ class TorchTrainingEngine(TrainingEngine):
 
     def forward_eval(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         # Move tensors to right device.
-        batch = self._move_to_device(batch, self.device)
+        batch = move_to_device(batch, self.device)
 
         with torch.autocast(self.train_config.device_type, enabled=self.amp, dtype=self.amp_dtype):
             with torch.inference_mode():

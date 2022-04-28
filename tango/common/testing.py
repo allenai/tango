@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
-from tango.common.aliases import PathOrStr
+from tango.common.aliases import EnvVarNames, PathOrStr
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.params import Params
 
@@ -54,8 +54,13 @@ class TangoTestCase:
         self.TEST_DIR = Path(tempfile.mkdtemp(prefix="tango_tests"))
         os.makedirs(self.TEST_DIR, exist_ok=True)
 
+        # Set an artificial console width so logs are not mangled.
+        os.environ[EnvVarNames.CONSOLE_WIDTH.value] = str(300)
+
     def teardown_method(self):
         shutil.rmtree(self.TEST_DIR)
+        if EnvVarNames.CONSOLE_WIDTH.value in os.environ:
+            del os.environ[EnvVarNames.CONSOLE_WIDTH.value]
 
     def run(
         self,
@@ -66,6 +71,7 @@ class TangoTestCase:
         step_name: Optional[str] = None,
         parallelism: int = 1,
         multicore: bool = False,
+        name: Optional[str] = None,
     ) -> Path:
         from tango.__main__ import TangoGlobalSettings, _run
 
@@ -89,6 +95,7 @@ class TangoTestCase:
             step_name=step_name,
             parallelism=parallelism,
             multicore=multicore,
+            name=name,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name
@@ -102,13 +109,14 @@ def run_experiment(
     include_package: Optional[List[str]] = None,
     parallelism: int = 1,
     multicore: bool = False,
+    name: Optional[str] = None,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the run directory, a temporary directory that will be
     cleaned up on ``__exit__``.
     """
-    initialize_logging(enable_click_logs=True, file_friendly_logging=file_friendly_logging)
+    initialize_logging(enable_cli_logs=True, file_friendly_logging=file_friendly_logging)
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
@@ -118,6 +126,7 @@ def run_experiment(
             include_package=include_package,
             parallelism=parallelism,
             multicore=multicore,
+            name=name,
         )
     finally:
         test_case.teardown_method()

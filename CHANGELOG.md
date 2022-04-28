@@ -9,31 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
 - Added a Weights & Baises remote `Workspace` implementation: `WandbWorkspace`, registered as "wandb".
   This can be instantiated from a workspace URL in the form "wandb://entity/project".
-- Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Added a method `Workspace.step_result_for_run` which gives the result of a step given the run name and step name within that run.
 - Added property `Workspace.url`, which returns a URL for the workspace that can be used to instantiate the exact same workspace using `Workspace.from_url()`. Subclasses must implement this.
-- Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
-- Added CLI option to run a single step in a config using `--step-name` or `-s`.
-- Added a `MultiCoreExecutor` that executes steps in parallel.
-- Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
-- We now set the `TEMP` environment variable to a step's work directory while a step executes, so that arbitrary code can benefit from it.
 
 ### Changed
 
-- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
 - `StepInfo` start and end times will be always be in UTC now.
 - `WandbTrainCallback` now logs system metrics from each worker process in distributed training.
 - `StepCache.__contains__()` and `StepCache.__getitem__()` now take accept either a `Step` or `StepInfo` as an argument (`Union[Step, StepInfo]`).
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 - `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 
+## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
+
+### Added
+
+- Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
+- Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
+- Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
+- Added CLI option to run a single step in a config using `--step-name` or `-s`.
+- Added a `MultiCoreExecutor` that executes steps in parallel.
+- Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
+- `StepGraph` now prints itself in a readable way.
+- Tango now automatically detects when it's running under a debugger, and disables multicore support accordingly. Many debuggers can't properly follow sub-processes, so this is a convenience for people who love debuggers.
+- Added more models to the stuff we can import from the transformers library.
+- Added new example for finetuning text-to-text models.
+
+### Changed
+
+- Renamed `click_logger` to `cli_logger`, and we now use [rich](https://github.com/Textualize/rich)'s logging `Handler` as the default handler, which means prettier output, better tracebacks, and you can use rich's markup syntax with the `cli_logger` to easily add style to text.
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+- Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
+- `RunGeneration` now allows model object as input.
+
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
 - Fixed bug where `TorchTrainStep` working directory would be left in an unrecoverable state if training failed after saving the final model weights.
+<<<<<<< HEAD
+=======
+- Fixed bug in `FromParams` where `**kwargs` might be passed down to the constructors of arguments.
+- Fixed bug in the way dependencies are tracked between steps.
+- Fixed bug that caused `MulticoreExecutor` to hang in case of a failing step that was required recursively (not directly) downstream.
+- Fixed bug in the way dependencies are tracked between steps
+- Compatibility with PyTorch Lightning 1.6
+>>>>>>> main
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25

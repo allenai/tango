@@ -10,7 +10,21 @@ class TestRunGeneration(TangoTestCase):
             {
                 "type": "transformers::run_generation",
                 "prompts": ["Tango is the future of", "Everybody should be using Tango to"],
-                "model_name": "sshleifer/tiny-gpt2",
+                "model": "sshleifer/tiny-gpt2",
+            },
+        )
+        result = list(step.result())
+        assert len(result) == 2
+
+    def test_run_generation_with_model(self):
+        step = Step.from_params(  # type: ignore[assignment]
+            {
+                "type": "transformers::run_generation",
+                "prompts": ["Tango is the future of", "Everybody should be using Tango to"],
+                "model": {
+                    "type": "transformers::AutoModelForCausalLM::from_pretrained",
+                    "pretrained_model_name_or_path": "sshleifer/tiny-gpt2",
+                },
             },
         )
         result = list(step.result())
@@ -28,7 +42,7 @@ class TestRunGeneration(TangoTestCase):
         )
 
         step = RunGenerationDataset(
-            model_name="sshleifer/tiny-gpt2", input=dataset, prompt_field="prompt"
+            model="sshleifer/tiny-gpt2", input=dataset, prompt_field="prompt"
         )
 
         result = step.result()

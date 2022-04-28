@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Iterator, List, Mapping, Set, Type
+from typing import Any, Dict, Iterator, List, Mapping, Set, Type, Union
 
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
@@ -139,7 +139,7 @@ class StepGraph(Mapping[str, Step]):
         return StepGraph(step_dict)
 
     @staticmethod
-    def _dict_is_ref(d: dict) -> bool:
+    def _dict_is_ref(d: Union[dict, Params]) -> bool:
         keys = set(d.keys())
         if keys == {"ref"}:
             return True
@@ -153,7 +153,7 @@ class StepGraph(Mapping[str, Step]):
         if isinstance(o, (list, tuple, set)):
             for item in o:
                 dependencies = dependencies | cls._find_step_dependencies(item)
-        elif isinstance(o, dict):
+        elif isinstance(o, (dict, Params)):
             if cls._dict_is_ref(o):
                 dependencies.add(o["ref"])
             else:
@@ -167,7 +167,7 @@ class StepGraph(Mapping[str, Step]):
     def _replace_step_dependencies(cls, o: Any, existing_steps: Mapping[str, Step]) -> Any:
         if isinstance(o, (list, tuple, set)):
             return o.__class__(cls._replace_step_dependencies(i, existing_steps) for i in o)
-        elif isinstance(o, dict):
+        elif isinstance(o, (dict, Params)):
             if cls._dict_is_ref(o):
                 return existing_steps[o["ref"]]
             else:
@@ -232,7 +232,7 @@ class StepGraph(Mapping[str, Step]):
             import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
 
-    def to_config(self):
+    def to_config(self, include_unique_id: bool = False) -> Dict[str, Dict]:
         step_dict = {}
 
         def _to_config(o: Any):
@@ -265,9 +265,24 @@ class StepGraph(Mapping[str, Step]):
                 if step.format != step.FORMAT:
                     step_dict[step_name]["step_format"] = _to_config(step.format._to_params())
 
+            if include_unique_id:
+                step_dict[step_name]["step_unique_id_override"] = step.unique_id
+
         return step_dict
 
-    def to_file(self, filename: PathOrStr) -> None:
-        step_dict = self.to_config()
+    def to_file(self, filename: PathOrStr, include_unique_id: bool = False) -> None:
+        """
+        Note: In normal use cases, `include_unique_id` should always be False.
+        We do not want to save the unique id in the config, because we want the
+        output to change if we modify other kwargs in the config file. We include
+        this flag for `MulticoreExecutor`, to ensure that steps have the same
+        unique id in the main process and the created subprocesses.
+        """
+        step_dict = self.to_config(include_unique_id=include_unique_id)
         params = Params({"steps": step_dict})
         params.to_file(filename)
+
+    def __repr__(self) -> str:
+        result = [f'"{name}": {step}' for name, step in self.items()]
+        result = ", ".join(result)
+        return f"{self.__class__.__name__}({result})"
