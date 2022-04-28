@@ -25,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - base_image: ghcr.io/allenai/pytorch:1.10.2-cuda11.3
+          - base_image: ghcr.io/allenai/pytorch:1.11.0-cuda11.3
             tag: cuda11.3
     env:
       IMAGE_NAME: ghcr.io/allenai/tango
