@@ -20,8 +20,21 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast,
+    cast
 )
+
+from tango.common.det_hash import CustomDetHash, det_hash
+from tango.common.exceptions import ConfigurationError
+from tango.common.from_params import (
+    infer_constructor_params,
+    infer_method_params,
+    pop_and_construct_arg
+)
+from tango.common.lazy import Lazy
+from tango.common.logging import cli_logger
+from tango.common.params import Params
+from tango.common.registrable import Registrable
+from tango.format import DillFormat, Format
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -33,19 +46,6 @@ except ImportError:
     def get_args(tp):  # type: ignore
         return getattr(tp, "__args__", ())
 
-
-from tango.common.det_hash import CustomDetHash, det_hash
-from tango.common.exceptions import ConfigurationError
-from tango.common.from_params import (
-    infer_constructor_params,
-    infer_method_params,
-    pop_and_construct_arg,
-)
-from tango.common.lazy import Lazy
-from tango.common.logging import cli_logger
-from tango.common.params import Params
-from tango.common.registrable import Registrable
-from tango.format import DillFormat, Format
 
 if TYPE_CHECKING:
     from tango.workspace import Workspace
@@ -361,24 +361,24 @@ class Step(Registrable, Generic[T]):
         try:
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
 
-            if click_logger.isEnabledFor(logging.INFO):
-                message = click.style("\N{black circle} Starting step ", fg="blue")
-                message += click.style(f'"{self.name}"', bold=True, fg="blue")
-                if needed_by is None:
-                    message += click.style(" ...", fg="blue")
-                else:
-                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
-                click_logger.info(message)
+            if needed_by:
+                cli_logger.info(
+                    '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                    self.name,
+                    needed_by.name,
+                )
+            else:
+                cli_logger.info(
+                    '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                    self.name,
+                )
 
             workspace.step_starting(self)
 
             try:
                 result = self.run(**kwargs)
                 result = workspace.step_finished(self, result)
-                click_logger.info(
-                    click.style("\N{check mark} Finished step ", fg="green")
-                    + click.style(f'"{self.name}"', bold=True, fg="green")
-                )
+                cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
                 return result
             except BaseException as e:
                 # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
