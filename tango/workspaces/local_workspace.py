@@ -92,11 +92,6 @@ class LocalWorkspace(Workspace):
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
-        """
-        Subclasses should override this so that can be initialized from a URL.
-
-        :param parsed_url: The parsed URL object.
-        """
         return cls(parsed_url.path)
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
