@@ -20,7 +20,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    cast
+    cast,
 )
 
 from tango.common.det_hash import CustomDetHash, det_hash
@@ -28,7 +28,7 @@ from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     infer_constructor_params,
     infer_method_params,
-    pop_and_construct_arg
+    pop_and_construct_arg,
 )
 from tango.common.lazy import Lazy
 from tango.common.logging import cli_logger
