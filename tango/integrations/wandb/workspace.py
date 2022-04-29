@@ -51,6 +51,7 @@ class WandbWorkspace(Workspace):
         self.steps_dir = tango_cache_dir() / "wandb_workspace"
         self.locks: Dict[Step, FileLock] = {}
         self._running_step_info: Dict[str, StepInfo] = {}
+        self._wandb_client: Optional[wandb.Api] = None
 
     def __getstate__(self):
         """
@@ -59,14 +60,20 @@ class WandbWorkspace(Workspace):
         """
         out = super().__getstate__()
         out["locks"] = {}
+        out["_wandb_client"] = None
         return out
 
     @property
     def wandb_client(self) -> wandb.Api:
-        overrides = {"project": self.project}
-        if self._entity is not None:
-            overrides["entity"] = self._entity
-        return wandb.Api(overrides=overrides)
+        if self._wandb_client is None:
+            overrides = {"project": self.project}
+            if self._entity is not None:
+                overrides["entity"] = self._entity
+            client = wandb.Api(overrides=overrides)
+            self._wandb_client = client
+            return client
+        else:
+            return self._wandb_client
 
     @property
     def entity(self) -> str:
