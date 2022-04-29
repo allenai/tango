@@ -80,8 +80,8 @@ class WandbWorkspace(Workspace):
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
         entity = parsed_url.netloc
         project = parsed_url.path
-        if project and project.startswith("/"):
-            project = project[1:]
+        if project:
+            project = project.strip("/")
         return cls(project=project, entity=entity)
 
     @property
@@ -252,7 +252,7 @@ class WandbWorkspace(Workspace):
         step_info = self._running_step_info[step.unique_id]
 
         try:
-            # Update StepInfo, marking the step as finished.
+            # Update StepInfo, marking the step as failed.
             if step_info.state != StepState.RUNNING:
                 raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
             step_info.end_time = utc_now_datetime()
