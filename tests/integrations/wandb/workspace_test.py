@@ -74,7 +74,7 @@ class TestWandbWorkspaceUsage(TangoTestCase):
 
         self.workspace = WandbWorkspace(project=WANDB_PROJECT, entity=WANDB_ENTITY)
 
-        initialize_logging(enable_click_logs=True)
+        initialize_logging(enable_cli_logs=True)
 
     def teardown_method(self):
         super().teardown_method()
