@@ -192,12 +192,6 @@ class WandbStepCache(LocalStepCache):
             raise RuntimeError("Can only add results to the WandbStepCache within a W&B run")
 
         with self._acquire_step_lock_file(step):
-            # Overwrite if necessary. If `value` ends up being the same as the value that we're
-            # overwriting, the checksum should also be the same, and so W&B won't actually upload
-            # any new files.
-            if self.step_dir(step).is_dir():
-                shutil.rmtree(self.step_dir(step), ignore_errors=True)
-
             # We'll write the step's results to temporary directory first, and try to upload to W&B
             # from there in case anything goes wrong.
             temp_dir = Path(tempfile.mkdtemp(dir=self.dir, prefix=step.unique_id))
@@ -208,6 +202,8 @@ class WandbStepCache(LocalStepCache):
                 # Create the artifact and upload serialized result to it.
                 self.create_step_result_artifact(step, temp_dir)
                 # Upload successful, rename temp directory to the final step result directory.
+                if self.step_dir(step).is_dir():
+                    shutil.rmtree(self.step_dir(step), ignore_errors=True)
                 os.replace(temp_dir, self.step_dir(step))
             finally:
                 shutil.rmtree(temp_dir, ignore_errors=True)
