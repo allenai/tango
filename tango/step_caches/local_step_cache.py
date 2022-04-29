@@ -94,7 +94,9 @@ class LocalStepCache(StepCache):
         return self.step_dir(step_or_unique_id) / self.METADATA_FILE_NAME
 
     def __contains__(self, step: object) -> bool:
-        if isinstance(step, (Step, StepInfo)):
+        if (isinstance(step, Step) and step.cache_results) or (
+            isinstance(step, StepInfo) and step.cacheable
+        ):
             key = step.unique_id
             if key in self.strong_cache:
                 return True
