@@ -107,10 +107,16 @@ class LocalWorkspace(Workspace):
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
-        workspace_dir = Path(parsed_url.netloc or "./")
-        if parsed_url.path:
-            workspace_dir = workspace_dir / parsed_url.path.lstrip("/")
-        return cls(workspace_dir)
+        workspace_dir: Path
+        if parsed_url.netloc:
+            workspace_dir = Path(parsed_url.netloc)
+            if parsed_url.path:
+                workspace_dir = workspace_dir / parsed_url.path.lstrip("/")
+        elif parsed_url.path:
+            workspace_dir = Path(parsed_url.path)
+        else:
+            workspace_dir = Path(".")
+        return cls(workspace_dir.resolve())
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         return self.cache.step_dir(step_or_unique_id)
