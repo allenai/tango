@@ -263,7 +263,6 @@ class WandbWorkspace(Workspace):
         finally:
             self.locks[step].release()
             del self.locks[step]
-            del self._running_step_info[step.unique_id]
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         all_steps = set(targets)
