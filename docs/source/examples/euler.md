@@ -3,14 +3,16 @@
 
 ## Running the experiment
 
-Try running the experiment with:
+If you haven't already, clone the [tango repository](https://github.com/allenai/tango) and then
+change directories into `examples/euler`.
+
+You can then run the experiment with:
 
 ```bash
 tango run euler_general.jsonnet -i complex_arithmetic -d workspace
 ```
 
-This will leave its results in a directory called `workspace/`.
-
+This will leave its results in a subdirectory of `workspace/runs/` corresponding to the name of the run.
 The output it prints should look something like this:
 ```
 Starting new run fluent-jay
@@ -48,6 +50,8 @@ Server started at http://localhost:8080/run/fluent-jay
 ✓ The output for "sum" is in /home/dirkg/tango/examples/euler/workspace/cache/AdditionStep-34AiXoyiPKADMUnhcBzFYd6JeMcgx4DP
 Finished run fluent-jay
 ```
+
+In this case the assigned run name is "fluent-jay," so the output will be in `workspace/runs/fluent-jay`.
 
 ## Try the workspace UI
 
