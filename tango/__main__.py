@@ -682,8 +682,10 @@ def _run(
             # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
             logger.warning("Debugger detected, disabling multicore.")
             multicore = False
-        else:
+        elif parallelism > 1:
             multicore = True
+        else:
+            multicore = False
 
     # Initialize step graph and register run.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))

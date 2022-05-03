@@ -57,9 +57,9 @@ class WandbStepCache(LocalStepCache):
 
     def _step_artifact_name(self, step: Union[Step, StepInfo]) -> str:
         if isinstance(step, Step):
-            return step.name if step.name is not None else step.unique_id
+            return step.__class__.__name__
         else:
-            return step.step_name if step.step_name is not None else step.unique_id
+            return step.step_class_name
 
     def get_step_result_artifact(
         self, step: Union[Step, StepInfo]
