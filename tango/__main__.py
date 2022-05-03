@@ -828,7 +828,7 @@ def _display_run_results(
             ),
             "python",
         )
-        cli_logger.info("Use your workspace to get the cached result of a step, .e.g.")
+        cli_logger.info("Use your workspace to get the cached result of a step, e.g.")
         cli_logger.info(example)
 
 
