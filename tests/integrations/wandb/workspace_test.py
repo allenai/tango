@@ -139,13 +139,16 @@ class TestWandbWorkspaceUsage(TangoTestCase):
         assert self.workspace.step_info(hello_world_step).state == StepState.FAILED
 
     @pytest.mark.parametrize(
+        "multicore", [pytest.param(True, id="multicore"), pytest.param(False, id="singe-core")]
+    )
+    @pytest.mark.parametrize(
         "distributed",
         [
             pytest.param(True, id="distributed"),
             pytest.param(False, id="single-device"),
         ],
     )
-    def test_with_wandb_train_callback(self, distributed: bool):
+    def test_with_wandb_train_callback(self, multicore: bool, distributed: bool):
         self.run(
             self.FIXTURES_ROOT
             / "integrations"
@@ -157,4 +160,5 @@ class TestWandbWorkspaceUsage(TangoTestCase):
             ],
             overrides=json.dumps({"steps.train.callbacks": [{"type": "wandb::log"}]}),
             workspace_url=f"wandb://{WANDB_ENTITY}/{WANDB_PROJECT}",
+            multicore=multicore,
         )
