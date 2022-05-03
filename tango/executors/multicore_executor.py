@@ -130,6 +130,10 @@ class MulticoreExecutor(Executor):
             for step_name, process in _running.items():
                 poll_status = process.poll()
                 if poll_status is not None:
+                    # The step may have finished since we synced step states.
+                    if step_states[step_name] == StepState.RUNNING:
+                        step_states[step_name] = self._get_state(step_graph[step_name])
+
                     # We check for uncacheable leaf step too.
                     if step_states[step_name] in [StepState.COMPLETED, StepState.UNCACHEABLE]:
                         done.append(step_name)
@@ -142,7 +146,7 @@ class MulticoreExecutor(Executor):
                         # it thinks that the process is not running.
                         errors.append(step_name)
                     else:
-                        logger.warning(
+                        raise RuntimeError(
                             f"Step '{step_name}' has the state {step_states[step_name]}, "
                             "but the corresponding process has ended!"
                         )
