@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
 - `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 
+### Fixed
+
+- Fixed bug with `LocalWorkspace.from_parsed_url()` ([#278](https://github.com/allenai/tango/issues/278)).
+
 ## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
 
 ### Added
