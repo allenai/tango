@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug with `LocalWorkspace.from_parsed_url()` ([#278](https://github.com/allenai/tango/issues/278)).
+- Deprecation warnings will now be logged from `tango` CLI.
 
 ## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
 

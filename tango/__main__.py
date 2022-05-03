@@ -167,6 +167,9 @@ def main(
     start_method: Optional[str] = None,
     called_by_executor: bool = False,
 ):
+    if not sys.warnoptions:
+        warnings.simplefilter("default", category=DeprecationWarning)
+
     settings: TangoGlobalSettings = (
         TangoGlobalSettings.from_file(settings)
         if settings is not None
