@@ -47,4 +47,4 @@ class TestFormat(TangoTestCase):
         format = TextFormat()
         format.write(l1, self.TEST_DIR)
         l2 = format.read(self.TEST_DIR)
-        assert list(l1) == list(l2)
+        assert list(l2) == numbers
