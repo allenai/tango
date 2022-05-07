@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed the text format in the case of serializing an iterator of string.
+
+
 ## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
 
 ### Added
