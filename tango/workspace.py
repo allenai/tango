@@ -5,7 +5,7 @@ import platform
 import socket
 import sys
 import time
-from abc import abstractclassmethod, abstractmethod
+from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
@@ -243,7 +243,8 @@ class Workspace(Registrable):
         workspace_cls = cast(Workspace, cls.by_name(workspace_type))
         return workspace_cls.from_parsed_url(parsed)
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
         """
         Subclasses should override this so that can be initialized from a URL.
