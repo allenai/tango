@@ -42,8 +42,8 @@ class TestFormat(TangoTestCase):
         assert "compress" in format.to_params()
 
     def test_iterable_text_format(self):
-        l = ["ichi", "ni", "san"]
-        l1 = iter(l)
+        numbers = ["ichi", "ni", "san"]
+        l1 = iter(numbers)
         format = TextFormat()
         format.write(l1, self.TEST_DIR)
         l2 = format.read(self.TEST_DIR)
