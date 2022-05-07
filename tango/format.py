@@ -407,6 +407,8 @@ class TextFormatIterator(Iterator[str]):
             line = self.f.readline()
             if len(line) <= 0:
                 raise EOFError()
+            if line.endswith("\n"):
+                line = line[:-1]
             return line
         except EOFError:
             self.f.close()

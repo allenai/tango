@@ -3,7 +3,7 @@ from typing import Dict, Iterable, Optional
 import pytest
 
 from tango.common.testing import TangoTestCase
-from tango.format import _OPEN_FUNCTIONS, DillFormat, JsonFormat
+from tango.format import _OPEN_FUNCTIONS, DillFormat, JsonFormat, TextFormat
 
 
 class TestFormat(TangoTestCase):
@@ -40,3 +40,11 @@ class TestFormat(TangoTestCase):
         r2 = format.read(self.TEST_DIR)
         assert [x + 1 for x in range(10)] == list(r2)
         assert "compress" in format.to_params()
+
+    def test_iterable_text_format(self):
+        l = ["ichi", "ni", "san"]
+        l1 = iter(l)
+        format = TextFormat()
+        format.write(l1, self.TEST_DIR)
+        l2 = format.read(self.TEST_DIR)
+        assert list(l1) == list(l2)
