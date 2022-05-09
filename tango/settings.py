@@ -72,7 +72,7 @@ class TangoGlobalSettings(FromParams):
         return cls()
 
     @classmethod
-    def find_or_default(cls, path: Optional[PathOrStr]) -> "TangoGlobalSettings":
+    def find_or_default(cls, path: Optional[PathOrStr] = None) -> "TangoGlobalSettings":
         """
         Initialize the config from a given configuration file, or falls back to returning
         the default configuration if no file is given.
