@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Added missing default value of `None` to `TangoGlobalSettings.find_or_default()`.
+
 ## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
 
 ### Added
