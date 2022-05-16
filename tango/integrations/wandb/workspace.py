@@ -94,8 +94,7 @@ class WandbWorkspace(Workspace):
         The URL of the W&B project this workspace uses.
         """
         app_url = self.wandb_client.client.app_url
-        if app_url.endswith("/"):
-            app_url = app_url[:-1]
+        app_url = app_url.rstrip("/")
         return f"{app_url}/{self.entity}/{self.project}"
 
     def _get_unique_id(self, step_or_unique_id: Union[Step, str]) -> str:
