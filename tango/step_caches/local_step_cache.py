@@ -55,10 +55,9 @@ class LocalStepCache(StepCache):
         """
         We override `__getstate__()` to customize how instances of this class are pickled
         since we don't want to persist values in the weak and strong in-memory caches
-        during pickling. And WeakValueDictionary can't be pickled anyway.
+        during pickling. And `WeakValueDictionary` can't be pickled anyway.
         """
-        out = {k: v for k, v in self.__dict__.items() if k not in {"weak_cache", "strong_cache"}}
-        return out
+        return {"dir": self.dir}
 
     def __setstate__(self, state):
         for k, v in state.items():
