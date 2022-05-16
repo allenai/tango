@@ -5,7 +5,7 @@ import string
 import sys
 import traceback
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Iterable, Optional, Set, Tuple, Union
 
@@ -262,5 +262,5 @@ def utc_now_datetime() -> datetime:
     return datetime.utcnow().replace(tzinfo=pytz.utc)
 
 
-def local_timezone() -> Optional[timezone]:
+def local_timezone() -> Optional[tzinfo]:
     return datetime.now().astimezone().tzinfo
