@@ -381,8 +381,6 @@ class Step(Registrable, Generic[T]):
                 cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
                 return result
             except BaseException as e:
-                # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
-                # Maybe have a `workspace.step_interrupted()` method?
                 workspace.step_failed(self, e)
                 raise
         finally:
