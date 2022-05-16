@@ -5,7 +5,7 @@ import string
 import sys
 import traceback
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional, Set, Tuple, Union
 
@@ -260,3 +260,7 @@ def exception_to_string(e: BaseException) -> str:
 
 def utc_now_datetime() -> datetime:
     return datetime.utcnow().replace(tzinfo=pytz.utc)
+
+
+def local_timezone() -> Optional[timezone]:
+    return datetime.now().astimezone().tzinfo

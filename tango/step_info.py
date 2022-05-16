@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Set
 
 import pytz
 
+from .common.util import local_timezone
 from .step import Step
 
 
@@ -66,17 +67,23 @@ class StepInfo:
 
     version: Optional[str] = None
     """
-    The version string of the :class:`.Step`, if it has one
+    The version string of the :class:`.Step`, if it has one.
     """
 
     start_time: Optional[datetime] = None
     """
-    The time this step started running
+    The time (in UTC) that this step started running.
+
+    .. seealso::
+        :meth:`start_time_local()`.
     """
 
     end_time: Optional[datetime] = None
     """
-    The time this step stopped running. This will be set whether the step succeeded or failed.
+    The time (in UTC) that this step stopped running. This will be set whether the step succeeded or failed.
+
+    .. seealso::
+        :meth:`end_time_local()`.
     """
 
     error: Optional[str] = None
@@ -93,6 +100,22 @@ class StepInfo:
     """
     Location of the result. This could be a path or a URL.
     """
+
+    @property
+    def start_time_local(self) -> Optional[datetime]:
+        """
+        The time the step started running with respect to the local timezone, if the timezone
+        can be determined.
+        """
+        return None if self.start_time is None else self.start_time.astimezone(local_timezone())
+
+    @property
+    def end_time_local(self) -> Optional[datetime]:
+        """
+        The time the step stopped running with respect to the local timezone, if the timezone
+        can be determined.
+        """
+        return None if self.end_time is None else self.end_time.astimezone(local_timezone())
 
     @property
     def duration(self) -> Optional[timedelta]:
