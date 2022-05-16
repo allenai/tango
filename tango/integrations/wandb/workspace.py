@@ -356,7 +356,7 @@ class WandbWorkspace(Workspace):
     ) -> Run:
         step_name_to_info = {}
         for step_name, step_info_dict in wandb_run.config["steps"].items():
-            step_info = StepInfo(**step_info_dict)
+            step_info = StepInfo.from_json_dict(step_info_dict)
             if step_info.cacheable:
                 updated_step_info = self._get_updated_step_info(
                     step_info.unique_id, step_name=step_name
