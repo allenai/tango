@@ -1,4 +1,5 @@
 import logging
+import typing
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Union, cast
 
 import more_itertools
@@ -84,6 +85,7 @@ def adjust_length_to_model(length, model):
     return length
 
 
+@typing.no_type_check  # mypy has somehow lost the ability to tell what PreTrainedTokenizer and Model are.
 def _generate(
     model: Model,
     # TODO: Change type to `Tokenizer` once HF includes `convert_tokens_to_ids` in `PretrainedTokenizerBase` class.

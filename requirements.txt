@@ -32,3 +32,6 @@ pytorch-lightning>=1.6,<1.7  # needed by: pytorch_lightning
 transformers>=4.12.3         # needed by: transformers
 sentencepiece>=0.1.96        # needed by: transformers
 fairscale==0.4.6             # needed by: fairscale
+
+# sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
+sacremoses                   # needed by: transformers
