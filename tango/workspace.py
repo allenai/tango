@@ -108,6 +108,9 @@ class Workspace(Registrable):
         Initialize a :class:`Workspace` from a workspace URL or path, e.g. ``local:///tmp/workspace``
         would give you a :class:`~tango.workspaces.LocalWorkspace` in the directory ``/tmp/workspace``.
 
+        For :class:`~tango.workspaces.LocalWorkspace`, you can also just pass in a plain
+        path, e.g. ``/tmp/workspace``.
+
         .. tip::
             Registered as a workspace constructor under the name "from_url".
 
