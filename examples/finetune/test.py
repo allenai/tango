@@ -1,3 +1,5 @@
+import typing
+
 import datasets as ds
 import pytest
 
@@ -10,6 +12,7 @@ class TestFinetuneSNLI(TangoTestCase):
         "model, model_type",
         [("patrickvonplaten/t5-tiny-random", "t5"), ("sshleifer/tiny-gpt2", "gpt2")],
     )
+    @typing.no_type_check  # mypy has become incompatible with the datasets library
     def test_config(self, model: str, model_type: str):
         overrides = {
             "steps.trained_model.model.model.pretrained_model_name_or_path": model,
