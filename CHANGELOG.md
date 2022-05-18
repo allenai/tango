@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the text format in the case of serializing an iterator of string.
 - Added missing default value of `None` to `TangoGlobalSettings.find_or_default()`.
 - Mypy has become incompatible with transformers and datasets, so we have to disable the checks in some places.
+- The `VERSION` member of step arguments that were wrapped in `Lazy` were not respected. Now they are.
 
 
 ## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
