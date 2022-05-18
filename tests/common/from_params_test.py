@@ -17,9 +17,8 @@ from typing import (
 
 import pytest
 
-from tango.common.det_hash import DetHashWithVersion
-
 from tango.common import det_hash
+from tango.common.det_hash import DetHashWithVersion
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     FromParams,
