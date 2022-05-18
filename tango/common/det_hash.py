@@ -2,7 +2,7 @@ import collections
 import hashlib
 import io
 from abc import abstractmethod
-from typing import Any, MutableMapping
+from typing import Any, MutableMapping, Optional
 
 import base58
 import dill
@@ -70,7 +70,7 @@ class DetHashWithVersion(CustomDetHash):
                 ...
     """
 
-    VERSION = None
+    VERSION: Optional[str] = None
 
     def det_hash_object(self) -> Any:
         """
