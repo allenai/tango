@@ -17,6 +17,9 @@ from typing import (
 
 import pytest
 
+from tango.common.det_hash import DetHashWithVersion
+
+from tango.common import det_hash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     FromParams,
@@ -998,6 +1001,47 @@ class TestFromParams(TangoTestCase):
         outer_lazy = Lazy(OuterBase, Params(config))
         outer = outer_lazy.construct(y="placeholder")
         assert outer.i.x == 5
+
+    def test_lazy_from_params_with_version(self):
+        class Gizmo(Registrable):
+            pass
+
+        @Gizmo.register("widget")
+        class WidgetGizmo(Gizmo, DetHashWithVersion):
+            VERSION = "001"
+
+            def __init__(self, x: int):
+                self.x = x
+
+            @classmethod
+            def default(cls):
+                return WidgetGizmo(0)
+
+        Gizmo.register("default_widget", "default")(WidgetGizmo)
+
+        lazy = Lazy(Gizmo, params=Params({"type": "widget", "x": 1}))
+
+        hash_before = det_hash(lazy)
+        WidgetGizmo.VERSION = "001"
+        assert hash_before == det_hash(lazy)
+        WidgetGizmo.VERSION = "002"
+        assert hash_before != det_hash(lazy)
+        assert lazy.construct().x == 1
+
+        default_lazy = Lazy(
+            Gizmo,
+            params=Params(
+                {
+                    "type": "default_widget",
+                }
+            ),
+        )
+        assert hash_before != det_hash(default_lazy)
+        assert det_hash(lazy) != det_hash(default_lazy)
+        hash_before = det_hash(default_lazy)
+        WidgetGizmo.VERSION = "003"
+        assert hash_before != det_hash(default_lazy)
+        assert default_lazy.construct().x == 0
 
 
 class MyClass(FromParams):
