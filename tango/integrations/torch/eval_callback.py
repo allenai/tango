@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
+from tango.workspace import Workspace
 
 from .data import DataLoader
 from .model import Model
@@ -19,24 +20,24 @@ class EvalCallback(Registrable):
         All of the parameters to this base class will be automatically set within
         the training loop, so you shouldn't include them in your config for your callbacks.
 
-    Attributes
-    ----------
-    step_id : :class:`str`
-    work_dir : :class:`~pathlib.Path`
-    model : :class:`Model`
-    dataset_dict : :class:`tango.common.DatasetDictBase`
-    dataloader : :class:`DataLoader`
-
+    :ivar Workspace workspace: The tango workspace being used.
+    :ivar str step_id: The unique ID of the step.
+    :ivar pathlib.Path work_dir: The working directory of the step
+    :ivar Model model: The model being evaluated.
+    :ivar DatasetDictBase dataset_dict: The dataset dict containing the evaluation split.
+    :ivar DataLoader dataloader: The data loader used to load the evaluation split data.
     """
 
     def __init__(
         self,
+        workspace: Workspace,
         step_id: str,
         work_dir: Path,
         model: Model,
         dataset_dict: DatasetDictBase,
         dataloader: DataLoader,
     ) -> None:
+        self.workspace = workspace
         self.step_id = step_id
         self.work_dir = work_dir
         self.model = model

@@ -167,6 +167,9 @@ def main(
     start_method: Optional[str] = None,
     called_by_executor: bool = False,
 ):
+    if not sys.warnoptions:
+        warnings.simplefilter("default", category=DeprecationWarning)
+
     settings: TangoGlobalSettings = (
         TangoGlobalSettings.from_file(settings)
         if settings is not None
@@ -825,7 +828,7 @@ def _display_run_results(
             ),
             "python",
         )
-        cli_logger.info("Use your workspace to get the cached result of a step, .e.g.")
+        cli_logger.info("Use your workspace to get the cached result of a step, e.g.")
         cli_logger.info(example)
 
 

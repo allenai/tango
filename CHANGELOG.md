@@ -7,8 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a Weights & Baises remote `Workspace` implementation: `WandbWorkspace`, registered as "wandb".
+  This can be instantiated from a workspace URL in the form "wandb://entity/project".
+- Added a method `Workspace.step_result_for_run` which gives the result of a step given the run name and step name within that run.
+- Added property `Workspace.url`, which returns a URL for the workspace that can be used to instantiate the exact same workspace using `Workspace.from_url()`. Subclasses must implement this.
+
+### Changed
+
+- `StepInfo` start and end times will be always be in UTC now.
+- `WandbTrainCallback` now logs system metrics from each worker process in distributed training.
+- `StepCache.__contains__()` and `StepCache.__getitem__()` now take accept either a `Step` or `StepInfo` as an argument (`Union[Step, StepInfo]`).
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+
 ### Fixed
 
+- Fixed bug with `LocalWorkspace.from_parsed_url()` ([#278](https://github.com/allenai/tango/issues/278)).
+- Deprecation warnings will now be logged from `tango` CLI.
 - Fixed the text format in the case of serializing an iterator of string.
 - Added missing default value of `None` to `TangoGlobalSettings.find_or_default()`.
 - Mypy has become incompatible with transformers and datasets, so we have to disable the checks in some places.

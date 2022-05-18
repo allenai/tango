@@ -22,6 +22,14 @@ class TrainConfig:
     The working directory for the training run.
     """
 
+    step_name: Optional[str] = None
+    """
+    The name of the current step.
+
+    .. note::
+        The same step can be run under different names.
+    """
+
     worker_id: int = 0
     """
     The ID of the distributed worker.
