@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
+from tango.workspace import Workspace
 
 from .data import DataLoader
 from .exceptions import StopEarly
@@ -14,9 +15,9 @@ from .training_engine import TrainingEngine
 
 class TrainCallback(Registrable):
     """
-    A ``TrainCallback`` is a :class:`~tango.common.Registrable` class
+    A :class:`TrainCallback` is a :class:`~tango.common.Registrable` class
     that can be used within :class:`TorchTrainStep` to customize behavior in the training
-    loop.
+    loop. You can set the training callbacks with the ``callbacks`` parameter to :class:`TorchTrainStep`.
 
     .. tip::
         All of the parameters to this base class will be automatically set within
@@ -33,26 +34,25 @@ class TrainCallback(Registrable):
         See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
         implementation.
 
-    Attributes
-    ----------
-    train_config : :class:`TrainConfig`
-    training_engine : :class:`TrainingEngine`
-    optimizer : :class:`Optimizer`
-    dataset_dict : :class:`tango.common.DatasetDictBase`
-    train_dataloader : :class:`DataLoader`
-    validation_dataloader : :class:`DataLoader`, optional
-    lr_scheduler : :class:`LRScheduler`, optional
-
+    :ivar Workspace workspace: The tango workspace being used.
+    :ivar TrainConfig train_config: The training config.
+    :ivar TrainingEngine training_engine: The engine used to train the model.
+    :ivar tango.common.DatasetDictBase dataset_dict: The dataset dict containing train and
+        optional validation splits.
+    :ivar DataLoader train_dataloader: The dataloader used for the training split.
+    :ivar DataLoader validation_dataloader: Optional dataloader used for the validation split.
     """
 
     def __init__(
         self,
+        workspace: Workspace,
         train_config: TrainConfig,
         training_engine: TrainingEngine,
         dataset_dict: DatasetDictBase,
         train_dataloader: DataLoader,
         validation_dataloader: Optional[DataLoader] = None,
     ) -> None:
+        self.workspace = workspace
         self.train_config = train_config
         self.training_engine = training_engine
         self.dataset_dict = dataset_dict
@@ -66,6 +66,13 @@ class TrainCallback(Registrable):
         The unique ID of the current :class:`~tango.Step`.
         """
         return self.train_config.step_id
+
+    @property
+    def step_name(self) -> Optional[str]:
+        """
+        The name of the current :class:`~tango.Step`.
+        """
+        return self.train_config.step_name
 
     @property
     def work_dir(self) -> Path:

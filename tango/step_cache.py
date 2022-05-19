@@ -1,11 +1,13 @@
 import logging
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
 
-from tango.common.from_params import FromParams
-from tango.common.registrable import Registrable
-from tango.step import Step
+from .common.from_params import FromParams
+from .common.registrable import Registrable
+from .format import Format
+from .step import Step
+from .step_info import StepInfo
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +30,7 @@ class StepCache(Registrable):
     def __contains__(self, step: Any) -> bool:
         """This is a generic implementation of ``__contains__``. If you are writing your own
         ``StepCache``, you might want to write a faster one yourself."""
-        if not isinstance(step, Step):
+        if not isinstance(step, (Step, StepInfo)):
             return False
         try:
             self.__getitem__(step)
@@ -37,7 +39,7 @@ class StepCache(Registrable):
             return False
 
     @abstractmethod
-    def __getitem__(self, step: Step) -> Any:
+    def __getitem__(self, step: Union[Step, StepInfo]) -> Any:
         """Returns the results for the given step."""
         raise NotImplementedError()
 
@@ -57,4 +59,9 @@ class CacheMetadata(FromParams):
     step: str
     """
     The step name.
+    """
+
+    format: Format
+    """
+    The format used to serialize the step's result.
     """

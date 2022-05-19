@@ -70,9 +70,11 @@ Callbacks
 
 .. autoclass:: tango.integrations.torch.TrainCallback
    :members:
+   :member-order: bysource
 
 .. autoclass:: tango.integrations.torch.EvalCallback
    :members:
+   :member-order: bysource
 
 .. autoclass:: tango.integrations.torch.StopEarlyCallback
 

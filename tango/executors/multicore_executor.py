@@ -8,7 +8,8 @@ from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
-from tango.workspace import StepState, Workspace
+from tango.step_info import StepState
+from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,10 @@ class MulticoreExecutor(Executor):
             for step_name, process in _running.items():
                 poll_status = process.poll()
                 if poll_status is not None:
+                    # The step may have finished since we synced step states.
+                    if step_states[step_name] == StepState.RUNNING:
+                        step_states[step_name] = self._get_state(step_graph[step_name])
+
                     # We check for uncacheable leaf step too.
                     if step_states[step_name] in [StepState.COMPLETED, StepState.UNCACHEABLE]:
                         done.append(step_name)
@@ -141,7 +146,7 @@ class MulticoreExecutor(Executor):
                         # it thinks that the process is not running.
                         errors.append(step_name)
                     else:
-                        logger.warning(
+                        raise RuntimeError(
                             f"Step '{step_name}' has the state {step_states[step_name]}, "
                             "but the corresponding process has ended!"
                         )
@@ -220,10 +225,10 @@ class MulticoreExecutor(Executor):
                     config_path,
                     "-s",
                     step_name,
+                    "-w",
+                    self.workspace.url,
                     "--no-server",
                 ]
-                if hasattr(self.workspace, "dir"):
-                    command += ["-w", self.workspace.dir]  # type: ignore
                 if self.include_package is not None:
                     for package in self.include_package:
                         command += ["-i", package]

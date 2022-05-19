@@ -67,6 +67,7 @@ class TangoTestCase:
         config: Union[PathOrStr, Dict[str, Any], Params],
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
+        workspace_url: Optional[str] = None,
         step_name: Optional[str] = None,
         parallelism: int = 1,
         multicore: bool = False,
@@ -87,7 +88,7 @@ class TangoTestCase:
         run_name = _run(
             TangoGlobalSettings(),
             str(config),
-            workspace_url="local://" + str(self.TEST_DIR / "workspace"),
+            workspace_url=workspace_url or "local://" + str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
             start_server=False,

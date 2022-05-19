@@ -21,12 +21,10 @@ class TrainingEngine(Registrable):
     A :class:`TrainingEngine` defines and drives the strategy for training a model
     in :class:`TorchTrainStep`.
 
-    Attributes
-    ----------
-    train_config : :class:`TrainConfig`
-    model : :class:`Model`
-    optimizer : :class:`Optimizer`
-    lr_scheduler : :class:`LRScheduler`, optional
+    :ivar TrainConfig train_config: The training config.
+    :ivar Model model: The model being trained.
+    :ivar Optimizer optimizer: The optimizer being used to train the model.
+    :ivar LRScheduler lr_scheduler: The optional learning rate scheduler.
     """
 
     default_implementation = "torch"
