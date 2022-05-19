@@ -99,8 +99,7 @@ class Lazy(Generic[T], CustomDetHash):
                 params = Params({"type": params})
             elif isinstance(params, dict):
                 params = Params(params)
-
-            if not isinstance(params, Params):
+            elif not isinstance(params, Params):
                 return None
 
             from tango.common import Registrable
