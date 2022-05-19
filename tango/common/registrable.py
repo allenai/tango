@@ -184,12 +184,7 @@ class Registrable(FromParams):
         def try_import(module):
             try:
                 import_module_and_submodules(module)
-            except ModuleNotFoundError as e:
-                if e.name == module:
-                    pass
-                else:
-                    raise
-            except ImportError:
+            except (ModuleNotFoundError, ImportError):
                 pass
 
         integrations = {m.split(".")[-1]: m for m in find_integrations()}
