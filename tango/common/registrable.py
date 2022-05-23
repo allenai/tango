@@ -21,7 +21,7 @@ from typing import (
     cast,
 )
 
-from .exceptions import ConfigurationError, RegistryKeyError
+from .exceptions import ConfigurationError, IntegrationMissingError, RegistryKeyError
 from .from_params import FromParams
 from .util import (
     could_be_class_name,
@@ -184,8 +184,11 @@ class Registrable(FromParams):
         def try_import(module):
             try:
                 import_module_and_submodules(module)
-            except (ModuleNotFoundError, ImportError):
+            except IntegrationMissingError:
                 pass
+            except ImportError as e:
+                if e.name != module:
+                    raise
 
         integrations = {m.split(".")[-1]: m for m in find_integrations()}
         integrations_imported: Set[str] = set()

@@ -41,3 +41,9 @@ class CliRunError(TangoError):
     """
     Raised when `tango run` command fails.
     """
+
+
+class IntegrationMissingError(TangoError):
+    """
+    Raised when an integration can't be used due to missing dependencies.
+    """

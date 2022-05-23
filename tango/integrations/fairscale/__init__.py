@@ -29,6 +29,13 @@ the memory required to load your model.
 
 """
 
+from tango.common.exceptions import IntegrationMissingError
+
+try:
+    import fairscale
+except ModuleNotFoundError:
+    raise IntegrationMissingError("fairscale")
+
 __all__ = [
     "FairScaleTrainingEngine",
     "FSDPConfig",
