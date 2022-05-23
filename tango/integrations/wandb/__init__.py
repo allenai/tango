@@ -26,7 +26,9 @@ from tango.common.exceptions import IntegrationMissingError
 try:
     import wandb
 except ModuleNotFoundError:
-    raise IntegrationMissingError("wandb")
+    raise IntegrationMissingError(
+        "'wandb' integration can't be used because the 'wandb' dependency is not installed"
+    )
 
 __all__ = ["WandbWorkspace", "WandbStepCache"]
 

@@ -34,7 +34,9 @@ from tango.common.exceptions import IntegrationMissingError
 try:
     import fairscale
 except ModuleNotFoundError:
-    raise IntegrationMissingError("fairscale")
+    raise IntegrationMissingError(
+        "'fairscale' integration can't be used because the 'fairscale' dependency is not installed"
+    )
 
 __all__ = [
     "FairScaleTrainingEngine",
