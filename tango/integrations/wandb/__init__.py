@@ -21,17 +21,23 @@ you can use the :class:`WandbTrainCallback` to track metrics throughout the run.
 
 """
 
+from tango.common.exceptions import IntegrationMissingError
+
+try:
+    import wandb
+except ModuleNotFoundError:
+    raise IntegrationMissingError("wandb")
+
 __all__ = ["WandbWorkspace", "WandbStepCache"]
 
 from .step_cache import WandbStepCache
 from .workspace import WandbWorkspace
 
 try:
+    import torch
+except ModuleNotFoundError:
+    pass
+else:
     from .torch_train_callback import WandbTrainCallback
 
     __all__.append("WandbTrainCallback")
-except ModuleNotFoundError as exc:
-    if exc.name == "torch":
-        pass
-    else:
-        raise

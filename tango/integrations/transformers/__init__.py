@@ -186,6 +186,13 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::DefaultDataCollator
 """
 
+from tango.common.exceptions import IntegrationMissingError
+
+try:
+    import transformers
+except ModuleNotFoundError:
+    raise IntegrationMissingError("transformers")
+
 __all__ = [
     "RunGeneration",
     "RunGenerationDataset",

@@ -134,6 +134,13 @@ needs to raise the :class:`StopEarly` exception.
 
 """
 
+from tango.common.exceptions import IntegrationMissingError
+
+try:
+    import torch
+except ModuleNotFoundError:
+    raise IntegrationMissingError("torch")
+
 __all__ = [
     "TorchFormat",
     "TorchTrainStep",

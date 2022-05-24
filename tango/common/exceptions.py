@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Set, Tuple, Union
 
 
 class TangoError(Exception):
@@ -41,3 +41,18 @@ class CliRunError(TangoError):
     """
     Raised when `tango run` command fails.
     """
+
+
+class IntegrationMissingError(TangoError):
+    """
+    Raised when an integration can't be used due to missing dependencies.
+    """
+
+    def __init__(self, integration: str, dependencies: Optional[Set[str]] = None):
+        self.integration = integration
+        self.dependencies = dependencies or {integration}
+        msg = (
+            f"'{self.integration}' integration can't be used due to "
+            f"missing dependencies ({', '.join(self.dependencies)})"
+        )
+        super().__init__(msg)

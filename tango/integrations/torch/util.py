@@ -3,7 +3,6 @@ import warnings
 from collections import UserDict
 from typing import Dict, Optional, TypeVar, Union
 
-import numpy as np
 import torch
 import torch.distributed as dist
 from torch.utils.data import DistributedSampler, IterableDataset
@@ -54,10 +53,15 @@ def check_dataloader(dataloader: DataLoader):
 
 def set_seed_all(seed: int):
     random.seed(seed)
-    np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    try:
+        import numpy as np
+    except ModuleNotFoundError:
+        pass
+    else:
+        np.random.seed(seed)
 
 
 def resolve_device(device: Optional[Union[int, str, torch.device]] = None) -> torch.device:
