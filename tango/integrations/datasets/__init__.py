@@ -35,9 +35,7 @@ from tango.step import Step
 try:
     import datasets as ds
 except ModuleNotFoundError:
-    raise IntegrationMissingError(
-        "'datasets' integration can't be used because the 'datasets' dependency is not installed"
-    )
+    raise IntegrationMissingError("datasets")
 
 __all__ = [
     "LoadDataset",

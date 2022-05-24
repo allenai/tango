@@ -139,9 +139,7 @@ from tango.common.exceptions import IntegrationMissingError
 try:
     import torch
 except ModuleNotFoundError:
-    raise IntegrationMissingError(
-        "'torch' integration can't be used because the 'torch' dependency is not installed"
-    )
+    raise IntegrationMissingError("torch")
 
 __all__ = [
     "TorchFormat",

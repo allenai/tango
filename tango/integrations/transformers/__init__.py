@@ -191,9 +191,7 @@ from tango.common.exceptions import IntegrationMissingError
 try:
     import transformers
 except ModuleNotFoundError:
-    raise IntegrationMissingError(
-        "'transformers' integration can't be used because the 'transformers' dependency is not installed"
-    )
+    raise IntegrationMissingError("transformers")
 
 __all__ = [
     "RunGeneration",

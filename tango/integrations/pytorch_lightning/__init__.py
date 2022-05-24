@@ -131,10 +131,7 @@ from tango.common.exceptions import IntegrationMissingError
 try:
     import pytorch_lightning
 except ModuleNotFoundError:
-    raise IntegrationMissingError(
-        "'pytorch_lightning' integration can't be used because the "
-        "'pytorch_lightning' dependency is not installed"
-    )
+    raise IntegrationMissingError("pytorch_lightning")
 
 __all__ = [
     "LightningAccelerator",
