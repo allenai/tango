@@ -23,17 +23,6 @@ from typing import (
     cast,
 )
 
-try:
-    from typing import get_args, get_origin  # type: ignore
-except ImportError:
-
-    def get_origin(tp):  # type: ignore
-        return getattr(tp, "__origin__", None)
-
-    def get_args(tp):  # type: ignore
-        return getattr(tp, "__args__", ())
-
-
 from tango.common.det_hash import CustomDetHash, det_hash
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
@@ -46,6 +35,17 @@ from tango.common.logging import cli_logger
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
+
+try:
+    from typing import get_args, get_origin  # type: ignore
+except ImportError:
+
+    def get_origin(tp):  # type: ignore
+        return getattr(tp, "__origin__", None)
+
+    def get_args(tp):  # type: ignore
+        return getattr(tp, "__args__", ())
+
 
 if TYPE_CHECKING:
     from tango.workspace import Workspace
@@ -115,6 +115,11 @@ class Step(Registrable, Generic[T]):
 
     For example, you might use this for the batch size in an inference step, where you only care about
     the model output, not about how many outputs you can produce at the same time.
+    """
+
+    _UNIQUE_ID_SUFFIX: Optional[str] = None
+    """
+    Used internally for testing.
     """
 
     def __init__(
@@ -337,7 +342,7 @@ class Step(Registrable, Generic[T]):
         """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
+    def _run_with_work_dir(self, workspace: "Workspace", needed_by: Optional["Step"] = None) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
@@ -354,18 +359,29 @@ class Step(Registrable, Generic[T]):
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
         try:
-            if self.cache_results:
-                workspace.step_starting(self)
+            kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+
+            if needed_by:
+                cli_logger.info(
+                    '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                    self.name,
+                    needed_by.name,
+                )
+            else:
+                cli_logger.info(
+                    '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                    self.name,
+                )
+
+            workspace.step_starting(self)
+
             try:
                 result = self.run(**kwargs)
-                if self.cache_results:
-                    result = workspace.step_finished(self, result)
+                result = workspace.step_finished(self, result)
+                cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
                 return result
             except BaseException as e:
-                # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
-                # Maybe have a `workspace.step_interrupted()` method?
-                if self.cache_results:
-                    workspace.step_failed(self, e)
+                workspace.step_failed(self, e)
                 raise
         finally:
             self._workspace = None
@@ -448,6 +464,8 @@ class Step(Registrable, Generic[T]):
                 self.unique_id_cache += det_hash(
                     _random_for_step_names.getrandbits((58**32).bit_length())
                 )[:32]
+            if self._UNIQUE_ID_SUFFIX is not None:
+                self.unique_id_cache += f"-{self._UNIQUE_ID_SUFFIX}"
 
         return self.unique_id_cache
 
@@ -520,23 +538,8 @@ class Step(Registrable, Generic[T]):
                     self.name,
                 )
             return workspace.step_cache[self]
-
-        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-
-        if needed_by:
-            cli_logger.info(
-                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
-                self.name,
-                needed_by.name,
-            )
         else:
-            cli_logger.info(
-                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
-                self.name,
-            )
-        result = self._run_with_work_dir(workspace, **kwargs)
-        cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
-        return result
+            return self._run_with_work_dir(workspace, needed_by=needed_by)
 
     def ensure_result(
         self,

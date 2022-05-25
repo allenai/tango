@@ -26,13 +26,16 @@ You could run this with:
 from pathlib import Path
 from typing import Any, List, Optional, TypeVar, Union, overload
 
-import datasets as ds
-
 from tango.common.aliases import PathOrStr
 from tango.common.dataset_dict import DatasetDict, IterableDatasetDict
-from tango.common.exceptions import ConfigurationError
+from tango.common.exceptions import ConfigurationError, IntegrationMissingError
 from tango.format import Format
 from tango.step import Step
+
+try:
+    import datasets as ds
+except ModuleNotFoundError:
+    raise IntegrationMissingError("datasets")
 
 __all__ = [
     "LoadDataset",

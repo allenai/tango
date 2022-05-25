@@ -17,12 +17,6 @@ Implementations
 Metadata
 --------
 
-.. autoclass:: tango.workspace.StepInfo
-   :members:
-
-.. autoclass:: tango.workspace.StepState
-   :members:
-
 .. autoclass:: tango.workspace.Run
    :members:
 

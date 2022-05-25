@@ -1,8 +1,10 @@
 import logging
-from typing import Any, Dict
+import warnings
+from typing import Any, Dict, Union
 
 from tango.step import Step
 from tango.step_cache import StepCache
+from tango.step_info import StepInfo
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class MemoryStepCache(StepCache):
     def __init__(self):
         self.cache: Dict[str, Any] = {}
 
-    def __getitem__(self, step: Step) -> Any:
+    def __getitem__(self, step: Union[Step, StepInfo]) -> Any:
         return self.cache[step.unique_id]
 
     def __setitem__(self, step: Step, value: Any) -> None:
@@ -28,10 +30,13 @@ class MemoryStepCache(StepCache):
         if step.cache_results:
             self.cache[step.unique_id] = value
         else:
-            logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
+            warnings.warn(
+                f"Tried to cache step '{step.name}' despite being marked as uncacheable.",
+                UserWarning,
+            )
 
-    def __contains__(self, step: object):
-        if isinstance(step, Step):
+    def __contains__(self, step: object) -> bool:
+        if isinstance(step, (Step, StepInfo)):
             return step.unique_id in self.cache
         else:
             return False

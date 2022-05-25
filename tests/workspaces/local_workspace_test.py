@@ -4,7 +4,7 @@ import pytest
 
 from tango import Step
 from tango.common.testing import TangoTestCase
-from tango.workspace import StepState
+from tango.step_info import StepState
 from tango.workspaces import LocalWorkspace
 
 

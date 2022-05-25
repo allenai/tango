@@ -1,13 +1,14 @@
 import copy
 import inspect
-from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar, Union, cast
 
+from .det_hash import CustomDetHash, DetHashWithVersion
 from .params import Params
 
 T = TypeVar("T")
 
 
-class Lazy(Generic[T]):
+class Lazy(Generic[T], CustomDetHash):
     """
     This class is for use when constructing objects using :class:`~tango.common.FromParams`,
     when an argument to a constructor has a `sequential dependency` with another argument to the same
@@ -85,3 +86,53 @@ class Lazy(Generic[T]):
         # this will overwrite the ones in self._constructor_extras with what's in kwargs.
         constructor_kwargs = {**self._constructor_extras, **kwargs}
         return self.constructor(**constructor_kwargs)
+
+    def det_hash_object(self) -> Any:
+        from tango.common.from_params import FromParams
+
+        class_to_construct: Union[Type[T], Callable[..., T]] = self._constructor
+        if isinstance(class_to_construct, type) and issubclass(class_to_construct, FromParams):
+            params = copy.deepcopy(self._params)
+            if params is None:
+                params = Params({})
+            elif isinstance(params, str):
+                params = Params({"type": params})
+            elif isinstance(params, dict):
+                params = Params(params)
+            elif not isinstance(params, Params):
+                return None
+
+            from tango.common import Registrable
+
+            if issubclass(class_to_construct, Registrable):
+                as_registrable = cast(Type[Registrable], class_to_construct)
+
+                if "type" in params and params["type"] not in as_registrable.list_available():
+                    as_registrable.search_modules(params["type"])
+
+                # Resolve the subclass and constructor.
+                from .from_params import is_base_registrable
+
+                if is_base_registrable(class_to_construct) or "type" in params:
+                    default_to_first_choice = as_registrable.default_implementation is not None
+                    choice = params.pop_choice(
+                        "type",
+                        choices=as_registrable.list_available(),
+                        default_to_first_choice=default_to_first_choice,
+                    )
+                    subclass_or_factory_func, _ = as_registrable.resolve_class_name(choice)
+                    if inspect.isclass(subclass_or_factory_func):
+                        class_to_construct = subclass_or_factory_func
+                    else:
+                        # We have a function that returns an instance of the class.
+                        factory_func = cast(Callable[..., T], subclass_or_factory_func)
+                        return_type = inspect.signature(factory_func).return_annotation
+                        if return_type != inspect.Signature.empty:
+                            class_to_construct = return_type
+
+        if isinstance(class_to_construct, type) and issubclass(
+            class_to_construct, DetHashWithVersion
+        ):
+            return class_to_construct.VERSION, self
+        else:
+            return self
