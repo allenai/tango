@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - If you try to import something from a tango integration that is not fully installed due to missing dependencies, an `IntegrationMissingError` will be raised
 instead of `ModuleNotFound`.
+- You can now set `-j 0` in `tango run` to disable multicore execution altogether.
 
 ## [v0.8.0](https://github.com/allenai/tango/releases/tag/v0.8.0) - 2022-05-19
 

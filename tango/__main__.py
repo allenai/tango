@@ -682,6 +682,8 @@ def _run(
             # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
             logger.warning("Debugger detected, disabling multicore.")
             multicore = False
+        elif parallelism <= 0:
+            multicore = False
         else:
             multicore = True
 
