@@ -277,34 +277,33 @@ class LocalWorkspace(Workspace):
         if step_info.state != StepState.RUNNING:
             raise RuntimeError(f"Step '{step.name}' is ending, but it never started.")
 
-        if step.cache_results:
-            self.step_cache[step] = result
-            if hasattr(result, "__next__"):
-                assert isinstance(result, Iterator)
-                # Caching the iterator will consume it, so we write it to the cache and then read from the cache
-                # for the return value.
-                result = self.step_cache[step]
+        self.step_cache[step] = result
+        if hasattr(result, "__next__"):
+            assert isinstance(result, Iterator)
+            # Caching the iterator will consume it, so we write it to the cache and then read from the cache
+            # for the return value.
+            result = self.step_cache[step]
 
-            # Save some metadata.
-            def replace_steps_with_unique_id(o: Any):
-                if isinstance(o, Step):
-                    return {"type": "ref", "ref": o.unique_id}
-                if isinstance(o, (list, tuple, set)):
-                    return o.__class__(replace_steps_with_unique_id(i) for i in o)
-                elif isinstance(o, dict):
-                    return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
-                else:
-                    return o
+        # Save some metadata.
+        def replace_steps_with_unique_id(o: Any):
+            if isinstance(o, Step):
+                return {"type": "ref", "ref": o.unique_id}
+            if isinstance(o, (list, tuple, set)):
+                return o.__class__(replace_steps_with_unique_id(i) for i in o)
+            elif isinstance(o, dict):
+                return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+            else:
+                return o
 
-            try:
-                config = step.config
-            except ValueError:
-                config = None
-            metadata = StepExecutionMetadata(
-                step=step.unique_id, config=replace_steps_with_unique_id(config)
-            )
-            # Finalize metadata and save to run directory.
-            metadata.save(self.step_dir(step))
+        try:
+            config = step.config
+        except ValueError:
+            config = None
+        metadata = StepExecutionMetadata(
+            step=step.unique_id, config=replace_steps_with_unique_id(config)
+        )
+        # Finalize metadata and save to run directory.
+        metadata.save(self.step_dir(step))
 
         # Mark the step as finished
         step_info.end_time = utc_now_datetime()

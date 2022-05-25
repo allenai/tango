@@ -95,6 +95,7 @@ class Workspace(Registrable):
         return out
 
     @property
+    @abstractmethod
     def url(self) -> str:
         """
         Get a URL for the workspace that can be used to instantiate the same workspace

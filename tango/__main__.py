@@ -822,7 +822,7 @@ def _display_run_results(
             "\n".join(
                 [
                     ">>> from tango import Workspace",
-                    ">>> workspace = Workspace.from_url(...)",
+                    f'>>> workspace = Workspace.from_url("{workspace.url}")',
                     f'>>> workspace.step_result_for_run("{run.name}", "{last_cached_step}")',
                 ]
             ),

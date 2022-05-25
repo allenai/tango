@@ -157,7 +157,7 @@ class StepInfo:
                 if isinstance(v, set)
                 else v
             )
-            for k, v in asdict(self).items()
+            for k, v in sorted(asdict(self).items(), key=lambda x: x[0])
         }
 
     @classmethod
