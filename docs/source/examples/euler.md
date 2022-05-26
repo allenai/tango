@@ -144,7 +144,7 @@ Use your workspace to get the cached result of a step, e.g.
  >>> from tango import Workspace
  >>> workspace = Workspace.from_url(...)
  >>> workspace.step_result_for_run("right-amoeba", "sum")
- ```
+```
 
 As you can see, it re-used the cached results for several of the steps, and only ran three steps anew.
 
