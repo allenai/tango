@@ -7,7 +7,7 @@ PyYAML>=5.4.1,<6.1
 dill
 base58
 xxhash
-filelock>=3.4,<3.7
+filelock>=3.4,<3.8
 click>=7.0,<8.1.4
 click-help-colors>=0.9.1,<0.10
 rich>=11.0,<13.0
