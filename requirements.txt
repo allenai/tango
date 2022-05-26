@@ -35,3 +35,6 @@ fairscale==0.4.6             # needed by: fairscale
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers
+
+# Protobuf is a dependency of wandb, but they are missing this pin.
+protobuf<4.21.0              # needed by: wandb
