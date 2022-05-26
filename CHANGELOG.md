@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 instead of `ModuleNotFound`.
 - You can now set `-j 0` in `tango run` to disable multicore execution altogether.
 
+### Fixed
+
+- Improved how steps and workspaces handle race conditions when different processes are competing to execute the same step. This would result in a `RuntimeError` before with most workspaces, but now it's handled gracefully.
+
 ## [v0.8.0](https://github.com/allenai/tango/releases/tag/v0.8.0) - 2022-05-19
 
 ### Added

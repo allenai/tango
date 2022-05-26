@@ -11,6 +11,7 @@ import petname
 from sqlitedict import SqliteDict
 
 from tango.common import PathOrStr
+from tango.common.exceptions import StepStateError
 from tango.common.file_lock import FileLock
 from tango.common.logging import file_handler
 from tango.common.util import exception_to_string, utc_now_datetime
@@ -243,10 +244,11 @@ class LocalWorkspace(Workspace):
         # messing with locks.
         step_info = self.step_info(step)
         if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED}:
-            raise RuntimeError(
-                f"Step '{step.name}' is trying to start, but it is already {step_info.state}. "
-                "If you are certain the step is not running somewhere else, delete the lock "
-                f"file at {self._step_lock_file(step)}."
+            raise StepStateError(
+                step,
+                step_info.state,
+                context="If you are certain the step is not running somewhere else, delete the lock "
+                f"file at {self._step_lock_file(step)}.",
             )
 
         lock = FileLock(self._step_lock_file(step), read_only_ok=True)
@@ -275,7 +277,7 @@ class LocalWorkspace(Workspace):
 
         step_info = self.step_info(step)
         if step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step '{step.name}' is ending, but it never started.")
+            raise StepStateError(step, step_info.state)
 
         self.step_cache[step] = result
         if hasattr(result, "__next__"):
@@ -327,7 +329,7 @@ class LocalWorkspace(Workspace):
         try:
             step_info = self.step_info(step)
             if step_info.state != StepState.RUNNING:
-                raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
+                raise StepStateError(step, step_info.state)
             step_info.end_time = utc_now_datetime()
             step_info.error = exception_to_string(e)
             with SqliteDict(self.step_info_file) as d:

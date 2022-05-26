@@ -24,7 +24,7 @@ from typing import (
 )
 
 from tango.common.det_hash import CustomDetHash, det_hash
-from tango.common.exceptions import ConfigurationError
+from tango.common.exceptions import ConfigurationError, StepStateError
 from tango.common.from_params import (
     infer_constructor_params,
     infer_method_params,
@@ -524,22 +524,34 @@ class Step(Registrable, Generic[T]):
 
             workspace = default_workspace
 
-        if self.cache_results and self in workspace.step_cache:
-            if needed_by:
-                cli_logger.info(
-                    '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
-                    '(needed by "%s")...[/green]',
-                    self.name,
-                    needed_by.name,
-                )
-            else:
-                cli_logger.info(
-                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                    self.name,
-                )
-            return workspace.step_cache[self]
+        from tango.step_info import StepState
+
+        if not self.cache_results or self not in workspace.step_cache:
+            # Try running the step. It might get completed by a different tango process
+            # if there is a race, so we catch "StepStateError" and check if it's "COMPLETED"
+            # at that point.
+            try:
+                return self._run_with_work_dir(workspace, needed_by=needed_by)
+            except StepStateError as exc:
+                if exc.step_state != StepState.COMPLETED:
+                    raise
+                # Step has been completed (and cached) by a different process, so we
+                # do nothing here and pull the result from the cache below.
+
+        if needed_by:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
+                '(needed by "%s")...[/green]',
+                self.name,
+                needed_by.name,
+            )
         else:
-            return self._run_with_work_dir(workspace, needed_by=needed_by)
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+
+        return workspace.step_cache[self]
 
     def ensure_result(
         self,

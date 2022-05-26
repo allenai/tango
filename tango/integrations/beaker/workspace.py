@@ -9,6 +9,7 @@ from urllib.parse import ParseResult
 import petname
 from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, Digest
 
+from tango.common.exceptions import StepStateError
 from tango.common.file_lock import FileLock
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
@@ -108,10 +109,11 @@ class BeakerWorkspace(Workspace):
         self.locks[step] = lock
         step_info = self.step_info(step)
         if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
-            raise RuntimeError(
-                f"Step '{step.name}' is trying to start, but it is already {step_info.state}. "
-                f"If you are certain the step is not running somewhere else, delete the lock step info "
-                f"Beaker dataset at {self.beaker.dataset.url(step_dataset_name(step))}"
+            raise StepStateError(
+                step,
+                step_info.state,
+                context=f"If you are certain the step is not running somewhere else, delete the lock step info "
+                f"Beaker dataset at {self.beaker.dataset.url(step_dataset_name(step))}",
             )
 
         # Update StepInfo to mark as running.
@@ -133,7 +135,7 @@ class BeakerWorkspace(Workspace):
 
         step_info = self.step_info(step)
         if step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step '{step.name}' is ending, but it never started.")
+            raise StepStateError(step, step_info.state)
 
         # Update step info. This needs to be done *before* adding the result to the cache,
         # since adding the result to the cache will commit the step dataset, making it immutable.
@@ -160,7 +162,7 @@ class BeakerWorkspace(Workspace):
         try:
             step_info = self.step_info(step)
             if step_info.state != StepState.RUNNING:
-                raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
+                raise StepStateError(step, step_info.state)
             step_info.end_time = utc_now_datetime()
             step_info.error = exception_to_string(e)
             self._update_step_info(step_info)
