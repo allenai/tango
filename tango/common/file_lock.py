@@ -41,11 +41,11 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
                     "Race conditions are possible if other processes are writing to the same resource.",
                     UserWarning,
                 )
-                return None  # type: ignore[return-value]
+                return AcquireReturnProxy(self)
             else:
                 raise
 
-    def acquire_with_updates(self, desc: Optional[str] = None):
+    def acquire_with_updates(self, desc: Optional[str] = None) -> AcquireReturnProxy:
         """
         Same as :meth:`acquire()`, except that when the lock cannot be immediately acquired,
         it will keep trying and print status updates as it goes.
