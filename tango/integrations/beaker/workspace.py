@@ -10,14 +10,19 @@ import petname
 from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, Digest
 
 from tango.common.exceptions import StepStateError
-from tango.common.file_lock import FileLock
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_info import StepInfo, StepState
 from tango.workspace import Run, Workspace
 
-from .common import Constants, run_dataset_name, step_dataset_name
+from .common import (
+    BeakerLock,
+    Constants,
+    run_dataset_name,
+    step_dataset_name,
+    step_lock_dataset_name,
+)
 from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
@@ -42,7 +47,7 @@ class BeakerWorkspace(Workspace):
         self.beaker = Beaker.from_env(default_workspace=workspace, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
-        self.locks: Dict[Step, FileLock] = {}
+        self.locks: Dict[Step, BeakerLock] = {}
         self._step_info_cache: "OrderedDict[Digest, StepInfo]" = OrderedDict()
 
     @property
@@ -103,17 +108,21 @@ class BeakerWorkspace(Workspace):
         if not step.cache_results:
             return
 
+        # Get local file lock + remote Beaker dataset lock.
         lock_path = self.step_dir(step) / "lock"
-        lock = FileLock(lock_path, read_only_ok=True)
-        lock.acquire_with_updates(desc=f"acquiring lock for '{step.name}'")
+        lock_dataset = step_lock_dataset_name(step)
+        lock = BeakerLock(lock_path, self.beaker, lock_dataset, read_only_ok=True)
+        lock.acquire_with_updates(desc=f"acquiring lock for step '{step.name}'")
         self.locks[step] = lock
+
         step_info = self.step_info(step)
         if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
             raise StepStateError(
                 step,
                 step_info.state,
-                context=f"If you are certain the step is not running somewhere else, delete the lock step info "
-                f"Beaker dataset at {self.beaker.dataset.url(step_dataset_name(step))}",
+                context=f"If you are certain the step is not running somewhere else, delete the step "
+                f"datasets {self.beaker.dataset.url(step_dataset_name(step))} and "
+                f"{self.beaker.dataset.url(lock_dataset)}",
             )
 
         # Update StepInfo to mark as running.
@@ -124,8 +133,7 @@ class BeakerWorkspace(Workspace):
             step_info.result_location = None
             self._update_step_info(step_info)
         except:  # noqa: E722
-            lock.release()
-            del self.locks[step]
+            self.locks.pop(step).release()
             raise
 
     def step_finished(self, step: Step, result: T) -> T:

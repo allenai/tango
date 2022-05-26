@@ -81,27 +81,15 @@ class BeakerStepCache(LocalStepCache):
             cacheable = step.cache_results if isinstance(step, Step) else step.cacheable
             if not cacheable:
                 return False
-
-            key = step.unique_id
-
-            # First check if we have a copy in memory.
-            if key in self.strong_cache:
-                return True
-            if key in self.weak_cache:
-                return True
-
-            # Then check if we have a copy on disk in our cache directory.
-            with self._acquire_step_lock_file(step, read_only_ok=True):
-                if (self.step_dir(step) / Constants.STEP_RESULT_DIR).is_dir():
-                    return True
-
-            # If not, check Beaker for the corresponding dataset.
             return self._step_result_dataset(step) is not None
         else:
             return False
 
     def __getitem__(self, step: Union[Step, StepInfo]) -> Any:
         key = step.unique_id
+        dataset = self._step_result_dataset(step)
+        if dataset is None:
+            raise KeyError(step)
 
         # Try getting the result from our in-memory caches first.
         result = self._get_from_cache(key)
@@ -125,16 +113,14 @@ class BeakerStepCache(LocalStepCache):
             if self.step_dir(step).is_dir():
                 return load_and_return()
 
-            dataset = self._step_result_dataset(step)
-            if dataset is None:
-                raise KeyError(step)
-
             # We'll download the dataset to a temporary directory first, in case something goes wrong.
             temp_dir = tempfile.mkdtemp(dir=self.dir, prefix=key)
             try:
                 self.beaker.dataset.fetch(dataset, target=temp_dir, quiet=True)
                 # Download and extraction was successful, rename temp directory to final step result directory.
                 os.replace(temp_dir, self.step_dir(step))
+            except DatasetNotFound:
+                raise KeyError(step)
             finally:
                 shutil.rmtree(temp_dir, ignore_errors=True)
 

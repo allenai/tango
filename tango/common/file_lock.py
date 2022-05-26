@@ -4,7 +4,6 @@ from typing import Optional
 
 from filelock import AcquireReturnProxy
 from filelock import FileLock as _FileLock
-from filelock import Timeout
 
 from .aliases import PathOrStr
 
@@ -66,5 +65,5 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
             progress.update()
             try:
                 return self.acquire(timeout=1)
-            except Timeout:
+            except TimeoutError:
                 continue
