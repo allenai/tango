@@ -153,6 +153,8 @@ class BeakerStepCache(LocalStepCache):
         self._add_to_cache(step.unique_id, value)
 
     def __len__(self) -> int:
+        # NOTE: lock datasets should not count here. They start with the same prefix,
+        # but they never get committed.
         return sum(
             1
             for ds in self.beaker.workspace.datasets(
