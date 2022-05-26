@@ -247,6 +247,7 @@ class DatasetRemixStep(Step):
 
         from tango.common.logging import initialize_logging
         initialize_logging(enable_cli_logs=True)
+        import datasets
 
     .. testcode::
 
@@ -257,7 +258,7 @@ class DatasetRemixStep(Step):
             "crossval_test": "train[1:] + validation[:1]",
         }
         step = DatasetRemixStep()
-        remixed_dataset = step.run(input=dataset_dict, new_splits=new_splits)
+        remixed_dataset = step.run(input=input, new_splits=new_splits)
 
     .. testoutput::
         :hide:
