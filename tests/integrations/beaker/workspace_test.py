@@ -14,6 +14,7 @@ def test_direct_usage(beaker_workspace: str):
 
     step = FloatStep(step_name="float", result=1.0)
     run = workspace.register_run([step])
+    assert run.name in workspace.registered_runs()
 
     assert workspace.step_info(step).state == StepState.INCOMPLETE
     workspace.step_starting(step)

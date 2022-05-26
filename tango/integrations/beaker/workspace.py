@@ -2,14 +2,16 @@ import json
 import random
 import tempfile
 from collections import OrderedDict
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Optional, TypeVar, Union, cast
+from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
 from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, Digest
 
 from tango.common.exceptions import StepStateError
+from tango.common.logging import file_handler
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
 from tango.step_cache import StepCache
@@ -222,42 +224,71 @@ class BeakerWorkspace(Workspace):
 
             self.beaker.dataset.sync(run_dataset, tmp_dir / Constants.RUN_DATA_FNAME, quiet=True)
 
-        # Commit the run dataset. It won't need to change again.
-        self.beaker.dataset.commit(run_dataset)
-
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
 
     def registered_runs(self) -> Dict[str, Run]:
         runs: Dict[str, Run] = {}
         # TODO: do these requests concurrently
-        for dataset in self.beaker.workspace.datasets(uncommitted=False):
+        for dataset in self.beaker.workspace.datasets(
+            match=Constants.RUN_DATASET_PREFIX, results=False
+        ):
             if dataset.name is None:
                 continue
             if dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
                 run = self._get_run_from_dataset(dataset)
-                runs[run.name] = run
+                if run is not None:
+                    runs[run.name] = run
         return runs
 
     def registered_run(self, name: str) -> Run:
+        err_msg = f"Run '{name}' not found in workspace"
+
         try:
             dataset_for_run = self.beaker.dataset.get(run_dataset_name(name))
+            # Make sure the run is in our workspace.
             if dataset_for_run.workspace_ref.id != self.beaker.workspace.get().id:
                 raise DatasetNotFound
         except DatasetNotFound:
-            raise KeyError(f"Run '{name}' not found in workspace")
-        return self._get_run_from_dataset(dataset_for_run)
+            raise KeyError(err_msg)
 
-    def _get_run_from_dataset(self, dataset: Dataset) -> Run:
-        assert dataset.name is not None
-        run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
-        steps: Dict[str, StepInfo] = {}
-        steps_info_bytes = b"".join(
-            self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True)
-        )
-        steps_info = json.loads(steps_info_bytes)
+        run = self._get_run_from_dataset(dataset_for_run)
+        if run is None:
+            raise KeyError(err_msg)
+        else:
+            return run
+
+    @contextmanager
+    def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            log_file = Path(tmp_dir_name) / "out.log"
+            try:
+                with file_handler(log_file):
+                    yield None
+            finally:
+                run_dataset = run_dataset_name(name)
+                self.beaker.dataset.sync(run_dataset, log_file, quiet=True)
+                self.beaker.dataset.commit(run_dataset)
+
+    def _get_run_from_dataset(self, dataset: Dataset) -> Optional[Run]:
+        if dataset.name is None:
+            return None
+        if not dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
+            return None
+
+        try:
+            run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
+            steps: Dict[str, StepInfo] = {}
+            steps_info_bytes = b"".join(
+                self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True)
+            )
+            steps_info = json.loads(steps_info_bytes)
+        except (DatasetNotFound, FileNotFoundError):
+            return None
+
         # TODO: do these requests concurrently
         for step_name, unique_id in steps_info.items():
             steps[step_name] = self.step_info(unique_id)
+
         return Run(name=run_name, start_date=dataset.created, steps=steps)
 
     def _get_or_set_step_info(self, step: Step) -> StepInfo:
