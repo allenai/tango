@@ -167,12 +167,10 @@ class BeakerStepCache(LocalStepCache):
         self._add_to_cache(step.unique_id, value)
 
     def __len__(self) -> int:
-        return len(
-            [
-                ds
+        return sum(
+                1
                 for ds in self.beaker.workspace.datasets(
                     uncommitted=False, match=Constants.STEP_DATASET_PREFIX
                 )
                 if ds.name is not None and ds.name.startswith(Constants.STEP_DATASET_PREFIX)
-            ]
         )
