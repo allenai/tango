@@ -43,18 +43,18 @@ Server started at http://localhost:8080/run/comic-heron
 [step print] ✓ Finished step "print"
 ✓ Finished run comic-heron
 
- ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
- ┃ Step Name   ┃ Status      ┃ Cached Result                                                                                                 ┃
- ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
- │ cos         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/CosineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk       │
- │ i_times_pi  │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/MultiplyStep-4SRzHCCqYGs2PLeT8LeL5ukrCWGJoiae     │
- │ i_times_sin │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/MultiplyStep-2ZG7wPj9WLn5PgpYyPVHw9Qg7VM1mhwf     │
- │ pow_e       │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/ExponentiateStep-1swPpNipP6HBSP5rKdNjEqbYAWNf4CdG │
- │ print       │ ✓ succeeded │ N/A                                                                                                           │
- │ sin         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/SineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk         │
- │ sub         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/SubtractionStep-4ygj1UyLk6TCVBxN7DWTCccbMa7M1C5v  │
- │ sum         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/AdditionStep-34AiXoyiPKADMUnhcBzFYd6JeMcgx4DP     │
- └─────────────┴─────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+ ┃ Step Name   ┃ Status      ┃ Cached Result                                                     ┃
+ ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+ │ cos         │ ✓ succeeded │ workspace/cache/CosineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk       │
+ │ i_times_pi  │ ✓ succeeded │ workspace/cache/MultiplyStep-4SRzHCCqYGs2PLeT8LeL5ukrCWGJoiae     │
+ │ i_times_sin │ ✓ succeeded │ workspace/cache/MultiplyStep-2ZG7wPj9WLn5PgpYyPVHw9Qg7VM1mhwf     │
+ │ pow_e       │ ✓ succeeded │ workspace/cache/ExponentiateStep-1swPpNipP6HBSP5rKdNjEqbYAWNf4CdG │
+ │ print       │ ✓ succeeded │ N/A                                                               │
+ │ sin         │ ✓ succeeded │ workspace/cache/SineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk         │
+ │ sub         │ ✓ succeeded │ workspace/cache/SubtractionStep-4ygj1UyLk6TCVBxN7DWTCccbMa7M1C5v  │
+ │ sum         │ ✓ succeeded │ workspace/cache/AdditionStep-34AiXoyiPKADMUnhcBzFYd6JeMcgx4DP     │
+ └─────────────┴─────────────┴───────────────────────────────────────────────────────────────────┘
                                                                  ✓ 8 succeeded
 
 Use your workspace to get the cached result of a step, e.g.
@@ -125,18 +125,18 @@ Server started at http://localhost:8080/run/right-amoeba
 [step print] ✓ Finished step "print"
 ✓ Finished run right-amoeba
 
- ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
- ┃ Step Name   ┃ Status      ┃ Cached Result                                                                                                 ┃
- ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
- │ cos         │ - not run   │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/CosineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk       │
- │ i_times_pi  │ - not run   │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/MultiplyStep-4SRzHCCqYGs2PLeT8LeL5ukrCWGJoiae     │
- │ i_times_sin │ - not run   │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/MultiplyStep-2ZG7wPj9WLn5PgpYyPVHw9Qg7VM1mhwf     │
- │ pow_e       │ - not run   │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/ExponentiateStep-1swPpNipP6HBSP5rKdNjEqbYAWNf4CdG │
- │ print       │ ✓ succeeded │ N/A                                                                                                           │
- │ sin         │ - not run   │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/SineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk         │
- │ sub         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/SubtractionStep-42mdcQBtrNAYvxYhmzdd1vj2uCG8N5Yf  │
- │ sum         │ ✓ succeeded │ /Users/dirkg/Documents/tango/examples/euler/workspace/cache/AdditionStep-002-34AiXoyiPKADMUnhcBzFYd6JeMcgx4DP │
- └─────────────┴─────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+ ┃ Step Name   ┃ Status      ┃ Cached Result                                                     ┃
+ ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+ │ cos         │ - not run   │ workspace/cache/CosineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk       │
+ │ i_times_pi  │ - not run   │ workspace/cache/MultiplyStep-4SRzHCCqYGs2PLeT8LeL5ukrCWGJoiae     │
+ │ i_times_sin │ - not run   │ workspace/cache/MultiplyStep-2ZG7wPj9WLn5PgpYyPVHw9Qg7VM1mhwf     │
+ │ pow_e       │ - not run   │ workspace/cache/ExponentiateStep-1swPpNipP6HBSP5rKdNjEqbYAWNf4CdG │
+ │ print       │ ✓ succeeded │ N/A                                                               │
+ │ sin         │ - not run   │ workspace/cache/SineStep-5aes9CUTRmkz5gJ5J6JSRbJZ4qkFu4kk         │
+ │ sub         │ ✓ succeeded │ workspace/cache/SubtractionStep-42mdcQBtrNAYvxYhmzdd1vj2uCG8N5Yf  │
+ │ sum         │ ✓ succeeded │ workspace/cache/AdditionStep-002-34AiXoyiPKADMUnhcBzFYd6JeMcgx4DP │
+ └─────────────┴─────────────┴───────────────────────────────────────────────────────────────────┘
                                                            ✓ 3 succeeded, 5 not run
 
 Use your workspace to get the cached result of a step, e.g.
