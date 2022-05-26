@@ -23,10 +23,10 @@ You could run this with:
 """
 
 
-from pathlib import Path
-from typing import Any, List, Dict, Optional, TypeVar, Union, overload
 import random
 import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, TypeVar, Union, overload
 
 from tango.common.aliases import PathOrStr
 from tango.common.dataset_dict import DatasetDict, IterableDatasetDict
@@ -229,6 +229,7 @@ class ConcatenateDatasets(Step):
         """
         return ds.concatenate_datasets(datasets, info=info, split=split, axis=axis)
 
+
 @Step.register("datasets::dataset_remix")
 class DatasetRemixStep(Step):
     """
@@ -280,7 +281,7 @@ class DatasetRemixStep(Step):
         random_seed: int = 1532637578,
     ) -> ds.DatasetDict:
         """
-        Remixes and shuffles a dataset. This is done eagerly with native hugging face datasets features.
+        Remixes and shuffles a dataset. This is done eagerly with native 🤗 Datasets features.
 
         :param input:
             The input dataset that will be remixed.
@@ -307,7 +308,7 @@ class DatasetRemixStep(Step):
 
             If you need shuffled instances and you're slicing or concatenating splits, use this.
 
-            If you want to be on the safe side, shuffle both before and after. Shuffling is a cheap operation.
+            If you want to be on the safe side, shuffle both before and after.
         :param random_seed:
             Random seed, affects shuffling
 
@@ -325,7 +326,8 @@ class DatasetRemixStep(Step):
             else:
                 split_name = slice_match[1]
                 slice_args = [int(a) if len(a) > 0 else None for a in slice_match[2].split(":")]
-                return input[split_name].select(range(*slice(*slice_args).indices(len(input[split_name]))))
+                slice_indices = range(*slice(*slice_args).indices(len(input[split_name])))
+                return input[split_name].select(slice_indices)
 
         def parse_split_spec(split_spec: str):
             parts = [get_slice(name.strip()) for name in split_spec.split("+")]
