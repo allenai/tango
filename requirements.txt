@@ -18,6 +18,9 @@ glob2>=0.7
 petname>=2.6,<3.0
 pytz
 
+# Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
+protobuf<=3.20.0
+
 ##################################################
 ###### Extra dependencies for integrations #######
 ##################################################
@@ -35,3 +38,4 @@ fairscale==0.4.6             # needed by: fairscale
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers
+
