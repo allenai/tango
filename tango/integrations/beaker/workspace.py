@@ -227,17 +227,21 @@ class BeakerWorkspace(Workspace):
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
 
     def registered_runs(self) -> Dict[str, Run]:
+        import concurrent.futures
+
         runs: Dict[str, Run] = {}
-        # TODO: do these requests concurrently
-        for dataset in self.beaker.workspace.datasets(
-            match=Constants.RUN_DATASET_PREFIX, results=False
-        ):
-            if dataset.name is None:
-                continue
-            if dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
-                run = self._get_run_from_dataset(dataset)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            run_futures = []
+            for dataset in self.beaker.workspace.datasets(
+                match=Constants.RUN_DATASET_PREFIX, results=False
+            ):
+                run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
+            for future in concurrent.futures.as_completed(run_futures):
+                run = future.result()
                 if run is not None:
                     runs[run.name] = run
+
         return runs
 
     def registered_run(self, name: str) -> Run:
@@ -285,9 +289,14 @@ class BeakerWorkspace(Workspace):
         except (DatasetNotFound, FileNotFoundError):
             return None
 
-        # TODO: do these requests concurrently
-        for step_name, unique_id in steps_info.items():
-            steps[step_name] = self.step_info(unique_id)
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            step_info_futures = []
+            for step_name, unique_id in steps_info.items():
+                step_info_futures.append(executor.submit(self.step_info, unique_id))
+            for future in concurrent.futures.as_completed(step_info_futures):
+                steps[step_name] = future.result()
 
         return Run(name=run_name, start_date=dataset.created, steps=steps)
 
