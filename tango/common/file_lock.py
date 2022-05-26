@@ -52,7 +52,7 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
         """
         try:
             return self.acquire(timeout=0.1)
-        except Timeout:
+        except TimeoutError:
             pass
 
         from .tqdm import Tqdm
