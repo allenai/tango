@@ -267,9 +267,6 @@ class BeakerWorkspace(Workspace):
         except DatasetConflict:
             step_info_dataset = self.beaker.dataset.get(dataset_name)
 
-        if step_info_dataset.committed:
-            return
-
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             tmp_dir = Path(tmp_dir_name)
             step_info_path = tmp_dir / Constants.STEP_INFO_FNAME
