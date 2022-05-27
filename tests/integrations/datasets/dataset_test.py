@@ -3,6 +3,7 @@ import datasets
 from tango.common.sequences import MappedSequence
 from tango.common.testing import TangoTestCase
 from tango.integrations.datasets import (
+    DatasetRemixStep,
     DatasetsFormat,
     LoadDataset,
     convert_to_tango_dataset_dict,
@@ -50,3 +51,19 @@ def test_mapped_sequence_of_dataset():
     assert len(ds) == len(mapped_ds)
     assert ds[0]["goal"] == mapped_ds[0]
     assert ds[0]["goal"] == mapped_ds[:10][0]
+
+
+def test_datasets_dataset_remix():
+    dataset_dict = datasets.load_dataset("lhoestq/test")
+    step = DatasetRemixStep()
+    result = step.run(
+        input=dataset_dict,
+        new_splits={
+            "all": "train + validation",
+            "crossval_train": "train[:1] + validation[1:]",
+            "crossval_test": "train[1:] + validation[:1]",
+        },
+    )
+    assert len(result["all"]) == len(dataset_dict["train"]) + len(dataset_dict["validation"])
+    assert len(result["crossval_train"]) == 3
+    assert len(result["crossval_test"]) == 2

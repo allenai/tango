@@ -7,7 +7,7 @@ PyYAML>=5.4.1,<6.1
 dill
 base58
 xxhash
-filelock>=3.4,<3.7
+filelock>=3.4,<3.8
 click>=7.0,<8.1.4
 click-help-colors>=0.9.1,<0.10
 rich>=11.0,<13.0
@@ -17,6 +17,9 @@ sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
 pytz
+
+# Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
+protobuf<=3.20.0
 
 ##################################################
 ###### Extra dependencies for integrations #######
@@ -35,3 +38,4 @@ fairscale==0.4.6             # needed by: fairscale
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers
+
