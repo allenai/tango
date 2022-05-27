@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - If you try to import something from a tango integration that is not fully installed due to missing dependencies, an `IntegrationMissingError` will be raised
 instead of `ModuleNotFound`.
+- Fixed bug which caused GradScaler state to not be saved and loaded with checkpoints. 
 
 ### Added
 
