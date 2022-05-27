@@ -17,22 +17,10 @@ class DummyModel(Model):
         return self.linear(x)
 
 
-@pytest.mark.parametrize(
-    "amp",
-    (
-        pytest.param(
-            True,
-            id="amp=True",
-            marks=[
-                pytest.mark.gpu,
-                pytest.mark.skipif(torch.cuda.device_count() < 1, reason="Requires CUDA devices"),
-            ],
-        ),
-        pytest.param(False, id="amp=False"),
-    ),
-)
+@pytest.mark.gpu
+@pytest.mark.skipif(torch.cuda.device_count() < 1, reason="Requires CUDA devices")
 class TestTorchTrainingEngine(TangoTestCase):
-    def test_grad_scaler(self, amp: bool):
+    def test_grad_scaler(self):
         training_engine = TorchTrainingEngine.from_params(
             {
                 "train_config": {"step_id": "001", "work_dir": self.TEST_DIR},
@@ -40,15 +28,14 @@ class TestTorchTrainingEngine(TangoTestCase):
                     "type": "dummy_model",
                 },
                 "optimizer": {"type": "torch::Adam"},
-                "amp": amp,
+                "amp": "True",
             }
         )
 
-        if amp:
-            state_dict = {"training_steps": None}
-            training_engine.save_checkpoint(self.TEST_DIR, state_dict)
-            saved_grad_scaler = training_engine.grad_scaler
-            training_engine.load_checkpoint(self.TEST_DIR)
+        state_dict = {"training_steps": None}
+        training_engine.save_checkpoint(self.TEST_DIR, state_dict)
+        saved_grad_scaler = training_engine.grad_scaler
+        training_engine.load_checkpoint(self.TEST_DIR)
 
-            assert (self.TEST_DIR / "worker0_grad_scaler.pt").is_file()
-            assert training_engine.grad_scaler == saved_grad_scaler
+        assert (self.TEST_DIR / "worker0_grad_scaler.pt").is_file()
+        assert training_engine.grad_scaler == saved_grad_scaler
