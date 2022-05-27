@@ -28,7 +28,7 @@ class TestTorchTrainingEngine(TangoTestCase):
                     "type": "dummy_model",
                 },
                 "optimizer": {"type": "torch::Adam"},
-                "amp": "True",
+                "amp": True,
             }
         )
 
