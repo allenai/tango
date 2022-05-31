@@ -281,6 +281,8 @@ class TorchTrainingEngine(TrainingEngine):
         save_state(self.optimizer.state_dict(), "optimizer"),
         if self.lr_scheduler is not None:
             save_state(self.lr_scheduler.state_dict(), "lr_scheduler")
+        if self.grad_scaler is not None:
+            save_state(self.grad_scaler.state_dict(), "grad_scaler")
         save_state(client_state, "trainer")
 
     def load_checkpoint(self, checkpoint_dir: Path) -> Dict[str, Any]:
@@ -293,6 +295,10 @@ class TorchTrainingEngine(TrainingEngine):
         if self.lr_scheduler is not None:
             self.lr_scheduler.load_state_dict(
                 torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_lr_scheduler.pt")
+            )
+        if self.grad_scaler is not None:
+            self.grad_scaler.load_state_dict(
+                torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_grad_scaler.pt")
             )
         return torch.load(checkpoint_dir / f"worker{self.train_config.worker_id}_trainer.pt")
 
