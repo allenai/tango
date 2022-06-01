@@ -19,11 +19,11 @@ from tango.step_info import StepInfo, StepState
 from tango.workspace import Run, Workspace
 
 from .common import (
-    BeakerLock,
+    BeakerStepLock,
     Constants,
+    dataset_url,
     run_dataset_name,
     step_dataset_name,
-    step_lock_dataset_name,
 )
 from .step_cache import BeakerStepCache
 
@@ -49,7 +49,7 @@ class BeakerWorkspace(Workspace):
         self.beaker = Beaker.from_env(default_workspace=workspace, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
-        self.locks: Dict[Step, BeakerLock] = {}
+        self.locks: Dict[Step, BeakerStepLock] = {}
         self._step_info_cache: "OrderedDict[Digest, StepInfo]" = OrderedDict()
 
     @property
@@ -111,10 +111,8 @@ class BeakerWorkspace(Workspace):
             return
 
         # Get local file lock + remote Beaker dataset lock.
-        lock_path = self.step_dir(step) / "lock"
-        lock_dataset = step_lock_dataset_name(step)
-        lock = BeakerLock(lock_path, self.beaker, lock_dataset, read_only_ok=True)
-        lock.acquire_with_updates(desc=f"acquiring lock for step '{step.name}'")
+        lock = BeakerStepLock(self.beaker, step)
+        lock.acquire()
         self.locks[step] = lock
 
         step_info = self.step_info(step)
@@ -123,8 +121,7 @@ class BeakerWorkspace(Workspace):
                 step,
                 step_info.state,
                 context=f"If you are certain the step is not running somewhere else, delete the step "
-                f"datasets {self.beaker.dataset.url(step_dataset_name(step))} and "
-                f"{self.beaker.dataset.url(lock_dataset)}",
+                f"datasets at {dataset_url(self.beaker.workspace.url(), step_dataset_name(step))}",
             )
 
         # Update StepInfo to mark as running.

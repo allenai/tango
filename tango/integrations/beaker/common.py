@@ -1,13 +1,14 @@
+import logging
 import time
+import urllib.parse
 from typing import Optional, Union
 
-from beaker import Beaker, Dataset, DatasetConflict
-from filelock import AcquireReturnProxy
+from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound
 
-from tango.common.aliases import PathOrStr
-from tango.common.file_lock import FileLock
 from tango.step import Step
 from tango.step_info import StepInfo
+
+logger = logging.getLogger(__name__)
 
 
 class Constants:
@@ -30,31 +31,67 @@ def run_dataset_name(name: str) -> str:
     return f"{Constants.RUN_DATASET_PREFIX}{name}"
 
 
-class BeakerLock(FileLock):
-    def __init__(self, lock_file: PathOrStr, beaker: Beaker, lock_dataset: str, **kwargs):
-        super().__init__(lock_file, **kwargs)
-        self._beaker = beaker
-        self._lock_dataset_name = lock_dataset
-        self._lock_dataset: Optional[Dataset] = None
+def dataset_url(workspace_url: str, dataset_name: str) -> str:
+    return (
+        workspace_url
+        + "/datasets?"
+        + urllib.parse.urlencode(
+            {
+                "text": dataset_name,
+                "committed": "false",
+            }
+        )
+    )
 
-    def acquire(self, timeout=None, poll_interval=0.05) -> AcquireReturnProxy:
+
+class BeakerStepLock:
+    def __init__(self, beaker: Beaker, step: Union[str, StepInfo, Step], **kwargs):
+        self._beaker = beaker
+        self._step_id = step if isinstance(step, str) else step.unique_id
+        self._lock_dataset_name = step_lock_dataset_name(step)
+        self._lock_dataset: Optional[Dataset] = None
+        self.lock_dataset_url = dataset_url(beaker.workspace.url(), self._lock_dataset_name)
+
+    def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
+        if self._lock_dataset is not None:
+            return
         start = time.monotonic()
+        last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._beaker.dataset.create(self._lock_dataset_name)
+                self._lock_dataset = self._beaker.dataset.create(
+                    self._lock_dataset_name, commit=False
+                )
             except DatasetConflict:
+                if last_logged is None or last_logged - start >= log_interval:
+                    logger.info(
+                        "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
+                        "This probably means the step is being run elsewhere, but if you're sure it isn't "
+                        "you can just delete the lock dataset.",
+                        self._step_id,
+                        self.lock_dataset_url,
+                    )
+                    last_logged = time.monotonic()
+                time.sleep(poll_interval)
                 continue
             else:
                 break
         else:
             raise TimeoutError(
-                f"Timeout error waiting to acquire dataset lock "
-                f"{self._beaker.dataset.url(self.lock_dataset_name)}"
+                f"Timeout error occurred while waiting to acquire dataset lock for step '{self._step_id}':\n\n"
+                f"{self.lock_dataset_url}\n\n"
+                f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
+                f"just delete the lock dataset."
             )
-        return super().acquire(timeout=timeout, poll_interval=poll_interval)
 
-    def release(self, force: bool = False):
+    def release(self):
         if self._lock_dataset is not None:
-            self._beaker.dataset.delete(self._lock_dataset)
+            try:
+                self._beaker.dataset.delete(self._lock_dataset)
+            except DatasetNotFound:
+                # Dataset must have been manually deleted.
+                pass
             self._lock_dataset = None
-        super().release(force=force)
+
+    def __del__(self):
+        self.release()
