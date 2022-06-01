@@ -7,15 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added a [Beaker](https://beaker.org) integration that comes with `BeakerWorkspace`, a remote `Workspace` implementation that uses Beaker Datasets under the hood.
+- Added a `datasets::dataset_remix` step that provides the split remixing functionality of `tango.steps.datasest_remix.DatasetRemixStep` now for Huggingface `DatasetDict`.
+
 ### Changed
 
 - If you try to import something from a tango integration that is not fully installed due to missing dependencies, an `IntegrationMissingError` will be raised
 instead of `ModuleNotFound`.
+- You can now set `-j 0` in `tango run` to disable multicore execution altogether.
+
+### Fixed
+
+- Improved how steps and workspaces handle race conditions when different processes are competing to execute the same step. This would result in a `RuntimeError` before with most workspaces, but now it's handled gracefully.
 - Fixed bug which caused GradScaler state to not be saved and loaded with checkpoints. 
 
-### Added
-
-- Added a `datasets::dataset_remix` step that provides the split remixing functionality of `tango.steps.datasest_remix.DatasetRemixStep` now for Huggingface `DatasetDict`.
 
 ## [v0.8.0](https://github.com/allenai/tango/releases/tag/v0.8.0) - 2022-05-19
 

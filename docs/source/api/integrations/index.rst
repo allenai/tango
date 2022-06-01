@@ -13,3 +13,4 @@ Integrations
    transformers
    wandb
    pytorch_lightning
+   beaker
