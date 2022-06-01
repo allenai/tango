@@ -15,6 +15,7 @@ instead of `ModuleNotFound`.
 ### Added
 
 - Added a `datasets::dataset_remix` step that provides the split remixing functionality of `tango.steps.datasest_remix.DatasetRemixStep` now for Huggingface `DatasetDict`.
+- Added a config and code example of Registrable to the First Step docs with edits for clarity
 
 ## [v0.8.0](https://github.com/allenai/tango/releases/tag/v0.8.0) - 2022-05-19
 
