@@ -372,9 +372,9 @@ This is also very useful when you're writing a step that requires a certain type
 
 ```python
 from tango import Step
-from tango.common import FromParams, Registerable
+from tango.common import FromParams, Registrable
 
-class Model(torch.nn.Module, Registerable):
+class Model(torch.nn.Module, Registrable):
     ...
 
 @Model.register("variant1")
