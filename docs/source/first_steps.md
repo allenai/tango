@@ -362,25 +362,6 @@ class FooStep(Step):
         return sum([bar.x for bar in bars]) + baz.bar.x
 ```
 
-And the corresponding config could look like this:
-
-```json
-{
-  "steps": {
-    "foo": {
-      "type": "foo",
-      "bars": [
-        {"x":1},
-        {"x":2}
-      ],
-      "baz": {
-        "bar": {"x": 3}
-      }
-    }
-  }
-}
-```
-
 ### `Registrable`
 
 The {class}`~tango.common.registrable.Registrable` class is a special kind of {class}`~tango.common.from_params.FromParams` class that allows you specify from the config which subclass of an expected class to deserialize into.
