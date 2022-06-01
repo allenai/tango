@@ -8,6 +8,7 @@ from urllib.parse import ParseResult
 import pytz
 import wandb
 
+from tango.common.exceptions import StepStateError
 from tango.common.file_lock import FileLock
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
@@ -143,10 +144,11 @@ class WandbWorkspace(Workspace):
 
         step_info = self._get_updated_step_info(step.unique_id) or StepInfo.new_from_step(step)
         if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
-            raise RuntimeError(
-                f"Step '{step.name}' is trying to start, but it is already {step_info.state}. "
-                "If you are certain the step is not running somewhere else, delete the lock "
-                f"file at {lock_path}."
+            raise StepStateError(
+                step,
+                step_info.state,
+                context="If you are certain the step is not running somewhere else, delete the lock "
+                f"file at {lock_path}.",
             )
 
         try:
@@ -252,7 +254,7 @@ class WandbWorkspace(Workspace):
         try:
             # Update StepInfo, marking the step as failed.
             if step_info.state != StepState.RUNNING:
-                raise RuntimeError(f"Step '{step.name}' is failing, but it never started.")
+                raise StepStateError(step, step_info.state)
             step_info.end_time = utc_now_datetime()
             step_info.error = exception_to_string(e)
             wandb.run.config.update({"step_info": step_info.to_json_dict()}, allow_val_change=True)

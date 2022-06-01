@@ -66,6 +66,7 @@ intersphinx_mapping = {
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     "datasets": ("https://huggingface.co/docs/datasets/master/en", None),
     "transformers": ("https://huggingface.co/docs/transformers/master/en", None),
+    "beaker": ("https://beaker-py.readthedocs.io/en/latest/", None),
 }
 
 # Tell myst-parser to assign header anchors for h1-h3.

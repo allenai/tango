@@ -95,6 +95,7 @@ class Workspace(Registrable):
         return out
 
     @property
+    @abstractmethod
     def url(self) -> str:
         """
         Get a URL for the workspace that can be used to instantiate the same workspace
@@ -167,6 +168,8 @@ class Workspace(Registrable):
         The :class:`.Step` class calls this when a step is about to start running.
 
         :param step: The step that is about to start.
+
+        :raises StepStateError: If the step is in an unexpected state (e.g. RUNNING).
         """
         raise NotImplementedError()
 
@@ -176,6 +179,8 @@ class Workspace(Registrable):
         The :class:`.Step` class calls this when a step finished running.
 
         :param step: The step that finished.
+
+        :raises StepStateError: If the step is in an unexpected state (e.g. RUNNING).
 
         This method is given the result of the step's :meth:`.Step.run` method. It is expected to return that
         result. This gives it the opportunity to make changes to the result if necessary. For example, if the
@@ -191,6 +196,8 @@ class Workspace(Registrable):
 
         :param step: The step that failed.
         :param e: The exception thrown by the step's :meth:`.Step.run` method.
+
+        :raises StepStateError: If the step is in an unexpected state (e.g. RUNNING).
         """
         raise NotImplementedError()
 

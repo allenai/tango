@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -149,16 +150,19 @@ class StepInfo:
         """
         Generates a JSON-safe, human-readable, dictionary representation of this dataclass.
         """
-        return {
-            k: (
-                v.strftime("%Y-%m-%dT%H:%M:%S")
-                if isinstance(v, datetime)
-                else list(v)
-                if isinstance(v, set)
-                else v
+        return OrderedDict(
+            (
+                k,
+                (
+                    v.strftime("%Y-%m-%dT%H:%M:%S")
+                    if isinstance(v, datetime)
+                    else list(v)
+                    if isinstance(v, set)
+                    else v
+                ),
             )
-            for k, v in asdict(self).items()
-        }
+            for k, v in sorted(asdict(self).items(), key=lambda x: x[0])
+        )
 
     @classmethod
     def from_json_dict(cls, json_dict: Dict[str, Any]) -> "StepInfo":

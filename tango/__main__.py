@@ -682,6 +682,8 @@ def _run(
             # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
             logger.warning("Debugger detected, disabling multicore.")
             multicore = False
+        elif parallelism <= 0:
+            multicore = False
         else:
             multicore = True
 
@@ -822,7 +824,7 @@ def _display_run_results(
             "\n".join(
                 [
                     ">>> from tango import Workspace",
-                    ">>> workspace = Workspace.from_url(...)",
+                    f'>>> workspace = Workspace.from_url("{workspace.url}")',
                     f'>>> workspace.step_result_for_run("{run.name}", "{last_cached_step}")',
                 ]
             ),
