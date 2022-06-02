@@ -109,6 +109,12 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/wandb tests/integrations/wandb
 
+          - name: Beaker integration
+            extras: dev,beaker
+            requires_torch: false
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/beaker tests/integrations/beaker
+
           - name: Example - train_lm
             extras: dev,all
             requires_torch: true
