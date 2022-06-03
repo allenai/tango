@@ -19,7 +19,7 @@ petname>=2.6,<3.0
 pytz
 
 # Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
-protobuf<=3.20.0
+protobuf<4.22.0
 
 ##################################################
 ###### Extra dependencies for integrations #######
