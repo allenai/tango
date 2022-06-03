@@ -364,16 +364,48 @@ class FooStep(Step):
 
 ### `Registrable`
 
-The {class}`~tango.common.registrable.Registrable` class is special kind of {class}`~tango.common.from_params.FromParams` class that allows you to deserialize
-any subclass of the expected class from a config.
+The {class}`~tango.common.registrable.Registrable` class is a special kind of {class}`~tango.common.from_params.FromParams` class that allows you to specify from the config which subclass of an expected class to deserialize into.
 
-We've already come across this, actually, because {class}`~tango.step.Step` inherits from `Registrable`, which is why Tango is able to instantiate specific `Step` subclasses from a config.
+This is actually how we've been instantiating specific `Step` subclasses. Because {class}`~tango.step.Step` inherits from {class}`~tango.common.registrable.Registrable`, we can use the `"type"` fields in the config file to specify a `Step` subclass.
 
-This is very useful when you're writing a step that requires a certain type as input, but you want to be able to change the exact subclass of the type from your configuration file.
-For example, the {class}`~tango.integrations.torch.TorchTrainStep` step takes several `Registrable` base classes as input such as {class}`~tango.integrations.torch.Model` and
-{class}`~tango.integrations.torch.Optimizer`, so that the user can decide which exact `Model` and `Optimizer` implementation to use.
+This is also very useful when you're writing a step that requires a certain type as input, but you want to be able to change the exact subclass of the type from your config file. For example, the {class}`~tango.integrations.torch.TorchTrainStep` takes `Registrable` inputs such as {class}`~tango.integrations.torch.Model`. Model variants can then be subclasses that are specified in the config file by their registered names. A sketch of this might look like the following: 
 
-In order to specify which subclass to deserialize to, you just need to add the `"type": "..."` field to the corresponding section of the JSON/Jsonnet/YAML config.
-The value for "type" can either be the name that the class is registered under (e.g. "torch::train" for `TorchTrainStep`), or the fully qualified class name (e.g. `tango.integrations.torch.TorchTrainStep`).
+```python
+from tango import Step
+from tango.common import FromParams, Registrable
+
+class Model(torch.nn.Module, Registrable):
+    ...
+
+@Model.register("variant1")
+class Variant1(Model):
+    ...
+
+@Model.register("variant2")
+class Variant2(Model):
+    ...
+
+@Step.register("torch::train")
+class TorchTrainerStep(Step):
+    def run(self, model: Model, ...) -> Model:
+        ...
+```
+
+And a sketch of the config file would be something like this:
+
+```json
+{
+  "steps": {
+    "train": {
+      "type": "torch::train",
+      "model": {
+        "type": "variant1",
+      }
+    }
+  }
+}
+```
+
+As in the `FromParams` example the specifications can be nested, but now we also denote the subclass with the `"type": "..."` field. To swap models we need only change "variant1" to "variant2" in the config. The value for "type" can either be the name that the class is registered under (e.g. "train" for `TorchTrainStep`), or the fully qualified class name (e.g. `tango.integrations.torch.TorchTrainStep`).
 
 You'll see more examples of this in the [next section](examples/index).
