@@ -105,7 +105,7 @@ class BeakerWorkspace(Workspace):
         except (DatasetNotFound, FileNotFoundError):
             if not isinstance(step_or_unique_id, Step):
                 raise KeyError(step_or_unique_id)
-            step_info = StepInfo.new_from_step(step)
+            step_info = StepInfo.new_from_step(step_or_unique_id)
             self._update_step_info(step_info)
             return step_info
 
