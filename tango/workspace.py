@@ -158,7 +158,10 @@ class Workspace(Registrable):
         """
         Returns a :class:`~tango.step_info.StepInfo` for a given step.
 
-        :raises KeyError: If the step has not been registered as part of a run yet.
+        :raises KeyError: If the corresponding step info cannot be found or created.
+            This should never happen if you pass a :class:`~tango.step.Step` object to this method
+            since a :class:`~tango.step_info.StepInfo` can always be created from a
+            :class:`~tango.step.Step`.
         """
         raise NotImplementedError()
 
