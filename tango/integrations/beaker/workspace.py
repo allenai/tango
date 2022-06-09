@@ -103,7 +103,11 @@ class BeakerWorkspace(Workspace):
                 self._step_info_cache.popitem(last=False)
             return step_info
         except (DatasetNotFound, FileNotFoundError):
-            raise KeyError(step_or_unique_id)
+            if not isinstance(step_or_unique_id, Step):
+                raise KeyError(step_or_unique_id)
+            step_info = StepInfo.new_from_step(step_or_unique_id)
+            self._update_step_info(step_info)
+            return step_info
 
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
@@ -212,7 +216,7 @@ class BeakerWorkspace(Workspace):
                 if step.name is None:
                     continue
 
-                step_info = self._get_or_set_step_info(step)
+                step_info = self.step_info(step)
                 steps[step.name] = step_info
                 run_data[step.name] = step.unique_id
 
@@ -296,14 +300,6 @@ class BeakerWorkspace(Workspace):
                 steps[step_name] = future.result()
 
         return Run(name=run_name, start_date=dataset.created, steps=steps)
-
-    def _get_or_set_step_info(self, step: Step) -> StepInfo:
-        try:
-            return self.step_info(step)
-        except KeyError:
-            step_info = StepInfo.new_from_step(step)
-            self._update_step_info(step_info)
-            return step_info
 
     def _update_step_info(self, step_info: StepInfo):
         dataset_name = step_dataset_name(step_info)
