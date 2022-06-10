@@ -1,14 +1,11 @@
-# TODO: Define a Flax Data collator. It should accept input of type numpy and convert them into jax arrays in batches -
-#  we want this to be a generator function (similar to a data collator)
-
-from typing import Generic, TypeVar, Any
+from typing import Any, Generic, TypeVar
 
 import jax.numpy as jnp
 import jax.random
-import numpy as np
+
+from flax.training.common_utils import shard
 
 from tango.common.registrable import Registrable
-from .util import GetPRNGkey
 
 T = TypeVar("T")
 
@@ -18,29 +15,44 @@ class DataLoader(Generic[T], Registrable):
     A :class:`~tango.common.Registrable` which  will take in dataset and act as a dataloader for Flax models.
     """
 
-
-@DataLoader.register("flax::numpy_dataloader")
-class NumpyLoader(DataLoader):
-    """
-    The class will take in dataset in form of numpy arrays and convert them into jax
-    device arrays.
-    """
-
-    def __init__(
-            self,
-            dataset: np.array,
-            batch_size: int,
-            drop_last: bool = True
-    ):
+    def __init__(self, dataset: Any, batch_size: int, drop_last: bool = True):
         self.dataset = dataset
         self.batch_size = batch_size
         self.drop_last = drop_last
 
-    def __call__(self):
-        rng = GetPRNGkey()
-        shuffled_idx = jax.random.permutation(rng, self.dataset.shape[0])
-        shuffled = self.dataset[[shuffled_idx]]
-        for i in range(len(shuffled) // self.batch_size):
-            batch = shuffled[i * self.batch_size: (i + 1) * self.batch_size]
+
+@DataLoader.register("flax::numpy_dataloader")
+class NumpyLoader(DataLoader):
+    """
+    The class will take in dataset in form of numpy arrays and convert them into batches of jax
+    device arrays.
+    """
+
+    def __call__(self, rng):
+        steps_per_epoch = len(self.dataset) // self.batch_size
+        perms = jax.random.permutation(rng, len(self.dataset))
+        perms = perms[: steps_per_epoch * self.batch_size]  # Skip incomplete batch.
+        perms = perms.reshape((steps_per_epoch, self.batch_size))
+        for perm in perms:
+            batch = self.dataset[perm]
             batch = jnp.array(batch)
+            batch = shard(batch)
+            yield batch
+
+
+@DataLoader.register("flax::dataset_dataloader")
+class DatasetLoader(DataLoader):
+    """
+    The class will take in Datasets object and covert it into batches of jax device arrays.
+    """
+
+    def __call__(self, rng):
+        steps_per_epoch = len(self.dataset) // self.batch_size
+        perms = jax.random.permutation(rng, len(self.dataset))
+        perms = perms[: steps_per_epoch * self.batch_size]  # Skip incomplete batch.
+        perms = perms.reshape((steps_per_epoch, self.batch_size))
+        for perm in perms:
+            batch = self.dataset[perm]
+            batch = {k: jnp.array(v) for k, v in batch.items()}
+            batch = shard(batch)
             yield batch

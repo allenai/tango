@@ -1,4 +1,5 @@
 from flax import linen as nn
+
 from tango.common.registrable import Registrable
 
 

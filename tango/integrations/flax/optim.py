@@ -1,6 +1,6 @@
-import optax
-
 from inspect import isfunction
+
+import optax
 
 from tango.common.registrable import Registrable
 
@@ -86,21 +86,13 @@ def scheduler_factory(scheduler_method):
 
 # Register all optimizers.
 for name, cls in optax._src.alias.__dict__.items():
-    if (
-            isfunction(cls)
-            and not name.startswith("_")
-            and cls.__annotations__
-    ):
+    if isfunction(cls) and not name.startswith("_") and cls.__annotations__:
         factory_func = optimizer_factory(cls)
         Optimizer.register("optax::" + name)(factory_func)
 
 # Register all learning rate schedulers.
 for name, cls in optax._src.schedule.__dict__.items():
-    if (
-            isfunction(cls)
-            and not name.startswith("_")
-            and cls.__annotations__
-    ):
+    if isfunction(cls) and not name.startswith("_") and cls.__annotations__:
         factory_func = scheduler_factory(cls)
         LRScheduler.register("optax::" + name)(factory_func)
 

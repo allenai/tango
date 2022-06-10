@@ -5,12 +5,7 @@ try:
 except ModuleNotFoundError:
     raise IntegrationMissingError("flax")
 
-__all__ = [
-    "DataLoader",
-    "LRScheduler",
-    "Model",
-    "Optimizer"
-]
+__all__ = ["DataLoader", "LRScheduler", "Model", "Optimizer"]
 
 from .data import DataLoader
 from .model import Model
