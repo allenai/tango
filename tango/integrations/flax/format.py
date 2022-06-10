@@ -22,6 +22,4 @@ class FlaxFormat(Format[T], Generic[T]):
         checkpoints.save_checkpoint(Path(dir), artifact, step)
 
     def read(self, dir: PathOrStr) -> T:
-        # can pass target state: matching object to rebuild via deserialized state-dict. If None, the deserialized
-        # state-dict is returned as-is.
         return checkpoints.restore_checkpoint(dir, target=None)
