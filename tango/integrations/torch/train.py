@@ -351,11 +351,6 @@ def _train(
     # Set random seeds.
     set_seed_all(config.seed)
 
-    # force torch to be deterministic
-    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-    torch.backends.cudnn.benchmark = False
-    torch.use_deterministic_algorithms(True)
-
     config.worker_id = worker_id
 
     if config.is_distributed and include_package:
