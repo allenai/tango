@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed non-deterministic behavior in `TorchTrainStep`.
 - Fixed bug in `BeakerWorkspace` where `.step_info(step)` would raise a `KeyError` if the step hasn't been registered as part of a run yet.
 
 ## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01
