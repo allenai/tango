@@ -233,7 +233,7 @@ class BeakerWorkspace(Workspace):
         runs: Dict[str, Run] = {}
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=50,
+            max_workers=3,
             thread_name_prefix="BeakerWorkspace.registered_runs()-"
         ) as executor:
             run_futures = []
@@ -296,7 +296,7 @@ class BeakerWorkspace(Workspace):
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=50,
+            max_workers=3,
             thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
         ) as executor:
             step_info_futures = []
