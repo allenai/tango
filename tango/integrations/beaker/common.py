@@ -64,7 +64,7 @@ class BeakerStepLock:
                 )
             except DatasetConflict:
                 if last_logged is None or last_logged - start >= log_interval:
-                    logger.info(
+                    logger.warning(
                         "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
                         "This probably means the step is being run elsewhere, but if you're sure it isn't "
                         "you can just delete the lock dataset.",
