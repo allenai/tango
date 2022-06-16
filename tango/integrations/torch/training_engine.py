@@ -2,7 +2,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, Union, cast
 
 import torch
 import torch.distributed as dist
@@ -35,7 +35,7 @@ class TrainingEngine(Registrable):
     def __init__(
         self,
         train_config: TrainConfig,
-        model: Lazy[Model],
+        model: Union[Model, Lazy[Model]],
         optimizer: Lazy[Optimizer],
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
@@ -47,8 +47,9 @@ class TrainingEngine(Registrable):
         if lr_scheduler is not None:
             self.lr_scheduler = self._construct_lr_scheduler(lr_scheduler)
 
-    def _construct_model(self, model: Lazy[Model]) -> Model:
-        model: Model = model.construct()
+    def _construct_model(self, model: Union[Model, Lazy[Model]]) -> Model:
+        if isinstance(model, Lazy):
+            model = model.construct()
         return model.to(self.train_config.worker_local_default_device)
 
     def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
@@ -142,7 +143,7 @@ class TorchTrainingEngine(TrainingEngine):
     def __init__(
         self,
         train_config: TrainConfig,
-        model: Lazy[Model],
+        model: Union[Model, Lazy[Model]],
         optimizer: Lazy[Optimizer],
         *,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
@@ -178,8 +179,9 @@ class TorchTrainingEngine(TrainingEngine):
 
         super().__init__(train_config, model, optimizer, lr_scheduler=lr_scheduler)
 
-    def _construct_model(self, model: Lazy[Model]) -> Model:
-        model: Model = model.construct()
+    def _construct_model(self, model: Union[Model, Lazy[Model]]) -> Model:
+        if isinstance(model, Lazy):
+            model = model.construct()
         model.to(self.train_config.worker_local_default_device)
         # Wrap model with DDP wrapper.
         if self.train_config.is_distributed:
