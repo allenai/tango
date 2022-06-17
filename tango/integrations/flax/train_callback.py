@@ -10,8 +10,7 @@ from .train_config import TrainConfig
 
 
 class TrainCallback(Registrable):
-    """
-    """
+    """ """
 
     def __init__(self, workspace: Workspace, train_config: TrainConfig) -> None:
         self.workspace = workspace

@@ -36,7 +36,7 @@ class FlaxTrainState:
 
     def update_state(self, batch, loss_fn):
         # call loss function with batch?
-        labels = batch.pop("labels")
+        # labels = batch.pop("labels")
         grad_fn = jax.value_and_grad(loss_fn)
         loss, grad = grad_fn(self.state.params)
         grad = jax.lax.pmean(grad, "batch")

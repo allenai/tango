@@ -81,14 +81,14 @@ def optimizer_factory(optim_method: Callable) -> Type[Callable]:
     def factory_func():
         return Optimizer(optim_method)
 
-    return factory_func
+    return factory_func()
 
 
 def scheduler_factory(scheduler_method: Callable) -> Type[Callable]:
-    def factory_func() -> LRScheduler:
+    def factory_func():
         return LRScheduler(scheduler_method)
 
-    return factory_func
+    return factory_func()
 
 
 # Register all optimizers.

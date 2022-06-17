@@ -1,4 +1,4 @@
-import logging
+# import logging
 from typing import Any, Dict, List, Optional, Union
 
 import flax.jax_utils
@@ -28,7 +28,7 @@ from .util import get_PRNGkey
 @Step.register("flax::train")
 class FlaxTrainStep(Step):
     """
-    A Flax training loop step.
+    A Flax training step.
     """
 
     DETERMINISTIC = True
@@ -37,8 +37,8 @@ class FlaxTrainStep(Step):
 
     def run(
         self,
-        dataset: Union[DatasetDictBase],
         model: Model,
+        dataset: Union[DatasetDictBase],
         optimizer: Lazy[Optimizer],
         train_dataloader: Lazy[FlaxDataLoader],
         *,
@@ -175,7 +175,7 @@ class FlaxTrainStep(Step):
         lr_scheduler: Optional[LRScheduler],
         dataset: DatasetDictBase,
         train_dataloader: Lazy[FlaxDataLoader],
-        validation_dataloader: Lazy[Optional[FlaxDataLoader]] = None,
+        validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     ) -> Model:
 
@@ -223,7 +223,6 @@ class FlaxTrainStep(Step):
                     )
 
         batch_loss: float = 0.0
-        best_batch_loss: float = 0.0
         val_metric: float = 0.0
         best_val_metric: float = 0.0
         start_step: int = 0
@@ -231,7 +230,6 @@ class FlaxTrainStep(Step):
         if initial_state is not None:
             val_metric = initial_state[f"val_{config.val_metric_name}"]
             best_val_metric = initial_state[f"best_{config.val_metric_name}"]
-            best_batch_loss = initial_state["best_batch_loss"]
             start_step = initial_state["training_epochs"]
 
         # Initialize callbacks
@@ -379,8 +377,6 @@ class FlaxTrainStep(Step):
         loss = train_state.eval_state(batch, logits_fn)
         metrics = jax.lax.pmean({"loss": loss}, axis_name="batch")
         return metrics
-
-    # checkpointing functions
 
     def save_checkpoint(self):
         raise NotImplementedError
