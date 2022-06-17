@@ -1,4 +1,5 @@
 from inspect import isfunction
+from typing import Callable, Type
 
 import optax
 
@@ -34,10 +35,10 @@ class Optimizer(Registrable):
             ...
     """
 
-    def __init__(self, optimizer):
+    def __init__(self, optimizer: Callable) -> None:
         self.optimizer = optimizer
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> optax.GradientTransformation:
         return self.optimizer(**kwargs)
 
 
@@ -69,19 +70,25 @@ class LRScheduler(Registrable):
             ...
     """
 
-    def __init__(self, scheduler):
+    def __init__(self, scheduler: Callable) -> None:
         self.scheduler = scheduler
 
     def __call__(self, **kwargs):
         return self.scheduler(**kwargs)
 
 
-def optimizer_factory(optim_method):
-    return Optimizer(optim_method)
+def optimizer_factory(optim_method: Callable) -> Type[Callable]:
+    def factory_func():
+        return Optimizer(optim_method)
+
+    return factory_func
 
 
-def scheduler_factory(scheduler_method):
-    return LRScheduler(scheduler_method)
+def scheduler_factory(scheduler_method: Callable) -> Type[Callable]:
+    def factory_func() -> LRScheduler:
+        return LRScheduler(scheduler_method)
+
+    return factory_func
 
 
 # Register all optimizers.

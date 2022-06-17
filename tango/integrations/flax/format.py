@@ -18,7 +18,7 @@ class FlaxFormat(Format[T], Generic[T]):
     VERSION = 2
 
     def write(self, artifact: T, dir: PathOrStr) -> None:
-        step = 100  # init with dummy value. Needs to be imported from Trainer
+        step = 100  # How to pass step?
         checkpoints.save_checkpoint(Path(dir), artifact, step)
 
     def read(self, dir: PathOrStr) -> T:
