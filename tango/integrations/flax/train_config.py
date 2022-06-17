@@ -104,5 +104,8 @@ class TrainConfig:
     Controls removal of stale checkpoints.
     """
 
+    def state_path(self) -> Path:
+        return self.work_dir / "checkpoint_state_latest"
+
     def should_log_this_step(self, step: int) -> bool:
         raise NotImplementedError

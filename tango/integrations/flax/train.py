@@ -1,4 +1,4 @@
-# import logging
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 import flax.jax_utils
@@ -61,8 +61,63 @@ class FlaxTrainStep(Step):
         """
         Run a basic training loop to train the ``model``.
 
-        # :param model:
-        #     The model to train.
+        :param model:
+            The model to train.
+        :param dataset:
+            The train and Optional val dataset.
+        :param optimizer:
+            Optimizer
+        :param train_dataloader:
+            dataloader object
+        :param lr_scheduler:
+            learning rate scheduling
+        :param train_split:
+            The name of the data split used for training in the ``dataset_dict``.
+            Default is "train".
+        :param validation_dataloader:
+            An optional data loader for generating validation batches. The batches should be
+            :class:`dict` objects. If not specified, but ``validation_split`` is given,
+            the validation ``DataLoader`` will be constructed from the same parameters
+            as the train ``DataLoader``.
+        :param validation_split:
+            Optional name of the validation split in the ``dataset_dict``. Default is ``None``,
+            which means no validation.
+        :param train_steps:
+            The number of steps to train for. If not specified training will
+            stop after a complete iteration through the ``train_dataloader``.
+        :param train_epoch:
+            The number of epochs to train for. You cannot specify ``train_steps`` and ``train_epochs``
+            at the same time.
+        :param validation_steps:
+            The number of steps to validate for. If not specified validation
+            will stop after a complete iteration through the ``validation_dataloader``.
+        :param log_every:
+            Log every this many steps.
+        :param checkpoint_every:
+            Save a checkpoint every this many steps.
+        :param validate_every:
+            Run the validation loop every this many steps.
+        :param val_metric_name:
+            The name of the validation metric, i.e. the key of the metric in the dictionary
+            returned by the forward pass of the model. Default is "loss".
+        :param minimize_val_metric:
+            Whether the validation metric is meant to be minimized (such as the loss).
+            Default is ``True``. When using a metric such as accuracy, you should set
+            this to ``False``.
+        :param auto_aggregate_val_metric:
+            If ``True`` (the default), the validation metric will be averaged across
+            validation batches and distributed processes. This may not be the correct
+            behavior for some metrics (such as F1), in which you should set this to
+            ``False`` and handle the aggregation internally in your model
+            or with a :class:`TrainCallback` (using :meth:`TrainCallback.post_val_batch()`).
+        :param callbacks:
+            A list of :class: `TrainCallback`.
+        :param remove_stale_checkpoints:
+            If ``True`` (the default), stale checkpoints will be removed throughout training so that
+            only the latest and best checkpoints are kept.
+
+        :returns:
+            The trained model with the best checkpoint loaded.
         """
 
         return self._train(
@@ -163,7 +218,6 @@ class FlaxTrainStep(Step):
         )
         assert final_model is not None
 
-        # return best checkpoint
         return final_model
 
     def train_helper(
@@ -179,13 +233,14 @@ class FlaxTrainStep(Step):
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     ) -> Model:
 
-        # logger = logging.getLogger(FlaxTrainStep.__name__)
+        logger = logging.getLogger(FlaxTrainStep.__name__)
 
-        train_state = FlaxTrainState(model, optimizer)
+        train_state = FlaxTrainState(model, optimizer, lr_scheduler)
 
         initial_state: Optional[Dict[str, Any]] = None
-
-        # TODO: recover from a previous run
+        if config.state_path.exists():
+            logger.info(f"Recovering from previous run at %s", config.state_path())
+            train_state.state = self.load_checkpoint(config.state_path())
 
         # construct data loaders
         validation_dataloader_: Optional[FlaxDataLoader] = None
@@ -251,19 +306,18 @@ class FlaxTrainStep(Step):
         del initial_state
 
         # Catch data loader up to where we left off before
-        # current_step: int = -1
         if start_step > 0:
             with Tqdm.tqdm(
                 train_dataloader,
                 desc=f"Catching dataloader upto step {start_step}",
                 total=start_step - 1,
             ) as batch_iter:
-                for step, (epoch, batch) in batch_iter:
+                for step, batch in enumerate(batch_iter):
                     del batch
                     if step >= start_step - 1:
                         break
 
-        # replicate state across devices
+        # replicate state across devices for distributed setting
         train_state.replicate_state()
         parallel_train_step = jax.pmap(self.train_step, axis_name="batch", donate_argnums=(0,))
         parallel_val_step = jax.pmap(self.val_step, axis_name="batch")
@@ -343,13 +397,11 @@ class FlaxTrainStep(Step):
 
                     val_metrics.append(parallel_val_step(state, batch))
 
-                    # store and checkpoint
-
                     for callback in callbacks:
                         callback.post_val_batch(step, val_step, epoch, batch)
 
                 epoch_eval_metrics = flax.jax_utils.unreplicate(val_metrics)
-                epoch_eval_metrics = get_metrics(val_metrics)
+                epoch_eval_metrics = get_metrics(epoch_eval_metrics)
                 epoch_eval_metrics = jax.tree_map(jnp.mean, epoch_eval_metrics)
 
                 for callback in callbacks:
@@ -359,22 +411,23 @@ class FlaxTrainStep(Step):
             epoch_train_metrics = get_metrics(train_metrics)
             epoch_train_metrics = jax.tree_map(jnp.mean, epoch_train_metrics)
 
+            logger.info("Train loss:", epoch_train_metrics)
+            logger.info("Val Loss: ", epoch_eval_metrics)
+
         for callback in callbacks:
             callback.post_train_loop(step, epoch)
 
-        # load best checkpoint and return
+        # TODO: Load the best checkpoint
         return model
 
     def train_step(self, train_state, batch, dropout_rng):
         dropout_rng, new_dropout_rng = get_PRNGkey(dropout_rng)
-        loss_fn = None  # TODO
-        loss = train_state.update_step(batch, loss_fn)
+        loss = train_state.update_state(batch, dropout_rng)
         metrics = jax.lax.pmean({"loss": loss}, axis_name="batch")
         return metrics, new_dropout_rng
 
     def val_step(self, train_state, batch):
-        logits_fn = None  # TODO
-        loss = train_state.eval_state(batch, logits_fn)
+        loss = train_state.eval_state(batch)
         metrics = jax.lax.pmean({"loss": loss}, axis_name="batch")
         return metrics
 
