@@ -1,18 +1,17 @@
-import logging
-from typing import Any, List, Callable
+from abc import abstractmethod
+from typing import Dict, Optional, Tuple
 
 import flax
 import jax
-from flax import struct
-from flax.training import train_state
+import jax.numpy as jnp
+import optax
+from flax.serialization import from_state_dict, to_state_dict
+from flax.training.train_state import TrainState
 
 from .model import Model
-from .optim import Optimizer, LRScheduler
-from .loss import LossFunction
+from .optim import LRScheduler, Optimizer
+from .util import get_PRNGkey
 
-class TrainState(train_state.TrainState):
-    logits_fn: Callable = struct.field(pytree_node=False)
-    loss_fn: Callable = struct.field(pytree_node=False)
 
 class FlaxTrainState:
     def __init__(
@@ -20,60 +19,95 @@ class FlaxTrainState:
         model: Model,
         optimizer: Optimizer,
         lr_scheduler: LRScheduler,
-        loss_fn: LossFunction
+        do_distributed: bool,
+        shape: Optional[list] = None,
     ):
         self.model = model
         self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler,
-        self.loss_fn = loss_fn
-        self.state = self.create_train_state()
-        self.devices = self._get_devices()
-        self.logger = logging.getLogger(FlaxTrainState.__name__)
+        self.lr_scheduler = (lr_scheduler,)
+        self.do_distributed = do_distributed
+        self.state = self.create_train_state(shape)
 
-    def _get_devices(self) -> List[Any]:
-        device_type = jax.default_backend()
-        self.devices = jax.devices()
-        device_count = len(self.devices)
-        self.logger.info("Training on %d %s", device_count, device_type)
-        return self.devices
+    # user defined
+    def compute_metrics(self, logits, labels):
 
-    def create_train_state(self):
+        def cross_entropy_loss(logits, labels):
+            labels_onehot = jax.nn.one_hot(labels, num_classes=10)
+            return optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
+
+        loss = cross_entropy_loss(logits=logits, labels=labels)
+        accuracy = jnp.mean(jnp.argmax(logits, -1) == labels)
+        metrics = {
+            "loss": loss,
+            "accuracy": accuracy,
+        }
+        return metrics
+
+    # user defined
+    def loss_fn(self, params, batch, dropout_rng):
+        """
+        Compute loss and metrics during train.
+        """
+
+        def compute_loss(logits, labels):
+            labels_onehot = jax.nn.one_hot(labels, num_classes=10)
+            loss = optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
+            return loss
+
+        labels = batch["label"]
+        logits = self.model.apply({"params": params}, batch["image"])
+        loss = compute_loss(logits, labels)
+        return loss, logits
+
+    # user defined
+    def eval_fn(self, params, batch) -> Tuple[jnp.ndarray, dict]:
+        """
+        Compute loss and metrics during eval.
+        """
+        logits = self.model.apply({"params": params}, batch["image"])
+        return logits
+
+    # class functions
+    def create_train_state(self, shape):
+        try:
+            params = self.model.params
+        except:
+            x = jnp.ones(shape)
+            params = self.model.init(get_PRNGkey(), x)["params"]
         self.state = TrainState.create(
-            apply_fn=self.model.__call__,
-            params=self.model.params,
-            tx=self.optimizer,
-            logits_fn=lambda logits: logits.argmax(-1),
-            loss_fn=self.loss_fn
+            apply_fn=self.model.__call__, params=params, tx=self.optimizer
         )
         return self.state
 
     def update_state(self, batch, dropout_rng):
-        labels = batch.pop("labels")
-
-        def loss_fn():
-            logits = self.state.apply_fn(**batch, params=self.state.params, dropout_rng=dropout_rng, train=True)[0]
-            loss = self.state.loss_fn(logits, labels)
-            return loss
-
-        grad_fn = jax.value_and_grad(loss_fn)
-        loss, grad = grad_fn(self.state.params)
-        grad = jax.lax.pmean(grad, "batch")
+        grad_fn = jax.value_and_grad(self.loss_fn, has_aux=True)
+        (_, logits), grad = grad_fn(self.state.params, batch, dropout_rng)
+        if self.do_distributed:
+            grad = jax.lax.pmean(grad, "batch")
         self.state = self.state.apply_gradients(grads=grad)
-        return self.state, loss
+        metrics = self.compute_metrics(logits=logits, labels=batch["label"])
+        if self.do_distributed:
+            metrics = jax.lax.pmean(metrics, axis_name="batch")
+        return metrics
 
-    def eval_state(self, batch):
-        logits = self.state.apply_fn(**batch, params=self.state.params, train=False)[0]
-        labels = batch.pop("labels")
-        loss = self.state.logits_fn(logits, labels)
-        return loss
+    def val_state(self, batch) -> Dict:
+        logits = self.eval_fn(self.model.params, batch)
+        metrics = self.compute_metrics(logits=logits, labels=batch["label"])
+        if self.do_distributed:
+            metrics = jax.lax.pmean(metrics, axis_name="batch")
+        return metrics
 
     def replicate_state(self):
-        self.state = flax.jax_utils.replicate(self.devices)
+        self.state = flax.jax_utils.replicate(self.state)
         return self.state
 
     def unreplicate_state(self):
         self.state = flax.jax_utils.unreplicate(self.state)
         return self.state
 
-    def save_state(self, step: int):
-        raise NotImplementedError
+    def load_state(self):
+        """
+        Loads the state from a file.
+        """
+        state = {}  # read file and load dict
+        from_state_dict(self.state, state)
