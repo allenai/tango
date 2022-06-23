@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug in `BeakerWorkspace` where it would send too many requests to the beaker service.
 - Fixed a bug where `WandbWorkspace.step_finished()` or `.step_failed()` would crash if called
   from a different process than `.step_starting()`.
+- Fixed a bug in `WandbWorkspace.step_finished()` which led to a `RuntimeError` sometimes while
+  caching the result of a step.
 
 
 ## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01

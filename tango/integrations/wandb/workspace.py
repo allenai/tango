@@ -17,7 +17,7 @@ from tango.step_info import StepInfo, StepState
 from tango.workspace import Run, Workspace
 
 from .step_cache import WandbStepCache
-from .util import ArtifactKind, RunKind, check_environment
+from .util import RunKind, check_environment
 
 T = TypeVar("T")
 
@@ -224,13 +224,7 @@ class WandbWorkspace(Workspace):
                     # Caching the iterator will consume it, so we write it to the
                     # cache and then read from the cache for the return value.
                     result = self.step_cache[step]
-                result_artifact = self.cache.get_step_result_artifact(step)
-                if result_artifact is None:
-                    raise RuntimeError(f"Failed to find step result artifact for {step.unique_id}")
-                step_info.result_location = (
-                    f"{self.wandb_project_url}/artifacts/{ArtifactKind.STEP_RESULT.value}"
-                    f"/{result_artifact._sequence_name}/{result_artifact.commit_hash}"
-                )
+                step_info.result_location = self.cache.get_step_result_artifact_url(step)
             else:
                 # Create an empty artifact in order to build the DAG in W&B.
                 self.cache.create_step_result_artifact(step)
