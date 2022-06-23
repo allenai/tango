@@ -210,7 +210,11 @@ class WandbWorkspace(Workspace):
                 f"Did you forget to call {self.__class__.__name__}.step_starting() first?"
             )
 
-        step_info = self._running_step_info.pop(step.unique_id)
+        step_info = self._running_step_info.get(step.unique_id) or self._get_updated_step_info(
+            step.unique_id
+        )
+        if step_info is None:
+            raise KeyError(step.unique_id)
 
         try:
             if step.cache_results:
@@ -239,6 +243,8 @@ class WandbWorkspace(Workspace):
         finally:
             self.locks[step].release()
             del self.locks[step]
+            if step.unique_id in self._running_step_info:
+                del self._running_step_info[step.unique_id]
 
         return result
 
@@ -249,7 +255,11 @@ class WandbWorkspace(Workspace):
                 f"Did you forget to call {self.__class__.__name__}.step_starting() first?"
             )
 
-        step_info = self._running_step_info.pop(step.unique_id)
+        step_info = self._running_step_info.get(step.unique_id) or self._get_updated_step_info(
+            step.unique_id
+        )
+        if step_info is None:
+            raise KeyError(step.unique_id)
 
         try:
             # Update StepInfo, marking the step as failed.
@@ -264,6 +274,8 @@ class WandbWorkspace(Workspace):
         finally:
             self.locks[step].release()
             del self.locks[step]
+            if step.unique_id in self._running_step_info:
+                del self._running_step_info[step.unique_id]
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         all_steps = set(targets)
