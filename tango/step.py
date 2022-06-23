@@ -358,22 +358,22 @@ class Step(Registrable, Generic[T]):
             dir_for_cleanup = TemporaryDirectory(prefix=f"{self.unique_id}-", suffix=".step_dir")
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
+        if needed_by:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                self.name,
+            )
+
+        workspace.step_starting(self)
+
         try:
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-
-            if needed_by:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
-                    self.name,
-                    needed_by.name,
-                )
-            else:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
-                    self.name,
-                )
-
-            workspace.step_starting(self)
 
             try:
                 result = self.run(**kwargs)

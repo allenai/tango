@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed non-deterministic behavior in `TorchTrainStep`.
 - Fixed bug in `BeakerWorkspace` where `.step_info(step)` would raise a `KeyError` if the step hasn't been registered as part of a run yet.
 - Fixed a bug in `BeakerWorkspace` where it would send too many requests to the beaker service.
+- Fixed a bug in how a `Step` calls `Workspace.step_starting()` and `Workspace.step_failed()`.
+  Previously, if `Workspace.step_starting()` failed, `Workspace.step_failed()` would be called,
+  which could lead to another error with the workspace, since some workspaces implicitly assume
+  that `.step_starting()` has been successfully called before `.step_failed()` is called.
 
 
 ## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01
