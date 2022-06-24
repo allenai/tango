@@ -377,12 +377,13 @@ class Step(Registrable, Generic[T]):
 
             try:
                 result = self.run(**kwargs)
-                result = workspace.step_finished(self, result)
-                cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
-                return result
             except BaseException as e:
                 workspace.step_failed(self, e)
                 raise
+
+            result = workspace.step_finished(self, result)
+            cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
+            return result
         finally:
             self._workspace = None
             self.work_dir_for_run = None

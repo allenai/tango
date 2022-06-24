@@ -281,7 +281,7 @@ class Registrable(FromParams):
                 + "If your registered class comes from custom code, you'll need to import "
                 "the corresponding modules. If you're using Tango or AllenNLP from the command-line, "
                 "this is done by using the '--include-package' flag, or by specifying your imports "
-                "in a '.allennlp_plugins' file. "
+                "in a 'tango.yml' settings file. "
                 "Alternatively, you can specify your choices "
                 """using fully-qualified paths, e.g. {"model": "my_module.models.MyModel"} """
                 "in which case they will be automatically imported correctly."

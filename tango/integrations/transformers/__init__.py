@@ -96,6 +96,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForTokenClassification::from_pretrained
             transformers::AutoModelForVision2Seq::from_config
             transformers::AutoModelForVision2Seq::from_pretrained
+            transformers::AutoModelForVisualQuestionAnswering::from_config
+            transformers::AutoModelForVisualQuestionAnswering::from_pretrained
             transformers::AutoModelWithLMHead::from_config
             transformers::AutoModelWithLMHead::from_pretrained
 
