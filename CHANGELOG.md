@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.9.1](https://github.com/allenai/tango/releases/tag/v0.9.1) - 2022-06-24
+
 ### Fixed
 
 - Fixed non-deterministic behavior in `TorchTrainStep`.
