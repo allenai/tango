@@ -565,7 +565,18 @@ class Step(Registrable, Generic[T]):
                 "It does not make sense to call ensure_result() on a step that's not cacheable."
             )
 
-        self.result(workspace)
+        if workspace is None:
+            from tango.workspaces import default_workspace
+
+            workspace = default_workspace
+
+        if self in workspace.step_cache:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+        else:
+            self.result(workspace)
 
     def _ordered_dependencies(self) -> Iterable["Step"]:
         def dependencies_internal(o: Any) -> Iterable[Step]:

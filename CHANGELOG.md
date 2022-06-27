@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Improved `Step.ensure_result()` such that the step's result doesn't have to be read from the cache.
+- Fixed an issue with the output from `MulticoreExecutor` such that it's now consistent with the default `Executor` for steps that were found in the cache.
 - One of our error messages referred to a configuration file that no longer exists.
 
 
