@@ -132,7 +132,6 @@ class TestRun(TangoTestCase):
         run_dir = next((self.TEST_DIR / "runs").iterdir())
         assert (run_dir / "hello").is_dir()
         assert (run_dir / "hello" / "cache-metadata.json").is_file()
-        assert (run_dir / "hello" / "execution-metadata.json").is_file()
         assert (run_dir / "hello_world").is_dir()
 
         # Check for requirements.txt file.
