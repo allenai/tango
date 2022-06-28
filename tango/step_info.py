@@ -1,13 +1,73 @@
-from collections import OrderedDict
-from dataclasses import asdict, dataclass
+import getpass
+import logging
+import os
+import platform
+import socket
+import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, Optional, Set
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pytz
 
-from .common.util import local_timezone
+from .common.from_params import FromParams
+from .common.util import jsonify, local_timezone, replace_steps_with_unique_id
 from .step import Step
+from .version import VERSION
+
+logger = logging.getLogger(__name__)
+
+
+def get_pip_packages() -> Optional[List[Tuple[str, str]]]:
+    """
+    Get the current working set of pip packages. Equivalent to running ``pip freeze``.
+    """
+    # Adapted from the Weights & Biases client library:
+    # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L56-L72
+    try:
+        import pkg_resources
+
+        return sorted([(d.key, d.version) for d in iter(pkg_resources.working_set)])
+    except Exception as exc:
+        logger.exception("Error saving pip packages: %s", exc)
+    return None
+
+
+def get_conda_env() -> Optional[Dict[str, Any]]:
+    """
+    Get the current conda environment. Equivalent to running ``conda env export``.
+    """
+    # Adapted from the Weights & Biases client library:
+    # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L74-L87
+    current_shell_is_conda = os.path.exists(os.path.join(sys.prefix, "conda-meta"))
+    if current_shell_is_conda:
+        import subprocess
+
+        import yaml
+
+        try:
+            result = subprocess.run(["conda", "env", "export"], capture_output=True)
+            if (
+                result.returncode != 0
+                and result.stderr is not None
+                and "Unable to determine environment" in result.stderr.decode()
+            ):
+                result = subprocess.run(
+                    ["conda", "env", "export", "-n", "base"], capture_output=True
+                )
+
+            if result.returncode != 0:
+                if result.stderr is not None:
+                    logger.exception("Error saving conda packages: %s", result.stderr.decode())
+                else:
+                    result.check_returncode()
+            elif result.stdout is not None:
+                return yaml.safe_load(result.stdout.decode())
+        except Exception as exc:
+            logger.exception("Error saving conda packages: %s", exc)
+    return None
 
 
 class StepState(Enum):
@@ -31,7 +91,126 @@ class StepState(Enum):
 
 
 @dataclass
-class StepInfo:
+class GitMetadata(FromParams):
+    commit: Optional[str] = None
+    """
+    The commit SHA of the current repo.
+    """
+
+    remote: Optional[str] = None
+    """
+    The URL of the primary remote.
+    """
+
+    @classmethod
+    def check_for_repo(cls) -> Optional["GitMetadata"]:
+        import subprocess
+
+        try:
+            commit = (
+                subprocess.check_output("git rev-parse HEAD".split(" "), stderr=subprocess.DEVNULL)
+                .decode("ascii")
+                .strip()
+            )
+            remote: Optional[str] = None
+            for line in (
+                subprocess.check_output("git remote -v".split(" "))
+                .decode("ascii")
+                .strip()
+                .split("\n")
+            ):
+                remotes: Dict[str, str] = {}
+                if line.endswith("(fetch)"):
+                    name, info = line.split("\t")
+                    url = info.split(" ")[0]
+                    remotes[name] = url
+                if "origin" in remotes:
+                    remote = remotes["origin"]
+                elif remotes:
+                    remote = list(remotes.values())[0]
+            return cls(commit=commit, remote=remote)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+
+
+@dataclass
+class TangoMetadata(FromParams):
+    version: str = VERSION
+    """
+    The tango release version.
+    """
+
+
+@dataclass
+class PlatformMetadata(FromParams):
+    operating_system: str = field(default_factory=platform.platform)
+    """
+    Full operating system name.
+    """
+
+    cpu_count: Optional[int] = field(default_factory=os.cpu_count)
+    """
+    Numbers of CPUs on the machine.
+    """
+
+    user: str = field(default_factory=getpass.getuser)
+    """
+    The user that ran this step.
+    """
+
+    host: str = field(default_factory=socket.gethostname)
+    """
+    Name of the host machine.
+    """
+
+
+@dataclass
+class EnvironmentMetadata(FromParams):
+    python: str = field(default_factory=platform.python_version)
+    """
+    The Python version.
+    """
+
+    executable: Path = field(default_factory=lambda: Path(sys.executable))
+    """
+    Path to the Python executable.
+    """
+
+    command: str = field(default_factory=lambda: " ".join(sys.argv))
+    """
+    The exact command used.
+    """
+
+    root: Path = field(default_factory=lambda: Path(os.getcwd()))
+    """
+    The root directory from where the Python executable was ran.
+    """
+
+    pip_packages: Optional[List[Tuple[str, str]]] = field(default_factory=get_pip_packages)
+    """
+    The current set of Python packages in the Python environment. Each entry is a tuple of strings.
+    The first element is the name of the package, the second element is the version.
+    """
+
+    conda_env: Optional[Dict[str, Any]] = field(default_factory=get_conda_env)
+    """
+    Captures the active conda environment. The object here is a dictionary form of a conda
+    environment YAML file.
+    """
+
+    git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
+    """
+    The :class:`GitMetadata`.
+    """
+
+    tango: Optional[TangoMetadata] = field(default_factory=TangoMetadata)
+    """
+    The :class:`TangoMetadata`.
+    """
+
+
+@dataclass
+class StepInfo(FromParams):
     """Stores step information without being the :class:`.Step` itself.
 
     It's not always possible to get a :class:`.Step` object, because :class:`.Step` objects can't be serialized.
@@ -102,6 +281,21 @@ class StepInfo:
     Location of the result. This could be a path or a URL.
     """
 
+    config: Optional[Dict[str, Any]] = None
+    """
+    The raw config of the step.
+    """
+
+    platform: PlatformMetadata = field(default_factory=PlatformMetadata)
+    """
+    The :class:`PlatformMetadata`.
+    """
+
+    environment: EnvironmentMetadata = field(default_factory=EnvironmentMetadata)
+    """
+    The :class:`EnvironmentMetadata`.
+    """
+
     @property
     def start_time_local(self) -> Optional[datetime]:
         """
@@ -150,19 +344,7 @@ class StepInfo:
         """
         Generates a JSON-safe, human-readable, dictionary representation of this dataclass.
         """
-        return OrderedDict(
-            (
-                k,
-                (
-                    v.strftime("%Y-%m-%dT%H:%M:%S")
-                    if isinstance(v, datetime)
-                    else list(v)
-                    if isinstance(v, set)
-                    else v
-                ),
-            )
-            for k, v in sorted(asdict(self).items(), key=lambda x: x[0])
-        )
+        return jsonify(self)
 
     @classmethod
     def from_json_dict(cls, json_dict: Dict[str, Any]) -> "StepInfo":
@@ -171,13 +353,11 @@ class StepInfo:
 
         :param json_dict: A dictionary representation, such as the one produced by :meth:`to_json_dict()`.
         """
-        return cls(
-            **{
+        return cls.from_params(
+            {
                 k: (
                     datetime.strptime(v, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=pytz.utc)
                     if k in {"start_time", "end_time"} and v is not None
-                    else set(v)
-                    if k == "dependencies"
                     else v
                 )
                 for k, v in json_dict.items()
@@ -186,6 +366,10 @@ class StepInfo:
 
     @classmethod
     def new_from_step(cls, step: Step, **kwargs) -> "StepInfo":
+        try:
+            config = step.config
+        except ValueError:
+            config = None
         return cls(
             unique_id=step.unique_id,
             step_name=step.name,
@@ -193,5 +377,6 @@ class StepInfo:
             version=step.VERSION,
             dependencies={dep.unique_id for dep in step.dependencies},
             cacheable=step.cache_results,
+            config=replace_steps_with_unique_id(config),
             **kwargs,
         )

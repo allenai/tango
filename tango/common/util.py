@@ -4,10 +4,12 @@ import signal
 import string
 import sys
 import traceback
+from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, tzinfo
 from pathlib import Path
-from typing import Iterable, Optional, Set, Tuple, Union
+from typing import Any, Iterable, Optional, Set, Tuple, Union
 
 import pytz
 
@@ -264,3 +266,37 @@ def utc_now_datetime() -> datetime:
 
 def local_timezone() -> Optional[tzinfo]:
     return datetime.now().astimezone().tzinfo
+
+
+def replace_steps_with_unique_id(o: Any):
+    from tango.step import Step
+
+    if isinstance(o, Step):
+        return {"type": "ref", "ref": o.unique_id}
+    if isinstance(o, (list, tuple, set)):
+        return o.__class__(replace_steps_with_unique_id(i) for i in o)
+    elif isinstance(o, dict):
+        return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+    else:
+        return o
+
+
+def jsonify(o: Any) -> Any:
+    """
+    Transform an arbitrary object into a JSON-serializable equivalent (if there is one)
+    in a deterministic way.
+    """
+    if isinstance(o, (tuple, set)):
+        return [jsonify(x) for x in o]
+    elif isinstance(o, dict):
+        return OrderedDict((k, jsonify(v)) for k, v in o.items())
+    elif isinstance(o, datetime):
+        return o.strftime("%Y-%m-%dT%H:%M:%S")
+    elif is_dataclass(o):
+        return OrderedDict(
+            (k, jsonify(v)) for k, v in sorted(asdict(o).items(), key=lambda x: x[0])
+        )
+    elif isinstance(o, Path):
+        return str(o)
+    else:
+        return o

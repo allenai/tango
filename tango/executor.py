@@ -3,12 +3,13 @@ import traceback
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Optional, Sequence, Set, TypeVar
 
-from tango.common.util import import_extra_module
-from tango.step_graph import StepGraph
-from tango.workspace import Workspace
+from .common.registrable import Registrable
+from .common.util import import_extra_module
+from .step_graph import StepGraph
+from .workspace import Workspace
 
 if TYPE_CHECKING:
-    from tango.step import Step
+    from .step import Step
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class ExecutorOutput:
     """Steps that were ignored (usually because of failed dependencies)."""
 
 
-class Executor:
+class Executor(Registrable):
     """
     An ``Executor`` is a class that is responsible for running steps and caching their results.
     """

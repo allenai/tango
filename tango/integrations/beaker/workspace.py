@@ -44,9 +44,9 @@ class BeakerWorkspace(Workspace):
 
     STEP_INFO_CACHE_SIZE = 512
 
-    def __init__(self, workspace: str, **kwargs):
+    def __init__(self, beaker_workspace: str, **kwargs):
         super().__init__()
-        self.beaker = Beaker.from_env(default_workspace=workspace, **kwargs)
+        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}
@@ -148,8 +148,9 @@ class BeakerWorkspace(Workspace):
         if step_info.state != StepState.RUNNING:
             raise StepStateError(step, step_info.state)
 
-        # Update step info. This needs to be done *before* adding the result to the cache,
-        # since adding the result to the cache will commit the step dataset, making it immutable.
+        # Update step info and save step execution metadata.
+        # This needs to be done *before* adding the result to the cache, since adding
+        # the result to the cache will commit the step dataset, making it immutable.
         step_info.end_time = utc_now_datetime()
         step_info.result_location = self.beaker.dataset.url(step_dataset_name(step))
         self._update_step_info(step_info)
@@ -316,6 +317,8 @@ class BeakerWorkspace(Workspace):
 
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             tmp_dir = Path(tmp_dir_name)
+
+            # Save step info.
             step_info_path = tmp_dir / Constants.STEP_INFO_FNAME
             with open(step_info_path, "w") as f:
                 json.dump(step_info.to_json_dict(), f)
