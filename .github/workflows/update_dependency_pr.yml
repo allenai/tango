@@ -10,6 +10,7 @@ on:
 
 permissions:
   issues: write
+  pull_requests: write
 
 jobs:
   torch:
