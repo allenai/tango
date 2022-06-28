@@ -1,5 +1,3 @@
-import json
-import pytest
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
@@ -13,13 +11,14 @@ class TestTrainStep(TangoTestCase):
         super().teardown_method()
         teardown_logging()
 
-    def test_basic_train(self):
+    def test_mnist_train(self):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations" / "flax" / "train.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "flax" / "mnist.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.flax",
             ],
-            overrides=""
+            overrides="",
         )
 
+        assert (result_dir / "checkpoint" / "1000").is_file()

@@ -405,7 +405,7 @@ def _train(
                 config.validation_steps = len(validation_dataloader)
             except TypeError:
                 raise ConfigurationError(
-                    "You must sest 'validation_steps' for streaming/iterable datasets"
+                    "You must set 'validation_steps' for streaming/iterable datasets"
                 )
 
     # Make sure we're using a DistributedSampler during distributed training.

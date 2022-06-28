@@ -144,7 +144,7 @@ class TrainCallback(Registrable):
     # should we have a log_val_batch() over here?
 
     def post_val_loop(
-        self, step: int, epoch: int, val_metric: float, best_val_metric: float
+        self, step: int, epoch: int, val_metric: Optional[float], best_val_metric: Optional[float]
     ) -> None:
         """
         Called right after the evaluation loop finishes

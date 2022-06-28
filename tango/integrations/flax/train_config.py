@@ -32,7 +32,7 @@ class TrainConfig:
 
     # worker_id
 
-    train_split: str = "train"
+    train_split: Optional[str] = "train"
     """
     The name of the training split.
     """
@@ -104,8 +104,29 @@ class TrainConfig:
     Controls removal of stale checkpoints.
     """
 
+    @property
     def state_path(self) -> Path:
+        """
+        The path to the latest state checkpoint file.
+        """
         return self.work_dir / "checkpoint_state_latest"
 
+    @property
+    def best_state_path(self) -> Path:
+        """
+        The path to the best state checkpoint file according to the validation metric or training
+        loss (if no validation split is given).
+        """
+        return self.work_dir / "checkpoint_state_best"
+
     def should_log_this_step(self, step: int) -> bool:
-        raise NotImplementedError
+        assert self.train_steps is not None
+        return step == 0 or (step + 1) % self.log_every == 0 or step == self.train_steps - 1
+
+    def should_checkpoint_this_step(self, step: int) -> bool:
+        assert self.train_steps is not None
+        return ((step + 1) % self.checkpoint_every == 0) or step == self.train_steps - 1
+
+    def should_log_this_val_step(self, val_step: int) -> bool:
+        assert self.validation_steps is not None
+        return val_step % self.log_every == 0 or val_step == self.validation_steps - 1

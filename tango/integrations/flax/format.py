@@ -18,8 +18,8 @@ class FlaxFormat(Format[T], Generic[T]):
     VERSION = 2
 
     def write(self, artifact: T, dir: PathOrStr) -> None:
-        step = 100  # How to pass step?
-        checkpoints.save_checkpoint(Path(dir), artifact, step)
+        checkpoints.save_checkpoint(Path(dir), artifact, step=100)
 
     def read(self, dir: PathOrStr) -> T:
+        # will return a dict
         return checkpoints.restore_checkpoint(dir, target=None)

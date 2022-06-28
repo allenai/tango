@@ -5,29 +5,11 @@ from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 from tango.workspace import Workspace
 
-from .data import DataLoader
+from .data import FlaxDataLoader
 from .model import Model
 
 
 class EvalCallback(Registrable):
-    """
-    An ``EvalCallback`` is a :class:`~tango.common.Registrable` class that can be used
-    within :class:`FlaxEvalStep` to customize the behavior of the evaluation loop,
-    similar to how :class:`TrainCallback` is used to customize the behavior of the training
-    loop.
-
-    .. tip::
-        All of the parameters to this base class will be automatically set within
-        the training loop, so you shouldn't include them in your config for your callbacks.
-
-    :ivar Workspace workspace: The tango workspace being used.
-    :ivar str step_id: The unique ID of the step.
-    :ivar pathlib.Path work_dir: The working directory of the step
-    :ivar Model model: The model being evaluated.
-    :ivar DatasetDictBase dataset_dict: The dataset dict containing the evaluation split.
-    :ivar DataLoader dataloader: The data loader used to load the evaluation split data.
-    """
-
     def __init__(
         self,
         workspace: Workspace,
@@ -35,7 +17,7 @@ class EvalCallback(Registrable):
         work_dir: Path,
         model: Model,
         dataset_dict: DatasetDictBase,
-        dataloader: DataLoader,
+        dataloader: FlaxDataLoader,
     ) -> None:
         self.workspace = workspace
         self.step_id = step_id
@@ -46,7 +28,7 @@ class EvalCallback(Registrable):
 
     def pre_eval_loop(self) -> None:
         """
-        Called right before the first batch is processed.
+        Called right before the first batch is processed
         """
         pass
 
@@ -72,7 +54,7 @@ class EvalCallback(Registrable):
             This method can be used to modify ``batch_outputs`` in place, which is useful
             in scenarios where you might need to aggregate metrics
             in a special way other than a simple average. If that's the case, make sure
-            to set ``auto_aggregate_metrics`` to ``False`` in :class:`FlaxEvalStep`.
+            to set ``auto_aggregate_metrics`` to ``False`` in :class:`TorchEvalStep`.
 
         """
         pass

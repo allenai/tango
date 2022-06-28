@@ -338,7 +338,8 @@ def pop_and_construct_arg(
                 "and if it is different from what we get from **extras, you might "
                 "get unexpected behavior."
             )
-
+    # print("name: ", name)
+    # print("params: ", params)
     popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
     if popped_params is None:
         return None
@@ -801,12 +802,17 @@ class FromParams(CustomDetHash):
         """
 
         def replace_object_with_params(o: Any) -> Any:
+            # print("object: ", o)
             if isinstance(o, FromParams):
                 return o.to_params().as_dict(quiet=True)
             elif isinstance(o, (list, tuple, set)):
                 return [replace_object_with_params(i) for i in o]
             elif isinstance(o, dict):
-                return {key: replace_object_with_params(value) for key, value in o.items()}
+                return {
+                    key: replace_object_with_params(value)
+                    for key, value in o.items()
+                    if key != "_state"
+                }
             elif isinstance(o, Path):
                 return str(o)
             elif o is None or isinstance(o, (str, float, int, bool)):

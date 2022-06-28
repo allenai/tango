@@ -42,3 +42,4 @@ sacremoses                   # needed by: transformers
 jax>=0.3.13                  # needed by: flax
 flax>=0.5.0                  # needed by: flax
 optax>=0.1.2                 # needed by: flax
+tensorflow>=2.9.1            # needed by: flax
