@@ -2,14 +2,13 @@ name: Update dependency PR
 
 on:
   pull_request:
-    types:
-      - opened
+    # types:
+    #   - opened
     paths:
       - 'requirements.txt'
       - 'dev-requirements.txt'
 
 permissions:
-  issues: write
   pull_requests: write
 
 jobs:
