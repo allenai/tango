@@ -9,7 +9,7 @@ on:
       - 'dev-requirements.txt'
 
 permissions:
-  pull_requests: write
+  pull-requests: write
 
 jobs:
   torch:
