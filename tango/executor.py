@@ -23,13 +23,13 @@ class ExecutorOutput:
     """
 
     successful: Set[str]
-    """Steps which ran successfully."""
+    """Steps which ran successfully or were found in the cache."""
 
     failed: Set[str]
     """Steps that failed."""
 
     not_run: Set[str]
-    """Steps that were not executed (potentially because of failed dependencies."""
+    """Steps that were ignored (usually because of failed dependencies)."""
 
 
 class Executor:
