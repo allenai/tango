@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
 from urllib.parse import ParseResult
 
 import dill

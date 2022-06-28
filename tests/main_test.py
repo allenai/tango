@@ -8,7 +8,6 @@ from typing import List, Tuple
 import click
 import pytest
 
-from tango.common import Params
 from tango.common.testing import TangoTestCase
 from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
