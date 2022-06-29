@@ -4,7 +4,7 @@
 # variable "COMMIT_SHA". That way we don't need to rebuild and push the image each time we run
 # tests, and we can be sure the dependencies are always up-to-date.
 
-FROM ghcr.io/allenai/pytorch:1.11.0-cuda11.3
+FROM ghcr.io/allenai/pytorch:1.12.0-cuda11.3
 
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
