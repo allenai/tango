@@ -33,6 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: allenai/setup-beaker@v1
+        with:
+          token: ${{ secrets.BEAKER_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN }}
+          workspace: ${{ env.BEAKER_WORKSPACE }}
+
       - name: Build Docker image
         run: |
           docker build -t "$IMAGE_NAME" -f Dockerfile.test .
@@ -61,32 +67,20 @@ jobs:
 
       - name: Delete existing commit image
         continue-on-error: true
-        uses: allenai/beaker-action@v0.2.0
-        with:
-          token: ${{ secrets.BEAKER_TOKEN }}
-          command: image
-          args: delete petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }}
+        run: |
+          beaker image delete petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }}
 
       - name: Upload new commit image
-        uses: allenai/beaker-action@v0.2.0
-        with:
-          token: ${{ secrets.BEAKER_TOKEN }}
-          command: image
-          args: create --workspace ${{ env.BEAKER_WORKSPACE }} --name ${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}
+        run: |
+          beaker image create --workspace ${{ env.BEAKER_WORKSPACE }} --name ${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}
 
       - name: Delete existing image
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        uses: allenai/beaker-action@v0.2.0
-        with:
-          token: ${{ secrets.BEAKER_TOKEN }}
-          command: image
-          args: delete petew/${{ env.IMAGE_NAME }}
+        run: |
+          beaker image delete petew/${{ env.IMAGE_NAME }}
 
       - name: Rename new commit image to final image
         if: github.event_name != 'pull_request'
-        uses: allenai/beaker-action@v0.2.0
-        with:
-          token: ${{ secrets.BEAKER_TOKEN }}
-          command: image
-          args: rename petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}
+        run: |
+          beaker image rename petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}
