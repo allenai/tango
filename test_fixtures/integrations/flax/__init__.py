@@ -178,12 +178,11 @@ class TrainWrapper(FlaxTrainWrapper):
         # return empty dict if no other metrics to compute
         return {}
 
-    def loss_fn(self, params, batch, state, dropout_rng):
+    def loss_fn(self, params, batch, logits, labels, dropout_rng):
         label_smoothing_factor = 0.0
-        labels = batch.pop("labels")
+
         padding_mask = batch["decoder_attention_mask"]
 
-        logits = state.apply_fn(**batch, params=params, dropout_rng=dropout_rng, train=True)[0]
         vocab_size = logits.shape[-1]
         confidence = 1.0 - label_smoothing_factor
         low_confidence = (1.0 - confidence) / (vocab_size - 1)
@@ -198,10 +197,10 @@ class TrainWrapper(FlaxTrainWrapper):
         # ignore padded tokens from loss
         loss = loss * padding_mask
         loss = loss.sum() / padding_mask.sum()
-        return loss, logits
+        return loss
 
-    def eval_fn(self, params, batch, state, model, dropout_rng):
-        logits = model(**batch, params=params, train=False)[0]
+    def eval_fn(self, batch, state, model):
+        logits = model(**batch, params=model.params, train=False)[0]
 
         def loss_fn(logits, labels):
             label_smoothing_factor = 0
