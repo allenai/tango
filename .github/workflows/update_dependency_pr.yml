@@ -8,6 +8,9 @@ on:
       - 'requirements.txt'
       - 'dev-requirements.txt'
 
+permissions:
+  pull-requests: write
+
 jobs:
   torch:
     name: torch
