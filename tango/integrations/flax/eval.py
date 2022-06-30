@@ -90,8 +90,8 @@ class FlaxEvalStep(Step):
         for callback in callbacks_:
             callback.pre_eval_loop()
 
-        eval_metrics: Dict = {"loss": [], "acc": []}
-        aggregated_metrics: Dict = {"loss": 0.0, "acc": 0.0}
+        eval_metrics: Dict = defaultdict(list)
+        aggregated_metrics: Dict = defaultdict(float)
 
         rng = get_PRNGkey()
         start_step = 0
@@ -114,16 +114,13 @@ class FlaxEvalStep(Step):
             for callback in callbacks_:
                 callback.post_batch(step, logits)
 
-            eval_metrics["loss"].append(metrics["loss"])
-            eval_metrics["acc"].append(metrics["accuracy"])
+            for key, value in metrics.items():
+                eval_metrics[key].append(value)
 
-        aggregated_metrics["loss"] = jax.tree_map(jnp.mean, jnp.array(eval_metrics["loss"])).item()
-        aggregated_metrics["acc"] = jax.tree_map(jnp.mean, jnp.array(eval_metrics["acc"])).item()
+        for key, val in eval_metrics.items():
+            aggregated_metrics[key] = jax.tree_map(jnp.mean, jnp.array(val)).item()
 
-        print(
-            "Evaluation loss:  %.2f , Evaluation accuracy: %.2f "
-            % (aggregated_metrics["loss"], aggregated_metrics["acc"])
-        )
+        print("Test metrics: " , aggregated_metrics)
 
         for callback in callbacks_:
             callback.post_eval_loop(aggregated_metrics)

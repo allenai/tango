@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, DefaultDict
+from collections import defaultdict
 
 import jax
 import jax.numpy as jnp
@@ -356,7 +357,7 @@ class FlaxTrainStep(Step):
             )
             parallel_val_step = jax.pmap(flax_state.val_state, axis_name="batch")
 
-        # step_per_epoch = train_dataloader.dataset_size // train_dataloader.batch_siz
+        step_per_epoch = train_dataloader.dataset_size // train_dataloader.batch_size
         step_per_epoch = 100
         config.train_steps = step_per_epoch * config.train_epochs
 
@@ -367,7 +368,8 @@ class FlaxTrainStep(Step):
             range(config.train_epochs), desc=f"Epoch (1/{config.train_epochs})", position=0
         )
         for epoch in epochs:
-            train_metrics: Dict = {"loss": [], "acc": []}
+            # train_metrics: Dict = {"loss": [], "acc": []}
+            train_metrics: DefaultDict = defaultdict(list)
 
             for callback in callbacks:
                 callback.pre_epoch(step, epoch)
@@ -379,7 +381,7 @@ class FlaxTrainStep(Step):
                 position=1,
                 desc="Training",
             )
-            # need to fix step count-affects checkpointing
+
             step = start_step
             for batch in batches:
                 for callback in callbacks:
@@ -388,10 +390,10 @@ class FlaxTrainStep(Step):
                 if do_distributed:
                     train_metric = parallel_train_step(batch, dropout_rngs)
                 else:
-                    train_metric = flax_state.train_state(batch, dropout_rngs)
+                    train_metric = flax_state.train_state(batch, rng)
 
-                train_metrics["loss"].append(train_metric["loss"])
-                train_metrics["acc"].append(train_metric["accuracy"])
+                for key, value in train_metric.items():
+                    train_metrics[key].append(value)
 
                 for callback in callbacks:
                     callback.post_batch(step, epoch, batch_loss)
@@ -407,15 +409,14 @@ class FlaxTrainStep(Step):
 
             # TODO: Need to unreplicate state
             # if do_distributed:
-            #     train_metric = flax.jax_utils.unreplicate(train_metric)
+            #     train_metrics = flax.jax_utils.unreplicate(train_metrics)
 
-            epoch_train_loss = jax.tree_map(jnp.mean, jnp.array(train_metrics["loss"]))
-            epoch_train_acc = jax.tree_map(jnp.mean, jnp.array(train_metrics["acc"]))
+            epoch_train_metrics: DefaultDict = defaultdict(float)
 
-            print(
-                "Train loss:  %.2f , Train accuracy: %.2f "
-                % (epoch_train_loss.item(), epoch_train_acc.item())
-            )
+            for key, value in train_metrics.items():
+                epoch_train_metrics[key] = jax.tree_map(jnp.mean, jnp.array(value)).item()
+
+            print("Train metrics " , epoch_train_metrics)
 
             for callback in callbacks:
                 callback.post_epoch(step, epoch)
@@ -440,7 +441,8 @@ class FlaxTrainStep(Step):
                 assert validation_dataloader is not None
                 assert config.validation_steps is not None
 
-                val_metrics: Dict = {"loss": [], "acc": []}
+                val_metrics: DefaultDict = defaultdict(list)
+                epoch_eval_metrics: DefaultDict = defaultdict(float)
 
                 validation_dataloader_tqdm = Tqdm.tqdm(
                     validation_dataloader(rng, do_distributed),
@@ -458,24 +460,21 @@ class FlaxTrainStep(Step):
                     else:
                         metrics = flax_state.val_state(batch)
 
-                    val_metrics["loss"].append(metrics["loss"])
-                    val_metrics["acc"].append(metrics["accuracy"])
+                    for key, value in metrics.items():
+                        val_metrics[key].append(value)
 
                     for callback in callbacks:
                         callback.post_val_batch(step, val_step, epoch, batch)
 
-                epoch_eval_loss = jax.tree_map(jnp.mean, jnp.array(val_metrics["loss"]))
-                epoch_eval_acc = jax.tree_map(jnp.mean, jnp.array(val_metrics["acc"]))
+                for key, value in val_metrics.items():
+                    epoch_eval_metrics = jax.tree_map(jnp.mean, jnp.array(value)).item()
 
                 # TODO: Need to unreplicate state for distributed training
 
                 for callback in callbacks:
                     callback.post_val_loop(step, epoch, val_metric, best_val_metric)
 
-                print(
-                    "Validation loss:  %.2f , Validation accuracy: %.2f "
-                    % (epoch_eval_loss.item(), epoch_eval_acc.item())
-                )
+                print("Validation metrics " , epoch_eval_metrics)
 
             epochs.desc = f"Epoch ... {epoch + 1}/{config.train_epochs}"
 

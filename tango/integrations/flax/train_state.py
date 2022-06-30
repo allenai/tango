@@ -19,7 +19,7 @@ class FlaxTrainWrapper(Registrable):
         pass
 
     @abstractmethod
-    def loss_fn(self, params, batch, dropout_rng):
+    def loss_fn(self, params, batch, state, dropout_rng):
         pass
 
     @abstractmethod
@@ -45,6 +45,7 @@ class FlaxTrainState:
         self.state = self.create_train_state(shape)
 
     def create_train_state(self, shape):
+        print(self.model)
         if hasattr(self.model, "params"):
             params = self.model.params
         else:
@@ -56,19 +57,22 @@ class FlaxTrainState:
         return self.state
 
     def train_state(self, batch, dropout_rng):
+        labels = batch["labels"]
         grad_fn = jax.value_and_grad(self.train_wrapper.loss_fn, has_aux=True)
-        (_, logits), grad = grad_fn(self.state.params, batch, dropout_rng)
+        (loss, logits), grad = grad_fn(self.state.params, batch, self.state, dropout_rng)
         if self.do_distributed:
             grad = jax.lax.pmean(grad, "batch")
         self.state = self.state.apply_gradients(grads=grad)
-        metrics = self.train_wrapper.compute_metrics(logits=logits, labels=batch["label"])
+        other_metrics = self.train_wrapper.compute_metrics(logits=logits, labels=labels)
+        metrics = {"loss": loss}
+        metrics.update(other_metrics)
         if self.do_distributed:
             metrics = jax.lax.pmean(metrics, axis_name="batch")
         return metrics
 
     def val_state(self, batch) -> Dict:
         logits = self.train_wrapper.eval_fn(self.state.params, batch)
-        metrics = self.train_wrapper.compute_metrics(logits=logits, labels=batch["label"])
+        metrics = self.train_wrapper.compute_metrics(logits=logits, labels=batch["labels"])
         if self.do_distributed:
             metrics = jax.lax.pmean(metrics, axis_name="batch")
         return metrics

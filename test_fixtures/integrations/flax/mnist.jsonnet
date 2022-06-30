@@ -21,7 +21,7 @@
                 "drop_last": true
             },
             "train_wrapper" : {
-                "type": "wrapper"
+                "type": "mnist_wrapper"
             },
             "train_split": "train",
             "train_epoch": 2,
@@ -46,7 +46,7 @@
                 "drop_last": true
             },
             "eval_wrapper": {
-                "type": "evalwrapper"
+                "type": "eval_wrapper"
             }
         }
     }

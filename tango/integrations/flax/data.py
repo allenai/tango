@@ -36,7 +36,8 @@ class FlaxDataLoader(DataLoader):
         self.drop_last = drop_last
         self.shuffle = shuffle
         self.dataset_size = (
-            len(self.dataset["x"]) if isinstance(self.dataset, dict) else len(self.dataset)
+            len(self.dataset)
+            # if isinstance(self.dataset, DatasetDictBase) else len(self.dataset["x"])
         )
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
