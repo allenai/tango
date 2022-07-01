@@ -65,7 +65,7 @@ class TrainConfig:
     validation_steps: Optional[int] = None
     """
     The number of validation steps.
-    
+
     The default is to validate on the entire validation set.
     """
 
