@@ -74,7 +74,7 @@ class TorchTrainStep(Step):
 
     def run(  # type: ignore[override]
         self,
-        model: Union[Lazy[Model], Model],
+        model: Union[Lazy[Model], Model],  # Lazy has to come first
         training_engine: Lazy[TrainingEngine],
         dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
