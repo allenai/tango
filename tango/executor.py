@@ -36,7 +36,11 @@ class ExecutorOutput:
 class Executor(Registrable):
     """
     An ``Executor`` is a class that is responsible for running steps and caching their results.
+
+    This is the base class and default implementation, registered as "default".
     """
+
+    default_implementation = "default"
 
     def __init__(
         self,
@@ -92,3 +96,6 @@ class Executor(Registrable):
             logger.error(stacktrace)
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
+
+
+Executor.register("default")(Executor)
