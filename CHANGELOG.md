@@ -9,7 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Improved `Step.ensure_result()` such that the step's result doesn't have to be read from the cache.
+- Fixed an issue with the output from `MulticoreExecutor` such that it's now consistent with the default `Executor` for steps that were found in the cache.
+- One of our error messages referred to a configuration file that no longer exists.
+
+
+## [v0.9.1](https://github.com/allenai/tango/releases/tag/v0.9.1) - 2022-06-24
+
+### Fixed
+
+- Fixed non-deterministic behavior in `TorchTrainStep`.
 - Fixed bug in `BeakerWorkspace` where `.step_info(step)` would raise a `KeyError` if the step hasn't been registered as part of a run yet.
+- Fixed a bug in `BeakerWorkspace` where it would send too many requests to the beaker service.
+- Fixed a bug where `WandbWorkspace.step_finished()` or `.step_failed()` would crash if called
+  from a different process than `.step_starting()`.
+- Fixed a bug in `WandbWorkspace.step_finished()` which led to a `RuntimeError` sometimes while
+  caching the result of a step.
+
 
 ## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01
 

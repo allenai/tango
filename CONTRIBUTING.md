@@ -9,14 +9,14 @@ Thanks for considering contributing! Please read this document to learn the vari
 First, do [a quick search](https://github.com/allenai/tango/issues) to see whether your issue has already been reported.
 If your issue has already been reported, please comment on the existing issue.
 
-Otherwise, open [a new GitHub issue](https://github.com/allenai/tango/issues).  Be sure to include a clear title
-and description.  The description should include as much relevant information as possible.  The description should
-explain how to reproduce the erroneous behavior as well as the behavior you expect to see.  Ideally you would include a
+Otherwise, open [a new GitHub issue](https://github.com/allenai/tango/issues). Be sure to include a clear title
+and description. The description should include as much relevant information as possible. The description should
+explain how to reproduce the erroneous behavior as well as the behavior you expect to see. Ideally you would include a
 code sample or an executable test case demonstrating the expected behavior.
 
 ### Do you have a suggestion for an enhancement or new feature?
 
-We use GitHub issues to track feature requests. Before you create an feature request:
+We use GitHub issues to track feature requests. Before you create a feature request:
 
 * Make sure you have a clear idea of the enhancement you would like. If you have a vague idea, consider discussing
 it first on a GitHub issue.
@@ -109,7 +109,7 @@ When you're ready to contribute code to address an open issue, please follow the
 
     <details><summary>Expand details 👇</summary><br/>
 
-    Commiting directly to the main branch of your fork is not recommended. It will be easier to keep your fork clean if you work on a seperate branch for each contribution you intend to make.
+    Committing directly to the main branch of your fork is not recommended. It will be easier to keep your fork clean if you work on a separate branch for each contribution you intend to make.
 
     You can create a new branch with
 
@@ -146,10 +146,6 @@ When you're ready to contribute code to address an open issue, please follow the
     For example, if you've fixed a bug in `tango/a/b.py`, you can run the tests specific to that module with
 
         pytest -v tests/a/b_test.py
-
-    Our CI will automatically check that test coverage stays above a certain threshold (around 90%). To check the coverage locally in this example, you could run
-
-        pytest -v --cov tango.a.b tests/a/b_test.py
 
     If your contribution involves additions to any public part of the API, we require that you write docstrings
     for each function, method, class, or module that you add.

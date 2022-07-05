@@ -348,6 +348,9 @@ def _train(
     callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     include_package: Optional[Set[str]] = None,
 ) -> Optional[Model]:
+    # Set random seeds.
+    set_seed_all(config.seed)
+
     config.worker_id = worker_id
 
     if config.is_distributed and include_package:
@@ -413,9 +416,6 @@ def _train(
         check_dataloader(train_dataloader)
         if validation_dataloader is not None:
             check_dataloader(validation_dataloader)
-
-    # Set random seeds.
-    set_seed_all(config.seed)
 
     batch_loss: float = 0.0
     best_batch_loss: Optional[float] = None
