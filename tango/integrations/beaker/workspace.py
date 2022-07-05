@@ -46,7 +46,7 @@ class BeakerWorkspace(Workspace):
 
     def __init__(self, workspace: str, **kwargs):
         super().__init__()
-        self.beaker = Beaker.from_env(default_workspace=workspace, **kwargs)
+        self.beaker = Beaker.from_env(default_workspace=workspace, session=True, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}
@@ -233,7 +233,7 @@ class BeakerWorkspace(Workspace):
         runs: Dict[str, Run] = {}
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=3, thread_name_prefix="BeakerWorkspace.registered_runs()-"
+            max_workers=9, thread_name_prefix="BeakerWorkspace.registered_runs()-"
         ) as executor:
             run_futures = []
             for dataset in self.beaker.workspace.datasets(
@@ -295,7 +295,7 @@ class BeakerWorkspace(Workspace):
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=3, thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
+            max_workers=9, thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
         ) as executor:
             step_info_futures = []
             for step_name, unique_id in steps_info.items():
