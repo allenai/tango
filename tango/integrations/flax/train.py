@@ -39,7 +39,7 @@ class FlaxTrainWrapper(Registrable):
         pass
 
     @abstractmethod
-    def train_loss(self, params, state, batch, labels, dropout_rng):
+    def train_loss(self, params, batch, logits, labels):
         """
         returns loss
         """
@@ -409,8 +409,9 @@ class FlaxTrainStep(Step):
             # if transformer model
             labels = batch.pop("labels")
             dropout_rng, new_dropout_rng = jax.random.split(dropout_rng)
+            logits = state.apply_fn(**batch, params=params, dropout_rng=dropout_rng, train=True)[0]
             grad_fn = jax.value_and_grad(train_wrapper.train_loss)
-            loss, grad = grad_fn(state.params, state, batch, labels, dropout_rng)
+            loss, grad = grad_fn(state.params, batch, logits, labels)
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)

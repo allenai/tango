@@ -94,10 +94,7 @@ class TransformerTrainWrapper(FlaxTrainWrapper):
         loss = loss.sum() / padding_mask.sum()
         return loss
 
-    def train_loss(self, params, state, batch, labels, dropout_rng):
-        logits = state.apply_fn(**batch, params=state.params, dropout_rng=dropout_rng, train=True)[
-            0
-        ]
+    def train_loss(self, params, batch, logits, labels):
         loss = self.loss_helper(logits, labels, batch)
         return loss
 
