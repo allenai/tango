@@ -4,6 +4,7 @@ from itertools import islice
 from typing import Dict, List, Optional, Sequence
 
 import jax
+from flax import jax_utils
 from flax.training.train_state import TrainState
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -16,15 +17,14 @@ from tango.step import Step
 
 from .data import FlaxDataLoader
 from .eval_callback import EvalCallback
-from .model import Model
 from .util import get_PRNGkey
 
 
 class FlaxEvalWrapper(Registrable):
     @abstractmethod
-    def eval_fn(self, state, batch, model):
+    def eval_metrics(self, batch, logits, labels) -> Dict:
         """
-        returns logits and metrics.
+        returns test metrics.
         """
         pass
 
@@ -38,7 +38,6 @@ class FlaxEvalStep(Step):
 
     def run(  # type: ignore[override]
         self,
-        model: Model,
         state: TrainState,
         dataset: DatasetDictBase,
         dataloader: Lazy[FlaxDataLoader],
@@ -55,8 +54,6 @@ class FlaxEvalStep(Step):
 
         # construct dataloader
         dataloader: FlaxDataLoader = dataloader.construct(dataset=dataset[test_split])
-        # init model params
-        model.params = state.params
 
         steps: int
         try:
@@ -82,7 +79,6 @@ class FlaxEvalStep(Step):
             callback.construct(
                 step_id=self.unique_id,
                 work_dir=self.work_dir,
-                model=model,
                 dataset_dict=dataset,
                 dataloader=dataloader,
             )
@@ -92,13 +88,23 @@ class FlaxEvalStep(Step):
         for callback in callbacks:
             callback.pre_eval_loop()
 
+        rng = get_PRNGkey(seed)
+        devices = jax.devices()
+        if len(devices) > 1:
+            do_distributed = True
+
         def eval_step(state, batch):
-            logits, metrics = eval_wrapper.eval_fn(state, batch, model)
+            labels = batch.pop("labels")
+            logits = state.apply_fn(**batch, params=state.params, train=False)[0]
+            metrics = eval_wrapper.eval_metrics(batch, logits, labels)
             if do_distributed:
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
             return logits, metrics
 
-        rng = get_PRNGkey(seed)
+        if do_distributed:
+            state = jax_utils.replicate(state)
+            parallel_eval_step = jax.pmap(eval_step, axis_name="batch")
+
         eval_batches = enumerate(islice(dataloader(rng, do_distributed), steps))
 
         running_metrics: Dict[str, float] = defaultdict(float)
@@ -111,17 +117,15 @@ class FlaxEvalStep(Step):
                     callback.pre_batch(step, batch)
 
                 if do_distributed:
-                    parallel_eval_step = jax.pmap(eval_step, axis_name="batch")
                     logits, metrics = parallel_eval_step(state, batch)
-                    metrics = jax.lax.pmean(metrics, axis_name="batch")
+                    metrics = jax_utils.unreplicate(metrics)
                 else:
                     logits, metrics = eval_step(state, batch)
-
-                metrics = jax.device_get(metrics)
 
                 for callback in callbacks:
                     callback.post_batch(step, logits)
 
+                print("Metrics: ", metrics)
                 if auto_aggregate_metrics:
                     for key, val in metrics.items():
                         if key in metric_names:

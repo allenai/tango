@@ -4,9 +4,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, DefaultDict, Dict, List, Optional, Union
 
-import flax
 import jax
 import jax.numpy as jnp
+from flax import jax_utils
 from flax.training import checkpoints
 from flax.training.train_state import TrainState
 
@@ -32,15 +32,24 @@ PyTree = Any
 
 class FlaxTrainWrapper(Registrable):
     @abstractmethod
-    def compute_metrics(self, logits, labels) -> Dict:
+    def compute_metrics(self, state, batch, labels) -> Dict:
+        """
+        returns train metrics other than loss as Dict
+        """
         pass
 
     @abstractmethod
-    def loss_fn(self, params, batch, logits, labels):
+    def train_loss(self, params, state, batch, labels, dropout_rng):
+        """
+        returns loss
+        """
         pass
 
     @abstractmethod
-    def eval_fn(self, batch, state, model) -> Dict:
+    def val_loss(self, batch, logits, labels) -> Dict:
+        """
+        returns validation metrics as Dict
+        """
         pass
 
 
@@ -400,16 +409,14 @@ class FlaxTrainStep(Step):
             # if transformer model
             labels = batch.pop("labels")
             dropout_rng, new_dropout_rng = jax.random.split(dropout_rng)
-            logits = state.apply_fn(
-                **batch, params=state.params, dropout_rng=dropout_rng, train=True
-            )[0]
-
-            grad_fn = jax.value_and_grad(train_wrapper.loss_fn)
-            loss, grad = grad_fn(state.params, batch, logits, labels)
+            grad_fn = jax.value_and_grad(train_wrapper.train_loss)
+            loss, grad = grad_fn(state.params, state, batch, labels, dropout_rng)
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)
-            other_metrics = train_wrapper.compute_metrics(logits=logits, labels=labels)
+            other_metrics = train_wrapper.compute_metrics(
+                state, batch, labels=labels
+            )
             metrics = {"loss": loss}
             metrics.update(other_metrics)
             if do_distributed:
@@ -417,15 +424,20 @@ class FlaxTrainStep(Step):
             return new_state, metrics, new_dropout_rng
 
         def val_step(state, batch):
-            labels = batch["labels"]
-            logits = train_wrapper.eval_fn(batch, state, model)
-            metrics = train_wrapper.compute_metrics(logits=logits, labels=labels)
+            labels = batch.pop("labels")
+            logits = state.apply_fn(**batch, params=state.params, train=False)[0]
+            loss = train_wrapper.val_loss(batch, logits, labels)
+            other_metrics = train_wrapper.compute_metrics(
+                state, batch, labels=labels
+            )
+            metrics = {"loss": loss}
+            metrics.update(other_metrics)
             if do_distributed:
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
             return metrics
 
         if do_distributed:
-            state = flax.jax_utils.replicate(state)
+            state = jax_utils.replicate(state)
             dropout_rngs = get_multiple_keys(rng, jax.local_device_count())
             parallel_train_step = jax.pmap(train_step, axis_name="batch")
             parallel_val_step = jax.pmap(val_step, axis_name="batch")
@@ -464,7 +476,7 @@ class FlaxTrainStep(Step):
                     state, train_metric, dropout_rngs = parallel_train_step(
                         state, batch, dropout_rngs
                     )
-                    train_metric = flax.jax_utils.unreplicate(train_metric)
+                    train_metric = jax_utils.unreplicate(train_metric)
                 else:
                     state, train_metric, rng = train_step(state, batch, rng)
 
@@ -532,6 +544,7 @@ class FlaxTrainStep(Step):
 
                     if do_distributed:
                         metrics = parallel_val_step(state, batch)
+                        metrics = jax_utils.unreplicate(metrics)
                     else:
                         metrics = val_step(state, batch)
 
@@ -540,9 +553,6 @@ class FlaxTrainStep(Step):
 
                     for callback in callbacks:
                         callback.post_val_batch(step, valid_step, epoch, batch)
-
-                if do_distributed:
-                    val_metrics = flax.jax_utils.unreplicate(val_metrics)
 
                 for key, value in val_metrics.items():
                     if config.auto_aggregate_val_metric:
@@ -572,6 +582,7 @@ class FlaxTrainStep(Step):
         for callback in callbacks:
             callback.post_train_loop(step, epoch)
 
+        state = jax_utils.unreplicate(state)
         # TODO: Load the best checkpoint
         return state
 

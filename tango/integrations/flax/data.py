@@ -42,7 +42,6 @@ class FlaxDataLoader(DataLoader):
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
         steps_per_epoch = self.dataset_size // self.batch_size
-        steps_per_epoch = 1
 
         if self.shuffle:
             perms = jax.random.permutation(rng, self.dataset_size)

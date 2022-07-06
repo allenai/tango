@@ -38,16 +38,12 @@
                 "batch_size": 16,
                 "drop_last": true
             },
-            "train_epoch": 1,
-            "checkpoint_every": 50,
-            "log_every": 100
+            "train_epoch": 6,
+            "checkpoint_every": 1000,
+            "log_every": 1000
         },
         "eval": {
             "type": "flax::eval",
-            "model": {
-                "type" : "transformers::FlaxAutoModelForSeq2SeqLM::from_pretrained",
-                "pretrained_model_name_or_path" : "facebook/bart-base"
-            },
             "state": {
                 "type": "ref",
                 "ref": "train"
