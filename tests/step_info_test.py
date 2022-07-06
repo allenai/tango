@@ -17,7 +17,7 @@ def test_step_info():
         assert "allenai/tango" in step_info.environment.git.remote
 
     # Check pip requirements.
-    assert step_info.environment.pip_packages is not None
+    assert step_info.environment.packages is not None
 
     # Test serialization / deserialization.
     serialized = json.dumps(step_info.to_json_dict())

@@ -35,41 +35,6 @@ def get_pip_packages() -> Optional[List[Tuple[str, str]]]:
     return None
 
 
-def get_conda_env() -> Optional[Dict[str, Any]]:
-    """
-    Get the current conda environment. Equivalent to running ``conda env export``.
-    """
-    # Adapted from the Weights & Biases client library:
-    # github.com/wandb/client/blob/a04722575eee72eece7eef0419d0cea20940f9fe/wandb/sdk/internal/meta.py#L74-L87
-    current_shell_is_conda = os.path.exists(os.path.join(sys.prefix, "conda-meta"))
-    if current_shell_is_conda:
-        import subprocess
-
-        import yaml
-
-        try:
-            result = subprocess.run(["conda", "env", "export"], capture_output=True)
-            if (
-                result.returncode != 0
-                and result.stderr is not None
-                and "Unable to determine environment" in result.stderr.decode()
-            ):
-                result = subprocess.run(
-                    ["conda", "env", "export", "-n", "base"], capture_output=True
-                )
-
-            if result.returncode != 0:
-                if result.stderr is not None:
-                    logger.exception("Error saving conda packages: %s", result.stderr.decode())
-                else:
-                    result.check_returncode()
-            elif result.stdout is not None:
-                return yaml.safe_load(result.stdout.decode())
-        except Exception as exc:
-            logger.exception("Error saving conda packages: %s", exc)
-    return None
-
-
 class StepState(Enum):
     """Describes the possible state a step can be in."""
 
@@ -186,16 +151,10 @@ class EnvironmentMetadata(FromParams):
     The root directory from where the Python executable was ran.
     """
 
-    pip_packages: Optional[List[Tuple[str, str]]] = field(default_factory=get_pip_packages)
+    packages: Optional[List[Tuple[str, str]]] = field(default_factory=get_pip_packages)
     """
     The current set of Python packages in the Python environment. Each entry is a tuple of strings.
     The first element is the name of the package, the second element is the version.
-    """
-
-    conda_env: Optional[Dict[str, Any]] = field(default_factory=get_conda_env)
-    """
-    Captures the active conda environment. The object here is a dictionary form of a conda
-    environment YAML file.
     """
 
     git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)

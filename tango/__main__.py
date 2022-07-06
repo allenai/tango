@@ -267,7 +267,12 @@ def cleanup(*args, **kwargs):
     "-j",
     "--parallelism",
     type=int,
-    help="The maximum number of steps to run in parallel (if possible).",
+    help="""The maximum number of steps to run in parallel (if possible).
+    By default there is no parallelism, but each step is ran in its own subprocess (same as setting '-j=1').
+    A value of 0 or less means each step is ran in the main process using the default executor.
+    A value greater than 1 means at most 'j' steps will be ran in parallel,
+    each within its own subprocess, using the multicore executor.
+    This option is ignored if you've configured your executor in a 'tango.yml' settings file.""",
 )
 @click.option(
     "-s",
@@ -280,7 +285,7 @@ def cleanup(*args, **kwargs):
     "-n",
     "--name",
     type=str,
-    help="""Specify the name for this run""",
+    help="""Specify the name for this run.""",
 )
 @click.pass_obj
 def run(

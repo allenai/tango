@@ -283,19 +283,19 @@ def replace_steps_with_unique_id(o: Any):
 
 def jsonify(o: Any) -> Any:
     """
-    Transform an arbitrary object into a JSON-serializable equivalent (if there is one)
-    in a deterministic way.
+    Transform an object into a JSON-serializable equivalent (if there is one)
+    in a deterministic way. For example, tuples and sets are turned into lists,
+    dictionaries are turned into ordered dictionaries where the order depends on the sorting
+    of the keys, and datetimes are turned into formatted strings.
     """
     if isinstance(o, (tuple, set)):
         return [jsonify(x) for x in o]
     elif isinstance(o, dict):
-        return OrderedDict((k, jsonify(v)) for k, v in o.items())
+        return OrderedDict((k, jsonify(v)) for k, v in sorted(o.items(), key=lambda x: x[0]))
     elif isinstance(o, datetime):
         return o.strftime("%Y-%m-%dT%H:%M:%S")
     elif is_dataclass(o):
-        return OrderedDict(
-            (k, jsonify(v)) for k, v in sorted(asdict(o).items(), key=lambda x: x[0])
-        )
+        return jsonify(asdict(o))
     elif isinstance(o, Path):
         return str(o)
     else:
