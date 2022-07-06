@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - One of our error messages referred to a configuration file that no longer exists.
 - Improved performance of `BeakerWorkspace`.
 
+### Added
+
+- Added the ability to train straight `Model` instead of just `Lazy[Model]`
+
 
 ## [v0.9.1](https://github.com/allenai/tango/releases/tag/v0.9.1) - 2022-06-24
 
@@ -26,10 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from a different process than `.step_starting()`.
 - Fixed a bug in `WandbWorkspace.step_finished()` which led to a `RuntimeError` sometimes while
   caching the result of a step.
-
-### Added
-
-- Added the ability to train straight `Model` instead of just `Lazy[Model]`
 
 
 ## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01
