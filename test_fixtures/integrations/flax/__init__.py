@@ -1,19 +1,14 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
 import tensorflow_datasets as tfds
 from flax import linen as nn
 from flax.training.common_utils import onehot
+from transformers import AutoConfig, AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
 from tango.integrations.flax import FlaxEvalWrapper, FlaxTrainWrapper, Model
 from tango.step import Step
-from transformers import (
-    AutoConfig,
-    AutoTokenizer,
-    FlaxAutoModelForSeq2SeqLM,
-    FLAX_MODEL_FOR_SEQ_TO_SEQ_CAUSAL_LM_MAPPING)
-from datasets import load_dataset
-import numpy as np
 
 
 @Step.register("load_mnist_data")
@@ -57,7 +52,7 @@ class MNIST(Model):
         return x
 
 
-@FlaxTrainWrapper.register("mnist_wrapper")
+@FlaxTrainWrapper.register("mnist_train_wrapper")
 class TrainWrapper(FlaxTrainWrapper):
     def __init__(self):
         self.model = MNIST()
@@ -98,7 +93,7 @@ class TrainWrapper(FlaxTrainWrapper):
         return logits
 
 
-@FlaxEvalWrapper.register("eval_wrapper")
+@FlaxEvalWrapper.register("mnist_eval_wrapper")
 class EvalWrapper(FlaxEvalWrapper):
     def __init__(self):
         self.model = MNIST()
@@ -120,6 +115,7 @@ class EvalWrapper(FlaxEvalWrapper):
         logits = self.model.apply({"params": state.params}, batch["x"])
         metrics = self.compute_metrics(logits=logits, labels=batch["label"])
         return logits, metrics
+
 
 """
 Transformer model
@@ -143,13 +139,21 @@ class PreProcessing(Step):
             targets = examples["summary"]
             inputs = [inp for inp in inputs]
             model_inputs = tokenizer(
-                inputs, max_length=MAX_SOURCE_LENGTH, padding="max_length", truncation=True, return_tensors="np"
+                inputs,
+                max_length=MAX_SOURCE_LENGTH,
+                padding="max_length",
+                truncation=True,
+                return_tensors="np",
             )
 
             # Setup the tokenizer for targets
             with tokenizer.as_target_tokenizer():
                 labels = tokenizer(
-                    targets, max_length=MAX_TGT_LENGTH, padding="max_length", truncation=True, return_tensors="np"
+                    targets,
+                    max_length=MAX_TGT_LENGTH,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="np",
                 )
 
             model_inputs["labels"] = labels["input_ids"]
@@ -175,21 +179,20 @@ class PreProcessing(Step):
 
 
 @FlaxTrainWrapper.register("xsum_train_wrapper")
-class TrainWrapper(FlaxTrainWrapper):
+class TransformerTrainWrapper(FlaxTrainWrapper):
     def compute_metrics(self, logits, labels):
         # return empty dict if no other metrics to compute
         return {}
 
-    def loss_fn(self, params, batch, logits, labels, dropout_rng):
-        label_smoothing_factor = 0.0
-
+    def loss_helper(self, logits, labels, batch):
+        label_smoothing_factor = 0
         padding_mask = batch["decoder_attention_mask"]
-
         vocab_size = logits.shape[-1]
         confidence = 1.0 - label_smoothing_factor
         low_confidence = (1.0 - confidence) / (vocab_size - 1)
         normalizing_constant = -(
-                confidence * jnp.log(confidence) + (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20)
+            confidence * jnp.log(confidence)
+            + (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20)
         )
         soft_labels = onehot(labels, vocab_size, on_value=confidence, off_value=low_confidence)
 
@@ -201,39 +204,45 @@ class TrainWrapper(FlaxTrainWrapper):
         loss = loss.sum() / padding_mask.sum()
         return loss
 
+    def loss_fn(self, params, batch, logits, labels):
+        loss = self.loss_helper(logits, labels, batch)
+        return loss
+
     def eval_fn(self, batch, state, model):
         labels = batch.pop("labels")
         logits = model(**batch, params=model.params, train=False)[0]
-
-        def loss_fn(logits, labels):
-            label_smoothing_factor = 0
-            padding_mask = batch["decoder_attention_mask"]
-            vocab_size = logits.shape[-1]
-            confidence = 1.0 - label_smoothing_factor
-            low_confidence = (1.0 - confidence) / (vocab_size - 1)
-            normalizing_constant = -(
-                    confidence * jnp.log(confidence) + (vocab_size - 1) * low_confidence * jnp.log(
-                low_confidence + 1e-20)
-            )
-            soft_labels = onehot(labels, vocab_size, on_value=confidence, off_value=low_confidence)
-
-            loss = optax.softmax_cross_entropy(logits, soft_labels)
-            loss = loss - normalizing_constant
-
-            # ignore padded tokens from loss
-            loss = loss * padding_mask
-            loss = loss.sum() / padding_mask.sum()
-            return loss
-
-        loss = loss_fn(logits, labels)
+        loss = self.loss_helper(logits, labels, batch)
         # summarize metrics
         metrics = {"loss": loss}
         return metrics
 
 
 @FlaxEvalWrapper.register("xsum_eval_wrapper")
-class EvalWrapper(FlaxEvalWrapper):
+class TransformerEvalWrapper(FlaxEvalWrapper):
+    def loss_helper(self, logits, labels, batch):
+        label_smoothing_factor = 0
+        padding_mask = batch["decoder_attention_mask"]
+        vocab_size = logits.shape[-1]
+        confidence = 1.0 - label_smoothing_factor
+        low_confidence = (1.0 - confidence) / (vocab_size - 1)
+        normalizing_constant = -(
+            confidence * jnp.log(confidence)
+            + (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20)
+        )
+        soft_labels = onehot(labels, vocab_size, on_value=confidence, off_value=low_confidence)
+
+        loss = optax.softmax_cross_entropy(logits, soft_labels)
+        loss = loss - normalizing_constant
+
+        # ignore padded tokens from loss
+        loss = loss * padding_mask
+        loss = loss.sum() / padding_mask.sum()
+        return loss
+
     def eval_fn(self, state, batch, model):
-        metrics = {"loss": jnp.array(10.0)}
-        logits = 0.0
+        labels = batch.pop("labels")
+        logits = model(**batch, params=state.params, train=False)[0]
+        loss = self.loss_helper(logits, labels, batch)
+        metrics = {"loss": loss}
+
         return logits, metrics

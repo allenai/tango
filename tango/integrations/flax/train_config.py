@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Union
-
-import jax
+from typing import Optional
 
 
 @dataclass
@@ -42,7 +40,7 @@ class TrainConfig:
     The name of the validation split.
     """
 
-    seed: Union[Any, jax.random.PRNGKeyArray] = jax.random.PRNGKey(10)
+    seed: int = 42
     """
     The random seed used to generate
     """

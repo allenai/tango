@@ -21,7 +21,7 @@ class TestTrainStep(TangoTestCase):
     #         overrides="",
     #     )
 
-        # assert (result_dir / "checkpoint" / "1000").is_file()
+    # assert (result_dir / "checkpoint" / "1000").is_file()
 
     def test_transformer_train(self):
         result_dir = self.run(

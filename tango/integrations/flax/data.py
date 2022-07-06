@@ -34,10 +34,15 @@ class FlaxDataLoader(DataLoader):
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.shuffle = shuffle
-        self.dataset_size = dataset["num_rows"] if type(dataset) is dict else dataset.num_rows
+        self.dataset_size = self._get_size()
+
+    def _get_size(self):
+        size = self.dataset["num_rows"] if type(self.dataset) is dict else self.dataset.num_rows
+        return size
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
         steps_per_epoch = self.dataset_size // self.batch_size
+        steps_per_epoch = 1
 
         if self.shuffle:
             perms = jax.random.permutation(rng, self.dataset_size)

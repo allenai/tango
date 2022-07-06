@@ -44,7 +44,7 @@ class FlaxEvalStep(Step):
         dataloader: Lazy[FlaxDataLoader],
         eval_wrapper: FlaxEvalWrapper,
         test_split: str = "test",
-        seed: Optional[int] = 42,
+        seed: int = 42,
         log_every: int = 1,
         do_distributed: bool = False,
         eval_steps: Optional[int] = None,
@@ -55,6 +55,8 @@ class FlaxEvalStep(Step):
 
         # construct dataloader
         dataloader: FlaxDataLoader = dataloader.construct(dataset=dataset[test_split])
+        # init model params
+        model.params = state.params
 
         steps: int
         try:

@@ -1,6 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections import defaultdict
+from pathlib import Path
 from typing import Any, DefaultDict, Dict, List, Optional, Union
 
 import flax
@@ -31,15 +32,15 @@ PyTree = Any
 
 class FlaxTrainWrapper(Registrable):
     @abstractmethod
-    def compute_metrics(self, logits, labels):
+    def compute_metrics(self, logits, labels) -> Dict:
         pass
 
     @abstractmethod
-    def loss_fn(self, params, batch, logits, labels, dropout_rng):
+    def loss_fn(self, params, batch, logits, labels):
         pass
 
     @abstractmethod
-    def eval_fn(self, batch, state, model):
+    def eval_fn(self, batch, state, model) -> Dict:
         pass
 
 
@@ -85,7 +86,7 @@ class FlaxTrainStep(Step):
         train_dataloader: Lazy[FlaxDataLoader],
         *,
         train_wrapper: FlaxTrainWrapper,
-        seed: Optional[int] = 42,
+        seed: int = 42,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         train_split: Optional[str] = None,
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
@@ -200,7 +201,7 @@ class FlaxTrainStep(Step):
         train_dataloader: Lazy[FlaxDataLoader],
         *,
         train_wrapper: FlaxTrainWrapper,
-        seed: Optional[int],
+        seed: int = 42,
         lr_scheduler: Optional[Lazy[LRScheduler]],
         train_split: Optional[str] = "train",
         validation_split: Optional[str] = None,
@@ -404,7 +405,7 @@ class FlaxTrainStep(Step):
             )[0]
 
             grad_fn = jax.value_and_grad(train_wrapper.loss_fn)
-            loss, grad = grad_fn(state.params, batch, logits, labels, dropout_rng)
+            loss, grad = grad_fn(state.params, batch, logits, labels)
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)
@@ -431,6 +432,8 @@ class FlaxTrainStep(Step):
 
         step_per_epoch = train_dataloader.dataset_size // train_dataloader.batch_size
         config.train_steps = step_per_epoch * config.train_epochs
+
+        assert config.train_steps is not None  # for mypy
 
         for callback in callbacks:
             callback.pre_train_loop()
@@ -525,7 +528,7 @@ class FlaxTrainStep(Step):
 
                 for valid_step, batch in enumerate(validation_dataloader_tqdm):
                     for callback in callbacks:
-                        callback.pre_val_batch(step, val_step, epoch, batch)
+                        callback.pre_val_batch(step, valid_step, epoch, batch)
 
                     if do_distributed:
                         metrics = parallel_val_step(state, batch)
@@ -536,7 +539,7 @@ class FlaxTrainStep(Step):
                         val_metrics[key].append(value)
 
                     for callback in callbacks:
-                        callback.post_val_batch(step, val_step, epoch, batch)
+                        callback.post_val_batch(step, valid_step, epoch, batch)
 
                 if do_distributed:
                     val_metrics = flax.jax_utils.unreplicate(val_metrics)
@@ -548,6 +551,9 @@ class FlaxTrainStep(Step):
                         epoch_eval_metrics[key] = metrics[key].item()
 
                 val_metric = epoch_eval_metrics[config.val_metric_name]
+
+                assert val_metric is not None
+
                 if best_val_metric is None:
                     best_val_metric = val_metric
                 elif config.minimize_val_metric and val_metric <= best_val_metric:
@@ -569,12 +575,12 @@ class FlaxTrainStep(Step):
         # TODO: Load the best checkpoint
         return state
 
-    def save_checkpoint(self, dir: str, target: PyTree, step: int):
+    def save_checkpoint(self, dir: Path, target: PyTree, step: int):
         return checkpoints.save_checkpoint(
             dir, target, step, prefix="checkpoint_", keep=100, overwrite=True
         )
 
-    def load_checkpoint(self, dir: str, target: PyTree):
+    def load_checkpoint(self, dir: Path, target: PyTree):
         return checkpoints.restore_checkpoint(dir, target, prefix="checkpoint_")
 
     def is_best_checkpoint(self) -> bool:

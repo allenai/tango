@@ -24,7 +24,7 @@ def auto_model_wrapper_factory(cls: type) -> Type[Model]:
 
 
 def flax_auto_model_wrapper_factory(cls: type) -> Type[FlaxModel]:
-    class AutoModelWrapper(cls, Model):  # type: ignore
+    class AutoModelWrapper(cls, FlaxModel):  # type: ignore
         @classmethod
         def from_pretrained(
             cls, pretrained_model_name_or_path: str, config: Optional[Config] = None, **kwargs
@@ -50,10 +50,10 @@ for name, cls in modeling_auto.__dict__.items():
 
 for name, cls in modeling_flax_auto.__dict__.items():
     if isinstance(cls, type) and name.startswith("FlaxAutoModel"):
-        wrapped_cls = flax_auto_model_wrapper_factory(cls)
+        wrapped_cls_ = flax_auto_model_wrapper_factory(cls)
         FlaxModel.register(
             "transformers::" + name + "::from_pretrained", constructor="from_pretrained"
-        )(wrapped_cls)
+        )(wrapped_cls_)
         FlaxModel.register("transformers::" + name + "::from_config", constructor="from_config")(
-            wrapped_cls
+            wrapped_cls_
         )
