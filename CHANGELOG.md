@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Renamed `workspace` parameter of `BeakerWorkspace` class to `beaker_workspace`.
+- `Executor` class is now a `Registrable` base class. `MulticoreExecutor` is registered as "multicore".
+
+### Removed
+
+- Removed `StepExecutionMetadata`. Its fields have been absorbed into `StepInfo`.
+
 ### Fixed
 
 - Improved `Step.ensure_result()` such that the step's result doesn't have to be read from the cache.
