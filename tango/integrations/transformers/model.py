@@ -1,10 +1,9 @@
 from typing import Optional, Type
 
-from transformers.models.auto import modeling_auto
-from transformers.models.auto import modeling_flax_auto
+from transformers.models.auto import modeling_auto, modeling_flax_auto
 
-from tango.integrations.torch.model import Model
 from tango.integrations.flax.model import Model as FlaxModel
+from tango.integrations.torch.model import Model
 
 from .config import Config
 
@@ -25,7 +24,7 @@ def auto_model_wrapper_factory(cls: type) -> Type[Model]:
 
 
 def flax_auto_model_wrapper_factory(cls: type) -> Type[FlaxModel]:
-    class AutoModelWrapper(cls, Model): # type: ignore
+    class AutoModelWrapper(cls, Model):  # type: ignore
         @classmethod
         def from_pretrained(
             cls, pretrained_model_name_or_path: str, config: Optional[Config] = None, **kwargs

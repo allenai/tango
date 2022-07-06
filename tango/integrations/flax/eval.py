@@ -1,9 +1,9 @@
 from abc import abstractmethod
 from collections import defaultdict
+from itertools import islice
 from typing import Dict, List, Optional, Sequence
 
 import jax
-import jax.numpy as jnp
 from flax.training.train_state import TrainState
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -22,7 +22,7 @@ from .util import get_PRNGkey
 
 class FlaxEvalWrapper(Registrable):
     @abstractmethod
-    def eval_step(self, state, batch):
+    def eval_fn(self, state, batch, model):
         """
         returns logits and metrics.
         """
@@ -44,7 +44,7 @@ class FlaxEvalStep(Step):
         dataloader: Lazy[FlaxDataLoader],
         eval_wrapper: FlaxEvalWrapper,
         test_split: str = "test",
-        seed: int = 42,
+        seed: Optional[int] = 42,
         log_every: int = 1,
         do_distributed: bool = False,
         eval_steps: Optional[int] = None,
@@ -76,7 +76,7 @@ class FlaxEvalStep(Step):
                 )
 
         # Initialize callbacks
-        callbacks_: List[EvalCallback] = [
+        callbacks: List[EvalCallback] = [
             callback.construct(
                 step_id=self.unique_id,
                 work_dir=self.work_dir,
@@ -87,42 +87,52 @@ class FlaxEvalStep(Step):
             for callback in (callbacks or [])
         ]
 
-        for callback in callbacks_:
+        for callback in callbacks:
             callback.pre_eval_loop()
 
-        eval_metrics: Dict = defaultdict(list)
-        aggregated_metrics: Dict = defaultdict(float)
-
-        rng = get_PRNGkey()
-        start_step = 0
-        batches = Tqdm.tqdm(
-            dataloader(rng, do_distributed), initial=start_step, total=steps, desc="Evaluating"
-        )
-        for step, batch in enumerate(batches):
-            for callback in callbacks_:
-                callback.pre_batch(step, batch)
-
+        def eval_step(state, batch):
+            logits, metrics = eval_wrapper.eval_fn(state, batch, model)
             if do_distributed:
-                parallel_eval_step = jax.pmap(eval_wrapper.eval_step, axis_name="batch")
-                logits, metrics = parallel_eval_step(state, batch)
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
-            else:
-                logits, metrics = eval_wrapper.eval_step(state, batch)
-            metrics = jax.device_get(metrics)
-            metrics = jax.tree_map(lambda x: x.item(), metrics)
+            return logits, metrics
 
-            for callback in callbacks_:
-                callback.post_batch(step, logits)
+        rng = get_PRNGkey(seed)
+        eval_batches = enumerate(islice(dataloader(rng, do_distributed), steps))
 
-            for key, value in metrics.items():
-                eval_metrics[key].append(value)
+        running_metrics: Dict[str, float] = defaultdict(float)
+        aggregated_metrics: Dict[str, float] = defaultdict(float)
 
-        for key, val in eval_metrics.items():
-            aggregated_metrics[key] = jax.tree_map(jnp.mean, jnp.array(val)).item()
+        with Tqdm.tqdm(eval_batches, desc="Evaluating", total=steps) as batch_iter:
+            for step, batch in batch_iter:
+                should_log_this_step = step % log_every == 0 or step == steps - 1
+                for callback in callbacks:
+                    callback.pre_batch(step, batch)
 
-        print("Test metrics: " , aggregated_metrics)
+                if do_distributed:
+                    parallel_eval_step = jax.pmap(eval_step, axis_name="batch")
+                    logits, metrics = parallel_eval_step(state, batch)
+                    metrics = jax.lax.pmean(metrics, axis_name="batch")
+                else:
+                    logits, metrics = eval_step(state, batch)
 
-        for callback in callbacks_:
+                metrics = jax.device_get(metrics)
+
+                for callback in callbacks:
+                    callback.post_batch(step, logits)
+
+                if auto_aggregate_metrics:
+                    for key, val in metrics.items():
+                        if key in metric_names:
+                            running_metrics[key] += metrics[key].item()
+                            aggregated_metrics[key] = running_metrics[key] / (step + 1)
+                else:
+                    aggregated_metrics.update(metrics)
+
+                if should_log_this_step:
+                    batch_iter.set_postfix(**aggregated_metrics)
+                del batch
+
+        for callback in callbacks:
             callback.post_eval_loop(aggregated_metrics)
 
         return aggregated_metrics

@@ -25,11 +25,13 @@ class LoadMNISTData(Step):
         ds_builder = tfds.builder("mnist")
         ds_builder.download_and_prepare()
         train_ds = tfds.as_numpy(ds_builder.as_dataset(split="train", batch_size=-1))
-        train_ds["x"] = jax.numpy.float32(train_ds["image"]) / 255.0
+        train_ds["x"] = train_ds["image"] / 255.0
         train_ds["labels"] = train_ds["label"]
+        train_ds["num_rows"] = len(train_ds["x"])
         test_ds = tfds.as_numpy(ds_builder.as_dataset(split="test", batch_size=-1))
-        test_ds["x"] = jax.numpy.float32(test_ds["image"]) / 255.0
+        test_ds["x"] = test_ds["image"] / 255.0
         test_ds["labels"] = test_ds["label"]
+        test_ds["num_rows"] = len(test_ds["x"])
         dataset = {"train": train_ds, "test": test_ds}
         return dataset
 
@@ -83,16 +85,16 @@ class TrainWrapper(FlaxTrainWrapper):
             loss = optax.softmax_cross_entropy(logits=logits, labels=labels_onehot).mean()
             return loss
 
-        labels = batch["label"]
-        logits = self.model.apply({"params": params}, batch["image"])
+        labels = batch["labels"]
+        logits = self.model.apply({"params": params}, batch["x"])
         loss = compute_loss(logits, labels)
         return loss, logits
 
-    def eval_fn(self, params, batch):
+    def eval_fn(self, batch, state, model):
         """
         Compute loss and metrics during eval.
         """
-        logits = self.model.apply({"params": params}, batch["image"])
+        logits = self.model.apply({"params": state.params}, batch["x"])
         return logits
 
 
@@ -172,7 +174,7 @@ class PreProcessing(Step):
         return dataset
 
 
-@FlaxTrainWrapper.register("summarization_wrapper")
+@FlaxTrainWrapper.register("xsum_train_wrapper")
 class TrainWrapper(FlaxTrainWrapper):
     def compute_metrics(self, logits, labels):
         # return empty dict if no other metrics to compute
@@ -200,6 +202,7 @@ class TrainWrapper(FlaxTrainWrapper):
         return loss
 
     def eval_fn(self, batch, state, model):
+        labels = batch.pop("labels")
         logits = model(**batch, params=model.params, train=False)[0]
 
         def loss_fn(logits, labels):
@@ -222,8 +225,15 @@ class TrainWrapper(FlaxTrainWrapper):
             loss = loss.sum() / padding_mask.sum()
             return loss
 
-        labels = batch.pop("labels")
         loss = loss_fn(logits, labels)
         # summarize metrics
         metrics = {"loss": loss}
         return metrics
+
+
+@FlaxEvalWrapper.register("xsum_eval_wrapper")
+class EvalWrapper(FlaxEvalWrapper):
+    def eval_fn(self, state, batch, model):
+        metrics = {"loss": jnp.array(10.0)}
+        logits = 0.0
+        return logits, metrics

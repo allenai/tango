@@ -13,17 +13,16 @@ T = TypeVar("T")
 
 class DataLoader(Generic[T], Registrable):
     """
-    A :class:`~tango.common.Registrable` which  will take in dataset and act as a dataloader for Flax models.
+    A :class:`~tango.common.Registrable` version of a ``Flax DataLoader``.
+    ``Flax DataLoader accepts Dataset object and dict of type [str, np,array]. The dict should
+    contain keys "x" and "labels" corresponding to the input and output.
+
+    The class yields a jax batch.
     """
 
 
 @DataLoader.register("flax::dataloader")
 class FlaxDataLoader(DataLoader):
-    """
-    The class will take in dataset in the following formats:
-
-    """
-
     def __init__(
         self,
         dataset: Union[DatasetDictBase, Dict],
@@ -35,14 +34,10 @@ class FlaxDataLoader(DataLoader):
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.shuffle = shuffle
-        self.dataset_size = (
-            len(self.dataset)
-            # if isinstance(self.dataset, DatasetDictBase) else len(self.dataset["x"])
-        )
+        self.dataset_size = dataset["num_rows"] if type(dataset) is dict else dataset.num_rows
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
         steps_per_epoch = self.dataset_size // self.batch_size
-        steps_per_epoch = 100
 
         if self.shuffle:
             perms = jax.random.permutation(rng, self.dataset_size)
@@ -53,14 +48,12 @@ class FlaxDataLoader(DataLoader):
         perms = perms.reshape((steps_per_epoch, self.batch_size))
 
         for perm in perms:
-            if isinstance(self.dataset, datasets.Dataset):
+            if isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset):
                 batch = self.dataset[perm]
                 batch = {k: jnp.array(v) for k, v in batch.items()}
-            elif isinstance(self.dataset, dict):
-                batch = {k: v[perm, ...] for k, v in self.dataset.items()}
             else:
                 raise ValueError(
-                    "Type for FlaxLoader should be Datasets , or dict of " "jax device arrays."
+                    "Type for FlaxLoader should be Datasets , or dict of numpy arrays."
                 )
             if do_distributed:
                 batch = shard(batch)

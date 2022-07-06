@@ -14,16 +14,13 @@ __all__ = [
     "FlaxTrainStep",
     "FlaxTrainWrapper",
     "TrainConfig",
-    "LossFunction",
     "FlaxEvalStep",
     "FlaxEvalWrapper",
 ]
 
 from .data import DataLoader, FlaxDataLoader
 from .eval import FlaxEvalStep, FlaxEvalWrapper
-from .loss import LossFunction
 from .model import Model
 from .optim import LRScheduler, Optimizer
-from .train import FlaxTrainStep
+from .train import FlaxTrainStep, FlaxTrainWrapper
 from .train_config import TrainConfig
-from .train_state import FlaxTrainWrapper
