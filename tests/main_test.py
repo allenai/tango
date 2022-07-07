@@ -144,8 +144,8 @@ class TestRun(TangoTestCase):
         metadata = StepExecutionMetadata.from_params(metadata_params)
         assert metadata.config == {
             "type": "concat_strings",
-            "step_unique_id_override": "ConcatStringsStep-3qLNS3gLUQXBGN7rC8yzuYJnjTVp7kgu",
-            "string1": {"type": "ref", "ref": "StringStep-4cHbmoHigd3rvNn3w7shc1d45WA1ijSp"},
+            "step_unique_id_override": "ConcatStringsStep-2FVF7SCZZdjKR7ZqsXRKq5zZgnughx2i",
+            "string1": {"type": "ref", "ref": "StringStep-R6G6Yx254rmjDL3ypu4ynvjuN1aTFKS5"},
             "string2": "World!",
             "join_with": ", ",
         }
