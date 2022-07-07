@@ -8,11 +8,9 @@ from typing import List, Tuple
 import click
 import pytest
 
-from tango.common import Params
 from tango.common.testing import TangoTestCase
 from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
-from tango.workspace import StepExecutionMetadata
 
 
 class TestRun(TangoTestCase):
@@ -134,27 +132,7 @@ class TestRun(TangoTestCase):
         run_dir = next((self.TEST_DIR / "runs").iterdir())
         assert (run_dir / "hello").is_dir()
         assert (run_dir / "hello" / "cache-metadata.json").is_file()
-        assert (run_dir / "hello" / "execution-metadata.json").is_file()
         assert (run_dir / "hello_world").is_dir()
-
-        # Check metadata.
-        metadata_path = run_dir / "hello_world" / "execution-metadata.json"
-        assert metadata_path.is_file()
-        metadata_params = Params.from_file(metadata_path)
-        metadata = StepExecutionMetadata.from_params(metadata_params)
-        assert metadata.config == {
-            "type": "concat_strings",
-            "step_unique_id_override": "ConcatStringsStep-2FVF7SCZZdjKR7ZqsXRKq5zZgnughx2i",
-            "string1": {"type": "ref", "ref": "StringStep-R6G6Yx254rmjDL3ypu4ynvjuN1aTFKS5"},
-            "string2": "World!",
-            "join_with": ", ",
-        }
-        if (Path.cwd() / ".git").exists():
-            assert metadata.git.commit is not None
-            assert metadata.git.remote is not None
-
-        # Check for requirements.txt file.
-        assert (run_dir / "hello_world" / "requirements.txt").is_file()
 
         # Check logs.
         self.check_logs(run_dir, result)
