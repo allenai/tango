@@ -151,12 +151,25 @@ class EnvironmentMetadata(FromParams):
     The root directory from where the Python executable was ran.
     """
 
+<<<<<<< HEAD
+    pip_packages: Optional[List[Tuple[str, str]]] = field(default_factory=get_pip_packages)
+=======
     packages: Optional[List[Tuple[str, str]]] = field(default_factory=get_pip_packages)
+>>>>>>> main
     """
     The current set of Python packages in the Python environment. Each entry is a tuple of strings.
     The first element is the name of the package, the second element is the version.
     """
 
+<<<<<<< HEAD
+    conda_env: Optional[Dict[str, Any]] = field(default_factory=get_conda_env)
+    """
+    Captures the active conda environment. The object here is a dictionary form of a conda
+    environment YAML file.
+    """
+
+=======
+>>>>>>> main
     git: Optional[GitMetadata] = field(default_factory=GitMetadata.check_for_repo)
     """
     The :class:`GitMetadata`.
