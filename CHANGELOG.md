@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.10.0](https://github.com/allenai/tango/releases/tag/v0.10.0) - 2022-07-07
+
 ### Changed
 
 - Renamed `workspace` parameter of `BeakerWorkspace` class to `beaker_workspace`.
