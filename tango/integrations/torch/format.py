@@ -23,7 +23,7 @@ class TorchFormat(Format[T], Generic[T]):
 
     """
 
-    VERSION = 2
+    VERSION = "002"
 
     def write(self, artifact: T, dir: PathOrStr):
         filename = Path(dir) / "data.pt"

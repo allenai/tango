@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - One of our error messages referred to a configuration file that no longer exists.
 - Improved performance of `BeakerWorkspace`.
 
+### Added
+
+- Added the ability to train straight `Model` instead of just `Lazy[Model]`
+
 
 ## [v0.9.1](https://github.com/allenai/tango/releases/tag/v0.9.1) - 2022-06-24
 
