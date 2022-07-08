@@ -79,3 +79,9 @@ class StepStateError(TangoError):
         if context is not None:
             msg = msg + " " + context
         super().__init__(msg)
+
+
+class DirtyRepoError(TangoError):
+    """
+    Raised when a repository is in a dirty state.
+    """

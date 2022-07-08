@@ -354,9 +354,7 @@ def excepthook(exctype, value, traceback):
     Used to patch `sys.excepthook` in order to log exceptions.
     """
     global _EXCEPTIONS_LOGGED
-    # Ignore `CliRunError` because we don't need a traceback for those.
-    if issubclass(exctype, (CliRunError,)):
-        return
+
     # For interruptions, call the original exception handler.
     if issubclass(
         exctype,
@@ -367,14 +365,18 @@ def excepthook(exctype, value, traceback):
     ):
         sys.__excepthook__(exctype, value, traceback)
         return
+
     if value not in _EXCEPTIONS_LOGGED:
         _EXCEPTIONS_LOGGED.append(value)
         root_logger = logging.getLogger()
-        root_logger.error(
-            "Uncaught exception",
-            exc_info=(exctype, value, traceback),
-            extra={"highlighter": rich.highlighter.ReprHighlighter()},
-        )
+        if issubclass(exctype, (CliRunError,)):
+            cli_logger.error("%s", value)
+        else:
+            root_logger.error(
+                "Uncaught exception",
+                exc_info=(exctype, value, traceback),
+                extra={"highlighter": rich.highlighter.ReprHighlighter()},
+            )
 
 
 def initialize_logging(

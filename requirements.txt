@@ -3,6 +3,7 @@
 ################################
 cached-path>=1.0,<1.2
 jsonnet>=0.10 ; sys.platform != 'win32'
+GitPython>=3.0,<4.0
 PyYAML>=5.4.1,<6.1
 dill
 base58

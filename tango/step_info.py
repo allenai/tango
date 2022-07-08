@@ -69,33 +69,14 @@ class GitMetadata(FromParams):
 
     @classmethod
     def check_for_repo(cls) -> Optional["GitMetadata"]:
-        import subprocess
+        from git import InvalidGitRepositoryError, Repo
 
         try:
-            commit = (
-                subprocess.check_output("git rev-parse HEAD".split(" "), stderr=subprocess.DEVNULL)
-                .decode("ascii")
-                .strip()
-            )
-            remote: Optional[str] = None
-            for line in (
-                subprocess.check_output("git remote -v".split(" "))
-                .decode("ascii")
-                .strip()
-                .split("\n")
-            ):
-                remotes: Dict[str, str] = {}
-                if line.endswith("(fetch)"):
-                    name, info = line.split("\t")
-                    url = info.split(" ")[0]
-                    remotes[name] = url
-                if "origin" in remotes:
-                    remote = remotes["origin"]
-                elif remotes:
-                    remote = list(remotes.values())[0]
-            return cls(commit=commit, remote=remote)
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            repo = Repo(".")
+        except InvalidGitRepositoryError:
             return None
+
+        return cls(commit=str(repo.commit()), remote=repo.remote().url)
 
 
 @dataclass
