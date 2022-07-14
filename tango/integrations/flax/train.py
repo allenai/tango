@@ -383,6 +383,8 @@ class FlaxTrainStep(Step):
                 train_config=config,
                 dataset=dataset,
                 train_dataloader=train_dataloader,
+                model=model,
+                optimizer=optimizer,
                 validation_dataloader=validation_dataloader,
             )
             for callback in (callbacks or [])
@@ -415,9 +417,7 @@ class FlaxTrainStep(Step):
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)
-            other_metrics = train_wrapper.compute_metrics(
-                state, batch, labels=labels
-            )
+            other_metrics = train_wrapper.compute_metrics(state, batch, labels=labels)
             metrics = {"loss": loss}
             metrics.update(other_metrics)
             if do_distributed:
@@ -428,9 +428,7 @@ class FlaxTrainStep(Step):
             labels = batch.pop("labels")
             logits = state.apply_fn(**batch, params=state.params, train=False)[0]
             loss = train_wrapper.val_loss(batch, logits, labels)
-            other_metrics = train_wrapper.compute_metrics(
-                state, batch, labels=labels
-            )
+            other_metrics = train_wrapper.compute_metrics(state, batch, labels=labels)
             metrics = {"loss": loss}
             metrics.update(other_metrics)
             if do_distributed:

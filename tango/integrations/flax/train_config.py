@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -20,15 +20,10 @@ class TrainConfig:
     The working directory for the training run.
     """
 
-    # type?
-    # params
-
     step_name: Optional[str] = None
     """
     The name of the current step.
     """
-
-    # worker_id
 
     train_split: Optional[str] = "train"
     """
@@ -128,3 +123,6 @@ class TrainConfig:
     def should_log_this_val_step(self, val_step: int) -> bool:
         assert self.validation_steps is not None
         return val_step % self.log_every == 0 or val_step == self.validation_steps - 1
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in asdict(self).items() if not k.startswith("_")}

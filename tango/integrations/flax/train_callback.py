@@ -2,19 +2,36 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 from tango.workspace import Workspace
 
+from .data import DataLoader
 from .model import Model
+from .optim import Optimizer
 from .train_config import TrainConfig
 
 
 class TrainCallback(Registrable):
     """ """
 
-    def __init__(self, workspace: Workspace, train_config: TrainConfig) -> None:
+    def __init__(
+        self,
+        workspace: Workspace,
+        train_config: TrainConfig,
+        dataset: DatasetDictBase,
+        train_dataloader: DataLoader,
+        model: Model,
+        optimizer: Optimizer,
+        validation_dataloader: Optional[DataLoader] = None,
+    ) -> None:
         self.workspace = workspace
         self.train_config = train_config
+        self.dataset = dataset
+        self.train_dataloader = train_dataloader
+        self.model = model
+        self.optimizer = optimizer
+        self.validation_dataloader = validation_dataloader
         self.logger = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -150,21 +167,3 @@ class TrainCallback(Registrable):
         Called right after the evaluation loop finishes
         """
         pass
-
-
-# define a early stop callback
-
-
-@TrainCallback.register("torch::stop_early")
-class StopEarlyCallback(TrainCallback):
-    """
-    A :class:`TrainCallback` for early stopping. Training is stopped early after
-    ``patience`` steps without an improvement to the validation metric.
-
-    .. tip::
-
-        Registered as a :class:`TrainCallback` under the name "torch::stop_early".
-    """
-
-    def __init__(self, *args, patience: int = 10000, **kwargs) -> None:
-        super().__init__(*args, **kwargs)

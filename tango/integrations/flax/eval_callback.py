@@ -22,7 +22,6 @@ class EvalCallback(Registrable):
         self.workspace = workspace
         self.step_id = step_id
         self.work_dir = work_dir
-        self.model = model
         self.dataset_dict = dataset_dict
         self.dataloader = dataloader
 
