@@ -338,8 +338,7 @@ def pop_and_construct_arg(
                 "and if it is different from what we get from **extras, you might "
                 "get unexpected behavior."
             )
-    # print("name: ", name)
-    # print("params: ", params)
+
     popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
     if popped_params is None:
         return None
