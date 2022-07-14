@@ -13,7 +13,35 @@ from .train_config import TrainConfig
 
 
 class TrainCallback(Registrable):
-    """ """
+    """
+    A :class:`TrainCallback` is a :class:`~tango.common.Registrable` class
+    that can be used within :class:`FlaxTrainStep` to customize behavior in the training
+    loop. You can set the training callbacks with the ``callbacks`` parameter to :class:`FlaxTrainStep`.
+
+    .. tip::
+        All of the parameters to this base class will be automatically set within
+        the training loop, so you shouldn't include them in your config for your callbacks.
+
+    .. tip::
+        You can access the model being trained through :attr:`self.model <model>`.
+
+    .. important::
+        The ``step`` argument to callback methods is the total/overall number of training steps
+        so far, independent of the current epoch.
+
+    .. seealso::
+        See :class:`~tango.integrations.wandb.WandbTrainCallback` for an example
+        implementation.
+
+    :ivar Workspace workspace: The tango workspace being used.
+    :ivar TrainConfig train_config: The training config.
+    :ivar tango.common.DatasetDictBase dataset_dict: The dataset dict containing train and
+        optional validation splits.
+    :ivar DataLoader train_dataloader: The dataloader used for the training split.
+    :ivar FlaxModel model: The flax model being trained.
+    :ivar Optimizer optimizer: The optimizer being used for training.
+    :ivar DataLoader validation_dataloader: Optional dataloader used for the validation split.
+    """
 
     def __init__(
         self,
@@ -54,13 +82,6 @@ class TrainCallback(Registrable):
         The working directory of the current train step
         """
         return self.train_config.work_dir
-
-    @property
-    def model(self) -> Model:
-        """
-        The :class:`Model` being trained
-        """
-        raise NotImplementedError
 
     def state_dict(self) -> Dict[str, Any]:
         """

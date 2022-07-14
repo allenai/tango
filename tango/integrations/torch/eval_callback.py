@@ -12,7 +12,7 @@ from .model import Model
 class EvalCallback(Registrable):
     """
     An ``EvalCallback`` is a :class:`~tango.common.Registrable` class that can be used
-    within :class:`FlaxEvalStep` to customize the behavior of the evaluation loop,
+    within :class:`TorchEvalStep` to customize the behavior of the evaluation loop,
     similar to how :class:`TrainCallback` is used to customize the behavior of the training
     loop.
 
@@ -72,7 +72,7 @@ class EvalCallback(Registrable):
             This method can be used to modify ``batch_outputs`` in place, which is useful
             in scenarios where you might need to aggregate metrics
             in a special way other than a simple average. If that's the case, make sure
-            to set ``auto_aggregate_metrics`` to ``False`` in :class:`FlaxEvalStep`.
+            to set ``auto_aggregate_metrics`` to ``False`` in :class:`TorchEvalStep`.
 
         """
         pass
