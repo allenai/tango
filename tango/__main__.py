@@ -386,7 +386,7 @@ def beaker_executor_run(
     executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize logging.
-    initialize_logging(log_level="debug")
+    initialize_logging(log_level="debug", enable_cli_logs=True)
     do_json_logging(f"step {step.name}")
 
     # Run step.
