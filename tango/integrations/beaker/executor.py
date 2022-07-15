@@ -17,6 +17,7 @@ from beaker import (
     Digest,
     EnvVar,
     ExperimentSpec,
+    JobFailedError,
     TaskResources,
     TaskSpec,
 )
@@ -112,20 +113,26 @@ class BeakerExecutor(Executor):
         experiment = self.beaker.experiment.create(experiment_name, spec)
 
         # Follow the experiment and stream the logs until it completes.
-        for line in self.beaker.experiment.follow(experiment, strict=True):
-            # Every log line from Beaker starts with an RFC 3339 UTC timestamp
-            # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
-            # the timestamps so we split them off like this:
-            line = line[line.find(b"Z ") + 2 :]
-            line_str = line.decode(errors="ignore").rstrip()
+        try:
+            for line in self.beaker.experiment.follow(experiment, strict=True):
+                # Every log line from Beaker starts with an RFC 3339 UTC timestamp
+                # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
+                # the timestamps so we split them off like this:
+                line = line[line.find(b"Z ") + 2 :]
+                line_str = line.decode(errors="ignore").rstrip()
 
-            # Try parsing a JSON log record from the line.
-            try:
-                log_record_attrs = jsonpickle.loads(line_str)
-                log_record = logging.makeLogRecord(log_record_attrs)
-                logging.getLogger(log_record.name).handle(log_record)
-            except JSONDecodeError:
-                logger.debug(line_str)
+                # Try parsing a JSON log record from the line.
+                try:
+                    log_record_attrs = jsonpickle.loads(line_str)
+                    log_record = logging.makeLogRecord(log_record_attrs)
+                    logging.getLogger(log_record.name).handle(log_record)
+                except JSONDecodeError:
+                    logger.debug(f"[step {step_name}] {line_str}")
+        except JobFailedError:
+            raise ExecutorError(
+                f"Beaker job for step '{step_name}' failed. "
+                f"You can check the logs at {self.beaker.experiment.url(experiment)}"
+            )
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
