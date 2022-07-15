@@ -85,3 +85,9 @@ class DirtyRepoError(TangoError):
     """
     Raised when a repository is in a dirty state.
     """
+
+
+class ExecutorError(TangoError):
+    """
+    A base class for executor-specific errors.
+    """

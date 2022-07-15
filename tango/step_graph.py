@@ -4,7 +4,6 @@ from typing import Any, Dict, Iterator, List, Mapping, Set, Type, Union
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
-from tango.common.util import import_extra_module
 from tango.step import Step
 
 logger = logging.getLogger(__name__)
@@ -228,8 +227,6 @@ class StepGraph(Mapping[str, Step]):
     @classmethod
     def from_file(cls, filename: PathOrStr) -> "StepGraph":
         params = Params.from_file(filename)
-        for package_name in params.pop("include_package", []):
-            import_extra_module(package_name)
         return StepGraph.from_params(params.pop("steps", keep_as_dict=True))
 
     def to_config(self, include_unique_id: bool = False) -> Dict[str, Dict]:

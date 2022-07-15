@@ -65,7 +65,7 @@ class Executor(Registrable):
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         """
-        Execute a :class:`tango.step_graph.StepGraph`. This attempts to execute
+        Execute a :class:`~tango.step_graph.StepGraph`. This attempts to execute
         every step in order. If a step fails, its dependent steps are not run,
         but unrelated steps are still executed. Step failures will be logged, but
         no exceptions will be raised.
@@ -96,6 +96,16 @@ class Executor(Registrable):
             logger.error(stacktrace)
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
+
+    def execute_sub_graph_for_step(
+        self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
+    ) -> None:
+        """
+        Execute the sub-graph associated with a particular step in a
+        :class:`~tango.step_graph.StepGraph`.
+        """
+        step = step_graph[step_name]
+        self.execute_step(step)
 
 
 Executor.register("default")(Executor)

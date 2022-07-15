@@ -33,12 +33,16 @@ def patched_constants_prefix(monkeypatch) -> str:
 
 
 @pytest.fixture
+def beaker_workspace_name() -> str:
+    return "ai2/tango-beaker-testing"
+
+
+@pytest.fixture
 def beaker_workspace(
-    patched_unique_id_suffix: str, patched_constants_prefix: str
+    beaker_workspace_name: str, patched_unique_id_suffix: str, patched_constants_prefix: str
 ) -> Generator[str, None, None]:
-    workspace_name = "ai2/tango-beaker-testing"
-    beaker = Beaker.from_env(default_workspace=workspace_name)
-    yield workspace_name
+    beaker = Beaker.from_env(default_workspace=beaker_workspace_name)
+    yield beaker_workspace_name
     # Remove datasets.
     for dataset in beaker.workspace.datasets(match=patched_unique_id_suffix):
         beaker.dataset.delete(dataset)

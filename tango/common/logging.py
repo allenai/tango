@@ -441,16 +441,21 @@ def initialize_worker_logging(worker_rank: Optional[int] = None):
     return initialize_prefix_logging(prefix=prefix, main_process=False)
 
 
-def initialize_prefix_logging(prefix: Optional[str] = None, main_process: bool = False):
+def initialize_prefix_logging(
+    *, log_level: Optional[str] = None, prefix: Optional[str] = None, main_process: bool = False
+):
     """
     Initialize logging with a prefix.
 
+    :param log_level:
+        Can be one of "debug", "info", "warning", "error". Defaults to the value
+        of :data:`TANGO_LOG_LEVEL`, if set, or "error".
     :param prefix:
         The string prefix to add to the log message.
     :param main_process:
         Whether it is for the main/worker process.
     """
-    return _initialize_logging(prefix=prefix, main_process=main_process)
+    return _initialize_logging(log_level=log_level, prefix=prefix, main_process=main_process)
 
 
 def _initialize_logging(
@@ -472,6 +477,10 @@ def _initialize_logging(
         file_friendly_logging = FILE_FRIENDLY_LOGGING
     if enable_cli_logs is None:
         enable_cli_logs = TANGO_CLI_LOGGER_ENABLED
+    if prefix:
+        prefix = _LOGGING_PREFIX + " " + prefix if _LOGGING_PREFIX else prefix
+    else:
+        prefix = _LOGGING_PREFIX
 
     level = logging._nameToLevel[log_level.upper()]
 
@@ -530,6 +539,12 @@ def _initialize_logging(
                 cli_handler.addFilter(LevelFilter(handler_level))
                 cli_logger.addHandler(cli_handler)
 
+        # Add prefix.
+        if prefix:
+            for logger in (root_logger, cli_logger, tqdm_logger):
+                for handler in logger.handlers:
+                    handler.addFilter(PrefixLogFilter(prefix))
+
         # Main process: set formatter and handlers, initialize logging socket and server.
         # Set up logging socket to emit log records from worker processes/threads.
         # Inspired by:
@@ -550,10 +565,6 @@ def _initialize_logging(
                 "did you forget to call 'initialize_logging()' from the main process?"
             )
         socket_handler = logging.handlers.SocketHandler(_LOGGING_HOST, _LOGGING_PORT)
-        if prefix:
-            prefix = _LOGGING_PREFIX + " " + prefix if _LOGGING_PREFIX else prefix
-        else:
-            prefix = _LOGGING_PREFIX
         if prefix:
             socket_handler.addFilter(PrefixLogFilter(prefix))
 

@@ -37,6 +37,7 @@ transformers>=4.12.3         # needed by: transformers
 sentencepiece>=0.1.96        # needed by: transformers
 fairscale==0.4.6             # needed by: fairscale
 beaker-py>=1.6.2,<2.0.0      # needed by: beaker
+python-json-logger==2.0.4    # needed by: beaker
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers

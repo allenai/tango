@@ -341,6 +341,58 @@ def run(
     )
 
 
+@main.command(hidden=True)
+@click.argument(
+    "experiment",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+)
+@click.argument(
+    "step_name",
+    type=str,
+)
+@click.argument(
+    "workspace_url",
+    type=str,
+)
+@click.option(
+    "-i",
+    "--include-package",
+    type=str,
+    help="Python packages or modules to import for tango components.",
+    multiple=True,
+)
+def beaker_executor_run(
+    experiment: str,
+    step_name: str,
+    workspace_url: str,
+    include_package: Optional[Sequence[str]] = None,
+):
+    """
+    This command is only used internally by the BeakerExecutor.
+    """
+    from tango.executor import Executor
+    from tango.integrations.beaker.util import do_json_logging
+
+    if include_package:
+        for package_name in include_package:
+            import_extra_module(package_name)
+
+    # Load step graph and step.
+    step_graph = StepGraph.from_file(experiment)
+    step = step_graph[step_name]
+
+    # Initialize workspace and executor.
+    workspace = Workspace.from_url(workspace_url)
+    executor = Executor(workspace=workspace, include_package=include_package)
+
+    # Initialize logging.
+    initialize_logging(log_level="debug")
+    do_json_logging(f"step {step.name}")
+
+    # Run step.
+    executor.execute_step(step)
+
+
 @main.command(**_CLICK_COMMAND_DEFAULTS)
 @click.option(
     "-w",
@@ -734,16 +786,19 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-    # Initialize step graph and register run.
+    # Initialize step graph.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+    sub_graph: Optional[StepGraph] = None
     params.assert_empty("'tango run'")
 
+    # Register run.
+    run: "Run"
     if step_name is not None:
         assert step_name in step_graph, (
             f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
             f"The config contains: {list(step_graph.keys())}."
         )
-
+        sub_graph = step_graph.sub_graph(step_name)
         if called_by_executor and name is not None:
             try:
                 run = workspace.registered_run(name)
@@ -753,7 +808,6 @@ def _run(
                     f"'{name}' is not already registered as a run. This should never happen!"
                 )
         else:
-            sub_graph = step_graph.sub_graph(step_name)
             run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
         run = workspace.register_run((step for step in step_graph.values()), name)
@@ -771,8 +825,8 @@ def _run(
             )
 
         if step_name is not None:
-            step = step_graph[step_name]
-            executor.execute_step(step)
+            assert sub_graph is not None
+            executor.execute_sub_graph_for_step(sub_graph, step_name, run_name=run.name)
             if not called_by_executor:
                 cli_logger.info(
                     "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
@@ -798,7 +852,7 @@ def _run(
         # We set this environment variable so that any steps that contain multiprocessing
         # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
         os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
-        initialize_prefix_logging(f"step {step_name}", main_process=False)
+        initialize_prefix_logging(prefix=f"step {step_name}", main_process=False)
         log_and_execute_run()
     else:
         # Capture logs to file.
