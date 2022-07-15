@@ -59,7 +59,7 @@ class BeakerExecutor(Executor):
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
-        beaker_image: Optional[str] = None,
+        beaker_image: Optional[str] = "ai2/conda",
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
         **kwargs,
@@ -71,7 +71,7 @@ class BeakerExecutor(Executor):
             )
 
         super().__init__(workspace, include_package=include_package)
-        self.beaker = Beaker.from_env(default_workspace=beaker_workspace)
+        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets
