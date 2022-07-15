@@ -127,7 +127,7 @@ class BeakerExecutor(Executor):
                     log_record = logging.makeLogRecord(log_record_attrs)
                     logging.getLogger(log_record.name).handle(log_record)
                 except JSONDecodeError:
-                    logger.debug(f"[step {step_name}] {line_str}")
+                    logger.info(f"[step {step_name}] {line_str}")
         except JobFailedError:
             raise ExecutorError(
                 f"Beaker job for step '{step_name}' failed. "
