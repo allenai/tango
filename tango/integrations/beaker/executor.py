@@ -117,7 +117,7 @@ class BeakerExecutor(Executor):
             # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
             # the timestamps so we split them off like this:
             line = line[line.find(b"Z ") + 2 :]
-            line_str = line.decode(errors="ignore")
+            line_str = line.decode(errors="ignore").rstrip()
 
             # Try parsing a JSON log record from the line.
             logger_name: Optional[str] = None
