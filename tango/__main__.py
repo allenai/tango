@@ -826,7 +826,14 @@ def _run(
 
         if step_name is not None:
             assert sub_graph is not None
-            executor.execute_sub_graph_for_step(sub_graph, step_name, run_name=run.name)
+            step = sub_graph[step_name]
+            if step.cache_results and step in workspace.step_cache:
+                cli_logger.info(
+                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                    step_name,
+                )
+            else:
+                executor.execute_sub_graph_for_step(sub_graph, step_name, run_name=run.name)
             if not called_by_executor:
                 cli_logger.info(
                     "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
