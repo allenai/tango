@@ -1,8 +1,10 @@
+import json
 import logging
 import os
 import tempfile
 import time
 import uuid
+from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
@@ -115,7 +117,29 @@ class BeakerExecutor(Executor):
             # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
             # the timestamps so we split them off like this:
             line = line[line.find(b"Z ") + 2 :]
-            print(line.decode(errors="ignore"), end="")
+            line_str = line.decode(errors="ignore")
+
+            # Try parsing a JSON log record from the line.
+            logger_name: Optional[str] = None
+            log_level: int = logging.DEBUG
+            log_msg: str
+            try:
+                log_data = json.loads(line_str)
+                if (
+                    isinstance(log_data, dict)
+                    and "message" in log_data
+                    and "level" in log_data
+                    and "logger" in log_data
+                ):
+                    logger_name = log_data["logger"]
+                    log_level = getattr(logging, log_data["level"])
+                    log_msg = log_data["message"]
+                else:
+                    log_msg = line_str
+            except JSONDecodeError:
+                log_msg = line_str
+            logger_ = logging.getLogger(logger_name) if logger_name is not None else logger
+            logger_.log(log_level, log_msg)
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
