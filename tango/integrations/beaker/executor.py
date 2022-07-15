@@ -13,6 +13,7 @@ from beaker import (
     DatasetConflict,
     DatasetNotFound,
     Digest,
+    EnvVar,
     ExperimentSpec,
     TaskResources,
     TaskSpec,
@@ -62,6 +63,7 @@ class BeakerExecutor(Executor):
         beaker_image: Optional[str] = "ai2/conda",
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
+        env_vars: Optional[List[EnvVar]] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -75,6 +77,7 @@ class BeakerExecutor(Executor):
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets
+        self.env_vars = env_vars
         self.clusters = clusters
 
         try:
@@ -282,6 +285,7 @@ class BeakerExecutor(Executor):
                 arguments=command,
                 resources=task_resources,
                 datasets=self.datasets,
+                env_vars=self.env_vars,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
