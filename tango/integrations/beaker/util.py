@@ -1,37 +1,20 @@
 import logging
-from datetime import datetime
 
-from pythonjsonlogger import jsonlogger
+import jsonpickle
 
 
-class JsonFormatter(jsonlogger.JsonFormatter):
-    def add_fields(self, log_record, record, message_dict):
-        super().add_fields(log_record, record, message_dict)
-        # Add timestamp.
-        if not log_record.get("timestamp"):
-            # this doesn't use record.created, so it is slightly off
-            now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-            log_record["timestamp"] = now
-
-        # Add log level.
-        if log_record.get("level"):
-            log_record["level"] = log_record["level"].upper()
-        else:
-            log_record["level"] = record.levelname
-
-        # Add logger name.
-        log_record["logger"] = record.name
+class JsonHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord):
+        attrs = record.__dict__
+        print(jsonpickle.dumps(attrs))
 
 
 def do_json_logging(prefix: str):
     from tango.common.logging import cli_logger
     from tango.common.tqdm import logger as tqdm_logger
 
-    formatter = JsonFormatter()
-
     root_logger = logging.getLogger()
     for logger in (root_logger, cli_logger, tqdm_logger):
         logger.handlers.clear()
-        handler = logging.StreamHandler()
-        handler.setFormatter(formatter)
+        handler = JsonHandler()
         logger.addHandler(handler)

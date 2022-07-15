@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import tempfile
@@ -8,6 +7,7 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
+import jsonpickle
 from beaker import (
     Beaker,
     DataMount,
@@ -120,26 +120,12 @@ class BeakerExecutor(Executor):
             line_str = line.decode(errors="ignore").rstrip()
 
             # Try parsing a JSON log record from the line.
-            logger_name: Optional[str] = None
-            log_level: int = logging.DEBUG
-            log_msg: str
             try:
-                log_data = json.loads(line_str)
-                if (
-                    isinstance(log_data, dict)
-                    and "message" in log_data
-                    and "level" in log_data
-                    and "logger" in log_data
-                ):
-                    logger_name = log_data["logger"]
-                    log_level = getattr(logging, log_data["level"])
-                    log_msg = log_data["message"]
-                else:
-                    log_msg = line_str
+                log_record_attrs = jsonpickle.loads(line_str)
+                log_record = logging.makeLogRecord(log_record_attrs)
+                logging.getLogger(log_record.name).handle(log_record)
             except JSONDecodeError:
-                log_msg = line_str
-            logger_ = logging.getLogger(logger_name) if logger_name is not None else logger
-            logger_.log(log_level, log_msg)
+                logger.debug(line_str)
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
