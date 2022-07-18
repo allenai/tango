@@ -38,6 +38,11 @@ class Executor(Registrable):
     An ``Executor`` is a class that is responsible for running steps and caching their results.
 
     This is the base class and default implementation, registered as "default".
+
+    .. note::
+        The ``parallelism`` parameter has no effect with this default :class:`Executor`,
+        but is part of the API because most subclass implementations allow configuring
+        parallelism.
     """
 
     default_implementation = "default"
@@ -46,9 +51,11 @@ class Executor(Registrable):
         self,
         workspace: Workspace,
         include_package: Optional[Sequence[str]] = None,
+        parallelism: Optional[int] = None,
     ) -> None:
         self.workspace = workspace
         self.include_package = include_package
+        self.parallelism = parallelism
 
     def execute_step(self, step: "Step") -> None:
         # Import included packages to find registered components.

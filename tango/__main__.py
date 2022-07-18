@@ -267,12 +267,10 @@ def cleanup(*args, **kwargs):
     "-j",
     "--parallelism",
     type=int,
-    help="""The maximum number of steps to run in parallel (if possible).
-    By default there is no parallelism, but each step is ran in its own subprocess (same as setting '-j=1').
-    A value of 0 or less means each step is ran in the main process using the default executor.
-    A value greater than 1 means at most 'j' steps will be ran in parallel,
-    each within its own subprocess, using the multicore executor.
-    This option is ignored if you've configured your executor in a 'tango.yml' settings file.""",
+    help="""The maximum number of steps to run in parallel (for executors that support this).
+    The exact behavior depends on the executor. If you're using the default executors,
+    a value of 0 (or left unspecified) means each step is ran in the main process using the default executor,
+    otherwise the multicore executor is used.""",
 )
 @click.option(
     "-s",
@@ -756,13 +754,11 @@ def _run(
                 "Ignoring argument 'multicore' since executor is defined in %s",
                 settings.path or "setting",
             )
-        if parallelism is not None:
-            logger.warning(
-                "Ignoring parallelism ('-j/--parallelism') since executor is defined in %s",
-                settings.path or "setting",
-            )
         executor = Executor.from_params(
-            settings.executor, workspace=workspace, include_package=include_package
+            settings.executor,
+            workspace=workspace,
+            include_package=include_package,
+            parallelism=parallelism,
         )
     else:
         # Determine if we can use the multicore executor.
@@ -774,14 +770,14 @@ def _run(
                 # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
                 logger.warning("Debugger detected, disabling multicore.")
                 multicore = False
-            elif parallelism is not None and parallelism <= 0:
+            elif parallelism is None or parallelism == 0:
                 multicore = False
             else:
                 multicore = True
 
         if multicore:
             executor = MulticoreExecutor(
-                workspace=workspace, include_package=include_package, parallelism=parallelism or 1
+                workspace=workspace, include_package=include_package, parallelism=parallelism
             )
         else:
             executor = Executor(workspace=workspace, include_package=include_package)

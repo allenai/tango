@@ -5,7 +5,7 @@ import time
 import uuid
 from json import JSONDecodeError
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Set, Tuple
 
 import jsonpickle
 from beaker import (
@@ -67,6 +67,7 @@ class BeakerExecutor(Executor):
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
         env_vars: Optional[List[EnvVar]] = None,
+        parallelism: Optional[int] = -1,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -75,7 +76,7 @@ class BeakerExecutor(Executor):
                 "Either 'beaker_image' or 'docker_image' must be specified for BeakerExecutor, but not both."
             )
 
-        super().__init__(workspace, include_package=include_package)
+        super().__init__(workspace, include_package=include_package, parallelism=parallelism)
         self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
@@ -98,7 +99,73 @@ class BeakerExecutor(Executor):
     def execute_step_graph(
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
-        pass
+        import concurrent.futures
+
+        steps_to_run: Set[str] = set()
+        successful: Set[str] = set()
+        failed: Set[str] = set()
+        not_run: Set[str] = set()
+        uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
+
+        def update_steps_to_run():
+            for step_name, step in step_graph.items():
+                if (
+                    step.unique_id in successful
+                    or step.unique_id in failed
+                    or step.unique_id in not_run
+                ):
+                    # Make sure step is no longer in queue.
+                    steps_to_run.discard(step_name)  # This does NOT raise KeyError if not found
+                else:
+                    # Check dependencies.
+                    for dependency in step.dependencies:
+                        if dependency.unique_id not in successful and dependency.cache_results:
+                            if dependency.unique_id in failed or dependency.unique_id in not_run:
+                                # A dependency failed or can't be run, so this step can't be run.
+                                not_run.add(step.unique_id)
+                            break
+                    else:
+                        # Dependencies are OK, so we can run this step now.
+                        if step.cache_results or step in uncacheable_leaf_steps:
+                            steps_to_run.add(step_name)
+
+        def make_future_done_callback(step_name: str):
+            def future_done_callback(future: concurrent.futures.Future):
+                step_id = step_graph[step_name].unique_id
+                try:
+                    if future.exception() is None:
+                        successful.add(step_id)
+                    else:
+                        failed.add(step_id)
+                except concurrent.futures.TimeoutError:
+                    failed.add(step_id)
+
+        update_steps_to_run()
+
+        step_futures: List[concurrent.futures.Future] = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism or None) as pool:
+            while steps_to_run:
+                # Submit steps left to run.
+                for step_name in steps_to_run:
+                    future = pool.submit(
+                        self.execute_sub_graph_for_step, step_graph, step_name, run_name
+                    )
+                    future.add_done_callback(make_future_done_callback(step_name))
+                    step_futures.append(future)
+
+                # Wait for something to happen.
+                _, not_done = concurrent.futures.wait(
+                    step_futures, return_when=concurrent.futures.FIRST_COMPLETED
+                )
+
+                # Update the list of running futures.
+                step_futures.clear()
+                step_futures = list(not_done)
+
+                # Update the steps we still have to run.
+                update_steps_to_run()
+
+        return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
@@ -111,6 +178,11 @@ class BeakerExecutor(Executor):
         # Create experiment.
         experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
         experiment = self.beaker.experiment.create(experiment_name, spec)
+        logger.info(
+            "Submitted Beaker experiment %s for step '%s'",
+            self.beaker.experiment.url(experiment),
+            step.unique_id,
+        )
 
         # Follow the experiment and stream the logs until it completes.
         setup_stage: bool = True
@@ -130,7 +202,7 @@ class BeakerExecutor(Executor):
                     logging.getLogger(log_record.name).handle(log_record)
                 except JSONDecodeError:
                     if setup_stage:
-                        logger.info(f"[step {step_name}, setup] {line_str}")
+                        logger.debug(f"[step {step_name}, setup] {line_str}")
                     else:
                         logger.info(f"[step {step_name}] {line_str}")
         except JobFailedError:
