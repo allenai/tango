@@ -1,25 +1,26 @@
 import logging
+import multiprocessing as mp
 import os
 import pathlib
+import random
 import shutil
+import time
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
+from string import ascii_letters
 from typing import Any, Dict, List, Optional, Union, cast
 
-from tango.common.aliases import EnvVarNames, PathOrStr
-from tango.common.logging import initialize_logging, teardown_logging
-from tango.common.params import Params
-
-import logging
-import multiprocessing as mp
-import random
-import time
-from string import ascii_letters
-
-import tango.common.logging as common_logging
 from tango import Step
 from tango.common import Tqdm
+from tango.common.aliases import EnvVarNames, PathOrStr
+from tango.common.logging import (
+    cli_logger,
+    initialize_logging,
+    initialize_worker_logging,
+    teardown_logging,
+)
+from tango.common.params import Params
 
 
 class TangoTestCase:
@@ -207,16 +208,16 @@ class NoisyStep(Step):
 
     def run(self, raise_error: bool = False) -> None:  # type: ignore
         self.logger.debug("debug message")
-        common_logging.cli_logger.debug("debug message from cli_logger")
+        cli_logger.debug("debug message from cli_logger")
 
         self.logger.info("info message")
-        common_logging.cli_logger.info("info message from cli_logger")
+        cli_logger.info("info message from cli_logger")
 
         self.logger.warning("warning message")
-        common_logging.cli_logger.warning("warning message from cli_logger")
+        cli_logger.warning("warning message from cli_logger")
 
         self.logger.error("error message")
-        common_logging.cli_logger.error("error message from cli_logger")
+        cli_logger.error("error message from cli_logger")
 
         if raise_error:
             raise ValueError("Oh no!")
@@ -308,9 +309,9 @@ class MultiprocessingStep(Step):
 
 
 def _worker_function(worker_id: int):
-    common_logging.initialize_worker_logging(worker_id)
+    initialize_worker_logging(worker_id)
     logger = logging.getLogger(MultiprocessingStep.__name__)
     logger.info("Hello from worker %d!", worker_id)
-    common_logging.cli_logger.info("Hello from the cli logger in worker %d!", worker_id)
+    cli_logger.info("Hello from the cli logger in worker %d!", worker_id)
     for _ in Tqdm.tqdm(list(range(10)), desc="progress from worker", disable=worker_id > 0):
         time.sleep(0.1)
