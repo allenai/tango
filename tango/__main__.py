@@ -260,15 +260,19 @@ def cleanup(*args, **kwargs):
 @click.option(
     "--server/--no-server",
     type=bool,
-    help="Start a server that visualizes the current run",
+    help="Start a server that visualizes the current run.",
     default=True,
 )
 @click.option(
     "-j",
     "--parallelism",
     type=int,
-    help="The maximum number of steps to run in parallel (if possible)",
-    default=1,
+    help="""The maximum number of steps to run in parallel (if possible).
+    By default there is no parallelism, but each step is ran in its own subprocess (same as setting '-j=1').
+    A value of 0 or less means each step is ran in the main process using the default executor.
+    A value greater than 1 means at most 'j' steps will be ran in parallel,
+    each within its own subprocess, using the multicore executor.
+    This option is ignored if you've configured your executor in a 'tango.yml' settings file.""",
 )
 @click.option(
     "-s",
@@ -281,7 +285,7 @@ def cleanup(*args, **kwargs):
     "-n",
     "--name",
     type=str,
-    help="""Specify the name for this run""",
+    help="""Specify the name for this run.""",
 )
 @click.pass_obj
 def run(
@@ -292,7 +296,7 @@ def run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     server: bool = True,
-    parallelism: int = 1,
+    parallelism: Optional[int] = None,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
 ):
@@ -642,7 +646,7 @@ def _run(
     include_package: Optional[Sequence[str]] = None,
     start_server: bool = True,
     step_name: Optional[str] = None,
-    parallelism: int = 1,
+    parallelism: Optional[int] = None,
     multicore: Optional[bool] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
@@ -674,18 +678,42 @@ def _run(
     else:
         workspace = default_workspace
 
-    if multicore is None:
-        if isinstance(workspace, MemoryWorkspace):
-            # Memory workspace does not work with multiple cores.
-            multicore = False
-        elif "pydevd" in sys.modules:
-            # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
-            logger.warning("Debugger detected, disabling multicore.")
-            multicore = False
-        elif parallelism <= 0:
-            multicore = False
+    executor: Executor
+    if settings.executor is not None:
+        if multicore is not None:
+            logger.warning(
+                "Ignoring argument 'multicore' since executor is defined in %s",
+                settings.path or "setting",
+            )
+        if parallelism is not None:
+            logger.warning(
+                "Ignoring parallelism ('-j/--parallelism') since executor is defined in %s",
+                settings.path or "setting",
+            )
+        executor = Executor.from_params(
+            settings.executor, workspace=workspace, include_package=include_package
+        )
+    else:
+        # Determine if we can use the multicore executor.
+        if multicore is None:
+            if isinstance(workspace, MemoryWorkspace):
+                # Memory workspace does not work with multiple cores.
+                multicore = False
+            elif "pydevd" in sys.modules:
+                # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
+                logger.warning("Debugger detected, disabling multicore.")
+                multicore = False
+            elif parallelism is not None and parallelism <= 0:
+                multicore = False
+            else:
+                multicore = True
+
+        if multicore:
+            executor = MulticoreExecutor(
+                workspace=workspace, include_package=include_package, parallelism=parallelism or 1
+            )
         else:
-            multicore = True
+            executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize step graph and register run.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
@@ -722,15 +750,6 @@ def _run(
             cli_logger.info(
                 "Server started at [bold]%s[/bold]", server.address_for_display(run.name)
             )
-
-        executor: Executor
-        # Initialize Executor and execute the step graph.
-        if multicore:
-            executor = MulticoreExecutor(
-                workspace=workspace, include_package=include_package, parallelism=parallelism
-            )
-        else:
-            executor = Executor(workspace=workspace, include_package=include_package)
 
         if step_name is not None:
             step = step_graph[step_name]

@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+@Executor.register("multicore")
 class MulticoreExecutor(Executor):
     """
     A ``MulticoreExecutor`` runs the steps in parallel and caches their results.
@@ -30,8 +31,7 @@ class MulticoreExecutor(Executor):
         num_tries_to_sync_states: int = 3,
         wait_seconds_to_sync_states: int = 3,
     ) -> None:
-        self.workspace = workspace
-        self.include_package = include_package
+        super().__init__(workspace, include_package=include_package)
         self.parallelism = parallelism
 
         # Perhaps there's a better way to do this without these being passed as args.

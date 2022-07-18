@@ -87,7 +87,7 @@ class DatasetsFormat(Format[T]):
     It is the default :class:`~tango.format.Format` for the :class:`LoadDataset` step.
     """
 
-    VERSION = 1
+    VERSION = "001"
 
     def write(self, artifact: T, dir: PathOrStr):
         dataset_path = Path(dir) / "data"
