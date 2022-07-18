@@ -1,7 +1,7 @@
 from tango.integrations.beaker.workspace import BeakerWorkspace
 from tango.step_info import StepState
 from tango.workspace import Workspace
-from test_fixtures.package.steps import FloatStep
+from tango.common.testing import FloatStep
 
 
 def test_from_url(beaker_workspace: str):

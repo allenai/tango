@@ -1,6 +1,5 @@
 from tango import Step
-from tango.common.testing import TangoTestCase, run_experiment
-from test_fixtures.package.steps import MakeNumber  # noqa:F401
+from tango.common.testing import MakeNumber, TangoTestCase, run_experiment  # noqa:F401
 
 stored_number = None
 
@@ -55,7 +54,6 @@ class TestExperimentMulticore(TangoTestCase):
                 }
             },
             multicore=True,
-            include_package=["test_fixtures.package.steps"],
         ):
             with open(file_name) as file_ref:
                 number = file_ref.read()

@@ -3,11 +3,10 @@ import time
 import pytest
 
 from tango.common.logging import initialize_logging
-from tango.common.testing import TangoTestCase
+from tango.common.testing import TangoTestCase, SleepPrintMaybeFail
 from tango.executors.multicore_executor import MulticoreExecutor
 from tango.step_graph import StepGraph
 from tango.workspaces import LocalWorkspace
-from test_fixtures.package.steps import SleepPrintMaybeFail
 
 
 class TestMulticoreExecutor(TangoTestCase):
@@ -79,7 +78,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -113,7 +111,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -147,7 +144,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -181,7 +177,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=2,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -215,7 +210,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=2,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -234,7 +228,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)

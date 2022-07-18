@@ -14,7 +14,7 @@ from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 from tango.integrations.wandb import WandbWorkspace
 from tango.step_info import StepState
-from test_fixtures.package.steps import *  # noqa: F403,F401
+from tango.common.testing import *  # noqa: F403,F401
 
 WANDB_ENTITY = os.environ.get("WANDB_ENTITY", "allennlp")
 WANDB_PROJECT = "tango-workspace-testing"
