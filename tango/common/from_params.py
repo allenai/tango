@@ -20,7 +20,7 @@ from typing import (
     get_type_hints,
 )
 
-from tango.common.det_hash import CustomDetHash
+from tango.common.det_hash import DetHashWithVersion
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.params import Params
@@ -636,7 +636,7 @@ def construct_arg(
         return popped_params
 
 
-class FromParams(CustomDetHash):
+class FromParams(DetHashWithVersion):
     """
     Mixin to give a :meth:`from_params` method to classes. We create a distinct base class for this
     because sometimes we want non :class:`~tango.common.Registrable`
@@ -838,10 +838,3 @@ class FromParams(CustomDetHash):
             raise NotImplementedError(
                 f"{self.__class__.__name__}._to_params() needs to be implemented"
             )
-
-    def det_hash_object(self) -> Any:
-        r = (self.__class__.__qualname__, self.to_params())
-        if hasattr(self, "VERSION"):
-            return r + (getattr(self, "VERSION"),)
-        else:
-            return r

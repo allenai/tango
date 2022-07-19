@@ -50,6 +50,15 @@ class WandbStepCache(LocalStepCache):
     def wandb_client(self) -> wandb.Api:
         return wandb.Api(overrides={"entity": self.entity, "project": self.project})
 
+    @property
+    def wandb_project_url(self) -> str:
+        """
+        The URL of the W&B project this workspace uses.
+        """
+        app_url = self.wandb_client.client.app_url
+        app_url = app_url.rstrip("/")
+        return f"{app_url}/{self.entity}/{self.project}"
+
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
         return FileLock(
             self.step_dir(step).with_suffix(".lock"), read_only_ok=read_only_ok
@@ -98,6 +107,12 @@ class WandbStepCache(LocalStepCache):
         artifact.aliases.append(step.unique_id)
         artifact.save()
         artifact.wait()
+
+    def get_step_result_artifact_url(self, step: Union[Step, StepInfo]) -> str:
+        return (
+            f"{self.wandb_project_url}/artifacts/{ArtifactKind.STEP_RESULT.value}"
+            f"/{self._step_artifact_name(step)}/{step.unique_id}"
+        )
 
     def use_step_result_artifact(self, step: Union[Step, StepInfo]) -> None:
         """
