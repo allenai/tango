@@ -23,6 +23,7 @@ from beaker import (
 )
 
 from tango.common.exceptions import ConfigurationError, ExecutorError
+from tango.common.logging import cli_logger
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -101,28 +102,38 @@ class BeakerExecutor(Executor):
     ) -> ExecutorOutput:
         import concurrent.futures
 
-        steps_to_run: Set[str] = set()
+        # These will hold the final results which we'll update along the way.
         successful: Set[str] = set()
         failed: Set[str] = set()
         not_run: Set[str] = set()
+
+        # Keeps track of steps that are next up to run on Beaker.
+        steps_to_run: Set[str] = set()
+        # These are steps that have been submitted to Beaker but haven't completed yet.
+        submitted_steps: Set[str] = set()
+        # Futures for tracking the Beaker runs for each step.
+        step_futures: List[concurrent.futures.Future] = []
+
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         def update_steps_to_run():
             for step_name, step in step_graph.items():
                 if (
-                    step.unique_id in successful
-                    or step.unique_id in failed
-                    or step.unique_id in not_run
+                    step_name in submitted_steps
+                    or step_name in successful
+                    or step_name in failed
+                    or step_name in not_run
                 ):
                     # Make sure step is no longer in queue.
                     steps_to_run.discard(step_name)  # This does NOT raise KeyError if not found
                 else:
                     # Check dependencies.
                     for dependency in step.dependencies:
-                        if dependency.unique_id not in successful and dependency.cache_results:
-                            if dependency.unique_id in failed or dependency.unique_id in not_run:
+                        if dependency.name not in successful and dependency.cache_results:
+                            if dependency.name in failed or dependency.name in not_run:
                                 # A dependency failed or can't be run, so this step can't be run.
-                                not_run.add(step.unique_id)
+                                not_run.add(step_name)
+                                steps_to_run.discard(step_name)
                             break
                     else:
                         # Dependencies are OK, so we can run this step now.
@@ -131,20 +142,25 @@ class BeakerExecutor(Executor):
 
         def make_future_done_callback(step_name: str):
             def future_done_callback(future: concurrent.futures.Future):
-                step_id = step_graph[step_name].unique_id
+                nonlocal successful, failed
                 try:
-                    if future.exception() is None:
-                        successful.add(step_id)
+                    exc = future.exception()
+                    if exc is None:
+                        successful.add(step_name)
                     else:
-                        failed.add(step_id)
+                        logger.exception(exc)
+                        logger.error("Step '%s' failed", step_name)
+                        failed.add(step_name)
                 except concurrent.futures.TimeoutError:
-                    failed.add(step_id)
+                    logger.error("Step '%s' failed with TimeoutError", step_name)
+                    failed.add(step_name)
+
+            return future_done_callback
 
         update_steps_to_run()
 
-        step_futures: List[concurrent.futures.Future] = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism or None) as pool:
-            while steps_to_run:
+            while steps_to_run or step_futures:
                 # Submit steps left to run.
                 for step_name in steps_to_run:
                     future = pool.submit(
@@ -152,6 +168,7 @@ class BeakerExecutor(Executor):
                     )
                     future.add_done_callback(make_future_done_callback(step_name))
                     step_futures.append(future)
+                    submitted_steps.add(step_name)
 
                 # Wait for something to happen.
                 _, not_done = concurrent.futures.wait(
@@ -162,7 +179,7 @@ class BeakerExecutor(Executor):
                 step_futures.clear()
                 step_futures = list(not_done)
 
-                # Update the steps we still have to run.
+                # Update the step queue.
                 update_steps_to_run()
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
@@ -172,6 +189,13 @@ class BeakerExecutor(Executor):
     ) -> None:
         step = step_graph[step_name]
 
+        if step.cache_results and step in self.workspace.step_cache:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                step_name,
+            )
+            return
+
         # Initialize experiment and task spec.
         spec = self._build_experiment_spec(step_graph, step_name)
 
@@ -179,8 +203,9 @@ class BeakerExecutor(Executor):
         experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
         experiment = self.beaker.experiment.create(experiment_name, spec)
         logger.info(
-            "Submitted Beaker experiment %s for step '%s'",
+            "Submitted Beaker experiment %s for step '%s' (%s)",
             self.beaker.experiment.url(experiment),
+            step_name,
             step.unique_id,
         )
 
@@ -253,7 +278,7 @@ class BeakerExecutor(Executor):
                     with open(entrypoint_path, "wb") as entrypoint_file:
                         entrypoint_file.write(contents)
                     entrypoint_dataset = self.beaker.dataset.create(
-                        entrypoint_dataset_name, entrypoint_path
+                        entrypoint_dataset_name, entrypoint_path, quiet=True
                     )
             except DatasetConflict:  # could be in a race with another `tango` process.
                 time.sleep(1.0)
@@ -281,7 +306,7 @@ class BeakerExecutor(Executor):
                 tmpdir = Path(tmpdirname)
                 path = tmpdir / self.STEP_GRAPH_FILENAME
                 step_graph.to_file(path, include_unique_id=True)
-                dataset = self.beaker.dataset.create(step_graph_dataset_name, path)
+                dataset = self.beaker.dataset.create(step_graph_dataset_name, path, quiet=True)
         except DatasetConflict:  # could be in a race with another `tango` process.
             time.sleep(1.0)
             dataset = self.beaker.dataset.get(step_graph_dataset_name)
