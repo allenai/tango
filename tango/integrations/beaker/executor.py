@@ -203,7 +203,7 @@ class BeakerExecutor(Executor):
         experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
         experiment = self.beaker.experiment.create(experiment_name, spec)
         cli_logger.info(
-            "Submitted Beaker experiment %s for step '%s' (%s)",
+            'Submitted Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
             self.beaker.experiment.url(experiment),
             step_name,
             step.unique_id,
@@ -218,6 +218,8 @@ class BeakerExecutor(Executor):
                 # the timestamps so we split them off like this:
                 line = line[line.find(b"Z ") + 2 :]
                 line_str = line.decode(errors="ignore").rstrip()
+                if not line_str:
+                    continue
 
                 # Try parsing a JSON log record from the line.
                 try:
