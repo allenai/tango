@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional, Sequence, Set, TypeVar
+from typing import TYPE_CHECKING, Optional, Sequence, Set, TypeVar
 
 from .common.registrable import Registrable
 from .common.util import import_extra_module
