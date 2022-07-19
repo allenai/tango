@@ -369,7 +369,7 @@ def beaker_executor_run(
     This command is only used internally by the BeakerExecutor.
     """
     from tango.executor import Executor
-    from tango.integrations.beaker.util import do_json_logging
+    from tango.integrations.beaker.common import do_json_logging
 
     if include_package:
         for package_name in include_package:

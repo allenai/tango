@@ -202,7 +202,7 @@ class BeakerExecutor(Executor):
         # Create experiment.
         experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
         experiment = self.beaker.experiment.create(experiment_name, spec)
-        logger.info(
+        cli_logger.info(
             "Submitted Beaker experiment %s for step '%s' (%s)",
             self.beaker.experiment.url(experiment),
             step_name,
@@ -262,7 +262,7 @@ class BeakerExecutor(Executor):
         contents = read_binary(tango.integrations.beaker, "entrypoint.sh")
         sha256_hash.update(contents)
 
-        entrypoint_dataset_name = f"tango-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
+        entrypoint_dataset_name = f"tango-entrypoint-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
 
         # Ensure entrypoint dataset exists.
         entrypoint_dataset: Dataset
@@ -300,7 +300,7 @@ class BeakerExecutor(Executor):
         return entrypoint_dataset
 
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
-        step_graph_dataset_name = f"tango-v{VERSION}-{str(uuid.uuid4())}"
+        step_graph_dataset_name = f"tango-step-graph-{str(uuid.uuid4())}"
         try:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmpdir = Path(tmpdirname)
