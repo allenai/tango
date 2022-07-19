@@ -72,7 +72,7 @@ class WandbTrainCallback(TrainCallback):
         wandb_config: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> None:
-        super().__init__(*args, *kwargs)
+        super().__init__(*args, **kwargs)
 
         if isinstance(self.workspace, WandbWorkspace) or wandb.run is not None:
             err_msg_template = "Cannot set '{var_name}' in WandbTrainCallback "

@@ -387,7 +387,7 @@ class FlaxTrainStep(Step):
                 optimizer=optimizer,
                 validation_dataloader=validation_dataloader,
             )
-            for callback in (callbacks or [])
+            for callback in callbacks
         ]
 
         if initial_state:
@@ -455,6 +455,8 @@ class FlaxTrainStep(Step):
         for epoch in epochs:
             train_metrics: DefaultDict = defaultdict(list)
 
+            step = start_step
+
             for callback in callbacks:
                 callback.pre_epoch(step, epoch)
 
@@ -466,7 +468,6 @@ class FlaxTrainStep(Step):
                 desc="Training",
             )
 
-            step = start_step
             for batch in batches:
                 for callback in callbacks:
                     callback.pre_batch(step, epoch, batch)

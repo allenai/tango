@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
+from flax.training.train_state import TrainState
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
@@ -39,6 +40,7 @@ class TrainCallback(Registrable):
         optional validation splits.
     :ivar DataLoader train_dataloader: The dataloader used for the training split.
     :ivar FlaxModel model: The flax model being trained.
+    :ivar TrainState state: the flax training state. It can be used to perform model surgery (https://flax.readthedocs.io/en/latest/howtos/model_surgery.html).
     :ivar Optimizer optimizer: The optimizer being used for training.
     :ivar DataLoader validation_dataloader: Optional dataloader used for the validation split.
     """
@@ -67,6 +69,7 @@ class TrainCallback(Registrable):
         """
         The unique ID of the current :class:`~tango.Step`.
         """
+        print(self.train_config)
         return self.train_config.step_id
 
     @property
