@@ -65,6 +65,8 @@ class TrainConfig:
     validation_steps: Optional[int] = None
     """
     The number of validation steps.
+
+    The default is to validate on the entire validation set.
     """
 
     grad_accum: int = 1
@@ -74,17 +76,17 @@ class TrainConfig:
 
     log_every: int = 10
     """
-    Controls the frequency of log updates.
+    Controls the frequency of log updates, in number of optimizer steps
     """
 
     checkpoint_every: int = 100
     """
-    Controls the frequency of checkpoints.
+    Controls the frequency of checkpoints, in number of optimizer steps
     """
 
     validate_every: Optional[int] = None
     """
-    Controls the frequency of the validation loop.
+    Controls the frequency of the validation loop, in number of optimizer steps
     """
 
     is_distributed: bool = False

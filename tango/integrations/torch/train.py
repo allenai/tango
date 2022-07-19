@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 from itertools import islice
-from typing import Any, Dict, List, Optional, Set, cast
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 import more_itertools
 import torch
@@ -78,7 +78,7 @@ class TorchTrainStep(Step):
 
     def run(  # type: ignore[override]
         self,
-        model: Lazy[Model],
+        model: Union[Lazy[Model], Model],  # Lazy has to come first
         training_engine: Lazy[TrainingEngine],
         dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
@@ -226,7 +226,7 @@ class TorchTrainStep(Step):
 
     def _train(
         self,
-        model: Lazy[Model],
+        model: Union[Model, Lazy[Model]],
         training_engine: Lazy[TrainingEngine],
         dataset_dict: DatasetDictBase,
         train_dataloader: Lazy[DataLoader],
@@ -312,7 +312,10 @@ class TorchTrainStep(Step):
                 nprocs=num_workers,
             )
             self.logger.info("Constructing final model")
-            final_model = model.construct()
+            if isinstance(model, Lazy):
+                final_model = model.construct()
+            else:
+                final_model = model
         else:
             final_model = _train(  # type: ignore[assignment]
                 0,
@@ -344,7 +347,7 @@ def _train(
     worker_id: int,
     workspace: Workspace,
     config: TrainConfig,
-    model: Lazy[Model],
+    model: Union[Model, Lazy[Model]],
     training_engine: Lazy[TrainingEngine],
     dataset_dict: DatasetDictBase,
     train_dataloader: Lazy[DataLoader],
@@ -412,7 +415,7 @@ def _train(
                 config.validation_steps = len(validation_dataloader)
             except TypeError:
                 raise ConfigurationError(
-                    "You must sest 'validation_steps' for streaming/iterable datasets"
+                    "You must set 'validation_steps' for streaming/iterable datasets"
                 )
 
     # Make sure we're using a DistributedSampler during distributed training.
