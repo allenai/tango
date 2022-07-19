@@ -110,7 +110,6 @@ class TestRun(TangoTestCase):
 
         # Traceback.
         if raise_error:
-            assert "Uncaught exception" in cleaned_log_lines
             assert "Traceback (most recent call last):" in cleaned_log_lines
             assert "ValueError: Oh no!" in cleaned_log_lines
 

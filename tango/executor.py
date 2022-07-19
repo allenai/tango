@@ -1,5 +1,4 @@
 import logging
-import traceback
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, List, Optional, Sequence, Set, TypeVar
 
@@ -81,7 +80,6 @@ class Executor(Registrable):
         successful: Set[str] = set()
         failed: Set[str] = set()
         not_run: Set[str] = set()
-        error_tracebacks: List[str] = []
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         for step in step_graph.values():
@@ -95,12 +93,11 @@ class Executor(Registrable):
                 try:
                     self.execute_step(step)
                     successful.add(step.name)
-                except Exception:
-                    failed.add(step.name)
-                    error_tracebacks.append(traceback.format_exc())
+                except Exception as exc:
+                    import rich
 
-        for stacktrace in error_tracebacks:
-            logger.error(stacktrace)
+                    failed.add(step.name)
+                    logger.exception(exc, extra={"highlighter": rich.highlighter.ReprHighlighter()})
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
