@@ -94,6 +94,9 @@ class BeakerExecutor(Executor):
                 "or as the environment variable 'GITHUB_TOKEN'."
             )
 
+        # Ensure entrypoint dataset exists.
+        self._ensure_entrypoint_dataset()
+
     def execute_step(self, step: Step) -> None:
         raise NotImplementedError
 
@@ -265,6 +268,7 @@ class BeakerExecutor(Executor):
         sha256_hash.update(contents)
 
         entrypoint_dataset_name = f"tango-entrypoint-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
+        tmp_entrypoint_dataset_name = f"tango-entrypoint-{str(uuid.uuid4())}-tmp"
 
         # Ensure entrypoint dataset exists.
         entrypoint_dataset: Dataset
@@ -279,8 +283,11 @@ class BeakerExecutor(Executor):
                     entrypoint_path = tmpdir / "entrypoint.sh"
                     with open(entrypoint_path, "wb") as entrypoint_file:
                         entrypoint_file.write(contents)
-                    entrypoint_dataset = self.beaker.dataset.create(
-                        entrypoint_dataset_name, entrypoint_path, quiet=True
+                    tmp_entrypoint_dataset = self.beaker.dataset.create(
+                        tmp_entrypoint_dataset_name, entrypoint_path, quiet=True
+                    )
+                    entrypoint_dataset = self.beaker.dataset.rename(
+                        tmp_entrypoint_dataset, entrypoint_dataset_name
                     )
             except DatasetConflict:  # could be in a race with another `tango` process.
                 time.sleep(1.0)
