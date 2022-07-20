@@ -617,9 +617,10 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     try:
         yield None
     except BaseException as e:
-        # We don't log `CliRunError` because we don't need a traceback for those.
-        if not isinstance(e, CliRunError):
-            root_logger.exception(e)
+        if not isinstance(
+            e, (CliRunError, KeyboardInterrupt, SigTermReceived)
+        ):  # don't need tracebacks for these
+            root_logger.exception(e, extra={"highlighter": rich.highlighter.ReprHighlighter()})
             _EXCEPTIONS_LOGGED.append(e)
         raise
     finally:

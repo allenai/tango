@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+import threading
 import time
 import uuid
 from json import JSONDecodeError
@@ -31,6 +32,10 @@ from tango.version import VERSION
 from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
+
+
+class _ThreadCancelled(Exception):
+    pass
 
 
 @Executor.register("beaker")
@@ -144,6 +149,7 @@ class BeakerExecutor(Executor):
         self.datasets = datasets
         self.env_vars = env_vars
         self.clusters = clusters
+        self._is_cancelled = threading.Event()
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -164,6 +170,8 @@ class BeakerExecutor(Executor):
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         import concurrent.futures
+
+        self._is_cancelled.clear()
 
         # These will hold the final results which we'll update along the way.
         successful: Set[str] = set()
@@ -211,45 +219,79 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        logger.exception(exc)
-                        logger.error("Step '%s' failed", step_name)
+                        if not isinstance(
+                            exc, (KeyboardInterrupt, SigTermReceived, _ThreadCancelled)
+                        ):
+                            import rich
+
+                            logger.exception(
+                                exc, extra={"highlighter": rich.highlighter.ReprHighlighter()}
+                            )
+                        cli_logger.error("Step '%s' failed", step_name)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError:
-                    logger.error("Step '%s' failed with TimeoutError", step_name)
+                    cli_logger.error("Step '%s' failed with TimeoutError", step_name)
                     failed.add(step_name)
 
             return future_done_callback
 
         update_steps_to_run()
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism or None) as pool:
-            while steps_to_run or step_futures:
-                # Submit steps left to run.
-                for step_name in steps_to_run:
-                    future = pool.submit(
-                        self.execute_sub_graph_for_step, step_graph, step_name, run_name
+        try:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.parallelism or None
+            ) as pool:
+                while steps_to_run or step_futures:
+                    # Submit steps left to run.
+                    for step_name in steps_to_run:
+                        future = pool.submit(
+                            self._execute_sub_graph_for_step, step_graph, step_name, run_name, True
+                        )
+                        future.add_done_callback(make_future_done_callback(step_name))
+                        step_futures.append(future)
+                        submitted_steps.add(step_name)
+
+                    # Wait for something to happen.
+                    _, not_done = concurrent.futures.wait(
+                        step_futures, return_when=concurrent.futures.FIRST_COMPLETED
                     )
-                    future.add_done_callback(make_future_done_callback(step_name))
-                    step_futures.append(future)
-                    submitted_steps.add(step_name)
 
-                # Wait for something to happen.
-                _, not_done = concurrent.futures.wait(
-                    step_futures, return_when=concurrent.futures.FIRST_COMPLETED
-                )
+                    # Update the list of running futures.
+                    step_futures.clear()
+                    step_futures = list(not_done)
 
-                # Update the list of running futures.
-                step_futures.clear()
-                step_futures = list(not_done)
-
-                # Update the step queue.
-                update_steps_to_run()
+                    # Update the step queue.
+                    update_steps_to_run()
+        except (KeyboardInterrupt, SigTermReceived):
+            if step_futures:
+                cli_logger.warning("Received interrupt, canceling steps...")
+                self._is_cancelled.set()
+                concurrent.futures.wait(step_futures)
+            raise
+        finally:
+            self._is_cancelled.clear()
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
     ) -> None:
+        self._execute_sub_graph_for_step(step_graph, step_name, run_name)
+
+    def _check_if_cancelled(self):
+        if self._is_cancelled.is_set():
+            raise _ThreadCancelled
+
+    def _execute_sub_graph_for_step(
+        self,
+        step_graph: StepGraph,
+        step_name: str,
+        run_name: Optional[str],
+        in_thread: bool = False,
+    ) -> None:
+        if not in_thread:
+            self._is_cancelled.clear()
+
         step = step_graph[step_name]
 
         if step.cache_results and step in self.workspace.step_cache:
@@ -261,6 +303,7 @@ class BeakerExecutor(Executor):
 
         # Initialize experiment and task spec.
         spec = self._build_experiment_spec(step_graph, step_name)
+        self._check_if_cancelled()
 
         # Create experiment.
         experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
@@ -276,6 +319,7 @@ class BeakerExecutor(Executor):
         setup_stage: bool = True
         try:
             for line in self.beaker.experiment.follow(experiment, strict=True):
+                self._check_if_cancelled()
                 # Every log line from Beaker starts with an RFC 3339 UTC timestamp
                 # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
                 # the timestamps so we split them off like this:
@@ -300,8 +344,8 @@ class BeakerExecutor(Executor):
                 f"Beaker job for step '{step_name}' failed. "
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
             )
-        except (KeyboardInterrupt, SigTermReceived):
-            logger.warning(
+        except (KeyboardInterrupt, SigTermReceived, _ThreadCancelled):
+            cli_logger.warning(
                 'Stopping Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
                 self.beaker.experiment.url(experiment),
                 step_name,
@@ -442,18 +486,23 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = step_info.environment.git.commit
+        self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
         entrypoint_dataset = self._ensure_entrypoint_dataset()
+        self._check_if_cancelled()
 
         # Create dataset for step graph.
         step_graph_dataset = self._ensure_step_graph_dataset(sub_graph)
+        self._check_if_cancelled()
 
         # Write the GitHub token secret.
         self.beaker.secret.write(self.GITHUB_TOKEN_SECRET_NAME, self.github_token)
+        self._check_if_cancelled()
 
         # Write the Beaker token secret.
         self.beaker.secret.write(self.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
+        self._check_if_cancelled()
 
         # Build Tango command to run.
         command = [
@@ -472,6 +521,7 @@ class BeakerExecutor(Executor):
 
         # Get cluster to use.
         cluster = self._ensure_cluster(task_resources)
+        self._check_if_cancelled()
 
         # Build task spec.
         task_spec = (
