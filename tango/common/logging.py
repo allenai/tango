@@ -685,7 +685,7 @@ def log_record_to_json(record: logging.LogRecord) -> str:
     attrs = record.__dict__
     if attrs.get("exc_info") is not None:
         # Tracebacks cannot be pickled directly, so we need help from tblib.
-        et, ev, tb = attrs["exc _info"]
+        et, ev, tb = attrs["exc_info"]
         tb_dict = tblib.Traceback(tb).to_dict()
         attrs["exc_info"] = (et, ev, tb_dict)
     return jsonpickle.dumps(attrs)
