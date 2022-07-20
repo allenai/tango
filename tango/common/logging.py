@@ -674,6 +674,6 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
     return insert_handlers(*handlers)
 
 
-def log_exception(exc: Exception, logger: Optional[logging.Logger] = None):
+def log_exception(exc: BaseException, logger: Optional[logging.Logger] = None):
     logger = logger or logging.getLogger()
     logger.exception(exc, extra={"highlighter": rich.highlighter.ReprHighlighter()})
