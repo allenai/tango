@@ -22,7 +22,7 @@ from beaker import (
     TaskSpec,
 )
 
-from tango.common.exceptions import ConfigurationError, ExecutorError
+from tango.common.exceptions import ConfigurationError, ExecutorError, SigTermReceived
 from tango.common.logging import cli_logger
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
@@ -40,13 +40,18 @@ class BeakerExecutor(Executor):
     Each step is ran as its own Beaker experiment.
 
     .. important::
-        This executor requires that you run Tango within a GitHub repository and you push
+        The :class:`BeakerExecutor` requires that you run Tango within a GitHub repository and you push
         all of your changes prior to each ``tango run`` call. It also requires that you have
         a `GitHub personal access token <https://github.com/settings/tokens/new>`_
         with at least the "repo" scope set to the environment variable ``GITHUB_TOKEN``
         (you can also set it using the ``github_token`` parameter, see below).
 
         This is because :class:`BeakerExecutor` has to be able to clone your code from Beaker.
+
+    .. important::
+        The :class:`BeakerExecutor` will try to recreate your Python environment on Beaker
+        every time a step is ran, so it's important that you specify all of your dependencies
+        in a PIP ``requirements.txt`` file or a conda ``environment.yml`` file.
 
     .. important::
         The :class:`BeakerExecutor` takes no responsibility for saving the results of steps that
@@ -295,6 +300,15 @@ class BeakerExecutor(Executor):
                 f"Beaker job for step '{step_name}' failed. "
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
             )
+        except (KeyboardInterrupt, SigTermReceived):
+            logger.warning(
+                'Stopping Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
+                self.beaker.experiment.url(experiment),
+                step_name,
+                step.unique_id,
+            )
+            self.beaker.experiment.stop(experiment)
+            raise
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
