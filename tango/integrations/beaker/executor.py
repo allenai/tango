@@ -281,6 +281,12 @@ class BeakerExecutor(Executor):
         finally:
             self._is_cancelled.clear()
 
+        # NOTE: The 'done callback' added to each future is executed in a thread,
+        # and so might not complete before the last 'update_steps_to_run()' is called
+        # in the loop above. Therefore we have to call 'update_steps_to_run()'
+        # one last time here to ensure the 'not_run' set is up-to-date.
+        update_steps_to_run()
+
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
     def execute_sub_graph_for_step(
