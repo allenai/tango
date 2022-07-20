@@ -35,11 +35,11 @@ class BeakerWorkspace(Workspace):
     """
     This is a :class:`~tango.workspace.Workspace` that stores step artifacts on `Beaker`_.
 
+    .. tip::
+        Registered as a :class:`~tango.workspace.Workspace` under the name "beaker".
+
     :param beaker_workspace: The name or ID of the Beaker workspace to use.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
-
-    .. tip::
-        Registered as :class:`~tango.workspace.Workspace` under the name "beaker".
     """
 
     STEP_INFO_CACHE_SIZE = 512

@@ -44,6 +44,9 @@ class BeakerExecutor(Executor):
     This is a :class:`~tango.executor.Executor` that runs steps on `Beaker`_.
     Each step is ran as its own Beaker experiment.
 
+    .. tip::
+        Registered as an :class:`~tango.executor.Executor` under the name "beaker".
+
     .. important::
         The :class:`BeakerExecutor` requires that you run Tango within a GitHub repository and you push
         all of your changes prior to each ``tango run`` call. It also requires that you have
@@ -87,7 +90,8 @@ class BeakerExecutor(Executor):
     :param beaker_image: The name or ID of a Beaker image to use for running steps on Beaker.
         The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
-        This is mutually exclusive with the ``docker_image`` parameter.
+        This is mutually exclusive with the ``docker_image`` parameter. If neither ``beaker_image``
+        nor ``docker_image`` is specified, the :data:`DEFAULT_BEAKER_IMAGE` will be used.
     :param docker_image: The name of a publicly-available Docker image to use for running
         steps on Beaker. The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
@@ -103,9 +107,6 @@ class BeakerExecutor(Executor):
         part of your ``tango.yml`` file, namely ``workspace`` and ``include_package``.
         Instead use the top-level :data:`~tango.settings.TangoGlobalSettings.workspace`
         and :data:`~tango.settings.TangoGlobalSettings.include_package` fields, respectively.
-
-    .. tip::
-        Registered as :class:`~tango.executor.Executor` under the name "beaker".
     """
 
     GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
@@ -122,6 +123,11 @@ class BeakerExecutor(Executor):
 
     STEP_GRAPH_FILENAME: str = "config.json"
 
+    DEFAULT_BEAKER_IMAGE: str = "ai2/conda"
+    """
+    The default image. Used if neither ``beaker_image`` nor ``docker_image`` are set.
+    """
+
     def __init__(
         self,
         workspace: Workspace,
@@ -129,7 +135,7 @@ class BeakerExecutor(Executor):
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
-        beaker_image: Optional[str] = "ai2/conda",
+        beaker_image: Optional[str] = None,
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
         env_vars: Optional[List[EnvVar]] = None,
@@ -137,7 +143,9 @@ class BeakerExecutor(Executor):
         **kwargs,
     ):
         # Pre-validate arguments.
-        if (beaker_image is None) == (docker_image is None):
+        if beaker_image is None and docker_image is None:
+            beaker_image = self.DEFAULT_BEAKER_IMAGE
+        elif (beaker_image is None) == (docker_image is None):
             raise ConfigurationError(
                 "Either 'beaker_image' or 'docker_image' must be specified for BeakerExecutor, but not both."
             )
