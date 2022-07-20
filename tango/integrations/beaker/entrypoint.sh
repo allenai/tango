@@ -114,5 +114,5 @@ echo "
 #############################
 "
 
-# Execute the arguments to this script as commands themselves, piping output into a log file.
+# Execute the arguments to this script as commands themselves.
 exec "$@"
