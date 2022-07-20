@@ -37,15 +37,70 @@ logger = logging.getLogger(__name__)
 class BeakerExecutor(Executor):
     """
     This is a :class:`~tango.executor.Executor` that runs steps on `Beaker`_.
+    Each step is ran as its own Beaker experiment.
 
-    :param workspace: The name or ID of the Beaker workspace to use.
+    .. important::
+        This executor requires that you run Tango within a GitHub repository and you push
+        all of your changes prior to each ``tango run`` call. It also requires that you have
+        a `GitHub personal access token <https://github.com/settings/tokens/new>`_
+        with at least the "repo" scope set to the environment variable ``GITHUB_TOKEN``
+        (you can also set it using the ``github_token`` parameter, see below).
+
+        This is because :class:`BeakerExecutor` has to be able to clone your code from Beaker.
+
+    .. important::
+        The :class:`BeakerExecutor` takes no responsibility for saving the results of steps that
+        it runs on Beaker. That's the job of your workspace. So make sure your using the
+        right type of workspace or your results will be lost.
+
+        For example, any "remote" workspace (like the :class:`BeakerWorkspace`) would work,
+        or in some cases you could use a :class:`~tango.workspaces.LocalWorkspace` on an NFS drive.
+
+    :examples:
+
+    You can use this executor by specifying it in your ``tango.yml`` settings file:
+
+    .. code:: yaml
+
+        executor:
+          type: beaker
+          beaker_workspace: ai2/my-workspace
+          clusters:
+            - ai2/general-cirrascale
+
+    :param workspace: The :class:`~tango.workspace.Workspace` to use.
+    :param clusters: A list of Beaker clusters that the executor may use to run steps.
+    :param include_package: A list of Python packages to import before running steps.
+    :param beaker_workspace: The name or ID of the Beaker workspace to use.
+    :param github_token: You can use this parameter to set a GitHub personal access token instead of using
+        the ``GITHUB_TOKEN`` environment variable.
+    :param beaker_image: The name or ID of a Beaker image to use for running steps on Beaker.
+        The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
+        installed (Miniconda is okay).
+        This is mutually exclusive with the ``docker_image`` parameter.
+    :param docker_image: The name of a publicly-available Docker image to use for running
+        steps on Beaker. The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
+        installed (Miniconda is okay).
+        This is mutually exclusive with the ``beaker_image`` parameter.
+    :param datasets: External data sources to mount into the Beaker job for each step. You could use
+        this to mount an NFS drive, for example.
+    :param env_vars: Environment variables to set in the Beaker job for each step.
+    :param parallelism: Control the maximum number of steps ran in parallel on Beaker.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
+
+    .. attention::
+        Certain parameters should not be included in the :data:`~tango.settings.TangoGlobalSettings.executor`
+        part of your ``tango.yml`` file, namely ``workspace`` and ``include_package``.
+        Instead use the top-level :data:`~tango.settings.TangoGlobalSettings.workspace`
+        and :data:`~tango.settings.TangoGlobalSettings.include_package` fields, respectively.
 
     .. tip::
         Registered as :class:`~tango.executor.Executor` under the name "beaker".
     """
 
     GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
+
+    BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
 
     RESULTS_DIR: str = "/tango/output"
 
@@ -78,7 +133,7 @@ class BeakerExecutor(Executor):
             )
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
-        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True)
+        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets
@@ -383,6 +438,9 @@ class BeakerExecutor(Executor):
         # Write the GitHub token secret.
         self.beaker.secret.write(self.GITHUB_TOKEN_SECRET_NAME, self.github_token)
 
+        # Write the Beaker token secret.
+        self.beaker.secret.write(self.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
+
         # Build Tango command to run.
         command = [
             "tango",
@@ -417,6 +475,7 @@ class BeakerExecutor(Executor):
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
+            .with_env_var(name="BEAKER_TOKEN", secret=self.BEAKER_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=step_info.environment.python)
