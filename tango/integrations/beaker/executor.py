@@ -8,7 +8,6 @@ from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple
 
-import jsonpickle
 from beaker import (
     Beaker,
     DataMount,
@@ -24,7 +23,7 @@ from beaker import (
 )
 
 from tango.common.exceptions import ConfigurationError, ExecutorError, SigTermReceived
-from tango.common.logging import cli_logger, log_exception
+from tango.common.logging import cli_logger, log_exception, log_record_from_json
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -99,6 +98,10 @@ class BeakerExecutor(Executor):
     :param datasets: External data sources to mount into the Beaker job for each step. You could use
         this to mount an NFS drive, for example.
     :param env_vars: Environment variables to set in the Beaker job for each step.
+    :param venv_name: The name of the conda virtual environment to use or create on the image.
+        If you're using your own image that already has a conda environment you want to use,
+        you should set this variable to the name of that environment.
+        You can also set this to "base" to use the base environment.
     :param parallelism: Control the maximum number of steps ran in parallel on Beaker.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
@@ -139,6 +142,7 @@ class BeakerExecutor(Executor):
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
         env_vars: Optional[List[EnvVar]] = None,
+        venv_name: Optional[str] = None,
         parallelism: Optional[int] = -1,
         **kwargs,
     ):
@@ -157,6 +161,7 @@ class BeakerExecutor(Executor):
         self.datasets = datasets
         self.env_vars = env_vars
         self.clusters = clusters
+        self.venv_name = venv_name
         self._is_cancelled = threading.Event()
 
         try:
@@ -196,6 +201,7 @@ class BeakerExecutor(Executor):
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         def update_steps_to_run():
+            nonlocal steps_to_run, not_run
             for step_name, step in step_graph.items():
                 if (
                     step_name in submitted_steps
@@ -334,8 +340,7 @@ class BeakerExecutor(Executor):
 
                 # Try parsing a JSON log record from the line.
                 try:
-                    log_record_attrs = jsonpickle.loads(line_str)
-                    log_record = logging.makeLogRecord(log_record_attrs)
+                    log_record = log_record_from_json(line_str)
                     setup_stage = False
                     logging.getLogger(log_record.name).handle(log_record)
                 except JSONDecodeError:
@@ -550,5 +555,8 @@ class BeakerExecutor(Executor):
             .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
             .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
         )
+
+        if self.venv_name is not None:
+            task_spec = task_spec.with_env_var(name="VENV_NAME", value=self.venv_name)
 
         return ExperimentSpec(tasks=[task_spec])
