@@ -620,7 +620,7 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
         if not isinstance(
             e, (CliRunError, KeyboardInterrupt, SigTermReceived)
         ):  # don't need tracebacks for these
-            root_logger.exception(e, extra={"highlighter": rich.highlighter.ReprHighlighter()})
+            log_exception(e)
             _EXCEPTIONS_LOGGED.append(e)
         raise
     finally:
@@ -672,3 +672,8 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)
     return insert_handlers(*handlers)
+
+
+def log_exception(exc: Exception, logger: Optional[logging.Logger] = None):
+    logger = logger or logging.getLogger()
+    logger.exception(exc, extra={"highlighter": rich.highlighter.ReprHighlighter()})

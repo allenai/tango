@@ -24,7 +24,7 @@ from beaker import (
 )
 
 from tango.common.exceptions import ConfigurationError, ExecutorError, SigTermReceived
-from tango.common.logging import cli_logger
+from tango.common.logging import cli_logger, log_exception
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -222,11 +222,7 @@ class BeakerExecutor(Executor):
                         if not isinstance(
                             exc, (KeyboardInterrupt, SigTermReceived, _ThreadCancelled)
                         ):
-                            import rich
-
-                            logger.exception(
-                                exc, extra={"highlighter": rich.highlighter.ReprHighlighter()}
-                            )
+                            log_exception(exc, logger)
                         cli_logger.error("Step '%s' failed", step_name)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError:

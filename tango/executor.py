@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Sequence, Set, TypeVar
 
+from .common.logging import log_exception
 from .common.registrable import Registrable
 from .common.util import import_extra_module
 from .step_graph import StepGraph
@@ -94,10 +95,8 @@ class Executor(Registrable):
                     self.execute_step(step)
                     successful.add(step.name)
                 except Exception as exc:
-                    import rich
-
                     failed.add(step.name)
-                    logger.exception(exc, extra={"highlighter": rich.highlighter.ReprHighlighter()})
+                    log_exception(exc, logger)
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 

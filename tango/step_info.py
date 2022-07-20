@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import pytz
 
 from .common.from_params import FromParams
+from .common.logging import log_exception
 from .common.util import jsonify, local_timezone, replace_steps_with_unique_id
 from .step import Step
 from .version import VERSION
@@ -31,7 +32,8 @@ def get_pip_packages() -> Optional[List[Tuple[str, str]]]:
 
         return sorted([(d.key, d.version) for d in iter(pkg_resources.working_set)])
     except Exception as exc:
-        logger.exception("Error saving pip packages: %s", exc)
+        logger.error("Error saving pip packages")
+        log_exception(exc)
     return None
 
 
