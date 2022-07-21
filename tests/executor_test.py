@@ -1,4 +1,4 @@
-from tango.common.testing import  TangoTestCase
+from tango.common.testing import TangoTestCase
 from tango.common.testing.steps import SleepPrintMaybeFail  # noqa:F401
 from tango.executor import Executor
 from tango.step import Step
