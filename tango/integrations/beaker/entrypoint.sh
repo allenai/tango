@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# This is the entrypoint script that the Beaker Executor uses when it runs a step
+# on Beaker.
+# It will work on any Docker image that has bash and conda / miniconda installed.
 
 set -eo pipefail
 

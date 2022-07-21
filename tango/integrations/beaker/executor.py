@@ -88,12 +88,12 @@ class BeakerExecutor(Executor):
     :param github_token: You can use this parameter to set a GitHub personal access token instead of using
         the ``GITHUB_TOKEN`` environment variable.
     :param beaker_image: The name or ID of a Beaker image to use for running steps on Beaker.
-        The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
+        The image must come with bash and `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
         This is mutually exclusive with the ``docker_image`` parameter. If neither ``beaker_image``
         nor ``docker_image`` is specified, the :data:`DEFAULT_BEAKER_IMAGE` will be used.
     :param docker_image: The name of a publicly-available Docker image to use for running
-        steps on Beaker. The image must come with `conda <https://docs.conda.io/en/latest/index.html>`_
+        steps on Beaker. The image must come with bash and `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
         This is mutually exclusive with the ``beaker_image`` parameter.
     :param datasets: External data sources to mount into the Beaker job for each step. You could use
