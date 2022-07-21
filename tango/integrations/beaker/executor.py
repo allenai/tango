@@ -348,9 +348,14 @@ class BeakerExecutor(Executor):
                     logging.getLogger(log_record.name).handle(log_record)
                 except JSONDecodeError:
                     if setup_stage:
-                        logger.debug(f"[step {step_name}, setup] {line_str}")
+                        if line_str.startswith("[TANGO] "):
+                            logger.info(
+                                "[step %s] [setup] %s", step_name, line_str[len("[TANGO] ") :]
+                            )
+                        else:
+                            logger.debug("[step %s] [setup] %s", step_name, line_str)
                     else:
-                        logger.info(f"[step {step_name}] {line_str}")
+                        logger.info("[step %s] %s", step_name, line_str)
         except JobFailedError:
             raise ExecutorError(
                 f"Beaker job for step '{step_name}' failed. "

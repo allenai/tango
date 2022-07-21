@@ -15,9 +15,7 @@ done
 eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 
 echo "
-##############################################
-# [TANGO] [1/3] Installing prerequisites... #
-##############################################
+[TANGO] [1/3] Installing prerequisites...
 "
 
 # Install GitHub CLI.
@@ -27,9 +25,7 @@ conda install gh --channel conda-forge
 gh auth setup-git
 
 echo "
-#########################################
-# [TANGO] [2/3] Cloning source code... #
-#########################################
+[TANGO] [2/3] Cloning source code...
 "
 
 # Clone the repo and checkout the target commit.
@@ -37,9 +33,7 @@ gh repo clone "$GITHUB_REPO" .
 git checkout "$GIT_REF"
 
 echo "
-###############################################
-# [TANGO] [3/3] Reconstructing Python env... #
-###############################################
+[TANGO] [3/3] Reconstructing Python env...
 "
 
 if [[ -z "$VENV_NAME" ]]; then
@@ -95,9 +89,7 @@ PYTHONPATH="$(pwd)"
 export PYTHONPATH
 
 echo "
-#############################
-# [TANGO] Environment info #
-#############################
+Environment info:
 "
 
 echo "Using $(python --version) from $(which python)"
@@ -109,9 +101,7 @@ else
 fi
 
 echo "
-#############################
-# [TANGO] Setup complete ✓ #
-#############################
+[TANGO] Setup complete ✓
 "
 
 # Execute the arguments to this script as commands themselves.
