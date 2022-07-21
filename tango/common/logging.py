@@ -99,7 +99,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from .aliases import EnvVarNames, PathOrStr
-from .exceptions import CliRunError, SigTermReceived
+from .exceptions import CancellationError, CliRunError, SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(
@@ -355,26 +355,30 @@ def excepthook(exctype, value, traceback):
     """
     Used to patch `sys.excepthook` in order to log exceptions.
     """
+    log_exc_info(exctype, value, traceback)
+
+
+def log_exception(exc: Optional[BaseException] = None, logger: Optional[logging.Logger] = None):
+    if exc is None:
+        et, ev, tb = sys.exc_info()
+        log_exc_info(et, ev, tb, logger=logger)
+    else:
+        log_exc_info(exc.__class__, exc, exc.__traceback__, logger=logger)
+
+
+def log_exc_info(exctype, value, traceback, logger: Optional[logging.Logger] = None):
     global _EXCEPTIONS_LOGGED
-
-    # For interruptions, call the original exception handler.
-    if issubclass(
-        exctype,
-        (
-            KeyboardInterrupt,
-            SigTermReceived,
-        ),
-    ):
-        sys.__excepthook__(exctype, value, traceback)
-        return
-
     if value not in _EXCEPTIONS_LOGGED:
         _EXCEPTIONS_LOGGED.append(value)
-        root_logger = logging.getLogger()
-        if issubclass(exctype, (CliRunError,)):
-            cli_logger.error("%s", value)
+        logger = logger or logging.getLogger()
+        if isinstance(value, CliRunError):
+            msg = str(value)
+            if msg:
+                cli_logger.error(msg)
+        elif isinstance(value, (KeyboardInterrupt, CancellationError)):
+            logger.error("%s: %s", exctype.__name__, value)
         else:
-            root_logger.error(
+            logger.error(
                 "Uncaught exception",
                 exc_info=(exctype, value, traceback),
                 extra={"highlighter": rich.highlighter.ReprHighlighter()},
@@ -674,11 +678,6 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)
     return insert_handlers(*handlers)
-
-
-def log_exception(exc: BaseException, logger: Optional[logging.Logger] = None):
-    logger = logger or logging.getLogger()
-    logger.exception(exc, extra={"highlighter": rich.highlighter.ReprHighlighter()})
 
 
 def log_record_to_json(record: logging.LogRecord) -> str:

@@ -5,7 +5,6 @@ import time
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 
-from tango.common.logging import cli_logger
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -289,10 +288,7 @@ class MulticoreExecutor(Executor):
                 # NOTE: since neither `Step.result()` nor `Step.ensure_result()` will have been
                 # called, we invoke the CLI logger here to let users know that we didn't run this
                 # step because we found it in the cache.
-                cli_logger.info(
-                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                    step_name,
-                )
+                step.log_cache_hit()
                 _successful.add(step_name)
             else:
                 # step wasn't executed because parents failed, or

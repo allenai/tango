@@ -22,7 +22,12 @@ from beaker import (
     TaskSpec,
 )
 
-from tango.common.exceptions import ConfigurationError, ExecutorError, SigTermReceived
+from tango.common.exceptions import (
+    CancellationError,
+    ConfigurationError,
+    ExecutorError,
+    RunCancelled,
+)
 from tango.common.logging import cli_logger, log_exception, log_record_from_json
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
@@ -31,10 +36,6 @@ from tango.version import VERSION
 from tango.workspace import Workspace
 
 logger = logging.getLogger(__name__)
-
-
-class _ThreadCancelled(Exception):
-    pass
 
 
 @Executor.register("beaker")
@@ -233,14 +234,10 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        if not isinstance(
-                            exc, (KeyboardInterrupt, SigTermReceived, _ThreadCancelled)
-                        ):
-                            log_exception(exc, logger)
-                        cli_logger.error("Step '%s' failed", step_name)
+                        log_exception(exc, logger)
                         failed.add(step_name)
-                except concurrent.futures.TimeoutError:
-                    cli_logger.error("Step '%s' failed with TimeoutError", step_name)
+                except concurrent.futures.TimeoutError as exc:
+                    log_exception(exc, logger)
                     failed.add(step_name)
 
             return future_done_callback
@@ -272,7 +269,7 @@ class BeakerExecutor(Executor):
 
                     # Update the step queue.
                     update_steps_to_run()
-        except (KeyboardInterrupt, SigTermReceived):
+        except (KeyboardInterrupt, CancellationError):
             if step_futures:
                 cli_logger.warning("Received interrupt, canceling steps...")
                 self._is_cancelled.set()
@@ -296,7 +293,7 @@ class BeakerExecutor(Executor):
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
-            raise _ThreadCancelled
+            raise RunCancelled
 
     def _execute_sub_graph_for_step(
         self,
@@ -359,7 +356,7 @@ class BeakerExecutor(Executor):
                 f"Beaker job for step '{step_name}' failed. "
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
             )
-        except (KeyboardInterrupt, SigTermReceived, _ThreadCancelled):
+        except (KeyboardInterrupt, CancellationError):
             cli_logger.warning(
                 'Stopping Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
                 self.beaker.experiment.url(experiment),

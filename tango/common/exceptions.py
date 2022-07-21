@@ -35,10 +35,24 @@ class RegistryKeyError(ConfigurationError):
     """
 
 
-class SigTermReceived(TangoError):
+class CancellationError(TangoError):
+    """
+    Base class for errors raised due to manually cancellation of a run or step.
+    """
+
+
+class SigTermReceived(CancellationError):
     """
     Raised when a SIGTERM is caught.
     """
+
+
+class StepCancelled(CancellationError):
+    pass
+
+
+class RunCancelled(CancellationError):
+    pass
 
 
 class CliRunError(TangoError):

@@ -33,7 +33,7 @@ from tango.common.from_params import (
     pop_and_construct_arg,
 )
 from tango.common.lazy import Lazy
-from tango.common.logging import cli_logger
+from tango.common.logging import cli_logger, log_exception
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
@@ -399,29 +399,18 @@ class Step(Registrable, Generic[T]):
 
         try:
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-
-            if needed_by:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
-                    self.name,
-                    needed_by.name,
-                )
-            else:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
-                    self.name,
-                )
-
+            self.log_starting(needed_by=needed_by)
             workspace.step_starting(self)
 
             try:
                 result = self.run(**kwargs)
             except BaseException as e:
+                self.log_failure(e)
                 workspace.step_failed(self, e)
                 raise
 
             result = workspace.step_finished(self, result)
-            cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
+            self.log_finished()
             return result
         finally:
             self._workspace = None
@@ -589,19 +578,7 @@ class Step(Registrable, Generic[T]):
                 # Step has been completed (and cached) by a different process, so we
                 # do nothing here and pull the result from the cache below.
 
-        if needed_by:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
-                '(needed by "%s")...[/green]',
-                self.name,
-                needed_by.name,
-            )
-        else:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                self.name,
-            )
-
+        self.log_cache_hit(needed_by=needed_by)
         return workspace.step_cache[self]
 
     def ensure_result(
@@ -621,10 +598,7 @@ class Step(Registrable, Generic[T]):
             workspace = default_workspace
 
         if self in workspace.step_cache:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                self.name,
-            )
+            self.log_cache_hit()
         else:
             self.result(workspace)
 
@@ -669,6 +643,50 @@ class Step(Registrable, Generic[T]):
             seen.add(step)
             steps.extend(step.dependencies)
         return seen
+
+    def log_cache_hit(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
+                '(needed by "%s")...[/green]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+
+    def log_starting(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                self.name,
+            )
+
+    def log_finished(self, run_name: Optional[str] = None) -> None:
+        if run_name is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Finished run for step [bold]"%s"[/] (%s)[/]',
+                self.name,
+                run_name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Finished step [bold]"%s"[/][/]',
+                self.name,
+            )
+
+    def log_failure(self, exception: BaseException) -> None:
+        log_exception(exception, logger=self.logger)
+        cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
 class WithUnresolvedSteps(CustomDetHash):
