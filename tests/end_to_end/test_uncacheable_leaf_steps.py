@@ -1,5 +1,6 @@
 from tango import Step
-from tango.common.testing import MakeNumber, TangoTestCase, run_experiment  # noqa:F401
+from tango.common.testing import TangoTestCase, run_experiment
+from tango.common.testing.steps import MakeNumber  # noqa:F401
 
 stored_number = None
 

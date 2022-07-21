@@ -3,7 +3,8 @@ import time
 import pytest
 
 from tango.common.logging import initialize_logging
-from tango.common.testing import TangoTestCase, SleepPrintMaybeFail
+from tango.common.testing import TangoTestCase
+from tango.common.testing.steps import SleepPrintMaybeFail
 from tango.executors.multicore_executor import MulticoreExecutor
 from tango.step_graph import StepGraph
 from tango.workspaces import LocalWorkspace

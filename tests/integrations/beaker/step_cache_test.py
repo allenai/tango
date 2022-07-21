@@ -1,5 +1,5 @@
+from tango.common.testing.steps import FloatStep
 from tango.integrations.beaker.step_cache import BeakerStepCache
-from tango.common.testing import FloatStep
 
 
 def test_step_cache(beaker_workspace: str):

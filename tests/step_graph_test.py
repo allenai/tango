@@ -4,11 +4,11 @@ from tempfile import NamedTemporaryFile
 import pytest
 
 from tango.common.exceptions import ConfigurationError
-from tango.common.testing import (  # noqa: F401
+from tango.common.testing import TangoTestCase
+from tango.common.testing.steps import (  # noqa: F401
     AddNumbersStep,
     ConcatStringsStep,
     StringStep,
-    TangoTestCase,
 )
 from tango.step_graph import StepGraph
 
