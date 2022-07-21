@@ -69,6 +69,11 @@ class BeakerExecutor(Executor):
         For example, any "remote" workspace (like the :class:`BeakerWorkspace`) would work,
         or in some cases you could use a :class:`~tango.workspaces.LocalWorkspace` on an NFS drive.
 
+    .. important::
+        If you're running a step that requires special hardware, e.g. a GPU, you should
+        specify that in the ``step_resources`` parameter to the step, or by overriding
+        the step's :meth:`.resources() <tango.step.Step.resources>` property method.
+
     :examples:
 
     You can use this executor by specifying it in your ``tango.yml`` settings file:
