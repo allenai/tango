@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
+from tango.common.testing.steps import FloatStep
 from tango.step_info import StepInfo
-from test_fixtures.package.steps import FloatStep
 
 
 def test_step_info():
