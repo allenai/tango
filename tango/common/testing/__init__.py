@@ -30,11 +30,11 @@ class TangoTestCase:
     # tests & fixtures, we must be able to look them up somewhere else
     PROJECT_ROOT_FALLBACK = (
         # users wanting to run test suite for installed package
-        pathlib.Path(os.environ["TANGO_SRC_DIR"])
+        Path(os.environ["TANGO_SRC_DIR"])
         if "TANGO_SRC_DIR" in os.environ
         else (
             # fallback for conda packaging
-            pathlib.Path(os.environ["SRC_DIR"])
+            Path(os.environ["SRC_DIR"])
             if "CONDA_BUILD" in os.environ
             # stay in-tree
             else PROJECT_ROOT
