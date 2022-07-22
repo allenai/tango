@@ -21,7 +21,7 @@ class TangoTestCase:
 
     """
 
-    PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
+    PROJECT_ROOT = (Path(__file__).parent / ".." / ".." / "..").resolve()
     """
     Root of the git repository.
     """
