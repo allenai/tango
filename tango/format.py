@@ -43,7 +43,7 @@ class Format(Registrable, Generic[T]):
     the result of a :class:`~tango.step.Step`.
     """
 
-    VERSION: int = NotImplemented
+    VERSION: str = NotImplemented
     """
     Formats can have versions. Versions are part of a step's unique signature, part of
     :attr:`~tango.step.Step.unique_id`, so when a step's format changes,
@@ -117,7 +117,7 @@ class DillFormat(Format[T], Generic[T]):
 
     """
 
-    VERSION = 1
+    VERSION = "001"
 
     def __init__(self, compress: Optional[str] = None):
         if compress not in _OPEN_FUNCTIONS:
@@ -199,7 +199,7 @@ class JsonFormat(Format[T], Generic[T]):
         iterator. If you read an iterator, it will read the iterator lazily.
     """
 
-    VERSION = 2
+    VERSION = "002"
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -336,7 +336,7 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         all special characters are escaped, strings are quoted, but it's all still human-readable.
     """
 
-    VERSION = 1
+    VERSION = "001"
 
     def __init__(self, compress: Optional[str] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -418,7 +418,7 @@ class TextFormatIterator(Iterator[str]):
 
 @Format.register("sqlite_sequence")
 class SqliteSequenceFormat(Format[Sequence[T]]):
-    VERSION = 3
+    VERSION = "003"
 
     FILENAME = "data.sqlite"
 
@@ -491,7 +491,7 @@ class SqliteDictFormat(Format[DatasetDict]):
     not empty when you open it.
     """
 
-    VERSION = 3
+    VERSION = "003"
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
         dir = Path(dir)

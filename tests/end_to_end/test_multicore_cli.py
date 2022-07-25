@@ -47,7 +47,7 @@ class TestExperiment(TangoTestCase):
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
         num_executed = 0
         for out in latest_outputs.iterdir():
-            if (out / "execution-metadata.json").exists():
+            if (out / "cache-metadata.json").exists():
                 num_executed += 1
         assert num_executed == 1
 
@@ -64,6 +64,6 @@ class TestExperiment(TangoTestCase):
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
         num_executed = 0
         for out in latest_outputs.iterdir():
-            if (out / "execution-metadata.json").exists():
+            if (out / "cache-metadata.json").exists():
                 num_executed += 1
         assert num_executed == 3

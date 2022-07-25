@@ -44,9 +44,9 @@ class BeakerWorkspace(Workspace):
 
     STEP_INFO_CACHE_SIZE = 512
 
-    def __init__(self, workspace: str, **kwargs):
+    def __init__(self, beaker_workspace: str, **kwargs):
         super().__init__()
-        self.beaker = Beaker.from_env(default_workspace=workspace, **kwargs)
+        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}
@@ -103,7 +103,11 @@ class BeakerWorkspace(Workspace):
                 self._step_info_cache.popitem(last=False)
             return step_info
         except (DatasetNotFound, FileNotFoundError):
-            raise KeyError(step_or_unique_id)
+            if not isinstance(step_or_unique_id, Step):
+                raise KeyError(step_or_unique_id)
+            step_info = StepInfo.new_from_step(step_or_unique_id)
+            self._update_step_info(step_info)
+            return step_info
 
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
@@ -144,8 +148,9 @@ class BeakerWorkspace(Workspace):
         if step_info.state != StepState.RUNNING:
             raise StepStateError(step, step_info.state)
 
-        # Update step info. This needs to be done *before* adding the result to the cache,
-        # since adding the result to the cache will commit the step dataset, making it immutable.
+        # Update step info and save step execution metadata.
+        # This needs to be done *before* adding the result to the cache, since adding
+        # the result to the cache will commit the step dataset, making it immutable.
         step_info.end_time = utc_now_datetime()
         step_info.result_location = self.beaker.dataset.url(step_dataset_name(step))
         self._update_step_info(step_info)
@@ -212,7 +217,7 @@ class BeakerWorkspace(Workspace):
                 if step.name is None:
                     continue
 
-                step_info = self._get_or_set_step_info(step)
+                step_info = self.step_info(step)
                 steps[step.name] = step_info
                 run_data[step.name] = step.unique_id
 
@@ -228,7 +233,9 @@ class BeakerWorkspace(Workspace):
 
         runs: Dict[str, Run] = {}
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=9, thread_name_prefix="BeakerWorkspace.registered_runs()-"
+        ) as executor:
             run_futures = []
             for dataset in self.beaker.workspace.datasets(
                 match=Constants.RUN_DATASET_PREFIX, results=False
@@ -288,7 +295,9 @@ class BeakerWorkspace(Workspace):
 
         import concurrent.futures
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=9, thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
+        ) as executor:
             step_info_futures = []
             for step_name, unique_id in steps_info.items():
                 step_info_futures.append(executor.submit(self.step_info, unique_id))
@@ -296,14 +305,6 @@ class BeakerWorkspace(Workspace):
                 steps[step_name] = future.result()
 
         return Run(name=run_name, start_date=dataset.created, steps=steps)
-
-    def _get_or_set_step_info(self, step: Step) -> StepInfo:
-        try:
-            return self.step_info(step)
-        except KeyError:
-            step_info = StepInfo.new_from_step(step)
-            self._update_step_info(step_info)
-            return step_info
 
     def _update_step_info(self, step_info: StepInfo):
         dataset_name = step_dataset_name(step_info)
@@ -316,6 +317,8 @@ class BeakerWorkspace(Workspace):
 
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             tmp_dir = Path(tmp_dir_name)
+
+            # Save step info.
             step_info_path = tmp_dir / Constants.STEP_INFO_FNAME
             with open(step_info_path, "w") as f:
                 json.dump(step_info.to_json_dict(), f)

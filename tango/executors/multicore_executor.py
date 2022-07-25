@@ -5,6 +5,7 @@ import time
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 
+from tango.common.logging import cli_logger
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
+@Executor.register("multicore")
 class MulticoreExecutor(Executor):
     """
     A ``MulticoreExecutor`` runs the steps in parallel and caches their results.
@@ -29,8 +31,7 @@ class MulticoreExecutor(Executor):
         num_tries_to_sync_states: int = 3,
         wait_seconds_to_sync_states: int = 3,
     ) -> None:
-        self.workspace = workspace
-        self.include_package = include_package
+        super().__init__(workspace, include_package=include_package)
         self.parallelism = parallelism
 
         # Perhaps there's a better way to do this without these being passed as args.
@@ -277,6 +278,20 @@ class MulticoreExecutor(Executor):
             elif not step.cache_results and step not in uncacheable_leaf_steps:
                 # uncacheable interior step; didn't execute directly.
                 continue
+            elif (
+                step.cache_results
+                and step_name in step_states
+                and step_states[step_name] == StepState.COMPLETED
+            ):
+                # step result was found in cache.
+                # NOTE: since neither `Step.result()` nor `Step.ensure_result()` will have been
+                # called, we invoke the CLI logger here to let users know that we didn't run this
+                # step because we found it in the cache.
+                cli_logger.info(
+                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                    step_name,
+                )
+                _successful.add(step_name)
             else:
                 # step wasn't executed because parents failed, or
                 # step is uncacheable leaf step, so we do care about what happened to it.

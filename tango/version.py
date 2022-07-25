@@ -1,7 +1,5 @@
 _MAJOR = "0"
-_MINOR = "9"
-# On main and in a nightly release the patch should be one ahead of the last
-# released build.
+_MINOR = "10"
 _PATCH = "0"
 # This is mainly for pre-releases which have the suffix "rc[0-9]+".
 _SUFFIX = ""

@@ -36,16 +36,16 @@ class BeakerStepCache(LocalStepCache):
         Registered as :class:`~tango.step_cache.StepCache` under the name "beaker".
     """
 
-    def __init__(self, workspace: Optional[str] = None, beaker: Optional[Beaker] = None):
+    def __init__(self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None):
         super().__init__(tango_cache_dir() / "beaker_cache")
         self.beaker: Beaker
         if beaker is not None:
             self.beaker = beaker
-            if workspace is not None:
-                self.beaker.config.default_workspace = workspace
-                self.beaker.workspace.ensure(workspace)
-        elif workspace is not None:
-            self.beaker = Beaker.from_env(default_workspace=workspace)
+            if beaker_workspace is not None:
+                self.beaker.config.default_workspace = beaker_workspace
+                self.beaker.workspace.ensure(beaker_workspace)
+        elif beaker_workspace is not None:
+            self.beaker = Beaker.from_env(default_workspace=beaker_workspace)
         else:
             self.beaker = Beaker.from_env()
 

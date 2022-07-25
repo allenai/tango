@@ -17,7 +17,12 @@ class TangoGlobalSettings(FromParams):
 
     workspace: Optional[Dict[str, Any]] = None
     """
-    Parameters to initialize a :class:`tango.workspace.Workspace` with.
+    Parameters to initialize a :class:`~tango.workspace.Workspace` with.
+    """
+
+    executor: Optional[Dict[str, Any]] = None
+    """
+    Parameters to initialize an :class:`~tango.executor.Executor` with.
     """
 
     include_package: Optional[List[str]] = None

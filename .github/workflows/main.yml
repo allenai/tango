@@ -152,7 +152,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
 
@@ -186,7 +186,7 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
         run: |
           . .venv/bin/activate
-          pip install torch==1.11.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
+          pip install torch==1.12.0 --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -279,7 +279,7 @@ jobs:
       - uses: actions/checkout@v1  # needs v1 for now
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 

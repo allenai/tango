@@ -377,12 +377,13 @@ class Step(Registrable, Generic[T]):
 
             try:
                 result = self.run(**kwargs)
-                result = workspace.step_finished(self, result)
-                cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
-                return result
             except BaseException as e:
                 workspace.step_failed(self, e)
                 raise
+
+            result = workspace.step_finished(self, result)
+            cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
+            return result
         finally:
             self._workspace = None
             self.work_dir_for_run = None
@@ -564,7 +565,18 @@ class Step(Registrable, Generic[T]):
                 "It does not make sense to call ensure_result() on a step that's not cacheable."
             )
 
-        self.result(workspace)
+        if workspace is None:
+            from tango.workspaces import default_workspace
+
+            workspace = default_workspace
+
+        if self in workspace.step_cache:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+        else:
+            self.result(workspace)
 
     def _ordered_dependencies(self) -> Iterable["Step"]:
         def dependencies_internal(o: Any) -> Iterable[Step]:
