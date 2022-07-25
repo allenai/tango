@@ -14,6 +14,7 @@ XSum Summarization with facebook/bart-base
 
 @Step.register("tokenize_data")
 class PreProcessing(Step):
+    DETERMINISTIC = False
     def run(self, dataset):
         tokenizer = AutoTokenizer.from_pretrained("facebook/bart-base")
         model = FlaxAutoModelForSeq2SeqLM.from_pretrained("facebook/bart-base")
@@ -65,6 +66,7 @@ class PreProcessing(Step):
             remove_columns=column_names,
             desc="Running tokenizer on dataset",
         )
+        
         return dataset
 
 
@@ -94,7 +96,8 @@ class TransformerTrainWrapper(FlaxTrainWrapper):
         loss = loss.sum() / padding_mask.sum()
         return loss
 
-    def train_loss(self, params, batch, logits, labels):
+    def train_loss(self, params, state, batch, dropout_rng, labels):
+        logits = state.apply_fn(**batch, params=params, dropout_rng=dropout_rng, train=True)[0]
         loss = self.loss_helper(logits, labels, batch)
         return loss
 

@@ -22,8 +22,8 @@
                 "ref": "tokenize"
             },
             "optimizer": {
-                "type" : "optax::sgd",
-                "learning_rate" : 1e-4
+                "type" : "optax::adamw",
+                "learning_rate" : 2e-5
             },
             "train_dataloader": {
                 "batch_size": 16,
@@ -34,13 +34,18 @@
             },
             "train_split": "train",
             "validation_split" : "validation",
+            "validate_every" : 1000,
             "validation_dataloader": {
                 "batch_size": 16,
                 "drop_last": true
             },
-            "train_epoch": 6,
+            "train_epoch": 5,
             "checkpoint_every": 1000,
-            "log_every": 1000
+            "log_every": 1000,
+
+            "callbacks" : [{
+                "type" : "wandb::log_flax"
+            }]
         },
         "eval": {
             "type": "flax::eval",

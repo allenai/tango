@@ -1,4 +1,5 @@
 import logging
+import time
 from abc import abstractmethod
 from collections import defaultdict
 from pathlib import Path
@@ -27,29 +28,30 @@ from .train_callback import TrainCallback
 from .train_config import TrainConfig
 from .util import get_multiple_keys, get_PRNGkey
 
+
 PyTree = Any
 
 
 class FlaxTrainWrapper(Registrable):
     @abstractmethod
-    def compute_metrics(self, state, batch, labels) -> Dict:
+    def train_metrics(self, state, batch, labels) -> Dict:
         """
-        returns train metrics other than loss as Dict
+        Returns train metrics other than loss as Dict
         """
         pass
 
     @abstractmethod
-    def train_loss(self, params, batch, logits, labels):
+    def train_loss(self, params, state, batch, dropout_rng, labels):
         """
-        returns loss
+        Returns loss
         """
         pass
 
     @abstractmethod
     def val_loss(self, batch, logits, labels) -> Dict:
         """
-        returns validation metrics as Dict
-        """
+        Returns validation metrics as Dict
+        """    
         pass
 
 
@@ -312,6 +314,7 @@ class FlaxTrainStep(Step):
                 validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
 
         validation_dataloader = validation_dataloader_
+        
 
         train_dataset = dataset
         if config.train_split is not None:
@@ -322,6 +325,9 @@ class FlaxTrainStep(Step):
         do_distributed: bool = False
         if len(devices) > 1:
             do_distributed = True
+        
+        validation_dataloader.batch_size = validation_dataloader.batch_size * len(devices)
+        train_dataloader.batch_size = train_dataloader.batch_size * len(devices)
 
         rng = get_PRNGkey(config.seed)
 
@@ -404,16 +410,15 @@ class FlaxTrainStep(Step):
             ) as batch_iter:
                 for step, batch in enumerate(batch_iter):
                     del batch
-                    if step >= start_step - 1:
+                    if step >= start_step - 1: 
                         break
-
+        
         def train_step(state, batch, dropout_rng):
             # if transformer model
             labels = batch.pop("labels")
-            dropout_rng, new_dropout_rng = jax.random.split(dropout_rng)
-            logits = state.apply_fn(**batch, params=params, dropout_rng=dropout_rng, train=True)[0]
+            dropout_rng, new_dropout_rng = jax.random.split(dropout_rng)         
             grad_fn = jax.value_and_grad(train_wrapper.train_loss)
-            loss, grad = grad_fn(state.params, batch, logits, labels)
+            loss, grad = grad_fn(state.params, state, batch, dropout_rng, labels)
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)
@@ -422,6 +427,7 @@ class FlaxTrainStep(Step):
             metrics.update(other_metrics)
             if do_distributed:
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
+            
             return new_state, metrics, new_dropout_rng
 
         def val_step(state, batch):
@@ -449,26 +455,28 @@ class FlaxTrainStep(Step):
         for callback in callbacks:
             callback.pre_train_loop()
 
+        logger.info("***** Running training *****")
+        logger.info(f"  Num examples = {train_dataloader.dataset_size}")
+        logger.info(f"  Num Epochs = {config.train_epochs}")
+        logger.info(f"  Total train batch size (w. parallel & distributed) = {train_dataloader.batch_size}")
+        logger.info(f"  Total optimization steps = {config.train_steps}")
+
+        step = start_step
+
         epochs = Tqdm.tqdm(
             range(config.train_epochs), desc=f"Epoch (1/{config.train_epochs})", position=0
         )
+        
         for epoch in epochs:
+            start = time.time()
             train_metrics: DefaultDict = defaultdict(list)
-
-            step = start_step
 
             for callback in callbacks:
                 callback.pre_epoch(step, epoch)
 
-            batches = Tqdm.tqdm(
-                train_dataloader(rng, do_distributed),
-                initial=start_step,
-                total=step_per_epoch,
-                position=1,
-                desc="Training",
-            )
-
-            for batch in batches:
+            train_loader = train_dataloader(rng, do_distributed)
+            for _ in Tqdm.tqdm(range(step_per_epoch), desc="Training", position=1):
+                batch = next(train_loader)
                 for callback in callbacks:
                     callback.pre_batch(step, epoch, batch)
 
@@ -476,6 +484,7 @@ class FlaxTrainStep(Step):
                     state, train_metric, dropout_rngs = parallel_train_step(
                         state, batch, dropout_rngs
                     )
+
                     train_metric = jax_utils.unreplicate(train_metric)
                 else:
                     state, train_metric, rng = train_step(state, batch, rng)
@@ -502,82 +511,87 @@ class FlaxTrainStep(Step):
                     self.save_checkpoint(config.state_path, state, step)
                 step += 1
 
+                # check if we need to do validation
+                if config.validation_split is None:
+                    # If we can't validate, we don't.
+                    should_validate = False
+                elif step == config.train_steps - 1:
+                    # If we're at the end of the training run, we always validate.
+                    should_validate = True
+                elif config.validate_every is not None and step % config.validate_every == 0:
+                    # If validate_every is given, we use that to decide.
+                    should_validate = True
+                else:
+                    # Otherwise, we don't validate.
+                    should_validate = False
+
+                if should_validate:
+                    assert validation_dataloader is not None
+                    assert config.validation_steps is not None
+
+                    val_metrics: DefaultDict = defaultdict(list)
+                    epoch_eval_metrics: DefaultDict = defaultdict(float)
+
+                    val_dataloader = validation_dataloader(rng, do_distributed)
+
+                    valid_step = 0
+                    total_val_steps = len(validation_dataset) // validation_dataloader.batch_size
+
+                    for _ in Tqdm.tqdm(range(total_val_steps), desc="Evaluating", position=2):
+                        batch = next(val_dataloader)
+                        for callback in callbacks:
+                            callback.pre_val_batch(step, valid_step, epoch, batch)
+
+                        if do_distributed:
+                            metrics = parallel_val_step(state, batch)
+                            metrics = jax_utils.unreplicate(metrics)
+                        else:
+                            metrics = val_step(state, batch)
+
+                        for key, value in metrics.items():
+                            val_metrics[key].append(value)
+
+                        for callback in callbacks:
+                            callback.post_val_batch(step, valid_step, epoch, batch)
+                        
+                        valid_step+=1
+
+                    for key, value in val_metrics.items():
+                        if config.auto_aggregate_val_metric:
+                            epoch_eval_metrics[key] = jax.tree_map(jnp.mean, jnp.array(value)).item()
+                        else:
+                            epoch_eval_metrics[key] = metrics[key].item()
+                    
+
+                    for key, value in epoch_eval_metrics.items():
+                        print("Validation %s : %.5f" % (key, value))
+
+                    val_metric = epoch_eval_metrics[config.val_metric_name]
+
+                    assert val_metric is not None
+
+                    if best_val_metric is None:
+                        best_val_metric = val_metric
+                    elif config.minimize_val_metric and val_metric <= best_val_metric:
+                        best_val_metric = val_metric
+                    elif not config.minimize_val_metric and val_metric >= best_val_metric:
+                        best_val_metric = val_metric
+
+                    for callback in callbacks:
+                        callback.post_val_loop(step, epoch, val_metric, best_val_metric)                    
+
             for key, value in train_metric.items():
                 print("Train %s : %.2f" % (key, value))
 
             for callback in callbacks:
                 callback.post_epoch(step, epoch)
 
-            # check if we need to do validation
-            if config.validation_split:
-                should_validate = True
-            elif config.validation_split is None:
-                # If we can't validate, we don't.
-                should_validate = False
-            elif step == config.train_steps - 1:
-                # If we're at the end of the training run, we always validate.
-                should_validate = True
-            elif config.validate_every is not None and (step + 1) % config.validate_every == 0:
-                # If validate_every is given, we use that to decide.
-                should_validate = True
-            else:
-                # Otherwise, we don't validate.
-                should_validate = False
+            end = time.time()
+            train_time =  (end - start)/60
 
-            if should_validate:
-                assert validation_dataloader is not None
-                assert config.validation_steps is not None
-
-                val_metrics: DefaultDict = defaultdict(list)
-                epoch_eval_metrics: DefaultDict = defaultdict(float)
-
-                validation_dataloader_tqdm = Tqdm.tqdm(
-                    validation_dataloader(rng, do_distributed),
-                    total=len(validation_dataset) // validation_dataloader.batch_size,
-                    desc="Evaluating",
-                    position=2,
-                )
-
-                for valid_step, batch in enumerate(validation_dataloader_tqdm):
-                    for callback in callbacks:
-                        callback.pre_val_batch(step, valid_step, epoch, batch)
-
-                    if do_distributed:
-                        metrics = parallel_val_step(state, batch)
-                        metrics = jax_utils.unreplicate(metrics)
-                    else:
-                        metrics = val_step(state, batch)
-
-                    for key, value in metrics.items():
-                        val_metrics[key].append(value)
-
-                    for callback in callbacks:
-                        callback.post_val_batch(step, valid_step, epoch, batch)
-
-                for key, value in val_metrics.items():
-                    if config.auto_aggregate_val_metric:
-                        epoch_eval_metrics[key] = jax.tree_map(jnp.mean, jnp.array(value)).item()
-                    else:
-                        epoch_eval_metrics[key] = metrics[key].item()
-
-                val_metric = epoch_eval_metrics[config.val_metric_name]
-
-                assert val_metric is not None
-
-                if best_val_metric is None:
-                    best_val_metric = val_metric
-                elif config.minimize_val_metric and val_metric <= best_val_metric:
-                    best_val_metric = val_metric
-                elif not config.minimize_val_metric and val_metric >= best_val_metric:
-                    best_val_metric = val_metric
-
-                for callback in callbacks:
-                    callback.post_val_loop(step, epoch, val_metric, best_val_metric)
-
-                for key, value in epoch_eval_metrics.items():
-                    print("Validation %s : %.2f" % (key, value))
-
-            epochs.desc = f"Epoch ... {epoch + 1}/{config.train_epochs}"
+            desc = f"Epoch... ({epoch + 1}/{config.train_epochs} | Time taken (mins): {train_time})"
+            epochs.write(desc)
+            epochs.desc = desc
 
         for callback in callbacks:
             callback.post_train_loop(step, epoch)

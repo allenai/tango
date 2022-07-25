@@ -69,7 +69,6 @@ class TrainCallback(Registrable):
         """
         The unique ID of the current :class:`~tango.Step`.
         """
-        print(self.train_config)
         return self.train_config.step_id
 
     @property

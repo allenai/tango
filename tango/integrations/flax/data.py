@@ -1,3 +1,5 @@
+import logging
+import time
 from typing import Dict, Generic, TypeVar, Union
 
 import datasets
@@ -26,7 +28,7 @@ class FlaxDataLoader(DataLoader):
     def __init__(
         self,
         dataset: Union[DatasetDictBase, Dict],
-        batch_size: int = 1,
+        batch_size: int = 8,
         drop_last: bool = True,
         shuffle: bool = True,
     ):
@@ -36,11 +38,14 @@ class FlaxDataLoader(DataLoader):
         self.shuffle = shuffle
         self.dataset_size = self._get_size()
 
+        self.logger = logging.getLogger(FlaxDataLoader.__name__)
+
     def _get_size(self):
         size = self.dataset["num_rows"] if type(self.dataset) is dict else self.dataset.num_rows
         return size
-
+        
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
+        self.dataset.set_format("jax")
         steps_per_epoch = self.dataset_size // self.batch_size
 
         if self.shuffle:
@@ -51,14 +56,9 @@ class FlaxDataLoader(DataLoader):
         perms = perms[: steps_per_epoch * self.batch_size]  # Skip incomplete batch.
         perms = perms.reshape((steps_per_epoch, self.batch_size))
 
+        assert  isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
         for perm in perms:
-            if isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset):
-                batch = self.dataset[perm]
-                batch = {k: jnp.array(v) for k, v in batch.items()}
-            else:
-                raise ValueError(
-                    "Type for FlaxLoader should be Datasets , or dict of numpy arrays."
-                )
+            batch = self.dataset[perm]
             if do_distributed:
                 batch = shard(batch)
             yield batch

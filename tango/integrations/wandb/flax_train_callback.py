@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 import wandb
+import jax
 
 from tango.common.exceptions import ConfigurationError
 from tango.integrations.flax.train_callback import TrainCallback
@@ -127,18 +128,19 @@ class WandbTrainCallback(TrainCallback):
             if self.run_id is None:
                 self.run_id = self.step_id
 
-            wandb.init(
-                id=self.run_id,
-                dir=str(self.work_dir),
-                project=self.project,
-                entity=self.entity,
-                group=self.group,
-                name=self.run_name,
-                notes=self.notes,
-                config=self.wandb_config,
-                tags=self.tags,
-                job_type="train_metrics",
-            )
+            if jax.process_index() == 0:
+                wandb.init(
+                    id=self.run_id,
+                    dir=str(self.work_dir),
+                    project=self.project,
+                    entity=self.entity,
+                    group=self.group,
+                    name=self.run_name,
+                    notes=self.notes,
+                    config=self.wandb_config,
+                    tags=self.tags,
+                    job_type="train_metrics",
+                )
         else:
             # We are already running inside of a W&B run, possibly because
             # we're using the WandbWorkspace.
@@ -157,16 +159,18 @@ class WandbTrainCallback(TrainCallback):
 
     def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
         metrics = {"train/loss": batch_loss, "epoch": epoch}
-
-        wandb.log(metrics, step=step + 1)
+        if jax.process_index()==0:
+            wandb.log(metrics, step=step + 1)
 
     def post_val_loop(
         self, step: int, epoch: int, val_metric: Optional[float], best_val_metric: Optional[float]
     ) -> None:
-        wandb.log(
-            {
-                f"val/{self.train_config.val_metric_name}": val_metric,
-                f"val/best_{self.train_config.val_metric_name}": best_val_metric,
-                "epoch": epoch,
-            }
-        )
+        if jax.process_index()==0:
+            wandb.log(
+                {
+                    f"val/{self.train_config.val_metric_name}": val_metric,
+                    f"val/best_{self.train_config.val_metric_name}": best_val_metric,
+                    "epoch": epoch,
+                },
+                step = step+1
+            )

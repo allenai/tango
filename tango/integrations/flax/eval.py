@@ -1,7 +1,8 @@
+import logging
 from abc import abstractmethod
 from collections import defaultdict
 from itertools import islice
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, DefaultDict
 
 import jax
 from flax import jax_utils
@@ -24,7 +25,7 @@ class FlaxEvalWrapper(Registrable):
     @abstractmethod
     def eval_metrics(self, batch, logits, labels) -> Dict:
         """
-        returns test metrics.
+        Returns the evaluation metrics.
         """
         pass
 
@@ -52,6 +53,7 @@ class FlaxEvalStep(Step):
         callbacks: Optional[List[Lazy[EvalCallback]]] = None,
     ) -> Dict[str, float]:
 
+        logger = logging.getLogger(FlaxEvalStep.__name__)
         # construct dataloader
         dataloader: FlaxDataLoader = dataloader.construct(dataset=dataset[test_split])
 
@@ -110,6 +112,8 @@ class FlaxEvalStep(Step):
         running_metrics: Dict[str, float] = defaultdict(float)
         aggregated_metrics: Dict[str, float] = defaultdict(float)
 
+        eval_metrics: DefaultDict = defaultdict(list)
+
         with Tqdm.tqdm(eval_batches, desc="Evaluating", total=steps) as batch_iter:
             for step, batch in batch_iter:
                 should_log_this_step = step % log_every == 0 or step == steps - 1
@@ -125,7 +129,6 @@ class FlaxEvalStep(Step):
                 for callback in callbacks:
                     callback.post_batch(step, logits)
 
-                print("Metrics: ", metrics)
                 if auto_aggregate_metrics:
                     for key, val in metrics.items():
                         if key in metric_names:
@@ -137,6 +140,10 @@ class FlaxEvalStep(Step):
                 if should_log_this_step:
                     batch_iter.set_postfix(**aggregated_metrics)
                 del batch
+
+        logger.info("Evaluation Metrics:")
+        for key, val in aggregated_metrics:
+            logger.info(key, ":", val)
 
         for callback in callbacks:
             callback.post_eval_loop(aggregated_metrics)

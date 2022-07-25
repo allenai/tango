@@ -801,7 +801,6 @@ class FromParams(CustomDetHash):
         """
 
         def replace_object_with_params(o: Any) -> Any:
-            # print("object: ", o)
             if isinstance(o, FromParams):
                 return o.to_params().as_dict(quiet=True)
             elif isinstance(o, (list, tuple, set)):
