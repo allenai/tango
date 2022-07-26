@@ -3,7 +3,6 @@ from typing import Any, Dict, Mapping, MutableMapping
 
 import pytest
 
-import test_fixtures.package.steps  # noqa: F401
 from tango import StepGraph
 from tango.common import Params, Registrable
 from tango.common.from_params import FromParams

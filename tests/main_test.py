@@ -71,8 +71,6 @@ class TestRun(TangoTestCase):
             log_level,
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "noisy.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
             "-o",
@@ -121,8 +119,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
         ]
@@ -149,8 +145,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             "memory://",
         ]
@@ -162,8 +156,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
         ]
         result = subprocess.run(cmd, capture_output=True)
         assert result.returncode == 0
@@ -173,8 +165,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "random.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
         ]
@@ -187,8 +177,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
             "--name",
@@ -218,8 +206,6 @@ class TestRun(TangoTestCase):
             + [
                 "run",
                 str(self.FIXTURES_ROOT / "experiment" / "logging_check.jsonnet"),
-                "-i",
-                "test_fixtures.package",
                 "-w",
                 str(self.TEST_DIR),
                 "-j",

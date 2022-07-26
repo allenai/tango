@@ -40,7 +40,6 @@ class TestExperiment(TangoTestCase):
         with pytest.raises(CliRunError):
             self.run(
                 self.config,
-                include_package=["test_fixtures.package.steps"],
                 multicore=True,
                 parallelism=2,
             )
@@ -56,7 +55,6 @@ class TestExperiment(TangoTestCase):
 
         self.run(
             self.config,
-            include_package=["test_fixtures.package.steps"],
             multicore=True,
             parallelism=2,
             overrides=json.dumps({"steps.step1.fail": False}),
