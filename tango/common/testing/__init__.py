@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 from tango.common.aliases import EnvVarNames, PathOrStr
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.params import Params
+from tango.settings import TangoGlobalSettings
 
 
 class TangoTestCase:
@@ -84,11 +85,12 @@ class TangoTestCase:
         include_package: Optional[List[str]] = None,
         workspace_url: Optional[str] = None,
         step_name: Optional[str] = None,
-        parallelism: int = 1,
-        multicore: bool = False,
+        parallelism: Optional[int] = 1,
+        multicore: Optional[bool] = False,
         name: Optional[str] = None,
+        settings: Optional[TangoGlobalSettings] = None,
     ) -> Path:
-        from tango.__main__ import TangoGlobalSettings, _run
+        from tango.__main__ import _run
 
         if isinstance(config, (dict, Params)):
             params = config if isinstance(config, Params) else Params(config)
@@ -101,7 +103,7 @@ class TangoTestCase:
             overrides = json.dumps(overrides)
 
         run_name = _run(
-            TangoGlobalSettings(),
+            settings or TangoGlobalSettings(),
             str(config),
             workspace_url=workspace_url or "local://" + str(self.TEST_DIR / "workspace"),
             overrides=overrides,
@@ -122,9 +124,10 @@ def run_experiment(
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
     include_package: Optional[List[str]] = None,
-    parallelism: int = 1,
-    multicore: bool = False,
+    parallelism: Optional[int] = 1,
+    multicore: Optional[bool] = False,
     name: Optional[str] = None,
+    settings: Optional[TangoGlobalSettings] = None,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
@@ -142,6 +145,7 @@ def run_experiment(
             parallelism=parallelism,
             multicore=multicore,
             name=name,
+            settings=settings,
         )
     finally:
         test_case.teardown_method()

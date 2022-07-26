@@ -1,11 +1,8 @@
-import subprocess
-from pathlib import Path
-
 import petname
 import pytest
 from beaker import DataMount
 
-from tango.common.testing import TangoTestCase
+from tango.common.testing import TangoTestCase, run_experiment
 from tango.integrations.beaker.executor import BeakerExecutor
 from tango.integrations.beaker.workspace import BeakerWorkspace
 from tango.settings import TangoGlobalSettings
@@ -30,8 +27,8 @@ def test_from_params(beaker_workspace_name: str):
 
 
 @pytest.fixture
-def settings_path(tmp_path: Path, beaker_workspace: str) -> Path:
-    settings = TangoGlobalSettings(
+def settings(beaker_workspace: str) -> TangoGlobalSettings:
+    return TangoGlobalSettings(
         workspace={"type": "beaker", "beaker_workspace": beaker_workspace},
         executor={
             "type": "beaker",
@@ -39,28 +36,15 @@ def settings_path(tmp_path: Path, beaker_workspace: str) -> Path:
             "clusters": ["ai2/allennlp-cirrascale", "ai2/general-cirrascale"],
         },
     )
-    path = tmp_path / "tango.yml"
-    settings.to_file(path)
-    return path
 
 
-def test_beaker_executor(settings_path: Path, beaker_workspace: str):
+def test_beaker_executor(settings: TangoGlobalSettings, beaker_workspace: str):
     run_name = petname.generate()
-    cmd = [
-        "tango",
-        "--settings",
-        str(settings_path),
-        "--log-level",
-        "info",
-        "run",
-        str(TangoTestCase.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-        "--name",
-        run_name,
-        "--allow-dirty",
-    ]
-    result = subprocess.run(cmd, capture_output=True)
-    assert result.returncode == 0, result.stderr.decode().replace("\r", "\n")
-
-    workspace = BeakerWorkspace(beaker_workspace=beaker_workspace)
-    run = workspace.registered_run(run_name)
-    assert run.steps["hello_world"].state == StepState.COMPLETED
+    with run_experiment(
+        TangoTestCase.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet",
+        settings=settings,
+        name=run_name,
+    ):
+        workspace = BeakerWorkspace(beaker_workspace=beaker_workspace)
+        run = workspace.registered_run(run_name)
+        assert run.steps["hello_world"].state == StepState.COMPLETED
