@@ -57,4 +57,4 @@ def test_step_info_with_step_dependency():
 
     step_info_json = json.dumps(step_info.to_json_dict())
     step_info = StepInfo.from_json_dict(json.loads(step_info_json))
-    assert type(step_info.config) == dict
+    isinstance(step_info.config, dict)
