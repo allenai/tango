@@ -1,4 +1,5 @@
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Sequence, Set, TypeVar
 
@@ -77,6 +78,12 @@ class Executor(Registrable):
         but unrelated steps are still executed. Step failures will be logged, but
         no exceptions will be raised.
         """
+        if self.parallelism is not None:
+            warnings.warn(
+                "The 'parallelism' parameter has no effect with the default Executor. "
+                "If you want to run steps in parallel, consider using the MulticoreExecutor.",
+                UserWarning,
+            )
 
         successful: Set[str] = set()
         failed: Set[str] = set()
@@ -99,6 +106,11 @@ class Executor(Registrable):
                     log_exception(exc, logger)
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
+
+    # NOTE: The reason for having this method instead of just using `execute_step()` to run
+    # a single step is that the certain executors, such as the BeakerExecutor, need to
+    # serialize steps somehow, and the easiest way to serialize a step is by serializing the
+    # whole step config (which can be accessed via the step graph).
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None

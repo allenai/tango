@@ -380,6 +380,8 @@ def beaker_executor_run(
     step = step_graph[step_name]
 
     # Initialize workspace and executor.
+    # NOTE: We use the default executor here because we're just running the step
+    # locally in the main process.
     workspace = Workspace.from_url(workspace_url)
     executor = Executor(workspace=workspace, include_package=include_package)
 
