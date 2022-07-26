@@ -38,7 +38,7 @@ def test_step_info_with_step_dependency():
 
     @Step.register("bar")
     class BarStep(Step):
-        def run(self) -> str:
+        def run(self) -> str:  # type: ignore
             return "Hey!"
 
     graph = StepGraph.from_params(
