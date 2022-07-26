@@ -35,6 +35,8 @@ from tango.step_graph import StepGraph
 from tango.version import VERSION
 from tango.workspace import Workspace
 
+from .common import Constants
+
 logger = logging.getLogger(__name__)
 
 
@@ -324,7 +326,9 @@ class BeakerExecutor(Executor):
         self._check_if_cancelled()
 
         # Create experiment.
-        experiment_name = f"{step.unique_id}-{str(uuid.uuid4())}"
+        experiment_name = (
+            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
+        )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         cli_logger.info(
             'Submitted Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
@@ -402,8 +406,12 @@ class BeakerExecutor(Executor):
         contents = read_binary(tango.integrations.beaker, "entrypoint.sh")
         sha256_hash.update(contents)
 
-        entrypoint_dataset_name = f"tango-entrypoint-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
-        tmp_entrypoint_dataset_name = f"tango-entrypoint-{str(uuid.uuid4())}-tmp"
+        entrypoint_dataset_name = (
+            f"{Constants.ENTRYPOINT_DATASET_PREFIX}{workspace_id}-{sha256_hash.hexdigest()[:6]}"
+        )
+        tmp_entrypoint_dataset_name = (
+            f"{Constants.ENTRYPOINT_DATASET_PREFIX}{str(uuid.uuid4())}-tmp"
+        )
 
         # Ensure entrypoint dataset exists.
         entrypoint_dataset: Dataset
@@ -444,7 +452,7 @@ class BeakerExecutor(Executor):
         return entrypoint_dataset
 
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
-        step_graph_dataset_name = f"tango-step-graph-{str(uuid.uuid4())}"
+        step_graph_dataset_name = f"{Constants.STEP_GRAPH_DATASET_PREFIX}{str(uuid.uuid4())}"
         try:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmpdir = Path(tmpdirname)
