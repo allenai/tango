@@ -31,12 +31,12 @@ def test_step_info():
 def test_step_info_with_step_dependency():
     """Checks that the StepInfo config is not parsed to a Step if it has dependencies on upstream steps"""
 
-    @Step.register("foo")
+    @Step.register("foo", exist_ok=True)
     class FooStep(Step):
         def run(self, bar: Any) -> str:  # type: ignore
             return "foo" + bar
 
-    @Step.register("bar")
+    @Step.register("bar", exist_ok=True)
     class BarStep(Step):
         def run(self) -> str:  # type: ignore
             return "Hey!"
@@ -57,4 +57,4 @@ def test_step_info_with_step_dependency():
 
     step_info_json = json.dumps(step_info.to_json_dict())
     step_info = StepInfo.from_json_dict(json.loads(step_info_json))
-    isinstance(step_info.config, dict)
+    assert isinstance(step_info.config, dict)

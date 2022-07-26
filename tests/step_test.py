@@ -25,7 +25,7 @@ class TestStep(TangoTestCase):
             def __init__(self, x: int):
                 self.x = x
 
-        @Step.register("foo")
+        @Step.register("foo", exist_ok=True)
         class FooStep(Step):
             def run(self, bar: Bar) -> Bar:  # type: ignore
                 return bar
