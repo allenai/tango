@@ -269,7 +269,7 @@ def cleanup(*args, **kwargs):
     type=int,
     help="""The maximum number of steps to run in parallel (for executors that support this).
     The exact behavior depends on the executor. If you're using the default executors,
-    a value of 0 (or left unspecified) means each step is ran in the main process using the default executor,
+    a value of 0 (or left unspecified) means each step is run in the main process using the default executor,
     otherwise the multicore executor is used.""",
 )
 @click.option(
@@ -288,7 +288,7 @@ def cleanup(*args, **kwargs):
 @click.option(
     "--allow-dirty",
     is_flag=True,
-    help="""Allow running the experiment with a dirty working directory.""",
+    help="""Allow running the experiment with a dirty working directory (uncommitted code changes).""",
 )
 @click.pass_obj
 def run(

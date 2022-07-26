@@ -37,7 +37,7 @@ class RegistryKeyError(ConfigurationError):
 
 class CancellationError(TangoError):
     """
-    Base class for errors raised due to manually cancellation of a run or step.
+    Base class for errors raised due to manual cancellation of a run or step.
     """
 
 
