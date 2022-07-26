@@ -33,7 +33,7 @@ def test_step_info_with_step_dependency():
 
     @Step.register("foo")
     class FooStep(Step):
-        def run(self, bar: Any) -> str:
+        def run(self, bar: Any) -> str:  # type: ignore
             return "foo" + bar
 
     @Step.register("bar")
