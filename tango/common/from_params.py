@@ -387,11 +387,15 @@ def construct_arg(
     args = getattr(annotation, "__args__", [])
 
     # Try to guess if `popped_params` might be a step, come from a step, or contain a step.
-    could_be_step = try_from_step and (
-        origin == Step
-        or isinstance(popped_params, Step)
-        or _params_contain_step(popped_params)
-        or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+    could_be_step = (
+        try_from_step
+        and (
+            origin == Step
+            or isinstance(popped_params, Step)
+            or _params_contain_step(popped_params)
+            or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+        )
+        and not (class_name == "StepInfo" and argument_name == "config")
     )
     if could_be_step:
         # If we think it might be a step, we try parsing as a step _first_.

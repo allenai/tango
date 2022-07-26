@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed issue where the StepInfo config argument could be parsed into a Step. 
 - Restored capability to run tests out-of-tree.
 
 ## [v0.10.0](https://github.com/allenai/tango/releases/tag/v0.10.0) - 2022-07-07
