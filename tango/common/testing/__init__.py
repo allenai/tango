@@ -113,6 +113,7 @@ class TangoTestCase:
             parallelism=parallelism,
             multicore=multicore,
             name=name,
+            allow_dirty=True,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name
@@ -124,6 +125,7 @@ def run_experiment(
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
     include_package: Optional[List[str]] = None,
+    workspace_url: Optional[str] = None,
     parallelism: Optional[int] = 1,
     multicore: Optional[bool] = False,
     name: Optional[str] = None,
@@ -142,6 +144,7 @@ def run_experiment(
             config,
             overrides=overrides,
             include_package=include_package,
+            workspace_url=workspace_url,
             parallelism=parallelism,
             multicore=multicore,
             name=name,

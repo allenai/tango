@@ -27,24 +27,28 @@ def test_from_params(beaker_workspace_name: str):
 
 
 @pytest.fixture
-def settings(beaker_workspace: str) -> TangoGlobalSettings:
+def settings(beaker_workspace_name: str) -> TangoGlobalSettings:
     return TangoGlobalSettings(
-        workspace={"type": "beaker", "beaker_workspace": beaker_workspace},
+        workspace={"type": "beaker", "beaker_workspace": beaker_workspace_name},
         executor={
             "type": "beaker",
-            "beaker_workspace": beaker_workspace,
+            "beaker_workspace": beaker_workspace_name,
             "clusters": ["ai2/allennlp-cirrascale", "ai2/general-cirrascale"],
         },
     )
 
 
-def test_beaker_executor(settings: TangoGlobalSettings, beaker_workspace: str):
+def test_beaker_executor(
+    settings: TangoGlobalSettings, beaker_workspace_name: str, patched_unique_id_suffix: str
+):
     run_name = petname.generate()
     with run_experiment(
-        TangoTestCase.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet",
+        {"steps": {"hello": {"type": "string", "result": "Hello, World!"}}},
         settings=settings,
+        workspace_url=f"beaker://{beaker_workspace_name}",
         name=run_name,
+        multicore=None,
     ):
-        workspace = BeakerWorkspace(beaker_workspace=beaker_workspace)
+        workspace = BeakerWorkspace(beaker_workspace=beaker_workspace_name)
         run = workspace.registered_run(run_name)
-        assert run.steps["hello_world"].state == StepState.COMPLETED
+        assert run.steps["hello"].state == StepState.COMPLETED

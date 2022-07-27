@@ -203,7 +203,7 @@ class BeakerWorkspace(Workspace):
                     break
         else:
             try:
-                run_dataset = self.beaker.dataset.create(name, commit=False)
+                run_dataset = self.beaker.dataset.create(run_dataset_name(name), commit=False)
             except DatasetConflict:
                 raise ValueError("Run name '{name}' is already in use")
 

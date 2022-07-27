@@ -47,8 +47,8 @@ def beaker_workspace(
     beaker = Beaker.from_env(default_workspace=beaker_workspace_name)
     yield beaker_workspace_name
     # Remove experiments.
-    for experiment in beaker.workspace.experiments(match=patched_constants_prefix):
-        beaker.experiment.delete(experiment)
+    #  for experiment in beaker.workspace.experiments(match=patched_constants_prefix):
+    #      beaker.experiment.delete(experiment)
     # Remove datasets.
     for dataset in beaker.workspace.datasets(match=patched_unique_id_suffix):
         beaker.dataset.delete(dataset)
