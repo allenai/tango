@@ -2,7 +2,7 @@ import petname
 import pytest
 from beaker import DataMount
 
-from tango.common.testing import TangoTestCase, run_experiment
+from tango.common.testing import run_experiment
 from tango.integrations.beaker.executor import BeakerExecutor
 from tango.integrations.beaker.workspace import BeakerWorkspace
 from tango.settings import TangoGlobalSettings
