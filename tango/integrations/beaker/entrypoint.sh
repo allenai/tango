@@ -90,6 +90,7 @@ if [[ -z "$INSTALL_CMD" ]]; then
         pip install -r "$PIP_REQUIREMENTS_FILE"
     fi
 else
+    echo "[TANGO] Installing packages with given command: $INSTALL_CMD"
     eval "$INSTALL_CMD"
 fi
 

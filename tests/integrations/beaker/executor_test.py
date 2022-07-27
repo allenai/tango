@@ -52,4 +52,4 @@ def test_beaker_executor(
     ):
         workspace = BeakerWorkspace(beaker_workspace=beaker_workspace_name)
         run = workspace.registered_run(run_name)
-        assert run.steps["hello"].state == StepState.COMPLETED
+        assert run.steps["hello"].state == StepState.COMPLETED, run.steps["hello"].to_json_dict()
