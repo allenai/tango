@@ -6,7 +6,6 @@ from tango.common.testing import run_experiment
 from tango.integrations.beaker.executor import BeakerExecutor
 from tango.integrations.beaker.workspace import BeakerWorkspace
 from tango.settings import TangoGlobalSettings
-from tango.step_info import StepState
 from tango.workspaces import default_workspace
 
 
@@ -51,5 +50,4 @@ def test_beaker_executor(
         multicore=None,
     ):
         workspace = BeakerWorkspace(beaker_workspace=beaker_workspace_name)
-        run = workspace.registered_run(run_name)
-        assert run.steps["hello"].state == StepState.COMPLETED, run.steps["hello"].to_json_dict()
+        assert "hello" in workspace.registered_run(run_name).steps
