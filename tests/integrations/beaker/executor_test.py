@@ -33,6 +33,7 @@ def settings(beaker_workspace_name: str) -> TangoGlobalSettings:
         executor={
             "type": "beaker",
             "beaker_workspace": beaker_workspace_name,
+            "install_cmd": "pip install .[beaker]",
             "clusters": ["ai2/allennlp-cirrascale", "ai2/general-cirrascale"],
         },
     )

@@ -61,7 +61,8 @@ class BeakerExecutor(Executor):
     .. important::
         The :class:`BeakerExecutor` will try to recreate your Python environment on Beaker
         every time a step is ran, so it's important that you specify all of your dependencies
-        in a PIP ``requirements.txt`` file or a conda ``environment.yml`` file.
+        in a PIP ``requirements.txt`` file, ``setup.py`` file, or a conda ``environment.yml`` file.
+        Alternatively you could provide the ``install_cmd`` argument.
 
     .. important::
         The :class:`BeakerExecutor` takes no responsibility for saving the results of steps that
@@ -111,6 +112,9 @@ class BeakerExecutor(Executor):
         you should set this variable to the name of that environment.
         You can also set this to "base" to use the base environment.
     :param parallelism: Control the maximum number of steps ran in parallel on Beaker.
+    :param install_cmd: Override the command used to install your code and its dependencies
+        in each Beaker job.
+        For example, you could set ``install_cmd="pip install .[dev]"``.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
     .. attention::
@@ -152,6 +156,7 @@ class BeakerExecutor(Executor):
         env_vars: Optional[List[EnvVar]] = None,
         venv_name: Optional[str] = None,
         parallelism: Optional[int] = -1,
+        install_cmd: Optional[str] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -170,6 +175,7 @@ class BeakerExecutor(Executor):
         self.env_vars = env_vars
         self.clusters = clusters
         self.venv_name = venv_name
+        self.install_cmd = install_cmd
         self._is_cancelled = threading.Event()
 
         try:
@@ -579,5 +585,8 @@ class BeakerExecutor(Executor):
 
         if self.venv_name is not None:
             task_spec = task_spec.with_env_var(name="VENV_NAME", value=self.venv_name)
+
+        if self.install_cmd is not None:
+            task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
         return ExperimentSpec(tasks=[task_spec])
