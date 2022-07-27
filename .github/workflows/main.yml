@@ -150,7 +150,17 @@ jobs:
             python: '3.10'
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v3
+
+      # For pull requests we need to checkout the HEAD commit instead of the merge
+      # commit since some tests depend on having an existing commit.
+      - name: Checkout (pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@v4
