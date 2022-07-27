@@ -23,6 +23,7 @@ env:
   BEAKER_WORKSPACE: ai2/tango-testing
   BEAKER_DEFAULT_CLUSTER: ai2/tango-gpu-tests
   BEAKER_IMAGE: petew/tango-testing
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   checks:
@@ -308,8 +309,6 @@ jobs:
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: ${{ github.workspace }}-RELEASE_NOTES.md
           prerelease: ${{ contains(env.TAG, 'rc') }}
