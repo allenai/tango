@@ -287,9 +287,10 @@ class BeakerWorkspace(Workspace):
             run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
             steps: Dict[str, StepInfo] = {}
             steps_info_bytes = b"".join(
-                self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True)
+                list(self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True))
             )
             steps_info = json.loads(steps_info_bytes)
+            print(steps_info)
         except (DatasetNotFound, FileNotFoundError):
             return None
 
@@ -302,7 +303,9 @@ class BeakerWorkspace(Workspace):
             for step_name, unique_id in steps_info.items():
                 step_info_futures.append(executor.submit(self.step_info, unique_id))
             for future in concurrent.futures.as_completed(step_info_futures):
-                steps[step_name] = future.result()
+                step_info = future.result()
+                assert step_info.step_name is not None
+                steps[step_info.step_name] = step_info
 
         return Run(name=run_name, start_date=dataset.created, steps=steps)
 
