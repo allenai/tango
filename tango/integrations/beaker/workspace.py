@@ -290,7 +290,6 @@ class BeakerWorkspace(Workspace):
                 list(self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True))
             )
             steps_info = json.loads(steps_info_bytes)
-            print(steps_info)
         except (DatasetNotFound, FileNotFoundError):
             return None
 
