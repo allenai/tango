@@ -37,6 +37,26 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 
 **ai2-tango** requires Python 3.7 or later.
 
+### Installing with `pip`
+
+**ai2-tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
+
+```bash
+pip install ai2-tango
+```
+
+To install with a specific integration, such as `torch` for example, run
+
+```bash
+pip install 'ai2-tango[torch]'
+```
+
+To install with all integrations, run
+
+```bash
+pip install 'ai2-tango[all]'
+```
+
 ### Installing with `conda`
 
 **ai2-tango** is available on conda-forge. You can install just the base package with
@@ -62,28 +82,6 @@ conda install tango-all -c conda-forge
 
 Even though **ai2-tango** itself is quite small, installing everything will pull in a lot of dependencies.
 Don't be surprised if this takes a while!
-
-
-### Installing with `pip`
-
-**ai2-tango** is available [on PyPI](https://pypi.org/project/ai2-tango/). Just run
-
-```bash
-pip install ai2-tango
-```
-
-To install with a specific integration, such as `torch` for example, run
-
-```bash
-pip install 'ai2-tango[torch]'
-```
-
-To install with all integrations, run
-
-```bash
-pip install 'ai2-tango[all]'
-```
-
 
 ### Installing from source
 
@@ -113,7 +111,6 @@ pip install -e .
 ```
 
 ### Checking your installation
-
 
 Run
 
