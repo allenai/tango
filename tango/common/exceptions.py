@@ -35,10 +35,24 @@ class RegistryKeyError(ConfigurationError):
     """
 
 
-class SigTermReceived(TangoError):
+class CancellationError(TangoError):
+    """
+    Base class for errors raised due to manual cancellation of a run or step.
+    """
+
+
+class SigTermReceived(CancellationError):
     """
     Raised when a SIGTERM is caught.
     """
+
+
+class StepCancelled(CancellationError):
+    pass
+
+
+class RunCancelled(CancellationError):
+    pass
 
 
 class CliRunError(TangoError):
@@ -79,3 +93,15 @@ class StepStateError(TangoError):
         if context is not None:
             msg = msg + " " + context
         super().__init__(msg)
+
+
+class DirtyRepoError(TangoError):
+    """
+    Raised when a repository is in a dirty state.
+    """
+
+
+class ExecutorError(TangoError):
+    """
+    A base class for executor-specific errors.
+    """

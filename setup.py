@@ -99,7 +99,11 @@ setup(
             "scripts.*",
         ],
     ),
-    package_data={"tango.server": ["*.svg", "*.css", "*.js", "*.html"], "tango": ["py.typed"]},
+    package_data={
+        "tango.server": ["*.svg", "*.css", "*.js", "*.html"],
+        "tango.integrations.beaker": ["*.sh"],
+        "tango": ["py.typed"],
+    },
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
     extras_require=extras,

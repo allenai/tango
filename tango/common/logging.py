@@ -89,7 +89,9 @@ import threading
 from contextlib import contextmanager
 from typing import ContextManager, Generator, List, Optional
 
+import jsonpickle
 import rich
+import tblib
 from rich.console import Console
 from rich.logging import RichHandler as _RichHandler
 from rich.padding import Padding
@@ -97,7 +99,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from .aliases import EnvVarNames, PathOrStr
-from .exceptions import CliRunError, SigTermReceived
+from .exceptions import CancellationError, CliRunError, SigTermReceived
 from .util import _parse_bool, _parse_optional_int
 
 FILE_FRIENDLY_LOGGING: bool = _parse_bool(
@@ -353,28 +355,34 @@ def excepthook(exctype, value, traceback):
     """
     Used to patch `sys.excepthook` in order to log exceptions.
     """
+    log_exc_info(exctype, value, traceback)
+
+
+def log_exception(exc: Optional[BaseException] = None, logger: Optional[logging.Logger] = None):
+    if exc is None:
+        et, ev, tb = sys.exc_info()
+        log_exc_info(et, ev, tb, logger=logger)
+    else:
+        log_exc_info(exc.__class__, exc, exc.__traceback__, logger=logger)
+
+
+def log_exc_info(exctype, value, traceback, logger: Optional[logging.Logger] = None):
     global _EXCEPTIONS_LOGGED
-    # Ignore `CliRunError` because we don't need a traceback for those.
-    if issubclass(exctype, (CliRunError,)):
-        return
-    # For interruptions, call the original exception handler.
-    if issubclass(
-        exctype,
-        (
-            KeyboardInterrupt,
-            SigTermReceived,
-        ),
-    ):
-        sys.__excepthook__(exctype, value, traceback)
-        return
     if value not in _EXCEPTIONS_LOGGED:
         _EXCEPTIONS_LOGGED.append(value)
-        root_logger = logging.getLogger()
-        root_logger.error(
-            "Uncaught exception",
-            exc_info=(exctype, value, traceback),
-            extra={"highlighter": rich.highlighter.ReprHighlighter()},
-        )
+        logger = logger or logging.getLogger()
+        if isinstance(value, CliRunError):
+            msg = str(value)
+            if msg:
+                cli_logger.error(msg)
+        elif isinstance(value, (KeyboardInterrupt, CancellationError)):
+            logger.error("%s: %s", exctype.__name__, value)
+        else:
+            logger.error(
+                "Uncaught exception",
+                exc_info=(exctype, value, traceback),
+                extra={"highlighter": rich.highlighter.ReprHighlighter()},
+            )
 
 
 def initialize_logging(
@@ -439,16 +447,21 @@ def initialize_worker_logging(worker_rank: Optional[int] = None):
     return initialize_prefix_logging(prefix=prefix, main_process=False)
 
 
-def initialize_prefix_logging(prefix: Optional[str] = None, main_process: bool = False):
+def initialize_prefix_logging(
+    *, log_level: Optional[str] = None, prefix: Optional[str] = None, main_process: bool = False
+):
     """
     Initialize logging with a prefix.
 
+    :param log_level:
+        Can be one of "debug", "info", "warning", "error". Defaults to the value
+        of :data:`TANGO_LOG_LEVEL`, if set, or "error".
     :param prefix:
         The string prefix to add to the log message.
     :param main_process:
         Whether it is for the main/worker process.
     """
-    return _initialize_logging(prefix=prefix, main_process=main_process)
+    return _initialize_logging(log_level=log_level, prefix=prefix, main_process=main_process)
 
 
 def _initialize_logging(
@@ -470,6 +483,10 @@ def _initialize_logging(
         file_friendly_logging = FILE_FRIENDLY_LOGGING
     if enable_cli_logs is None:
         enable_cli_logs = TANGO_CLI_LOGGER_ENABLED
+    if prefix:
+        prefix = _LOGGING_PREFIX + " " + prefix if _LOGGING_PREFIX else prefix
+    else:
+        prefix = _LOGGING_PREFIX
 
     level = logging._nameToLevel[log_level.upper()]
 
@@ -528,6 +545,12 @@ def _initialize_logging(
                 cli_handler.addFilter(LevelFilter(handler_level))
                 cli_logger.addHandler(cli_handler)
 
+        # Add prefix.
+        if prefix:
+            for logger in (root_logger, cli_logger, tqdm_logger):
+                for handler in logger.handlers:
+                    handler.addFilter(PrefixLogFilter(prefix))
+
         # Main process: set formatter and handlers, initialize logging socket and server.
         # Set up logging socket to emit log records from worker processes/threads.
         # Inspired by:
@@ -548,10 +571,6 @@ def _initialize_logging(
                 "did you forget to call 'initialize_logging()' from the main process?"
             )
         socket_handler = logging.handlers.SocketHandler(_LOGGING_HOST, _LOGGING_PORT)
-        if prefix:
-            prefix = _LOGGING_PREFIX + " " + prefix if _LOGGING_PREFIX else prefix
-        else:
-            prefix = _LOGGING_PREFIX
         if prefix:
             socket_handler.addFilter(PrefixLogFilter(prefix))
 
@@ -604,9 +623,10 @@ def insert_handlers(*handlers: logging.Handler) -> Generator[None, None, None]:
     try:
         yield None
     except BaseException as e:
-        # We don't log `CliRunError` because we don't need a traceback for those.
-        if not isinstance(e, CliRunError):
-            root_logger.exception(e)
+        if not isinstance(
+            e, (CliRunError, KeyboardInterrupt, SigTermReceived)
+        ):  # don't need tracebacks for these
+            log_exception(e)
             _EXCEPTIONS_LOGGED.append(e)
         raise
     finally:
@@ -658,3 +678,38 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)
     return insert_handlers(*handlers)
+
+
+def log_record_to_json(record: logging.LogRecord) -> str:
+    attrs = record.__dict__
+    if attrs.get("exc_info") is not None:
+        # Tracebacks cannot be pickled directly, so we need help from tblib.
+        et, ev, tb = attrs["exc_info"]
+        tb_dict = tblib.Traceback(tb).to_dict()
+        attrs["exc_info"] = (et, ev, tb_dict)
+    return jsonpickle.dumps(attrs)
+
+
+def log_record_from_json(json_record: str) -> logging.LogRecord:
+    attrs = jsonpickle.loads(json_record)
+    if attrs.get("exc_info") is not None:
+        et, ev, tb_dict = attrs["exc_info"]
+        tb = tblib.Traceback.from_dict(tb_dict)
+        attrs["exc_info"] = (et, ev, tb)
+    return logging.makeLogRecord(attrs)
+
+
+class JsonHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord):
+        print(log_record_to_json(record))
+
+
+def do_json_logging(prefix: str):
+    from tango.common.tqdm import logger as tqdm_logger
+
+    root_logger = logging.getLogger()
+    for logger in (root_logger, cli_logger, tqdm_logger):
+        logger.handlers.clear()
+        handler = JsonHandler()
+        handler.addFilter(PrefixLogFilter(prefix))
+        logger.addHandler(handler)

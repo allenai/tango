@@ -130,7 +130,13 @@ def infer_method_params(
 
     has_kwargs = False
     var_positional_key = None
-    for param_name in parameters.keys():
+    for param_name in list(parameters.keys()):
+        # Ignore special private parameters.
+        # This is necessary to make `FromParams` work with Pydantic, for example.
+        if param_name.startswith("__"):
+            del parameters[param_name]
+            continue
+
         param = parameters[param_name]
         if param.kind == param.VAR_KEYWORD:
             has_kwargs = True

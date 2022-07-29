@@ -1,5 +1,5 @@
-FairScale
-=========
+🔥 FairScale
+============
 
 .. automodule:: tango.integrations.fairscale
 

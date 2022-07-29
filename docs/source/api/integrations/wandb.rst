@@ -1,6 +1,6 @@
-Weights & Biases
-================
-
+⚖️ Weights & Biases
+===================
+ 
 .. automodule:: tango.integrations.wandb
 
 Reference

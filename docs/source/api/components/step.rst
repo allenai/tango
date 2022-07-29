@@ -12,6 +12,9 @@ Base class
 .. autoclass:: tango.step.WithUnresolvedSteps
    :members:
 
+.. autoclass:: tango.step.StepResources
+   :members:
+
 Implementations
 ---------------
 
