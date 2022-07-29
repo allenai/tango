@@ -6,7 +6,7 @@
 flake8
 
 # Static type checking
-mypy==0.961
+mypy==0.971
 types-PyYAML
 types-setuptools
 types-pytz
@@ -35,7 +35,7 @@ setuptools
 wheel
 
 # Building docs
-Sphinx==5.0.2
+Sphinx==5.1.1
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
 furo==2022.6.21
