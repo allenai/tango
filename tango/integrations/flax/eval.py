@@ -22,6 +22,34 @@ from .wrapper import FlaxWrapper
 
 @Step.register("flax::eval")
 class FlaxEvalStep(Step):
+    """
+    A Flax evaluation loop that pairs well with :class:`FlaxTrainStep`.
+
+    .. tip::
+
+        Registered as a :class:`~tango.step.Step` under the name "flax::eval".
+
+    .. important::
+
+        The evaluation loop will use a GPU/TPU automatically if one is available.
+        You can control which GPU it uses with the environment variable ``CUDA_VISIBLE_DEVICES``.
+        For example, set ``CUDA_VISIBLE_DEVICES=1`` to force ``FlaxEvalStep`` to only use
+        the GPU with ID 1.
+
+    .. warning::
+
+        By default the metrics specified by the ``metric_names`` parameter
+        are aggregated by simply averaging across batches.
+        This behavior is usually correct for metrics like "loss" or "accuracy",
+        for example, but may not be correct for other metrics like "F1".
+
+        If this is not correct for your metric you will need to handle the aggregation
+        internally in your model or with an :class:`EvalCallback`
+        using the :meth:`EvalCallback.post_batch()` method.
+        Then set the parameter ``auto_aggregate_metrics`` to ``False``.
+
+    """
+
     DETERMINISTIC = True
     CACHEABLE = True
     FORMAT: Format = JsonFormat()

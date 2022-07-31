@@ -40,7 +40,7 @@ class FlaxTrainStep(Step):
         Registered as a :class:`~tango.step.Step` under the name "flax::train".
 
     .. important::
-        The training loop will use GPU(s) automatically when available, as long as at least
+        The training loop will use TPU/GPU(s) automatically when available, as long as at least
         ``device_count`` CUDA devices are available.
         Distributed data parallel training is activated when the ``device_count`` is greater than 1.
         You can control which CUDA devices to use with the environment variable ``CUDA_VISIBLE_DEVICES``.

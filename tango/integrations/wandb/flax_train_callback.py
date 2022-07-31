@@ -9,7 +9,7 @@ from .workspace import WandbWorkspace
 
 
 @TrainCallback.register("wandb::log_flax")
-class WandbTrainCallback(TrainCallback):
+class WandbFlaxTrainCallback(TrainCallback):
     """
     A flax :class:`~tango.integrations.flax.TrainCallback` for use with
     the :class:`~tango.integrations.flax.FlaxTrainStep` that logs training and

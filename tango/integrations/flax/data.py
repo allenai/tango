@@ -1,7 +1,6 @@
 import logging
 from typing import Generic, TypeVar
 
-import datasets
 import jax.random
 import numpy as np
 from flax.training.common_utils import shard
@@ -15,10 +14,9 @@ T = TypeVar("T")
 class DataLoader(Generic[T], Registrable):
     """
     A :class:`~tango.common.Registrable` version of a ``Flax DataLoader``.
-    ``Flax DataLoader accepts Dataset object and dict of type [str, np,array]. The dict should
-    contain keys "x" and "labels" corresponding to the input and output.
+    ``Flax DataLoader accepts Dataset object.
 
-    The class yields a jax batch.
+    The class yields a numpy batch.
     """
 
 
@@ -44,7 +42,6 @@ class FlaxDataLoader(DataLoader):
         return size
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
-        assert isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
         steps_per_epoch = self.dataset_size // self.batch_size
 
         if self.shuffle:
