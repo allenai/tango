@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from itertools import islice
-from typing import Dict, List, Optional, Sequence, DefaultDict
+from typing import Dict, List, Optional, Sequence
 
 import jax
 from flax import jax_utils
@@ -45,7 +45,9 @@ class FlaxEvalStep(Step):
 
         logger = logging.getLogger(FlaxEvalStep.__name__)
         # construct dataloader
-        dataloader: FlaxDataLoader = dataloader.construct(dataset=dataset[test_split])
+        dataloader: FlaxDataLoader = dataloader.construct(
+            dataset=dataset[test_split].set_format("numpy")
+        )
 
         steps: int
         try:
@@ -130,7 +132,7 @@ class FlaxEvalStep(Step):
                 del batch
 
         logger.info("Evaluation Metrics:")
-        for key, val in aggregated_metrics:
+        for key, val in aggregated_metrics.items():
             logger.info(key, ":", val)
 
         for callback in callbacks:

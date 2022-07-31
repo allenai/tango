@@ -17,7 +17,7 @@ __all__ = [
     "EvalCallback",
     "FlaxWrapper",
     "TrainConfig",
-    "FlaxEvalStep"
+    "FlaxEvalStep",
 ]
 
 from .data import DataLoader, FlaxDataLoader

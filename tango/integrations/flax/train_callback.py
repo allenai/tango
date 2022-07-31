@@ -39,7 +39,6 @@ class TrainCallback(Registrable):
         optional validation splits.
     :ivar DataLoader train_dataloader: The dataloader used for the training split.
     :ivar FlaxModel model: The flax model being trained.
-    :ivar TrainState state: the flax training state. It can be used to perform model surgery (https://flax.readthedocs.io/en/latest/howtos/model_surgery.html).
     :ivar Optimizer optimizer: The optimizer being used for training.
     :ivar DataLoader validation_dataloader: Optional dataloader used for the validation split.
     """

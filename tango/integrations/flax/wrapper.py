@@ -1,6 +1,7 @@
-from tango.common.registrable import Registrable
 from abc import abstractmethod
 from typing import Dict
+
+from tango.common.registrable import Registrable
 
 
 class FlaxWrapper(Registrable):

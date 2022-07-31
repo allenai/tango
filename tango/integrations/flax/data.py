@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Generic, TypeVar, Union
+from typing import Generic, TypeVar
 
 import datasets
 import jax.random
@@ -26,7 +26,7 @@ class DataLoader(Generic[T], Registrable):
 class FlaxDataLoader(DataLoader):
     def __init__(
         self,
-        dataset: Union[DatasetDictBase, Dict],
+        dataset: DatasetDictBase,
         batch_size: int = 8,
         drop_last: bool = True,
         shuffle: bool = True,
@@ -42,9 +42,9 @@ class FlaxDataLoader(DataLoader):
     def _get_size(self):
         size = self.dataset["num_rows"] if type(self.dataset) is dict else self.dataset.num_rows
         return size
-        
+
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
-        self.dataset.set_format("numpy")
+        assert isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
         steps_per_epoch = self.dataset_size // self.batch_size
 
         if self.shuffle:
@@ -57,7 +57,6 @@ class FlaxDataLoader(DataLoader):
         perms = perms[: steps_per_epoch * self.batch_size]  # Skip incomplete batch.
         perms = perms.reshape((steps_per_epoch, self.batch_size))
 
-        assert isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
         for perm in perms:
             batch = self.dataset[perm]
             if do_distributed:

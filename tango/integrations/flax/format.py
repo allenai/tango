@@ -15,7 +15,7 @@ class FlaxFormat(Format[T], Generic[T]):
     This format writes the artifact.
     """
 
-    VERSION = 2
+    VERSION = "002"
 
     def write(self, artifact: T, dir: PathOrStr) -> None:
         checkpoints.save_checkpoint(Path(dir), artifact, step=1)
