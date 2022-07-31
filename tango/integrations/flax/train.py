@@ -1,6 +1,5 @@
 import logging
 import time
-from abc import abstractmethod
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, DefaultDict, Dict, List, Optional, Union
@@ -14,7 +13,6 @@ from flax.training.train_state import TrainState
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
-from tango.common.registrable import Registrable
 from tango.common.tqdm import Tqdm
 from tango.format import Format
 from tango.step import Step
@@ -27,32 +25,9 @@ from .optim import LRScheduler, Optimizer
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
 from .util import get_multiple_keys, get_PRNGkey
-
+from .wrapper import FlaxWrapper
 
 PyTree = Any
-
-
-class FlaxTrainWrapper(Registrable):
-    @abstractmethod
-    def train_metrics(self, state, batch, labels) -> Dict:
-        """
-        Returns train metrics other than loss as Dict
-        """
-        pass
-
-    @abstractmethod
-    def train_loss(self, params, state, batch, dropout_rng, labels):
-        """
-        Returns loss
-        """
-        pass
-
-    @abstractmethod
-    def val_loss(self, batch, logits, labels) -> Dict:
-        """
-        Returns validation metrics as Dict
-        """    
-        pass
 
 
 @Step.register("flax::train")
@@ -96,8 +71,9 @@ class FlaxTrainStep(Step):
         optimizer: Lazy[Optimizer],
         train_dataloader: Lazy[FlaxDataLoader],
         *,
-        train_wrapper: FlaxTrainWrapper,
+        wrapper: FlaxWrapper,
         seed: int = 42,
+        keep_checkpoints: int = 5,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
         train_split: Optional[str] = None,
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
@@ -125,10 +101,13 @@ class FlaxTrainStep(Step):
             The name of the optax Optimizer to use for training.
         :param train_dataloader:
             The dataloader object that generates training batches.
-        :param train_wrapper
+        :param wrapper
             A Wrapper class that defines ``loss_fn()``, ``eval_fn()`` and ``compute_metrics()``
         :param seed:
-            Used to set the PRNG state.
+            Used to set the PRNG state. By default, ``seed=42``
+        :param keep_checkpoints:
+            An integer which denotes how many previous checkpoints should be stored while training.
+            By default, ``keep_checkpoints=5``
         :param lr_scheduler:
             The name of the learning rate scheduler.
         :param train_split:
@@ -185,8 +164,9 @@ class FlaxTrainStep(Step):
             model=model,
             optimizer=optimizer,
             train_dataloader=train_dataloader,
-            train_wrapper=train_wrapper,
+            train_wrapper=wrapper,
             seed=seed,
+            keep_checkpoints=keep_checkpoints,
             lr_scheduler=lr_scheduler,
             train_split=train_split,
             validation_split=validation_split,
@@ -211,8 +191,9 @@ class FlaxTrainStep(Step):
         dataset: Union[DatasetDictBase, Dict],
         train_dataloader: Lazy[FlaxDataLoader],
         *,
-        train_wrapper: FlaxTrainWrapper,
+        train_wrapper: FlaxWrapper,
         seed: int = 42,
+        keep_checkpoints: int = 5,
         lr_scheduler: Optional[Lazy[LRScheduler]],
         train_split: Optional[str] = "train",
         validation_split: Optional[str] = None,
@@ -277,6 +258,7 @@ class FlaxTrainStep(Step):
             config,
             model,
             optimizer,
+            keep_checkpoints,
             lr_scheduler,
             train_wrapper,
             dataset,
@@ -294,8 +276,9 @@ class FlaxTrainStep(Step):
         config: TrainConfig,
         model: Model,
         optimizer: Optimizer,
+        keep_checkpoints: int,
         lr_scheduler: Optional[LRScheduler],
-        train_wrapper: FlaxTrainWrapper,
+        train_wrapper: FlaxWrapper,
         dataset: Union[DatasetDictBase, Dict],
         train_dataloader: Lazy[FlaxDataLoader],
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
@@ -314,7 +297,6 @@ class FlaxTrainStep(Step):
                 validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
 
         validation_dataloader = validation_dataloader_
-        
 
         train_dataset = dataset
         if config.train_split is not None:
@@ -433,10 +415,7 @@ class FlaxTrainStep(Step):
         def val_step(state, batch):
             labels = batch.pop("labels")
             logits = state.apply_fn(**batch, params=state.params, train=False)[0]
-            loss = train_wrapper.val_loss(batch, logits, labels)
-            other_metrics = train_wrapper.compute_metrics(state, batch, labels=labels)
-            metrics = {"loss": loss}
-            metrics.update(other_metrics)
+            metrics = train_wrapper.val_metrics(batch, logits, labels)
             if do_distributed:
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
             return metrics
@@ -469,7 +448,7 @@ class FlaxTrainStep(Step):
         
         for epoch in epochs:
             start = time.time()
-            train_metrics: DefaultDict = defaultdict(list)
+            train_metrics = []
 
             for callback in callbacks:
                 callback.pre_epoch(step, epoch)
@@ -484,31 +463,22 @@ class FlaxTrainStep(Step):
                     state, train_metric, dropout_rngs = parallel_train_step(
                         state, batch, dropout_rngs
                     )
-
-                    train_metric = jax_utils.unreplicate(train_metric)
                 else:
                     state, train_metric, rng = train_step(state, batch, rng)
 
-                for key, value in train_metric.items():
-                    train_metrics[key].append(value)
-
-                batch_loss = train_metric["loss"].item()
+                train_metrics.append(train_metric)
 
                 for callback in callbacks:
-                    callback.post_batch(step, epoch, batch_loss)
+                    callback.post_batch(step, epoch, train_metric)
 
                 if config.should_log_this_step(step):
+                    if do_distributed:
+                        train_metric = jax_utils.unreplicate(train_metric)
                     for callback in callbacks:
-                        callback.log_batch(step, epoch, batch_loss)
-
-                # TODO: If no validation metric, use this to load best checkpoint
-                if best_batch_loss is None or batch_loss <= best_batch_loss:
-                    best_batch_loss = batch_loss
-
-                del batch
+                        callback.log_batch(step, epoch, train_metric)
 
                 if config.should_checkpoint_this_step(step):
-                    self.save_checkpoint(config.state_path, state, step)
+                    self.save_checkpoint(config.state_path, state, step, keep_checkpoints)
                 step += 1
 
                 # check if we need to do validation
@@ -552,7 +522,7 @@ class FlaxTrainStep(Step):
                             val_metrics[key].append(value)
 
                         for callback in callbacks:
-                            callback.post_val_batch(step, valid_step, epoch, batch)
+                            callback.post_val_batch(step, valid_step, epoch, batch, val_metrics)
                         
                         valid_step+=1
 
@@ -560,8 +530,7 @@ class FlaxTrainStep(Step):
                         if config.auto_aggregate_val_metric:
                             epoch_eval_metrics[key] = jax.tree_map(jnp.mean, jnp.array(value)).item()
                         else:
-                            epoch_eval_metrics[key] = metrics[key].item()
-                    
+                            epoch_eval_metrics[key] = value.item()
 
                     for key, value in epoch_eval_metrics.items():
                         print("Validation %s : %.5f" % (key, value))
@@ -578,7 +547,9 @@ class FlaxTrainStep(Step):
                         best_val_metric = val_metric
 
                     for callback in callbacks:
-                        callback.post_val_loop(step, epoch, val_metric, best_val_metric)                    
+                        callback.post_val_loop(step, epoch, val_metric, best_val_metric)
+
+            train_metric = jax_utils.unreplicate(train_metric)
 
             for key, value in train_metric.items():
                 print("Train %s : %.2f" % (key, value))
@@ -587,7 +558,7 @@ class FlaxTrainStep(Step):
                 callback.post_epoch(step, epoch)
 
             end = time.time()
-            train_time =  (end - start)/60
+            train_time = (end - start)/60
 
             desc = f"Epoch... ({epoch + 1}/{config.train_epochs} | Time taken (mins): {train_time})"
             epochs.write(desc)
@@ -597,19 +568,15 @@ class FlaxTrainStep(Step):
             callback.post_train_loop(step, epoch)
 
         state = jax_utils.unreplicate(state)
-        # TODO: Load the best checkpoint
         return state
 
-    def save_checkpoint(self, dir: Path, target: PyTree, step: int):
+    def save_checkpoint(self, dir: Path, target: PyTree, step: int, keep_checkpoints: int):
         return checkpoints.save_checkpoint(
-            dir, target, step, prefix="checkpoint_", keep=100, overwrite=True
+            dir, target, step, prefix="checkpoint_", keep=keep_checkpoints, overwrite=True
         )
 
     def load_checkpoint(self, dir: Path, target: PyTree):
         return checkpoints.restore_checkpoint(dir, target, prefix="checkpoint_")
-
-    def is_best_checkpoint(self) -> bool:
-        raise NotImplementedError
 
     def _construct_optimizer(self, optimizer):
         self.optimizer = optimizer.construct()

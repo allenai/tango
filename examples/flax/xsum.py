@@ -4,7 +4,7 @@ import optax
 from flax.training.common_utils import onehot
 from transformers import AutoConfig, AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
-from tango.integrations.flax import FlaxEvalWrapper, FlaxTrainWrapper
+from tango.integrations.flax import FlaxWrapper
 from tango.step import Step
 
 """
@@ -15,6 +15,7 @@ XSum Summarization with facebook/bart-base
 @Step.register("tokenize_data")
 class PreProcessing(Step):
     DETERMINISTIC = False
+
     def run(self, dataset):
         tokenizer = AutoTokenizer.from_pretrained("facebook/bart-base")
         model = FlaxAutoModelForSeq2SeqLM.from_pretrained("facebook/bart-base")
@@ -66,12 +67,12 @@ class PreProcessing(Step):
             remove_columns=column_names,
             desc="Running tokenizer on dataset",
         )
-        
+
         return dataset
 
 
-@FlaxTrainWrapper.register("xsum_train_wrapper")
-class TransformerTrainWrapper(FlaxTrainWrapper):
+@FlaxWrapper.register("xsum_wrapper")  # type: ignore
+class TransformerWrapper(FlaxWrapper):
     def compute_metrics(self, state, batch, labels):
         # return empty dict if no other metrics to compute
         return {}
@@ -103,29 +104,6 @@ class TransformerTrainWrapper(FlaxTrainWrapper):
 
     def val_loss(self, batch, logits, labels):
         loss = self.loss_helper(logits, labels, batch)
-        return loss
-
-
-@FlaxEvalWrapper.register("xsum_eval_wrapper")
-class TransformerEvalWrapper(FlaxEvalWrapper):
-    def loss_helper(self, logits, labels, batch):
-        label_smoothing_factor = 0
-        padding_mask = batch["decoder_attention_mask"]
-        vocab_size = logits.shape[-1]
-        confidence = 1.0 - label_smoothing_factor
-        low_confidence = (1.0 - confidence) / (vocab_size - 1)
-        normalizing_constant = -(
-            confidence * jnp.log(confidence)
-            + (vocab_size - 1) * low_confidence * jnp.log(low_confidence + 1e-20)
-        )
-        soft_labels = onehot(labels, vocab_size, on_value=confidence, off_value=low_confidence)
-
-        loss = optax.softmax_cross_entropy(logits, soft_labels)
-        loss = loss - normalizing_constant
-
-        # ignore padded tokens from loss
-        loss = loss * padding_mask
-        loss = loss.sum() / padding_mask.sum()
         return loss
 
     def eval_metrics(self, batch, logits, labels):

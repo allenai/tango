@@ -1,10 +1,9 @@
 import logging
-import time
 from typing import Dict, Generic, TypeVar, Union
 
 import datasets
-import jax.numpy as jnp
 import jax.random
+import numpy as np
 from flax.training.common_utils import shard
 
 from tango.common.dataset_dict import DatasetDictBase
@@ -45,18 +44,20 @@ class FlaxDataLoader(DataLoader):
         return size
         
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
-        self.dataset.set_format("jax")
+        self.dataset.set_format("numpy")
         steps_per_epoch = self.dataset_size // self.batch_size
 
         if self.shuffle:
             perms = jax.random.permutation(rng, self.dataset_size)
+            perms = np.asarray(perms)
         else:
-            perms = jax.numpy.arange(self.dataset_size)
+            perms = np.arange(self.dataset_size)
 
+        self.logger.info("Skipping last incomplete batch")
         perms = perms[: steps_per_epoch * self.batch_size]  # Skip incomplete batch.
         perms = perms.reshape((steps_per_epoch, self.batch_size))
 
-        assert  isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
+        assert isinstance(self.dataset, dict) or isinstance(self.dataset, datasets.Dataset)
         for perm in perms:
             batch = self.dataset[perm]
             if do_distributed:

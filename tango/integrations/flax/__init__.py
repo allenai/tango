@@ -15,18 +15,18 @@ __all__ = [
     "FlaxFormat",
     "TrainCallback",
     "EvalCallback",
-    "FlaxTrainWrapper",
+    "FlaxWrapper",
     "TrainConfig",
-    "FlaxEvalStep",
-    "FlaxEvalWrapper",
+    "FlaxEvalStep"
 ]
 
 from .data import DataLoader, FlaxDataLoader
-from .eval import FlaxEvalStep, FlaxEvalWrapper
+from .eval import FlaxEvalStep
 from .eval_callback import EvalCallback
 from .format import FlaxFormat
 from .model import Model
 from .optim import LRScheduler, Optimizer
-from .train import FlaxTrainStep, FlaxTrainWrapper
+from .train import FlaxTrainStep
 from .train_callback import TrainCallback
 from .train_config import TrainConfig
+from .wrapper import FlaxWrapper

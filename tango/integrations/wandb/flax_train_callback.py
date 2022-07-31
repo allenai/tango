@@ -157,8 +157,8 @@ class WandbTrainCallback(TrainCallback):
         if self.should_finalize_run:
             wandb.finish()
 
-    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
-        metrics = {"train/loss": batch_loss, "epoch": epoch}
+    def log_batch(self, step: int, epoch: int, train_metrics: Dict) -> None:
+        metrics = {"train/loss": train_metrics['loss'], "epoch": epoch}
         if jax.process_index()==0:
             wandb.log(metrics, step=step + 1)
 

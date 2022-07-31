@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
-from flax.training.train_state import TrainState
 
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
@@ -129,29 +128,29 @@ class TrainCallback(Registrable):
         """
         pass
 
-    # what will be the type for batch?
     def pre_batch(self, step: int, epoch: int, batch) -> None:
         """
         Called directly before processing a batch.
         """
 
-    def post_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def post_batch(self, step: int, epoch: int, train_metrics: Dict) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
 
         .. note::
-            The ``batch_loss`` here is the loss local to the current worker, not the
-            overall (average) batch loss across distributed workers.
+            The ``train_metrics`` here is the dictionary with train metrics of the
+            current batch. If doing, distributed training, use `jax_utils.unreplicate(train_metrics)`
+            before using train_metrics.
 
             If you need the average loss, use :meth:`log_batch()`.
         """
         pass
 
-    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def log_batch(self, step: int, epoch: int, train_metrics: Dict) -> None:
         """
-        Called after the optimizer step. Here ``batch_loss`` is the average loss across
-        all distributed workers.
+        Called after the optimizer step. Here ``train_metrics`` is the average metrics across
+        all distributed workers. ``train_metrics`` is an unreplicated Dict.
 
         .. note::
             This callback method is not necessarily called on every step.
@@ -161,27 +160,23 @@ class TrainCallback(Registrable):
         """
         pass
 
-    # type for val_batch?
     def pre_val_batch(self, step: int, val_step: int, epoch: int, val_batch) -> None:
         """
         Called right before a validation batch is processed.
         """
 
-    # type for val_batch_outputs?
-    def post_val_batch(self, step: int, val_step: int, epoch: int, val_batch_outputs) -> None:
+    def post_val_batch(self, step: int, val_step: int, epoch: int, val_metrics) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
 
         .. tip::
-            This method can be used to modify ``val_batch_outputs`` in place, which is useful
+            This method can be used to modify ``val_metrics`` in place, which is useful
             in scenarios like distributed training where you might need to aggregate metrics
             in a special way other than a simple average. If that's the case, make sure
             to set ``auto_aggregate_val_metric`` to ``False`` in :class:`FlaxTrainStep`.
 
         """
         pass
-
-    # should we have a log_val_batch() over here?
 
     def post_val_loop(
         self, step: int, epoch: int, val_metric: Optional[float], best_val_metric: Optional[float]

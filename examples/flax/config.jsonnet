@@ -29,8 +29,8 @@
                 "batch_size": 16,
                 "drop_last": true
             },
-            "train_wrapper": {
-                "type": "xsum_train_wrapper"
+            "wrapper": {
+                "type": "xsum_wrapper"
             },
             "train_split": "train",
             "validation_split" : "validation",
@@ -61,8 +61,8 @@
                 "batch_size": 16,
                 "drop_last": true
             },
-            "eval_wrapper": {
-                "type" : "xsum_eval_wrapper"
+            "wrapper": {
+                "type" : "xsum_wrapper"
             }
         }
     }

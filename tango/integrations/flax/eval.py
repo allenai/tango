@@ -1,5 +1,4 @@
 import logging
-from abc import abstractmethod
 from collections import defaultdict
 from itertools import islice
 from typing import Dict, List, Optional, Sequence, DefaultDict
@@ -11,7 +10,6 @@ from flax.training.train_state import TrainState
 from tango.common.dataset_dict import DatasetDictBase
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
-from tango.common.registrable import Registrable
 from tango.common.tqdm import Tqdm
 from tango.format import Format, JsonFormat
 from tango.step import Step
@@ -19,15 +17,7 @@ from tango.step import Step
 from .data import FlaxDataLoader
 from .eval_callback import EvalCallback
 from .util import get_PRNGkey
-
-
-class FlaxEvalWrapper(Registrable):
-    @abstractmethod
-    def eval_metrics(self, batch, logits, labels) -> Dict:
-        """
-        Returns the evaluation metrics.
-        """
-        pass
+from .wrapper import FlaxWrapper
 
 
 @Step.register("flax::eval")
@@ -42,7 +32,7 @@ class FlaxEvalStep(Step):
         state: TrainState,
         dataset: DatasetDictBase,
         dataloader: Lazy[FlaxDataLoader],
-        eval_wrapper: FlaxEvalWrapper,
+        wrapper: FlaxWrapper,
         test_split: str = "test",
         seed: int = 42,
         log_every: int = 1,
@@ -98,7 +88,7 @@ class FlaxEvalStep(Step):
         def eval_step(state, batch):
             labels = batch.pop("labels")
             logits = state.apply_fn(**batch, params=state.params, train=False)[0]
-            metrics = eval_wrapper.eval_metrics(batch, logits, labels)
+            metrics = wrapper.eval_metrics(batch, logits, labels)
             if do_distributed:
                 metrics = jax.lax.pmean(metrics, axis_name="batch")
             return logits, metrics
@@ -111,8 +101,6 @@ class FlaxEvalStep(Step):
 
         running_metrics: Dict[str, float] = defaultdict(float)
         aggregated_metrics: Dict[str, float] = defaultdict(float)
-
-        eval_metrics: DefaultDict = defaultdict(list)
 
         with Tqdm.tqdm(eval_batches, desc="Evaluating", total=steps) as batch_iter:
             for step, batch in batch_iter:
