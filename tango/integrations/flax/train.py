@@ -291,20 +291,18 @@ class FlaxTrainStep(Step):
         validation_dataloader_: Optional[FlaxDataLoader] = None
         if config.validation_split is not None:
             validation_dataset = dataset[config.validation_split]
+            validation_dataset.set_format("numpy")
             if validation_dataloader is not None:
-                validation_dataloader_ = validation_dataloader.construct(
-                    dataset=validation_dataset.set_format("numpy")
-                )
+                validation_dataloader_ = validation_dataloader.construct(dataset=validation_dataset)
             else:
-                validation_dataloader_ = train_dataloader.construct(
-                    dataset=validation_dataset.set_format("numpy")
-                )
+                validation_dataloader_ = train_dataloader.construct(dataset=validation_dataset)
 
         validation_dataloader = validation_dataloader_
 
         train_dataset = dataset
         if config.train_split is not None:
             train_dataset = dataset[config.train_split]
+        train_dataset.set_format("numpy")
         train_dataloader: FlaxDataLoader = train_dataloader.construct(dataset=train_dataset)
 
         devices = self._get_devices()
@@ -510,6 +508,8 @@ class FlaxTrainStep(Step):
 
                     valid_step = 0
                     total_val_steps = len(validation_dataset) // validation_dataloader.batch_size
+                    for callback in callbacks:
+                        callback.pre_val_loop(step, valid_step, state)
 
                     for _ in Tqdm.tqdm(range(total_val_steps), desc="Evaluating", position=2):
                         batch = next(val_dataloader)
@@ -523,7 +523,7 @@ class FlaxTrainStep(Step):
                             metrics = val_step(state, batch)
 
                         for key, value in metrics.items():
-                            val_metrics[key].append(value)
+                            val_metrics[key].append(value.item())
 
                         for callback in callbacks:
                             callback.post_val_batch(step, valid_step, epoch, val_metrics)
@@ -536,7 +536,7 @@ class FlaxTrainStep(Step):
                                 jnp.mean, jnp.array(value)
                             ).item()
                         else:
-                            epoch_eval_metrics[key] = value.item()
+                            epoch_eval_metrics[key] = metrics[key].item()
 
                     for key, value in epoch_eval_metrics.items():
                         print("Validation %s : %.5f" % (key, value))

@@ -1,10 +1,16 @@
+from typing import Optional
+
+import jax
 import jax.numpy as jnp
+import nltk
 import numpy as np
 import optax
+from datasets import load_metric
 from flax.training.common_utils import onehot
 from transformers import AutoConfig, AutoTokenizer, FlaxAutoModelForSeq2SeqLM
 
 from tango.integrations.flax import FlaxWrapper
+from tango.integrations.flax.train_callback import TrainCallback
 from tango.step import Step
 
 """
@@ -102,11 +108,81 @@ class TransformerWrapper(FlaxWrapper):
         loss = self.loss_helper(logits, labels, batch)
         return loss
 
-    def val_loss(self, batch, logits, labels):
+    def val_metrics(self, batch, logits, labels):
         loss = self.loss_helper(logits, labels, batch)
-        return loss
+        metrics = {"loss": loss}
+        return metrics
 
     def eval_metrics(self, batch, logits, labels):
         loss = self.loss_helper(logits, labels, batch)
         metrics = {"loss": loss}
         return metrics
+
+
+@TrainCallback.register("flax::generate_step")
+class GenerateCallback(TrainCallback):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def generate_step(self, params, batch):
+        self.model.params = params
+        gen_kwargs = {"max_length": 64, "num_beams": self.model.config.num_beams}
+        output_ids = self.model.generate(
+            batch["input_ids"], attention_mask=batch["attention_mask"], **gen_kwargs
+        )
+        return output_ids.sequences
+
+    def pre_train_loop(self) -> None:
+        if len(jax.devices()) > 1:
+            self.p_generate_step = jax.pmap(self.generate_step, axis_name="batch")
+
+    def pre_val_loop(self, step: int, val_step: int, state) -> None:
+        self.state = state
+        self.eval_preds = []
+        self.eval_labels = []
+
+    def pre_val_batch(self, step: int, val_step: int, epoch: int, val_batch) -> None:
+        labels = val_batch["labels"]
+        if len(jax.devices()) > 1:
+            print(len(val_batch))
+            generated_ids = self.p_generate_step(self.state.params, val_batch)
+        else:
+            generated_ids = self.generate_step(self.state.params, val_batch)
+        self.eval_preds.extend(jax.device_get(generated_ids.reshape(-1, 64)))
+        self.eval_labels.extend(jax.device_get(labels.reshape(-1, labels.shape[-1])))
+
+    def postprocess_text(self, preds, labels):
+        preds = [pred.strip() for pred in preds]
+        labels = [label.strip() for label in labels]
+
+        # rougeLSum expects newline after each sentence
+        preds = ["\n".join(nltk.sent_tokenize(pred)) for pred in preds]
+        labels = ["\n".join(nltk.sent_tokenize(label)) for label in labels]
+
+        return preds, labels
+
+    def compute_metrics(self, preds, labels):
+        tokenizer = AutoTokenizer.from_pretrained("facebook/bart-base")
+        decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
+        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+        # Some simple post-processing
+        decoded_preds, decoded_labels = self.postprocess_text(decoded_preds, decoded_labels)
+        metric = load_metric("rouge")
+        result = metric.compute(
+            predictions=decoded_preds, references=decoded_labels, use_stemmer=True
+        )
+        # Extract a few results from ROUGE
+        result = {key: value.mid.fmeasure * 100 for key, value in result.items()}
+
+        prediction_lens = [np.count_nonzero(pred != tokenizer.pad_token_id) for pred in preds]
+        result["gen_len"] = np.mean(prediction_lens)
+        result = {k: round(v, 4) for k, v in result.items()}
+        return result
+
+    def post_val_loop(
+        self, step: int, epoch: int, val_metric: Optional[float], best_val_metric: Optional[float]
+    ) -> None:
+        rouge_metrics = self.compute_metrics(self.eval_preds, self.eval_labels)
+        rouge_desc = " ".join([f"Eval {key}: {value} |" for key, value in rouge_metrics.items()])
+        print(rouge_desc)

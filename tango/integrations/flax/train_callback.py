@@ -159,12 +159,19 @@ class TrainCallback(Registrable):
         """
         pass
 
+    def pre_val_loop(self, step: int, val_step: int, state) -> None:
+        """
+        Called right before the validation loop starts.
+        """
+        pass
+
     def pre_val_batch(self, step: int, val_step: int, epoch: int, val_batch) -> None:
         """
         Called right before a validation batch is processed.
         """
+        pass
 
-    def post_val_batch(self, step: int, val_step: int, epoch: int, val_metrics) -> None:
+    def post_val_batch(self, step: int, val_step: int, epoch: int, val_metrics: Dict) -> None:
         """
         Called right after a validation batch is processed with the outputs of the batch.
 
