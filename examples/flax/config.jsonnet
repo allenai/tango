@@ -45,6 +45,9 @@
 
             "callbacks" : [{
                 "type" : "wandb::log_flax"
+            },
+            {
+                "type": "flax::generate_step"
             }]
         },
         "eval": {

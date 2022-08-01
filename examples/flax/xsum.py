@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import jax
 import jax.numpy as jnp
@@ -138,8 +138,8 @@ class GenerateCallback(TrainCallback):
 
     def pre_val_loop(self, step: int, val_step: int, state) -> None:
         self.state = state
-        self.eval_preds = []
-        self.eval_labels = []
+        self.eval_preds: List = []
+        self.eval_labels: List = []
 
     def pre_val_batch(self, step: int, val_step: int, epoch: int, val_batch) -> None:
         labels = val_batch["labels"]

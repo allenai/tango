@@ -302,7 +302,7 @@ class FlaxTrainStep(Step):
         train_dataset = dataset
         if config.train_split is not None:
             train_dataset = dataset[config.train_split]
-        train_dataset.set_format("numpy")
+            train_dataset.set_format("numpy")  # type:ignore
         train_dataloader: FlaxDataLoader = train_dataloader.construct(dataset=train_dataset)
 
         devices = self._get_devices()
