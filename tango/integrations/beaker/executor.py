@@ -559,6 +559,11 @@ class BeakerExecutor(Executor):
         cluster = self._ensure_cluster(task_resources)
         self._check_if_cancelled()
 
+        # Ignore the patch version.
+        # E.g. '3.9.7' -> '3.9'
+        python_version = step_info.environment.python
+        python_version = python_version[: python_version.find(".", python_version.find(".") + 1)]
+
         # Build task spec.
         task_spec = (
             TaskSpec.new(
@@ -578,7 +583,7 @@ class BeakerExecutor(Executor):
             .with_env_var(name="BEAKER_TOKEN", secret=self.BEAKER_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
-            .with_env_var(name="PYTHON_VERSION", value=step_info.environment.python)
+            .with_env_var(name="PYTHON_VERSION", value=python_version)
             .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
             .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
         )
