@@ -35,6 +35,7 @@ from .workspace import WandbWorkspace
 
 try:
     import flax
+    import tensorflow  # flax has a tensorflow dependency
     import torch
 except ModuleNotFoundError:
     pass

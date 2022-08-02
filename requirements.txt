@@ -40,6 +40,6 @@ beaker-py>=1.6.2,<2.0.0      # needed by: beaker
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers
 jax>=0.3.13                  # needed by: flax
-flax>=0.5.0                  # needed by: flax, transformers, wandb
+flax>=0.5.0                  # needed by: flax
 optax>=0.1.2                 # needed by: flax
-tensorflow>=2.9.1            # needed by: flax, transformers, wandb
+tensorflow>=2.9.1            # needed by: flax
