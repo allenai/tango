@@ -46,7 +46,7 @@ class FlaxDataLoader(DataLoader):
 
         if self.shuffle:
             perms = jax.random.permutation(rng, self.dataset_size)
-            perms = np.asarray(perms)
+            perms = np.asarray(perms)  # using jax arrays for indexing is a bottleneck on TPUs.
         else:
             perms = np.arange(self.dataset_size)
 

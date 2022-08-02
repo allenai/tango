@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 import jax
@@ -123,6 +124,7 @@ class TransformerWrapper(FlaxWrapper):
 class GenerateCallback(TrainCallback):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.logger = logging.getLogger(TrainCallback.__name__)
 
     def generate_step(self, params, batch):
         self.model.params = params
@@ -144,7 +146,6 @@ class GenerateCallback(TrainCallback):
     def pre_val_batch(self, step: int, val_step: int, epoch: int, val_batch) -> None:
         labels = val_batch["labels"]
         if len(jax.devices()) > 1:
-            print(len(val_batch))
             generated_ids = self.p_generate_step(self.state.params, val_batch)
         else:
             generated_ids = self.generate_step(self.state.params, val_batch)
@@ -185,4 +186,4 @@ class GenerateCallback(TrainCallback):
     ) -> None:
         rouge_metrics = self.compute_metrics(self.eval_preds, self.eval_labels)
         rouge_desc = " ".join([f"Eval {key}: {value} |" for key, value in rouge_metrics.items()])
-        print(rouge_desc)
+        self.logger.info(rouge_desc)

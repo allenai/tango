@@ -427,6 +427,7 @@ class FlaxTrainStep(Step):
             return metrics
 
         if do_distributed:
+            # NOTE: The trainer currently handles only data parallelism.
             state = jax_utils.replicate(state)
             dropout_rngs = get_multiple_keys(rng, jax.local_device_count())
             parallel_train_step = jax.pmap(train_step, axis_name="batch")

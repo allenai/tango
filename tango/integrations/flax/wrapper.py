@@ -14,7 +14,7 @@ class FlaxWrapper(Registrable):
     @abstractmethod
     def train_metrics(self, state, batch, labels) -> Dict:
         """
-        Returns train metrics other than loss as Dict.
+        Returns the train metrics other than loss as Dict.
         """
         pass
 
@@ -30,13 +30,13 @@ class FlaxWrapper(Registrable):
     @abstractmethod
     def val_metrics(self, batch, logits, labels) -> Dict:
         """
-        Returns validation metrics as Dict.
+        Returns the validation metrics as Dict.
         """
         pass
 
     @abstractmethod
     def eval_metrics(self, batch, logits, labels) -> Dict:
         """
-        Returns evaluation metrics as  Dict.
+        Returns the evaluation metrics as  Dict.
         """
         pass

@@ -103,4 +103,5 @@ for name, cls in optax._src.schedule.__dict__.items():
         factory_func = scheduler_factory(cls)
         LRScheduler.register("optax::" + name)(factory_func)
 
-# TODO: Handle inject_hyperparams in training_engine.py
+# TODO: Handle inject_hyperparams.
+# Refer: https://optax.readthedocs.io/en/latest/api.html?highlight=inject%20hyperparam
