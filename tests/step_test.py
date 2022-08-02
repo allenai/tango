@@ -3,7 +3,6 @@ from typing import Any, Dict, Mapping, MutableMapping
 
 import pytest
 
-import test_fixtures.package.steps  # noqa: F401
 from tango import StepGraph
 from tango.common import Params, Registrable
 from tango.common.from_params import FromParams
@@ -26,7 +25,7 @@ class TestStep(TangoTestCase):
             def __init__(self, x: int):
                 self.x = x
 
-        @Step.register("foo")
+        @Step.register("foo", exist_ok=True)
         class FooStep(Step):
             def run(self, bar: Bar) -> Bar:  # type: ignore
                 return bar

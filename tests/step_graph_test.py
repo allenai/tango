@@ -5,12 +5,12 @@ import pytest
 
 from tango.common.exceptions import ConfigurationError
 from tango.common.testing import TangoTestCase
-from tango.step_graph import StepGraph
-from test_fixtures.package.steps import (  # noqa: F401
+from tango.common.testing.steps import (  # noqa: F401
     AddNumbersStep,
     ConcatStringsStep,
     StringStep,
 )
+from tango.step_graph import StepGraph
 
 
 class TestStepGraph(TangoTestCase):
