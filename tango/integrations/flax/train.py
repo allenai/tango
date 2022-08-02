@@ -40,8 +40,11 @@ class FlaxTrainStep(Step):
         Registered as a :class:`~tango.step.Step` under the name "flax::train".
 
     .. important::
-        The training loop will use TPU/GPU(s) automatically when available, as long as at least
-        ``device_count`` CUDA devices are available.
+        To train on GPUs and TPUs, installation of jax[cuda] or jax[tpu] is required. Follow the
+        instructions here: https://github.com/google/jax to set up jax for GPUs and TPUs.
+        Note: CUDA and cuDNN installation is required to run jax on NVidia GPUs. It is recommended to
+        install cuDNN in your conda environment using: ``conda install -c anaconda cudnn``.
+
         Distributed data parallel training is activated when the ``device_count`` is greater than 1.
         You can control which CUDA devices to use with the environment variable ``CUDA_VISIBLE_DEVICES``.
         For example, to only use the GPUs with IDs 0 and 1, set ``CUDA_VISIBLE_DEVICES=0,1``
@@ -56,6 +59,9 @@ class FlaxTrainStep(Step):
         internally in your model or with a :class:`TrainCallback`
         using the :meth:`TrainCallback.post_val_batch()` method.
         Then set the parameter ``auto_aggregate_val_metric`` to ``False``.
+
+        Jax pre-allocates 90% of GPU memory. If you run into out-of-memory (OOM) issues, please refer
+        to this: https://jax.readthedocs.io/en/latest/gpu_memory_allocation.html.
 
     """
 
@@ -474,8 +480,6 @@ class FlaxTrainStep(Step):
                     callback.post_batch(step, epoch, train_metric)
 
                 if config.should_log_this_step(step):
-                    if do_distributed:
-                        train_metric = jax_utils.unreplicate(train_metric)
                     for callback in callbacks:
                         callback.log_batch(step, epoch, train_metric)
 
@@ -555,7 +559,8 @@ class FlaxTrainStep(Step):
                     for callback in callbacks:
                         callback.post_val_loop(step, epoch, val_metric, best_val_metric)
 
-            train_metric = jax_utils.unreplicate(train_metric)
+            if do_distributed:
+                train_metric = jax_utils.unreplicate(train_metric)
 
             for key, value in train_metric.items():
                 print("Train %s : %.2f" % (key, value))
@@ -573,7 +578,8 @@ class FlaxTrainStep(Step):
         for callback in callbacks:
             callback.post_train_loop(step, epoch)
 
-        state = jax_utils.unreplicate(state)
+        if do_distributed:
+            state = jax_utils.unreplicate(state)
         return state
 
     def save_checkpoint(self, dir: Path, target: PyTree, step: int, keep_checkpoints: int):

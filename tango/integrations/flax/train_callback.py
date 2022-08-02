@@ -149,7 +149,8 @@ class TrainCallback(Registrable):
     def log_batch(self, step: int, epoch: int, train_metrics: Dict) -> None:
         """
         Called after the optimizer step. Here ``train_metrics`` is the average metrics across
-        all distributed workers. ``train_metrics`` is an unreplicated Dict.
+        all distributed workers. If doing, distributed training, use
+        `jax_utils.unreplicate(train_metrics)` before using train_metrics.
 
         .. note::
             This callback method is not necessarily called on every step.

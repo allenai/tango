@@ -18,7 +18,7 @@ class FlaxFormat(Format[T], Generic[T]):
     VERSION = "002"
 
     def write(self, artifact: T, dir: PathOrStr) -> None:
-        checkpoints.save_checkpoint(Path(dir), artifact, step=1)
+        checkpoints.save_checkpoint(Path(dir), artifact, step=0)
 
     def read(self, dir: PathOrStr) -> T:
         # will return a dict

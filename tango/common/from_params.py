@@ -806,11 +806,7 @@ class FromParams(DetHashWithVersion):
             elif isinstance(o, (list, tuple, set)):
                 return [replace_object_with_params(i) for i in o]
             elif isinstance(o, dict):
-                return {
-                    key: replace_object_with_params(value)
-                    for key, value in o.items()
-                    if key != "_state"
-                }
+                return {key: replace_object_with_params(value) for key, value in o.items()}
             elif isinstance(o, Path):
                 return str(o)
             elif o is None or isinstance(o, (str, float, int, bool)):

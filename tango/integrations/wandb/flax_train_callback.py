@@ -1,6 +1,8 @@
 from typing import Any, Dict, List, Optional
 
+import jax
 import wandb
+from flax import jax_utils
 
 from tango.common.exceptions import ConfigurationError
 from tango.integrations.flax.train_callback import TrainCallback
@@ -156,6 +158,8 @@ class WandbFlaxTrainCallback(TrainCallback):
             wandb.finish()
 
     def log_batch(self, step: int, epoch: int, train_metrics: Dict) -> None:
+        if len(jax.devices()) > 1:
+            train_metrics = jax_utils.unreplicate(train_metrics)
         metrics = {"train/loss": train_metrics["loss"], "epoch": epoch}
         wandb.log(metrics, step=step + 1)
 
