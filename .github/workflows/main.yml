@@ -92,7 +92,7 @@ jobs:
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
           - name: Transformers integration
-            extras: dev,transformers
+            extras: dev,flax,transformers
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
@@ -104,7 +104,7 @@ jobs:
               pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
 
           - name: W&B integration
-            extras: dev,torch,wandb
+            extras: dev,torch,flax,wandb
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/wandb tests/integrations/wandb
@@ -114,6 +114,12 @@ jobs:
             requires_torch: false
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/beaker tests/integrations/beaker
+
+          - name: Flax integration
+            extras: dev,flax,transformers
+            requires_torch: false
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/flax tests/integrations/flax
 
           - name: Example - train_lm
             extras: dev,all
@@ -187,6 +193,12 @@ jobs:
         run: |
           . .venv/bin/activate
           pip install torch==1.12.0 --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Pre-install flax
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'flax')
+        run: |
+          . .venv/bin/activate
+          pip install flax==0.5.0 jax==0.3.13 jaxlib==0.3.10 tensorflow==2.9.1
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
