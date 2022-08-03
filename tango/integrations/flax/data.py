@@ -14,9 +14,7 @@ T = TypeVar("T")
 class DataLoader(Generic[T], Registrable):
     """
     A :class:`~tango.common.Registrable` version of a ``Flax DataLoader``.
-    ``Flax DataLoader accepts Dataset object.
-
-    The class yields a numpy batch.
+    ``Flax DataLoader accepts Dataset object. The class yields a numpy batch.
     """
 
 
