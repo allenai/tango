@@ -2,7 +2,7 @@
     "steps": {
         "data_full": {
             "type": "datasets::load",
-            "path": "xsum",
+            "path": "iohadrubin/mini_xsum",
         },
         "data": {
             "type": "datasets::dataset_remix",
