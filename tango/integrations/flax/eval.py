@@ -70,6 +70,42 @@ class FlaxEvalStep(Step):
         auto_aggregate_metrics: bool = True,
         callbacks: Optional[List[Lazy[EvalCallback]]] = None,
     ) -> Dict[str, float]:
+        """
+        Evaluate the ``model``.
+
+        :param state:
+            The state of the model to evaluate. This contains the parameters.
+        :param dataset:
+            Should contain the test data.
+        :param dataloader:
+            The data loader that generates test batches. The batches should be :class:`dict`
+            objects.
+        :param wrapper:
+            The wrapper should define :meth:`eval_metrics`.
+        :param test_split:
+            The name of the data split used for evaluation in the ``dataset_dict``.
+            Default is "test".
+        :param seed:
+             Used to set the PRNG states at the beginning of the evaluation loop.
+        :param log_every:
+            Log every this many steps. Default is ``1``.
+        :param do_distributed:
+            Whether to do distributed training or not. Set as 0 or 1.
+        :param eval_steps:
+            The number of steps to evaluate for. If not specified evaluation will
+            stop after a complete iteration through the ``dataloader``.
+        :param metric_names:
+            The names of the metrics to track and aggregate. Default is ``("loss",)``.
+        :param auto_aggregate_metrics:
+            If ``True`` (the default), the metrics will be averaged across batches.
+            This may not be the correct behavior for some metrics (such as F1),
+            in which you should set this to ``False`` and handle the aggregation
+            internally in your model or with an :class:`EvalCallback`
+            (using :meth:`EvalCallback.post_batch()`).
+        :param callbacks:
+            A list of :class:`EvalCallback`.
+
+        """
 
         logger = logging.getLogger(FlaxEvalStep.__name__)
         # construct dataloader

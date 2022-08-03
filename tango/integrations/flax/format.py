@@ -13,6 +13,10 @@ T = TypeVar("T")
 class FlaxFormat(Format[T], Generic[T]):
     """
     This format writes the artifact.
+
+    .. tip::
+
+        Registered as a :class:`~tango.format.Format` under the name "flax".
     """
 
     VERSION = "002"

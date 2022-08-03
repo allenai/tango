@@ -107,7 +107,7 @@ class FlaxTrainStep(Step):
             The name of the optax Optimizer to use for training.
         :param train_dataloader:
             The dataloader object that generates training batches.
-        :param wrapper
+        :param wrapper:
             A Wrapper class that defines ``loss_fn()``, ``eval_fn()`` and ``compute_metrics()``
         :param seed:
             Used to set the PRNG state. By default, ``seed=42``
