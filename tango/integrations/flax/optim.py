@@ -31,20 +31,8 @@ class Optimizer(Registrable):
             optax::adafactor
             optax::adagrad
             optax::adam
-            optax::adamax
-            optax::adamaxw
-            optax::adamw
-            optax::dpsgd
-            optax::fromage
-            optax::lamb
-            optax::lars
-            optax::noisy_sgd
-            optax::radam
-            optax::rmsprop
-            optax::sgd
-            optax::sm3
-            optax::yogi
             ...
+
     """
 
     def __init__(self, optimizer: Callable) -> None:
@@ -80,17 +68,8 @@ class LRScheduler(Registrable):
             optax::cosine_decay_schedule
             optax::cosine_onecycle_schedule
             optax::exponential_decay
-            optax::inject_hyperparams
-            optax::join_schedules
-            optax::linear_onecycle_schedule
-            optax::linear_schedule
-            optax::piecewise_constant_schedule
-            optax::piecewise_interpolate_schedule
-            optax::polynomial_schedule
-            optax::sgdr_schedule
-            optax::warmup_cosine_decay_schedule
-            optax::warmup_exponential_decay_schedule
             ...
+
     """
 
     def __init__(self, scheduler: Callable) -> None:
