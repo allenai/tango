@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Added Flax Integration along with an example config.
 - Renamed `workspace` parameter of `BeakerWorkspace` class to `beaker_workspace`.
 - `Executor` class is now a `Registrable` base class. `MulticoreExecutor` is registered as "multicore".
 
