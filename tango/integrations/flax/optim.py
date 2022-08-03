@@ -20,7 +20,7 @@ class Optimizer(Registrable):
 
         .. testcode::
 
-            from tango.integrations.optax import Optimizer
+            from tango.integrations.flax import Optimizer
             for name in sorted(Optimizer.list_available()):
                 print(name)
 
@@ -57,7 +57,7 @@ class LRScheduler(Registrable):
 
         .. testcode::
 
-            from tango.integrations.optax import LRScheduler
+            from tango.integrations.flax import LRScheduler
             for name in sorted(LRScheduler.list_available()):
                 print(name)
 
