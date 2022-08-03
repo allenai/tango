@@ -195,12 +195,6 @@ try:
 except ModuleNotFoundError:
     raise IntegrationMissingError("transformers")
 
-try:
-    import flax
-    import tensorflow  # flax has a tensorflow dependency
-except ModuleNotFoundError:
-    pass
-
 __all__ = [
     "RunGeneration",
     "RunGenerationDataset",

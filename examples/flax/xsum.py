@@ -124,7 +124,7 @@ class TransformerWrapper(FlaxWrapper):
 class GenerateCallback(TrainCallback):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.logger = logging.getLogger(TrainCallback.__name__)
+        self.logger = logging.getLogger(GenerateCallback.__name__)
 
     def generate_step(self, params, batch):
         self.model.params = params
