@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
+
+### Added
+- Added a [Flax](https://flax.readthedocs.io/en/latest/) integration along with an example config.
+
 ## [v0.10.1](https://github.com/allenai/tango/releases/tag/v0.10.1) - 2022-07-26
 
 ### Fixed
@@ -18,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Added Flax Integration along with an example config.
 - Renamed `workspace` parameter of `BeakerWorkspace` class to `beaker_workspace`.
 - `Executor` class is now a `Registrable` base class. `MulticoreExecutor` is registered as "multicore".
 
