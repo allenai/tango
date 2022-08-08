@@ -7,9 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- **Step resources:**
+  - Added a `step_resources` parameter to the `Step` class which should be used to describe the computational resources required to run a step.
+    `Executor` implementations can use this information. For example, if your step needs 2 GPUs, you should set
+    `step_resources=StepResources(gpu_count=2)` (`"step_resources": {"gpu_count": 2}` in the configuration language).
+  - Added a `Step.resources()` property method. By default this returns the value specified by the `step_resources` parameter.
+    If your step implementation always requires the same resources, you can just override this method so you don't have to provide
+    the `step_resources` parameter.
+- **Step execution:**
+  - Added an `executor` field to the `tango.yml` settings. You can use this to define the executor you want to use by default.
+  - Added a Beaker `Executor` to the Beaker integration, registered as an `Executor` with the name "beaker".
+    To use this executor, add these lines to your `tango.yml` file:
+    ```yaml
+    executor:
+      type: beaker
+      beaker_workspace: ai2/my-workspace
+      clusters:
+        - ai2/general-cirrascale
+    ```
+    See the docs for the `BeakerExecutor` for more information on the input parameters.
+
+### Changed
+
+- **CLI:**
+  - The `tango run` command will throw an error if you have uncommitted changes in your repository, unless
+    you use the `--allow-dirty` flag.
+  - The `tango run` command will use the lightweight base executor (single process) by default.
+    To use the multi-process executor, set `-j/--parallelism` to 1 or higher or -1 to use all available CPU cores.
+
 ## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
 
 ### Added
+
 - Added a [Flax](https://flax.readthedocs.io/en/latest/) integration along with an example config.
 
 ## [v0.10.1](https://github.com/allenai/tango/releases/tag/v0.10.1) - 2022-07-26

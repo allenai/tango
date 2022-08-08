@@ -6,6 +6,7 @@ import re
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
@@ -26,12 +27,13 @@ from typing import (
 from tango.common.det_hash import CustomDetHash, det_hash
 from tango.common.exceptions import ConfigurationError, StepStateError
 from tango.common.from_params import (
+    FromParams,
     infer_constructor_params,
     infer_method_params,
     pop_and_construct_arg,
 )
 from tango.common.lazy import Lazy
-from tango.common.logging import cli_logger
+from tango.common.logging import cli_logger, log_exception
 from tango.common.params import Params
 from tango.common.registrable import Registrable
 from tango.format import DillFormat, Format
@@ -58,6 +60,40 @@ T = TypeVar("T")
 _random_for_step_names = random.Random()
 
 
+@dataclass
+class StepResources(FromParams):
+    """
+    TaskResources describe minimum external hardware requirements which must be available for a
+    step to run.
+    """
+
+    cpu_count: Optional[float] = None
+    """
+    Minimum number of logical CPU cores. It may be fractional.
+
+    Examples: ``4``, ``0.5``.
+    """
+
+    gpu_count: Optional[float] = None
+    """
+    Minimum number of GPUs. It must be non-negative.
+    """
+
+    memory: Optional[str] = None
+    """
+    Minimum available system memory as a number with unit suffix.
+
+    Examples: ``2.5GiB``, ``1024m``.
+    """
+
+    shared_memory: Optional[str] = None
+    """
+    Size of ``/dev/shm`` as a number with unit suffix.
+
+    Examples: ``2.5GiB``, ``1024m``.
+    """
+
+
 class Step(Registrable, Generic[T]):
     """
     This class defines one step in your experiment. To write your own step, derive from this class
@@ -79,6 +115,8 @@ class Step(Registrable, Generic[T]):
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
     :param step_unique_id_override: overrides the construction of the step's unique id using the hash
       of inputs.
+    :param step_resources: gives you a way to set the minimum compute resources required
+      to run this step. Certain executors require this information.
 
     .. important::
         Overriding the unique id means that the step will always map to this value, regardless of the inputs,
@@ -129,6 +167,7 @@ class Step(Registrable, Generic[T]):
         step_format: Optional[Format] = None,
         step_config: Optional[Dict[str, Any]] = None,
         step_unique_id_override: Optional[str] = None,
+        step_resources: Optional[StepResources] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -201,8 +240,8 @@ class Step(Registrable, Generic[T]):
         self.work_dir_for_run: Optional[
             Path
         ] = None  # This is set only while the run() method runs.
-
         self._config = step_config
+        self.step_resources = step_resources
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -360,29 +399,18 @@ class Step(Registrable, Generic[T]):
 
         try:
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
-
-            if needed_by:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
-                    self.name,
-                    needed_by.name,
-                )
-            else:
-                cli_logger.info(
-                    '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
-                    self.name,
-                )
-
+            self.log_starting(needed_by=needed_by)
             workspace.step_starting(self)
 
             try:
                 result = self.run(**kwargs)
             except BaseException as e:
+                self.log_failure(e)
                 workspace.step_failed(self, e)
                 raise
 
             result = workspace.step_finished(self, result)
-            cli_logger.info(f'[green]\N{check mark} Finished step [bold]"{self.name}"[/][/]')
+            self.log_finished()
             return result
         finally:
             self._workspace = None
@@ -434,6 +462,17 @@ class Step(Registrable, Generic[T]):
 
     def det_hash_object(self) -> Any:
         return self.unique_id
+
+    @property
+    def resources(self) -> StepResources:
+        """
+        Defines the minimum compute resources required to run this step.
+        Certain executors require this information in order to allocate resources for each step.
+
+        You can set this with the ``step_resources`` argument to :class:`Step`
+        or you can override this method to automatically define the required resources.
+        """
+        return self.step_resources or StepResources()
 
     @property
     def unique_id(self) -> str:
@@ -539,19 +578,7 @@ class Step(Registrable, Generic[T]):
                 # Step has been completed (and cached) by a different process, so we
                 # do nothing here and pull the result from the cache below.
 
-        if needed_by:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
-                '(needed by "%s")...[/green]',
-                self.name,
-                needed_by.name,
-            )
-        else:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                self.name,
-            )
-
+        self.log_cache_hit(needed_by=needed_by)
         return workspace.step_cache[self]
 
     def ensure_result(
@@ -571,10 +598,7 @@ class Step(Registrable, Generic[T]):
             workspace = default_workspace
 
         if self in workspace.step_cache:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                self.name,
-            )
+            self.log_cache_hit()
         else:
             self.result(workspace)
 
@@ -619,6 +643,50 @@ class Step(Registrable, Generic[T]):
             seen.add(step)
             steps.extend(step.dependencies)
         return seen
+
+    def log_cache_hit(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
+                '(needed by "%s")...[/green]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+
+    def log_starting(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                self.name,
+            )
+
+    def log_finished(self, run_name: Optional[str] = None) -> None:
+        if run_name is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Finished run for step [bold]"%s"[/] (%s)[/]',
+                self.name,
+                run_name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Finished step [bold]"%s"[/][/]',
+                self.name,
+            )
+
+    def log_failure(self, exception: BaseException) -> None:
+        log_exception(exception, logger=self.logger)
+        cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
 class WithUnresolvedSteps(CustomDetHash):

@@ -29,11 +29,11 @@ class BeakerStepCache(LocalStepCache):
     It also keeps a limited in-memory cache as well as a local backup on disk, so fetching a
     step's resulting subsequent times should be fast.
 
+    .. tip::
+        Registered as a :class:`~tango.step_cache.StepCache` under the name "beaker".
+
     :param workspace: The name or ID of the Beaker workspace to use.
     :param beaker: The Beaker client to use.
-
-    .. tip::
-        Registered as :class:`~tango.step_cache.StepCache` under the name "beaker".
     """
 
     def __init__(self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None):

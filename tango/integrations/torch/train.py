@@ -16,7 +16,7 @@ from tango.common.lazy import Lazy
 from tango.common.tqdm import Tqdm
 from tango.common.util import get_extra_imported_modules, import_extra_module
 from tango.format import Format
-from tango.step import Step
+from tango.step import Step, StepResources
 from tango.workspace import Workspace
 
 from .data import DataLoader
@@ -71,6 +71,10 @@ class TorchTrainStep(Step):
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
     SKIP_ID_ARGUMENTS = {"distributed_port", "log_every"}
+
+    @property
+    def resources(self) -> StepResources:
+        return self.step_resources or StepResources(gpu_count=self.kwargs["device_count"])
 
     def run(  # type: ignore[override]
         self,
