@@ -4,6 +4,7 @@ import tempfile
 import threading
 import time
 import uuid
+import warnings
 from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple
@@ -44,7 +45,7 @@ logger = logging.getLogger(__name__)
 class BeakerExecutor(Executor):
     """
     This is a :class:`~tango.executor.Executor` that runs steps on `Beaker`_.
-    Each step is ran as its own Beaker experiment.
+    Each step is run as its own Beaker experiment.
 
     .. tip::
         Registered as an :class:`~tango.executor.Executor` under the name "beaker".
@@ -60,7 +61,7 @@ class BeakerExecutor(Executor):
 
     .. important::
         The :class:`BeakerExecutor` will try to recreate your Python environment on Beaker
-        every time a step is ran, so it's important that you specify all of your dependencies
+        every time a step is run, so it's important that you specify all of your dependencies
         in a PIP ``requirements.txt`` file, ``setup.py`` file, or a conda ``environment.yml`` file.
         Alternatively you could provide the ``install_cmd`` argument.
 
@@ -76,18 +77,6 @@ class BeakerExecutor(Executor):
         If you're running a step that requires special hardware, e.g. a GPU, you should
         specify that in the ``step_resources`` parameter to the step, or by overriding
         the step's :meth:`.resources() <tango.step.Step.resources>` property method.
-
-    :examples:
-
-    You can use this executor by specifying it in your ``tango.yml`` settings file:
-
-    .. code:: yaml
-
-        executor:
-          type: beaker
-          beaker_workspace: ai2/my-workspace
-          clusters:
-            - ai2/general-cirrascale
 
     :param workspace: The :class:`~tango.workspace.Workspace` to use.
     :param clusters: A list of Beaker clusters that the executor may use to run steps.
@@ -111,7 +100,7 @@ class BeakerExecutor(Executor):
         If you're using your own image that already has a conda environment you want to use,
         you should set this variable to the name of that environment.
         You can also set this to "base" to use the base environment.
-    :param parallelism: Control the maximum number of steps ran in parallel on Beaker.
+    :param parallelism: Control the maximum number of steps run in parallel on Beaker.
     :param install_cmd: Override the command used to install your code and its dependencies
         in each Beaker job.
         For example, you could set ``install_cmd="pip install .[dev]"``.
@@ -122,6 +111,77 @@ class BeakerExecutor(Executor):
         part of your ``tango.yml`` file, namely ``workspace`` and ``include_package``.
         Instead use the top-level :data:`~tango.settings.TangoGlobalSettings.workspace`
         and :data:`~tango.settings.TangoGlobalSettings.include_package` fields, respectively.
+
+    :examples:
+
+    **Minimal tango.yaml file**
+
+    You can use this executor by specifying it in your ``tango.yml`` settings file:
+
+    .. code:: yaml
+
+        executor:
+          type: beaker
+          beaker_workspace: ai2/my-workspace
+          clusters:
+            - ai2/general-cirrascale
+
+    **Using GPUs**
+
+    If you have a step that requires a GPU, there are two things you need to do:
+
+    1. First, you'll need to ensure that the :class:`BeakerExecutor` can install your dependencies the right way
+    to support the GPU hardware. There are usually two ways to do this: use a Docker image that comes
+    with a proper installation of your hardware-specific dependencies (e.g. PyTorch), or add a conda
+    ``environment.yml`` file to your project that specifies the proper version of those dependencies.
+
+    If you go with first option you don't necessarily need to build your own Docker image.
+    If PyTorch is the only hardware-specific dependency you have, you could just use
+    one of AI2's pre-built PyTorch images. Just add these lines to your ``tango.yml`` file:
+
+    .. code:: diff
+
+         executor:
+           type: beaker
+           beaker_workspace: ai2/my-workspace
+        +  docker_image: ghcr.io/allenai/pytorch:1.12.0-cuda11.3-python3.9
+        +  venv_name: base
+           clusters:
+             - ai2/general-cirrascale
+
+    The ``venv_name: base`` line tells the :class:`BeakerExecutor` to use the existing
+    conda environment called "base" on the image instead of creating a new one.
+
+    Alternatively, you could use the :data:`default image <DEFAULT_BEAKER_IMAGE>`
+    and just add a conda ``environment.yml`` file to the root of your project
+    that looks like this:
+
+    .. code:: yaml
+
+        name: torch-env
+        channels:
+          - pytorch
+        dependencies:
+          - python=3.9
+          - cudatoolkit=11.3
+          - numpy
+          - pytorch
+          - ...
+
+    2. And second, you'll need to specify the GPUs required by each step in the config for that step under
+    the :class:`step_resources <tango.step.StepResources>` parameter. For example,
+
+    .. code:: json
+
+        "steps": {
+            "train": {
+                "type": "torch::train",
+                "step_resources": {
+                    "gpu_count": 1
+                }
+            }
+        }
+
     """
 
     GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
@@ -142,6 +202,8 @@ class BeakerExecutor(Executor):
     """
     The default image. Used if neither ``beaker_image`` nor ``docker_image`` are set.
     """
+
+    DEFAULT_NFS_DRIVE = "/net/nfs.cirrascale"
 
     def __init__(
         self,
@@ -166,6 +228,35 @@ class BeakerExecutor(Executor):
             raise ConfigurationError(
                 "Either 'beaker_image' or 'docker_image' must be specified for BeakerExecutor, but not both."
             )
+
+        from tango.workspaces import LocalWorkspace, MemoryWorkspace
+
+        if isinstance(workspace, MemoryWorkspace):
+            raise ConfigurationError(
+                "You cannot use the `MemoryWorkspace` with the `BeakerExecutor`! "
+                "Please specify a different workspace."
+            )
+        elif isinstance(workspace, LocalWorkspace):
+            if str(workspace.dir).startswith(self.DEFAULT_NFS_DRIVE):
+                # Mount the NFS drive if not mount already.
+                datasets = datasets or []
+                if not datasets or not any(
+                    [
+                        dm.source.host_path is not None
+                        and dm.source.host_path.startswith(self.DEFAULT_NFS_DRIVE)
+                        for dm in datasets
+                    ]
+                ):
+                    nfs_mount = DataMount.new(
+                        self.DEFAULT_NFS_DRIVE, host_path=self.DEFAULT_NFS_DRIVE
+                    )
+                    datasets.append(nfs_mount)
+            else:
+                warnings.warn(
+                    "It appears that you're using a `LocalWorkspace` on a directory that is not an NFS drive. "
+                    "If the `BeakerExecutor` cannot access this directory from Beaker, your results will be lost.",
+                    UserWarning,
+                )
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
         self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
