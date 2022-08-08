@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The `tango run` command will use the lightweight base executor (single process) by default.
     To use the multi-process executor, set `-j/--parallelism` to 1 or higher or -1 to use all available CPU cores.
 
+## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
+
+### Added
+
+- Added a [Flax](https://flax.readthedocs.io/en/latest/) integration along with an example config.
+
 ## [v0.10.1](https://github.com/allenai/tango/releases/tag/v0.10.1) - 2022-07-26
 
 ### Fixed

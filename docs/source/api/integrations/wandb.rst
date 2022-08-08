@@ -11,3 +11,5 @@ Reference
 .. autoclass:: tango.integrations.wandb.WandbStepCache
 
 .. autoclass:: tango.integrations.wandb.WandbTrainCallback
+
+.. autoclass:: tango.integrations.wandb.WandbFlaxTrainCallback
