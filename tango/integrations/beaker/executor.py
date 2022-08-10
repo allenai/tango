@@ -610,6 +610,7 @@ class BeakerExecutor(Executor):
             )
         try:
             github_account, github_repo = self._parse_git_remote(step_info.environment.git.remote)
+            print(f"Using GitHub repository '{github_account}/{github_repo}'")
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = step_info.environment.git.commit

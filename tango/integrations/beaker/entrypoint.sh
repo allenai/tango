@@ -33,8 +33,10 @@ echo "
 "
 
 # Clone the repo and checkout the target commit.
+set -x
 gh repo clone "$GITHUB_REPO" .
 git checkout "$GIT_REF"
+set +x
 
 echo "
 [TANGO] [3/3] Reconstructing Python env...
