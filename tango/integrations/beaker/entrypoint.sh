@@ -29,7 +29,7 @@ conda install gh --channel conda-forge
 gh auth setup-git
 
 echo "
-[TANGO] [2/3] Cloning source code from $GITHUB_REPO...
+[TANGO] [2/3] Cloning source code from '$GITHUB_REPO'...
 "
 
 # Clone the repo and checkout the target commit.
