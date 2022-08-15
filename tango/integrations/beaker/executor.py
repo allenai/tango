@@ -356,7 +356,7 @@ class BeakerExecutor(Executor):
                     # Submit steps left to run.
                     for step_name in steps_to_run:
                         future = pool.submit(
-                            self._execute_sub_graph_for_step, step_graph, step_name, run_name, True
+                            self._execute_sub_graph_for_step, step_graph, step_name, True
                         )
                         future.add_done_callback(make_future_done_callback(step_name))
                         step_futures.append(future)
@@ -393,7 +393,7 @@ class BeakerExecutor(Executor):
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
     ) -> None:
-        self._execute_sub_graph_for_step(step_graph, step_name, run_name)
+        self._execute_sub_graph_for_step(step_graph, step_name)
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
@@ -403,7 +403,6 @@ class BeakerExecutor(Executor):
         self,
         step_graph: StepGraph,
         step_name: str,
-        run_name: Optional[str],
         in_thread: bool = False,
     ) -> None:
         if not in_thread:
@@ -613,6 +612,7 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = step_info.environment.git.commit
+        logger.info("Using GitHub repository '%s/%s' @ %s", github_account, github_repo, git_ref)
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
