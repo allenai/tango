@@ -74,7 +74,7 @@ class StepResources(FromParams):
     Examples: ``4``, ``0.5``.
     """
 
-    gpu_count: Optional[float] = None
+    gpu_count: Optional[int] = None
     """
     Minimum number of GPUs. It must be non-negative.
     """
