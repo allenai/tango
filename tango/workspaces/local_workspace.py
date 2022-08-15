@@ -251,6 +251,10 @@ class LocalWorkspace(Workspace):
                 f"file at {self._step_lock_file(step)}.",
             )
 
+        if step_info.state == StepState.FAILED:
+            # Refresh environment metadata since it might be out-of-date now.
+            step_info.refresh()
+
         lock = FileLock(self._step_lock_file(step), read_only_ok=True)
         lock.acquire_with_updates(desc=f"acquiring lock for '{step.name}'")
         self.locks[step] = lock

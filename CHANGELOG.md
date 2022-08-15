@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The `tango run` command will use the lightweight base executor (single process) by default.
     To use the multi-process executor, set `-j/--parallelism` to 1 or higher or -1 to use all available CPU cores.
 
+### Fixed
+
+- Fixed bug where `StepInfo` environment and platform metadata could be out-of-date if a step is run again due to failure.
+
 ## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
 
 ### Added
