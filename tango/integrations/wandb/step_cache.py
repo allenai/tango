@@ -74,9 +74,12 @@ class WandbStepCache(LocalStepCache):
         self, step: Union[Step, StepInfo]
     ) -> Optional[wandb.apis.public.Artifact]:
         try:
+            artifact_kind = (
+                step.RESULT_KIND if isinstance(step, Step) else step.result_kind
+            ) or ArtifactKind.STEP_RESULT.value
             return self.wandb_client.artifact(
                 f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}",
-                type=ArtifactKind.STEP_RESULT.value,
+                type=artifact_kind,
             )
         except WandbError as exc:
             if is_missing_artifact_error(exc):

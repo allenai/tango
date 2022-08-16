@@ -223,6 +223,11 @@ class StepInfo(FromParams):
     Location of the result. This could be a path or a URL.
     """
 
+    result_kind: Optional[str] = None
+    """
+    The kind of result. Can be any string.
+    """
+
     config: Optional[Dict[str, Any]] = None
     """
     The raw config of the step.
@@ -316,6 +321,7 @@ class StepInfo(FromParams):
             unique_id=step.unique_id,
             step_name=step.name,
             step_class_name=step.__class__.__name__,
+            result_kind=step.RESULT_KIND,
             version=step.VERSION,
             dependencies={dep.unique_id for dep in step.dependencies},
             cacheable=step.cache_results,

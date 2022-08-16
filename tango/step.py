@@ -155,6 +155,11 @@ class Step(Registrable, Generic[T]):
     the model output, not about how many outputs you can produce at the same time.
     """
 
+    RESULT_KIND: Optional[str] = None
+    """
+    Some workspaces use this field to differentiate between different kinds of results.
+    """
+
     _UNIQUE_ID_SUFFIX: Optional[str] = None
     """
     Used internally for testing.

@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - ai2/general-cirrascale
     ```
     See the docs for the `BeakerExecutor` for more information on the input parameters.
+- **Step class**:
+  - Added `RESULT_KIND` class variable. Workspaces can use this to categorize step results. The `WandbWorkspace` uses this as the artifact kind, for example.
 
 ### Changed
 

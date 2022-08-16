@@ -71,6 +71,7 @@ class TorchTrainStep(Step):
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
     SKIP_ID_ARGUMENTS = {"distributed_port", "log_every"}
+    RESULT_KIND = "model"
 
     @property
     def resources(self) -> StepResources:
