@@ -128,6 +128,10 @@ class BeakerWorkspace(Workspace):
                 f"datasets at {dataset_url(self.beaker.workspace.url(), step_dataset_name(step))}",
             )
 
+        if step_info.state == StepState.FAILED:
+            # Refresh the environment metadata since it might be out-of-date now.
+            step_info.refresh()
+
         # Update StepInfo to mark as running.
         try:
             step_info.start_time = utc_now_datetime()
