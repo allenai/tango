@@ -36,7 +36,6 @@ jobs:
       - uses: allenai/setup-beaker@v2
         with:
           token: ${{ secrets.BEAKER_TOKEN }}
-          github_token: ${{ secrets.GH_TOKEN }}
           workspace: ${{ env.BEAKER_WORKSPACE }}
 
       - name: Build Docker image
