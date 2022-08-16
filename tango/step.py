@@ -117,6 +117,7 @@ class Step(Registrable, Generic[T]):
       of inputs.
     :param step_resources: gives you a way to set the minimum compute resources required
       to run this step. Certain executors require this information.
+    :param step_result_kind: used to override :attr:`RESULT_KIND`.
 
     .. important::
         Overriding the unique id means that the step will always map to this value, regardless of the inputs,
@@ -173,6 +174,7 @@ class Step(Registrable, Generic[T]):
         step_config: Optional[Dict[str, Any]] = None,
         step_unique_id_override: Optional[str] = None,
         step_resources: Optional[StepResources] = None,
+        step_result_kind: Optional[str] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -247,6 +249,7 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
         self._config = step_config
         self.step_resources = step_resources
+        self.result_kind = step_result_kind or self.RESULT_KIND
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
