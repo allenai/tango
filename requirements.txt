@@ -8,7 +8,7 @@ PyYAML>=5.4.1,<6.1
 dill
 base58
 xxhash
-filelock>=3.4,<3.8
+filelock>=3.4,<3.9
 click>=7.0,<8.1.4
 click-help-colors>=0.9.1,<0.10
 rich>=12.3,<13.0
@@ -18,7 +18,7 @@ sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
 pytz
-jsonpickle>=2.1.0,<2.2.0
+jsonpickle>=2.1.0,<2.3.0
 tblib>=1.7.0,<1.8.0
 
 # Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
@@ -33,7 +33,7 @@ protobuf<4.22.0
 torch>=1.9,<1.13             # needed by: torch,pytorch_lightning,transformers,fairscale
 numpy                        # needed by: torch,pytorch_lightning,transformers,fairscale
 datasets>=1.12,<3            # needed by: datasets,transformers
-wandb>=0.12,<0.13            # needed by: wandb
+wandb>=0.12,<0.14            # needed by: wandb
 pytorch-lightning>=1.6,<1.8  # needed by: pytorch_lightning
 transformers>=4.12.3         # needed by: transformers
 sentencepiece>=0.1.96        # needed by: transformers
