@@ -85,32 +85,29 @@ class TestRun(TangoTestCase):
         _, cleaned_log_lines = self.check_logs(run_dir, result)
 
         # Debug messages.
-        assert cleaned_log_lines.count("[step noisy_step] debug message from cli_logger") == 1
-        assert cleaned_log_lines.count("[step noisy_step] debug message") == (
-            1 if log_level == "debug" else 0
-        )
+        assert cleaned_log_lines.count("debug message from cli_logger") == 1
+        assert cleaned_log_lines.count("debug message") == (1 if log_level == "debug" else 0)
 
         # Info messages.
-        assert cleaned_log_lines.count("[step noisy_step] info message from cli_logger") == 1
-        assert cleaned_log_lines.count("[step noisy_step] info message") == (
+        assert cleaned_log_lines.count("info message from cli_logger") == 1
+        assert cleaned_log_lines.count("info message") == (
             1 if log_level in {"debug", "info"} else 0
         )
 
         # Warning messages.
-        assert cleaned_log_lines.count("[step noisy_step] warning message from cli_logger") == 1
-        assert cleaned_log_lines.count("[step noisy_step] warning message") == (
+        assert cleaned_log_lines.count("warning message from cli_logger") == 1
+        assert cleaned_log_lines.count("warning message") == (
             1 if log_level in {"debug", "info", "warning"} else 0
         )
 
         # Error messages.
-        assert cleaned_log_lines.count("[step noisy_step] error message from cli_logger") == 1
-        assert cleaned_log_lines.count("[step noisy_step] error message") == (
+        assert cleaned_log_lines.count("error message from cli_logger") == 1
+        assert cleaned_log_lines.count("error message") == (
             1 if log_level in {"debug", "info", "warning", "error"} else 0
         )
 
         # Traceback.
         if raise_error:
-            assert "[step noisy_step] Uncaught exception" in cleaned_log_lines
             assert "Traceback (most recent call last):" in cleaned_log_lines
             assert "ValueError: Oh no!" in cleaned_log_lines
 

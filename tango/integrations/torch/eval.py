@@ -9,7 +9,7 @@ from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.tqdm import Tqdm
 from tango.format import Format, JsonFormat
-from tango.step import Step
+from tango.step import Step, StepResources
 
 from .data import DataLoader
 from .eval_callback import EvalCallback
@@ -51,6 +51,10 @@ class TorchEvalStep(Step):
     CACHEABLE = True
     FORMAT: Format = JsonFormat()
     SKIP_ID_ARGUMENTS = {"log_every"}
+
+    @property
+    def resources(self) -> StepResources:
+        return self.step_resources or StepResources(gpu_count=1)
 
     def run(  # type: ignore[override]
         self,

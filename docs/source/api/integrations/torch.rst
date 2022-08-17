@@ -1,5 +1,5 @@
-PyTorch
-=======
+🔥 PyTorch
+==========
 
 .. automodule:: tango.integrations.torch
 
