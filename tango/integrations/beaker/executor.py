@@ -33,6 +33,7 @@ from tango.common.logging import cli_logger, log_exception, log_record_from_json
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
+from tango.step_info import GitMetadata
 from tango.version import VERSION
 from tango.workspace import Workspace
 
@@ -597,21 +598,22 @@ class BeakerExecutor(Executor):
         )
 
         # Ensure we're working in a GitHub repository.
+        git = GitMetadata.check_for_repo()
         if (
-            step_info.environment.git is None
-            or step_info.environment.git.commit is None
-            or step_info.environment.git.remote is None
-            or "github.com" not in step_info.environment.git.remote
+            git is None
+            or git.commit is None
+            or git.remote is None
+            or "github.com" not in git.remote
         ):
             raise ExecutorError(
                 f"Missing git data for step '{step.unique_id}'. "
                 f"BeakerExecutor requires a git repository with a GitHub remote."
             )
         try:
-            github_account, github_repo = self._parse_git_remote(step_info.environment.git.remote)
+            github_account, github_repo = self._parse_git_remote(git.remote)
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
-        git_ref = step_info.environment.git.commit
+        git_ref = git.commit
         logger.info("Using GitHub repository '%s/%s' @ %s", github_account, github_repo, git_ref)
         self._check_if_cancelled()
 
