@@ -14,3 +14,4 @@ Integrations
    wandb
    pytorch_lightning
    beaker
+   flax

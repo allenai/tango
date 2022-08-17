@@ -17,6 +17,9 @@ class Constants:
     STEP_DATASET_PREFIX = "tango-step-"
     STEP_INFO_FNAME = "step_info.json"
     STEP_RESULT_DIR = "result"
+    ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
+    STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
+    STEP_EXPERIMENT_PREFIX = "tango-step-"
 
 
 def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:

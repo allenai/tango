@@ -34,10 +34,14 @@ from .step_cache import WandbStepCache
 from .workspace import WandbWorkspace
 
 try:
+    import flax
+    import jax
+    import tensorflow  # flax has a tensorflow dependency
     import torch
 except ModuleNotFoundError:
     pass
 else:
+    from .flax_train_callback import WandbFlaxTrainCallback
     from .torch_train_callback import WandbTrainCallback
 
     __all__.append("WandbTrainCallback")

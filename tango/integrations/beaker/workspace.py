@@ -35,11 +35,11 @@ class BeakerWorkspace(Workspace):
     """
     This is a :class:`~tango.workspace.Workspace` that stores step artifacts on `Beaker`_.
 
-    :param workspace: The name or ID of the Beaker workspace to use.
-    :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
-
     .. tip::
-        Registered as :class:`~tango.workspace.Workspace` under the name "beaker".
+        Registered as a :class:`~tango.workspace.Workspace` under the name "beaker".
+
+    :param beaker_workspace: The name or ID of the Beaker workspace to use.
+    :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
     """
 
     STEP_INFO_CACHE_SIZE = 512
@@ -128,6 +128,10 @@ class BeakerWorkspace(Workspace):
                 f"datasets at {dataset_url(self.beaker.workspace.url(), step_dataset_name(step))}",
             )
 
+        if step_info.state == StepState.FAILED:
+            # Refresh the environment metadata since it might be out-of-date now.
+            step_info.refresh()
+
         # Update StepInfo to mark as running.
         try:
             step_info.start_time = utc_now_datetime()
@@ -203,7 +207,7 @@ class BeakerWorkspace(Workspace):
                     break
         else:
             try:
-                run_dataset = self.beaker.dataset.create(name, commit=False)
+                run_dataset = self.beaker.dataset.create(run_dataset_name(name), commit=False)
             except DatasetConflict:
                 raise ValueError("Run name '{name}' is already in use")
 
@@ -287,7 +291,7 @@ class BeakerWorkspace(Workspace):
             run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
             steps: Dict[str, StepInfo] = {}
             steps_info_bytes = b"".join(
-                self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True)
+                list(self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True))
             )
             steps_info = json.loads(steps_info_bytes)
         except (DatasetNotFound, FileNotFoundError):
@@ -302,7 +306,9 @@ class BeakerWorkspace(Workspace):
             for step_name, unique_id in steps_info.items():
                 step_info_futures.append(executor.submit(self.step_info, unique_id))
             for future in concurrent.futures.as_completed(step_info_futures):
-                steps[step_name] = future.result()
+                step_info = future.result()
+                assert step_info.step_name is not None
+                steps[step_info.step_name] = step_info
 
         return Run(name=run_name, start_date=dataset.created, steps=steps)
 

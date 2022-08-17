@@ -237,7 +237,10 @@ class Workspace(Registrable):
         """
         run = self.registered_run(run_name)
         step_info = run.steps[step_name]
-        return self.step_cache[step_info]
+        try:
+            return self.step_cache[step_info]
+        except KeyError:
+            raise KeyError(f"Step result for '{step_name}' not found in workspace")
 
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """

@@ -5,7 +5,6 @@ import time
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 
-from tango.common.logging import cli_logger
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -27,12 +26,14 @@ class MulticoreExecutor(Executor):
         self,
         workspace: Workspace,
         include_package: Optional[Sequence[str]] = None,
-        parallelism: int = 1,
+        parallelism: Optional[int] = 1,
         num_tries_to_sync_states: int = 3,
         wait_seconds_to_sync_states: int = 3,
     ) -> None:
-        super().__init__(workspace, include_package=include_package)
-        self.parallelism = parallelism
+        super().__init__(workspace, include_package=include_package, parallelism=parallelism or 1)
+        assert self.parallelism is not None
+        if self.parallelism < 0:
+            self.parallelism = min(32, os.cpu_count() or 1)
 
         # Perhaps there's a better way to do this without these being passed as args.
         self._num_tries_to_sync_states = num_tries_to_sync_states
@@ -217,7 +218,7 @@ class MulticoreExecutor(Executor):
             if len(_queued_steps) == 0:
                 logger.debug("No steps in queue!")
                 return
-            if len(_running) < self.parallelism:
+            if len(_running) < (self.parallelism or 1):
                 step_name = _queued_steps.pop(0)
                 command: List[str] = [
                     "tango",
@@ -239,7 +240,7 @@ class MulticoreExecutor(Executor):
                 _running[step_name] = process
             else:
                 logger.debug(
-                    f"{self.parallelism} steps are already running. Will attempt to execute later."
+                    f"{self.parallelism or 1} steps are already running. Will attempt to execute later."
                 )
 
         # Creates a temporary file in which to store the config. This is passed as a command line
@@ -263,7 +264,7 @@ class MulticoreExecutor(Executor):
                     _queue_step(step_name)
 
                 # Begin processes for any queued steps (if not enough processes are already running).
-                while len(_queued_steps) > 0 and len(_running) < self.parallelism:
+                while len(_queued_steps) > 0 and len(_running) < (self.parallelism or 1):
                     _try_to_execute_next_step(config_path=file_ref.name, run_name=run_name)
 
                 # Re-sync the StepState info.
@@ -287,10 +288,7 @@ class MulticoreExecutor(Executor):
                 # NOTE: since neither `Step.result()` nor `Step.ensure_result()` will have been
                 # called, we invoke the CLI logger here to let users know that we didn't run this
                 # step because we found it in the cache.
-                cli_logger.info(
-                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                    step_name,
-                )
+                step.log_cache_hit()
                 _successful.add(step_name)
             else:
                 # step wasn't executed because parents failed, or
