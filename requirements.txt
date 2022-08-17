@@ -3,6 +3,7 @@
 ################################
 cached-path>=1.0,<1.2
 jsonnet>=0.10 ; sys.platform != 'win32'
+GitPython>=3.0,<4.0
 PyYAML>=5.4.1,<6.1
 dill
 base58
@@ -17,6 +18,8 @@ sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
 pytz
+jsonpickle>=2.1.0,<2.2.0
+tblib>=1.7.0,<1.8.0
 
 # Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
 protobuf<4.22.0
@@ -39,4 +42,7 @@ beaker-py>=1.6.2,<2.0.0      # needed by: beaker
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers
-
+jax>=0.3.13                  # needed by: flax
+flax>=0.5.0                  # needed by: flax
+optax>=0.1.2                 # needed by: flax
+tensorflow-cpu>=2.9.1        # needed by: flax

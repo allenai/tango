@@ -267,12 +267,10 @@ def cleanup(*args, **kwargs):
     "-j",
     "--parallelism",
     type=int,
-    help="""The maximum number of steps to run in parallel (if possible).
-    By default there is no parallelism, but each step is ran in its own subprocess (same as setting '-j=1').
-    A value of 0 or less means each step is ran in the main process using the default executor.
-    A value greater than 1 means at most 'j' steps will be ran in parallel,
-    each within its own subprocess, using the multicore executor.
-    This option is ignored if you've configured your executor in a 'tango.yml' settings file.""",
+    help="""The maximum number of steps to run in parallel (for executors that support this).
+    The exact behavior depends on the executor. If you're using the default executors,
+    a value of 0 (or left unspecified) means each step is run in the main process using the default executor,
+    otherwise the multicore executor is used.""",
 )
 @click.option(
     "-s",
@@ -287,6 +285,11 @@ def cleanup(*args, **kwargs):
     type=str,
     help="""Specify the name for this run.""",
 )
+@click.option(
+    "--allow-dirty",
+    is_flag=True,
+    help="""Allow running the experiment with a dirty working directory (uncommitted code changes).""",
+)
 @click.pass_obj
 def run(
     settings: TangoGlobalSettings,
@@ -299,6 +302,7 @@ def run(
     parallelism: Optional[int] = None,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
+    allow_dirty: bool = False,
 ):
     """
     Run a tango experiment.
@@ -331,7 +335,62 @@ def run(
         step_name=step_name,
         name=name,
         called_by_executor=_CALLED_BY_EXECUTOR,
+        allow_dirty=allow_dirty,
     )
+
+
+@main.command(hidden=True)
+@click.argument(
+    "experiment",
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+)
+@click.argument(
+    "step_name",
+    type=str,
+)
+@click.argument(
+    "workspace_url",
+    type=str,
+)
+@click.option(
+    "-i",
+    "--include-package",
+    type=str,
+    help="Python packages or modules to import for tango components.",
+    multiple=True,
+)
+def beaker_executor_run(
+    experiment: str,
+    step_name: str,
+    workspace_url: str,
+    include_package: Optional[Sequence[str]] = None,
+):
+    """
+    This command is only used internally by the BeakerExecutor.
+    """
+    from tango.common.logging import do_json_logging
+    from tango.executor import Executor
+
+    if include_package:
+        for package_name in include_package:
+            import_extra_module(package_name)
+
+    # Load step graph and step.
+    step_graph = StepGraph.from_file(experiment)
+    step = step_graph[step_name]
+
+    # Initialize workspace and executor.
+    # NOTE: We use the default executor here because we're just running the step
+    # locally in the main process.
+    workspace = Workspace.from_url(workspace_url)
+    executor = Executor(workspace=workspace, include_package=include_package)
+
+    # Initialize logging.
+    initialize_logging(log_level="debug", enable_cli_logs=True)
+    do_json_logging(f"step {step.name}")
+
+    # Run step.
+    executor.execute_step(step)
 
 
 @main.command(**_CLICK_COMMAND_DEFAULTS)
@@ -650,11 +709,23 @@ def _run(
     multicore: Optional[bool] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
+    allow_dirty: bool = False,
 ) -> str:
+    from git import InvalidGitRepositoryError, Repo
+
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
     from tango.workspaces import MemoryWorkspace, default_workspace
+
+    if not called_by_executor and not allow_dirty:
+        # Make sure repository is clean, if we're in one.
+        try:
+            repo = Repo(".")
+            if repo.is_dirty():
+                raise CliRunError("You have uncommitted changes! Use --allow-dirty to force.")
+        except InvalidGitRepositoryError:
+            pass
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
@@ -685,13 +756,11 @@ def _run(
                 "Ignoring argument 'multicore' since executor is defined in %s",
                 settings.path or "setting",
             )
-        if parallelism is not None:
-            logger.warning(
-                "Ignoring parallelism ('-j/--parallelism') since executor is defined in %s",
-                settings.path or "setting",
-            )
         executor = Executor.from_params(
-            settings.executor, workspace=workspace, include_package=include_package
+            settings.executor,
+            workspace=workspace,
+            include_package=include_package,
+            parallelism=parallelism,
         )
     else:
         # Determine if we can use the multicore executor.
@@ -703,28 +772,31 @@ def _run(
                 # Pydevd doesn't reliably follow child processes, so we disable multicore under the debugger.
                 logger.warning("Debugger detected, disabling multicore.")
                 multicore = False
-            elif parallelism is not None and parallelism <= 0:
+            elif parallelism is None or parallelism == 0:
                 multicore = False
             else:
                 multicore = True
 
         if multicore:
             executor = MulticoreExecutor(
-                workspace=workspace, include_package=include_package, parallelism=parallelism or 1
+                workspace=workspace, include_package=include_package, parallelism=parallelism
             )
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-    # Initialize step graph and register run.
+    # Initialize step graph.
     step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+    sub_graph: Optional[StepGraph] = None
     params.assert_empty("'tango run'")
 
+    # Register run.
+    run: "Run"
     if step_name is not None:
         assert step_name in step_graph, (
             f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
             f"The config contains: {list(step_graph.keys())}."
         )
-
+        sub_graph = step_graph.sub_graph(step_name)
         if called_by_executor and name is not None:
             try:
                 run = workspace.registered_run(name)
@@ -734,7 +806,6 @@ def _run(
                     f"'{name}' is not already registered as a run. This should never happen!"
                 )
         else:
-            sub_graph = step_graph.sub_graph(step_name)
             run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
         run = workspace.register_run((step for step in step_graph.values()), name)
@@ -752,14 +823,14 @@ def _run(
             )
 
         if step_name is not None:
-            step = step_graph[step_name]
-            executor.execute_step(step)
+            assert sub_graph is not None
+            step = sub_graph[step_name]
+            if step.cache_results and step in workspace.step_cache:
+                step.log_cache_hit()
+            else:
+                executor.execute_sub_graph_for_step(sub_graph, step_name, run_name=run.name)
             if not called_by_executor:
-                cli_logger.info(
-                    "[green]\N{check mark} Finished run for step [bold]%s[/] (%s)[/]",
-                    step_name,
-                    run.name,
-                )
+                step.log_finished(run.name)
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
             if executor_output.failed:
@@ -779,7 +850,7 @@ def _run(
         # We set this environment variable so that any steps that contain multiprocessing
         # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
         os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
-        initialize_prefix_logging(f"step {step_name}", main_process=False)
+        initialize_prefix_logging(prefix=f"step {step_name}", main_process=False)
         log_and_execute_run()
     else:
         # Capture logs to file.
