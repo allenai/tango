@@ -18,7 +18,7 @@ sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
 pytz
-jsonpickle>=2.1.0,<2.2.0
+jsonpickle>=2.1.0,<2.3.0
 tblib>=1.7.0,<1.8.0
 
 # Protobuf is a dependency of wandb and tensorboard, but they are missing this pin.
