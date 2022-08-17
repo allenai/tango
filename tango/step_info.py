@@ -322,3 +322,10 @@ class StepInfo(FromParams):
             config=replace_steps_with_unique_id(config),
             **kwargs,
         )
+
+    def refresh(self):
+        """
+        Refresh environment and platform metadata.
+        """
+        self.platform = PlatformMetadata()
+        self.environment = EnvironmentMetadata()
