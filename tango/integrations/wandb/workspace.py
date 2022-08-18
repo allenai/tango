@@ -41,6 +41,19 @@ class WandbWorkspace(Workspace):
 
     .. tip::
         Registered as a :class:`~tango.workspace.Workspace` under the name "wandb".
+
+    .. tip::
+        If you want to change the artifact kind for step result artifacts uploaded
+        to W&B, use the ``artifact_kind`` field in the ``workspace_metadata`` parameter to
+        the :class:`~tango.step.Step` class.
+
+        This can be useful if you want model objects to be added to the model zoo.
+        In that you would set ``artifact_kind = "model"``.
+        For example, your config for the step would look like this:
+
+        .. code-block::
+
+            { type: "trainer", workspace_metadata: { artifact_kind: "model" }, ... }
     """
 
     def __init__(self, project: str, entity: Optional[str] = None):

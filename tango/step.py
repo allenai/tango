@@ -117,6 +117,8 @@ class Step(Registrable, Generic[T]):
       of inputs.
     :param step_resources: gives you a way to set the minimum compute resources required
       to run this step. Certain executors require this information.
+    :param workspace_metadata: use this to specify additional metadata for your workspace.
+      The type of metadata depends on your workspace.
 
     .. important::
         Overriding the unique id means that the step will always map to this value, regardless of the inputs,
@@ -168,6 +170,7 @@ class Step(Registrable, Generic[T]):
         step_config: Optional[Dict[str, Any]] = None,
         step_unique_id_override: Optional[str] = None,
         step_resources: Optional[StepResources] = None,
+        workspace_metadata: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -242,6 +245,7 @@ class Step(Registrable, Generic[T]):
         ] = None  # This is set only while the run() method runs.
         self._config = step_config
         self.step_resources = step_resources
+        self.workspace_metadata = workspace_metadata
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:

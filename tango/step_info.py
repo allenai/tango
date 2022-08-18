@@ -228,6 +228,12 @@ class StepInfo(FromParams):
     The raw config of the step.
     """
 
+    workspace_metadata: Optional[Dict[str, Any]] = None
+    """
+    Workspace metadata from the step. This comes from the ``workspace_metadata``
+    argument to the :class:`~tango.step.Step` class.
+    """
+
     platform: PlatformMetadata = field(default_factory=PlatformMetadata)
     """
     The :class:`PlatformMetadata`.
@@ -320,6 +326,7 @@ class StepInfo(FromParams):
             dependencies={dep.unique_id for dep in step.dependencies},
             cacheable=step.cache_results,
             config=replace_steps_with_unique_id(config),
+            workspace_metadata=step.workspace_metadata,
             **kwargs,
         )
 
