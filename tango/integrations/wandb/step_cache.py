@@ -73,9 +73,7 @@ class WandbStepCache(LocalStepCache):
     def get_step_result_artifact(
         self, step: Union[Step, StepInfo]
     ) -> Optional[wandb.apis.public.Artifact]:
-        artifact_kind = (step.workspace_metadata or {}).get(
-            "artifact_kind", ArtifactKind.STEP_RESULT.value
-        )
+        artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         try:
             return self.wandb_client.artifact(
                 f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}",

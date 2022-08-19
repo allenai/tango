@@ -29,10 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ```
     See the docs for the `BeakerExecutor` for more information on the input parameters.
 - **Step class:**
-  - Added `workspace_metadata` argument and field to the step class API.
+  - Added a metadata field to the step class API. This can be set through the class
+    variable `METADATA` or through the constructor argument `step_metadata`.
 - **Weights & Biases integration:**
   - You can now change the artifact kind for step result artifacts by adding a field
-    called "artifact_kind" to a step's ``workspace_metadata`` dictionary.
+    called "artifact_kind" to a step's metadata.
     For models, setting "artifact_kind" to "model" will add the corresponding artifact to W&B's new model zoo.
 
 ### Changed
