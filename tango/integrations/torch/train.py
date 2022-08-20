@@ -698,12 +698,13 @@ def _train(
                 # Reset model to train mode.
                 training_engine.model.train()
 
-                if best_val_metric is None:
+                if (
+                    (best_val_metric is None)
+                    or (config.minimize_val_metric and val_metric <= best_val_metric)
+                    or (not config.minimize_val_metric and val_metric >= best_val_metric)
+                ):
                     best_val_metric = val_metric
-                elif config.minimize_val_metric and val_metric <= best_val_metric:
-                    best_val_metric = val_metric
-                elif not config.minimize_val_metric and val_metric >= best_val_metric:
-                    best_val_metric = val_metric
+                    save_state(step)
 
                 # Post validation callback.
                 for callback in callbacks:
