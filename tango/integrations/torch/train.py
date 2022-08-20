@@ -710,6 +710,9 @@ def _train(
                 for callback in callbacks:
                     callback.post_val_loop(step, current_epoch, val_metric, best_val_metric)
 
+                # Reset model to train mode again in case the callbacks messed with it.
+                training_engine.model.train()
+
                 # Update progress bar again.
                 metrics_to_log = {
                     "batch_loss": batch_loss,
