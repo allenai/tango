@@ -5,9 +5,14 @@ import torch
 import torch.nn as nn
 from torch.nn import MSELoss
 
-from tango.common import Lazy, DatasetDict
+from tango.common import DatasetDict, Lazy
 from tango.common.testing import TangoTestCase
-from tango.integrations.torch import TorchTrainStep, DataLoader, TrainCallback, StopEarly
+from tango.integrations.torch import (
+    DataLoader,
+    StopEarly,
+    TorchTrainStep,
+    TrainCallback,
+)
 from tango.integrations.torch.model import Model
 from tango.integrations.torch.training_engine import TorchTrainingEngine
 
