@@ -90,7 +90,6 @@ def test_with_increasing_loss():
         train_dataloader=Lazy(DataLoader),
         train_steps=10,
         validation_steps=10,
-        validate_every=7,
         train_split="train",
         validation_split="validation",
         callbacks=[Lazy(StopOnStepCallback, stop_on_step=9)],
