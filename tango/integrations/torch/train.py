@@ -485,10 +485,12 @@ def _train(
         the best checkpoint path to the current checkpoint file.
         """
         if val_metric is not None:
-            assert best_val_metric_checkpointed is not None
-            return (config.minimize_val_metric and val_metric <= best_val_metric_checkpointed) or (
-                not config.minimize_val_metric and val_metric >= best_val_metric_checkpointed
-            )
+            if best_val_metric_checkpointed is not None:
+                return (
+                    config.minimize_val_metric and val_metric <= best_val_metric_checkpointed
+                ) or (not config.minimize_val_metric and val_metric >= best_val_metric_checkpointed)
+            else:
+                return False
         else:
             # Without a validation loop we always treat the most recent checkpoint as the best.
             return True
