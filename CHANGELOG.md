@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
+
 ### Added
 
 - **Step resources:**
