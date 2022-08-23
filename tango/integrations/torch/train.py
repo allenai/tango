@@ -432,8 +432,6 @@ def _train(
 
     # The (training) loss for each batch, updated every training batch.
     batch_loss: float = 0.0
-    # The best (training) loss over all training batches that correspond to a checkpoint.
-    best_batch_loss: Optional[float] = None
     # The value of the validation metric (could be loss), updated after every validation loop.
     val_metric: Optional[float] = None
     # The best validation metric over all validation set passes.
@@ -450,7 +448,6 @@ def _train(
 
     # Load state from checkpoint.
     if initial_state is not None:
-        best_batch_loss = initial_state["best_batch_loss"]
         val_metric = initial_state[f"val_{config.val_metric_name}"]
         best_val_metric = initial_state[f"best_{config.val_metric_name}"]
         best_val_metric_checkpointed = initial_state[f"best_{config.val_metric_name}_checkpointed"]
@@ -484,17 +481,17 @@ def _train(
 
     def is_best_checkpoint() -> bool:
         """
-        A closure that we'll call when saving checkpoints to check if we should hardlink
+        A closure that we'll call when saving checkpoints to check if we should link
         the best checkpoint path to the current checkpoint file.
         """
-        if val_metric is not None and best_val_metric_checkpointed is not None:
+        if val_metric is not None:
+            assert best_val_metric_checkpointed is not None
             return (config.minimize_val_metric and val_metric <= best_val_metric_checkpointed) or (
                 not config.minimize_val_metric and val_metric >= best_val_metric_checkpointed
             )
-        elif best_batch_loss is not None:
-            return batch_loss <= best_batch_loss
         else:
-            return False
+            # Without a validation loop we always treat the most recent checkpoint as the best.
+            return True
 
     def save_state(step: int):
         """
@@ -502,7 +499,7 @@ def _train(
         save model and training state.
         """
         # Update best loss/metric trackers.
-        nonlocal best_batch_loss, best_val_metric_checkpointed
+        nonlocal best_val_metric_checkpointed
         if should_validate_this_step and val_metric is not None:
             if (
                 best_val_metric_checkpointed is None
@@ -510,12 +507,9 @@ def _train(
                 or (not config.minimize_val_metric and val_metric >= best_val_metric_checkpointed)
             ):
                 best_val_metric_checkpointed = val_metric
-        if best_batch_loss is None or batch_loss <= best_batch_loss:
-            best_batch_loss = batch_loss
 
         train_state = {
             "training_steps": step + 1,
-            "best_batch_loss": best_batch_loss,
             f"val_{config.val_metric_name}": val_metric,
             f"best_{config.val_metric_name}": best_val_metric,
             f"best_{config.val_metric_name}_checkpointed": best_val_metric_checkpointed,
