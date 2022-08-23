@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug where `StepInfo` environment and platform metadata could be out-of-date if a step is run again due to failure.
+- Fixed a bug where an unfortunate combination of early stopping and decreasing model performance could result in a crash in the torch trainer.
 
 ## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
 
