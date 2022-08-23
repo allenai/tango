@@ -253,7 +253,7 @@ class Step(Registrable, Generic[T]):
         self.step_resources = step_resources
         self.metadata = deepcopy(self.METADATA)
         if step_metadata:
-            self.metadata.update()
+            self.metadata.update(step_metadata)
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
