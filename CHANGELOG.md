@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Tango will now automatically search Python modules in the current working directory
   for registered classes so that you don't always need to use the `--include-package` setting.
+- The minimum supported Python version is now 3.8.
+
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
 

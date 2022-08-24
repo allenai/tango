@@ -17,7 +17,7 @@ on:
 env:
   CACHE_PREFIX: v3  # Change this to invalidate existing cache.
   PYTHON_PATH: ./
-  DEFAULT_PYTHON: 3.7
+  DEFAULT_PYTHON: 3.8
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
   BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
   BEAKER_WORKSPACE: ai2/tango-testing
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.7']
+        python: ['3.8']
         task:
           - name: Lint
             extras: dev,all
@@ -131,14 +131,6 @@ jobs:
 
         include:
           # Run the core tests on other Python versions as well.
-          - task:
-              name: Test
-              extras: dev
-              requires_torch: false
-              run: |
-                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.8'
-
           - task:
               name: Test
               extras: dev
