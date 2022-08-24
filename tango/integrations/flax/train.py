@@ -69,6 +69,7 @@ class FlaxTrainStep(Step):
     CACHEABLE = True
     FORMAT: Format = FlaxFormat()
     SKIP_ID_ARGUMENTS = {"log_every"}
+    METADATA = {"artifact_kind": "model"}
 
     def run(  # type: ignore[override]
         self,
