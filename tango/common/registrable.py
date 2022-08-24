@@ -213,6 +213,8 @@ class Registrable(FromParams):
 
         for pyfile in glob("*.py"):
             module = str(Path(pyfile).with_suffix(""))
+            if module == "setup":
+                continue
             try:
                 try_import(module)
                 if name in Registrable._registry[cls]:
@@ -221,6 +223,8 @@ class Registrable(FromParams):
                 continue
         for pyinit in glob("**/__init__.py"):
             module = str(Path(pyinit).parent)
+            if module == "tango" or module.startswith("test"):
+                continue
             try:
                 try_import(module)
                 if name in Registrable._registry[cls]:
