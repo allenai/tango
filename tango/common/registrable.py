@@ -199,6 +199,7 @@ class Registrable(FromParams):
                 return None
 
         if "::" in name:
+            # Try to guess the integration that it comes from.
             maybe_integration = name.split("::")[0]
             if maybe_integration in integrations:
                 try_import(integrations[maybe_integration])
@@ -206,18 +207,41 @@ class Registrable(FromParams):
                 if name in Registrable._registry[cls]:
                     return None
 
+        # Search all other modules in Tango.
         for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
             try_import(module)
             if name in Registrable._registry[cls]:
                 return None
 
-        # If we still haven't found the registered 'name', try importing all other integrations.
+        # Try importing all other integrations.
         for integration_name, module in integrations.items():
             if integration_name not in integrations_imported:
                 try_import(module)
                 integrations_imported.add(integration_name)
                 if name in Registrable._registry[cls]:
                     return None
+
+        # Lastly, check Python files and modules in the current directory, as long as
+        # there isn't an absurd number of files.
+        from glob import glob
+        from pathlib import Path
+
+        for pyfile in glob("*.py"):
+            module = str(Path(pyfile).with_suffix(""))
+            try:
+                try_import(module)
+                if name in Registrable._registry[cls]:
+                    return None
+            except:  # noqa: E722
+                continue
+        for pyinit in glob("**/__init__.py"):
+            module = Path(pyinit).parent
+            try:
+                try_import(module)
+                if name in Registrable._registry[cls]:
+                    return None
+            except:  # noqa: E722
+                continue
 
     @classmethod
     def resolve_class_name(
