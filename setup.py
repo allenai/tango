@@ -107,5 +107,5 @@ setup(
     entry_points={"console_scripts": ["tango=tango.__main__:main"]},
     install_requires=install_requirements,
     extras_require=extras,
-    python_requires=">=3.7.1",
+    python_requires=">=3.8.1",
 )

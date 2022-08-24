@@ -251,7 +251,7 @@ def exception_to_string(e: BaseException) -> str:
     """
     Generates a string that contains an exception plus stack frames based on an exception.
 
-    This became trivial in Python 3.10, but we need to run on Pytohn 3.7 as well.
+    This became trivial in Python 3.10, but we need to run on Python 3.8 as well.
     """
     if sys.version_info >= (3, 10):
         formatted = traceback.format_exception(e)

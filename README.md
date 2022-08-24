@@ -35,7 +35,7 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 
 <!-- start install -->
 
-**ai2-tango** requires Python 3.7 or later.
+**ai2-tango** requires Python 3.8 or later.
 
 ### Installing with `pip`
 
