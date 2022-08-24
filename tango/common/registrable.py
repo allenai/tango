@@ -207,21 +207,7 @@ class Registrable(FromParams):
                 if name in Registrable._registry[cls]:
                     return None
 
-        # Search all other modules in Tango.
-        for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
-            try_import(module)
-            if name in Registrable._registry[cls]:
-                return None
-
-        # Try importing all other integrations.
-        for integration_name, module in integrations.items():
-            if integration_name not in integrations_imported:
-                try_import(module)
-                integrations_imported.add(integration_name)
-                if name in Registrable._registry[cls]:
-                    return None
-
-        # Lastly, check Python files and modules in the current directory.
+        # Check Python files and modules in the current directory.
         from glob import glob
         from pathlib import Path
 
@@ -241,6 +227,20 @@ class Registrable(FromParams):
                     return None
             except:  # noqa: E722
                 continue
+
+        # Search all other modules in Tango.
+        for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
+            try_import(module)
+            if name in Registrable._registry[cls]:
+                return None
+
+        # Try importing all other integrations.
+        for integration_name, module in integrations.items():
+            if integration_name not in integrations_imported:
+                try_import(module)
+                integrations_imported.add(integration_name)
+                if name in Registrable._registry[cls]:
+                    return None
 
     @classmethod
     def resolve_class_name(
