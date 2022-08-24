@@ -137,14 +137,6 @@ jobs:
               requires_torch: false
               run: |
                 pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.8'
-
-          - task:
-              name: Test
-              extras: dev
-              requires_torch: false
-              run: |
-                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.9'
 
           - task:
