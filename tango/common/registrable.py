@@ -221,8 +221,7 @@ class Registrable(FromParams):
                 if name in Registrable._registry[cls]:
                     return None
 
-        # Lastly, check Python files and modules in the current directory, as long as
-        # there isn't an absurd number of files.
+        # Lastly, check Python files and modules in the current directory.
         from glob import glob
         from pathlib import Path
 
@@ -235,7 +234,7 @@ class Registrable(FromParams):
             except:  # noqa: E722
                 continue
         for pyinit in glob("**/__init__.py"):
-            module = Path(pyinit).parent
+            module = str(Path(pyinit).parent)
             try:
                 try_import(module)
                 if name in Registrable._registry[cls]:
