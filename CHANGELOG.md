@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Tango will now automatically search Python modules in the current working directory
+  for registered classes so that you don't always need to use the `--include-package` setting.
+- The minimum supported Python version is now 3.8.
+
+
+## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
+
 ### Added
 
 - **Step resources:**
@@ -28,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         - ai2/general-cirrascale
     ```
     See the docs for the `BeakerExecutor` for more information on the input parameters.
+- **Step class:**
+  - Added a metadata field to the step class API. This can be set through the class
+    variable `METADATA` or through the constructor argument `step_metadata`.
+- **Weights & Biases integration:**
+  - You can now change the artifact kind for step result artifacts by adding a field
+    called "artifact_kind" to a step's metadata.
+    For models, setting "artifact_kind" to "model" will add the corresponding artifact to W&B's new model zoo.
 
 ### Changed
 
@@ -40,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug where `StepInfo` environment and platform metadata could be out-of-date if a step is run again due to failure.
+- Fixed a bug where an unfortunate combination of early stopping and decreasing model performance could result in a crash in the torch trainer.
 
 ## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
 

@@ -82,6 +82,7 @@ class LightningTrainStep(Step):
     DETERMINISTIC: bool = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
+    METADATA = {"artifact_kind": "model"}
 
     def run(  # type: ignore[override]
         self,
