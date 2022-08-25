@@ -151,7 +151,9 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def post_batch(
+        self, step: int, epoch: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]
+    ) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
@@ -165,7 +167,9 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def log_batch(
+        self, step: int, epoch: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]
+    ) -> None:
         """
         Called after the optimizer step. Here ``batch_loss`` is the average loss across
         all distributed workers.

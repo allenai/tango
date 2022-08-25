@@ -607,14 +607,18 @@ def _train(
             for callback in callbacks:
                 callback.pre_batch(step, current_epoch, batch)
             batch_loss = 0.0
+            batch_outputs = []
             for micro_batch_idx, micro_batch in enumerate(batch):
                 # Get loss.
-                micro_batch_loss = training_engine.forward_train(
+                micro_batch_loss, micro_batch_outputs = training_engine.forward_train(
                     micro_batch, micro_batch_idx, len(batch)
                 )
                 if torch.isnan(micro_batch_loss):
                     raise ValueError("nan loss encountered")
                 batch_loss += micro_batch_loss.detach().item()
+                batch_outputs.append(
+                    {key: output.detach() for key, output in micro_batch_outputs.items()}
+                )
 
                 # Calculate gradients.
                 training_engine.backward(micro_batch_loss)
@@ -622,10 +626,11 @@ def _train(
                 # Clean up in case it saves memory.
                 del micro_batch
                 del micro_batch_loss
+                del micro_batch_outputs
 
             # Post-batch callback.
             for callback in callbacks:
-                callback.post_batch(step, current_epoch, batch_loss)
+                callback.post_batch(step, current_epoch, batch_loss, batch_outputs)
 
             del batch
 
@@ -659,7 +664,7 @@ def _train(
             if config.should_log_this_step(step):
                 # Callbacks.
                 for callback in callbacks:
-                    callback.log_batch(step, current_epoch, batch_loss)
+                    callback.log_batch(step, current_epoch, batch_loss, batch_outputs)
 
                 # Update progress bar.
                 metrics_to_log: Dict[str, float] = {"batch_loss": batch_loss}
