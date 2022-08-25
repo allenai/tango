@@ -2,7 +2,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import torch
 import torch.distributed as dist
@@ -63,7 +63,7 @@ class TrainingEngine(Registrable):
     @abstractmethod
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """
         Run a forward training pass on the model.
         """
@@ -190,7 +190,7 @@ class TorchTrainingEngine(TrainingEngine):
 
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         if micro_batch_idx == 0:
             self.optimizer.zero_grad(set_to_none=True)
 
@@ -201,7 +201,7 @@ class TorchTrainingEngine(TrainingEngine):
             outputs = self.model(**micro_batch)
             micro_batch_loss = outputs["loss"] / num_micro_batches
 
-        return micro_batch_loss
+        return micro_batch_loss, outputs
 
     def forward_eval(self, batch: Dict[str, Any]) -> Dict[str, Any]:
         # Move tensors to right device.

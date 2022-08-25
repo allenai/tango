@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+import pytorch_lightning.profiler
 
 from tango.common.registrable import Registrable
 

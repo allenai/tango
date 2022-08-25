@@ -175,7 +175,9 @@ class WandbTrainCallback(TrainCallback):
         if self.should_finalize_run:
             wandb.finish()
 
-    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def log_batch(
+        self, step: int, epoch: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]
+    ) -> None:
         peak_gpu_mbs = peak_gpu_memory()
         if self.is_local_main_process:
             metrics = {
