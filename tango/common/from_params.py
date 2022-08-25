@@ -387,7 +387,7 @@ def construct_arg(
     if popped_params is default:
         return popped_params
 
-    from tango.step import Step, WithUnresolvedSteps
+    from tango.step import Step, StepIndexer, WithUnresolvedSteps
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
@@ -480,6 +480,18 @@ def construct_arg(
             raise ConfigurationError(f"expected key {argument_name} for {class_name}")
         else:
             return default
+
+    # For StepIndexer, we just return as-is and hope the for the best.
+    # At worst, user will get an error at runtime if they are trying to index a step
+    # result that can't be indexed.
+    # TODO (epwalsh): we could check the return type of the wrapped step here
+    # and make sure that:
+    #  1. It's an index-able object,
+    #  2. The item in the index-able object match `annotation`.
+    #
+    # But that's a lot of work and might have false negatives.
+    elif type(popped_params) == StepIndexer:
+        return popped_params
 
     # If the parameter type is a Python primitive, just pop it off
     # using the correct casting pop_xyz operation.
