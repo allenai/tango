@@ -163,6 +163,9 @@ class TrainCallback(Registrable):
             overall (average) batch loss across distributed workers.
 
             If you need the average loss, use :meth:`log_batch()`.
+        .. note::
+            A type of ``batch_outputs`` is a list because with gradient accumulation there will
+            more than one "micro batch" in the batch.
 
         """
         pass
@@ -178,6 +181,9 @@ class TrainCallback(Registrable):
             This callback method is not necessarily called on every step.
             The frequency depends on the value of the ``log_every`` parameter of
             :class:`TorchTrainStep`.
+        .. note::
+            A type of ``batch_outputs`` is a list because with gradient accumulation there will
+            more than one "micro batch" in the batch.
 
         """
         pass
