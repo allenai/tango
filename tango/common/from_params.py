@@ -487,9 +487,9 @@ def construct_arg(
     # TODO (epwalsh): we could check the return type of the wrapped step here
     # and make sure that:
     #  1. It's an index-able object,
-    #  2. The item in the index-able object match `annotation`.
+    #  2. The item in the index-able object matches `annotation`.
     #
-    # But that's a lot of work and might have false negatives.
+    # But that's complex and might have false negatives.
     elif type(popped_params) == StepIndexer:
         return popped_params
 
