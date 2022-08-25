@@ -220,7 +220,7 @@ class LogRecordStreamHandler(socketserver.StreamRequestHandler):
     configured locally.
 
     Taken from
-    `the logging cookbook <https://docs.python.org/3.7/howto/logging-cookbook.html>`_.
+    `the logging cookbook <https://docs.python.org/3.8/howto/logging-cookbook.html>`_.
     """
 
     def handle(self):
@@ -259,7 +259,7 @@ class LogRecordSocketReceiver(socketserver.ThreadingTCPServer):
     Simple TCP socket-based logging receiver.
 
     Taken from
-    `the logging cookbook <https://docs.python.org/3.7/howto/logging-cookbook.html>`_.
+    `the logging cookbook <https://docs.python.org/3.8/howto/logging-cookbook.html>`_.
     """
 
     allow_reuse_address = True
@@ -554,7 +554,7 @@ def _initialize_logging(
         # Main process: set formatter and handlers, initialize logging socket and server.
         # Set up logging socket to emit log records from worker processes/threads.
         # Inspired by:
-        # https://docs.python.org/3.7/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
+        # https://docs.python.org/3.8/howto/logging-cookbook.html#sending-and-receiving-logging-events-across-a-network
         _LOGGING_SERVER = LogRecordSocketReceiver(_LOGGING_HOST, 0)
         _LOGGING_PORT = _LOGGING_SERVER.server_address[1]
         os.environ[EnvVarNames.LOGGING_PORT.value] = str(_LOGGING_PORT)
