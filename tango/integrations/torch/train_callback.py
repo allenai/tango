@@ -151,7 +151,9 @@ class TrainCallback(Registrable):
         """
         pass
 
-    def post_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def post_batch(
+        self, step: int, epoch: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]
+    ) -> None:
         """
         Called directly after processing a batch, but before unscaling gradients,
         clipping gradients, and taking an optimizer step.
@@ -162,10 +164,16 @@ class TrainCallback(Registrable):
 
             If you need the average loss, use :meth:`log_batch()`.
 
+        .. note::
+            A type of ``batch_outputs`` is a list because with gradient accumulation there will
+            more than one "micro batch" in the batch.
+
         """
         pass
 
-    def log_batch(self, step: int, epoch: int, batch_loss: float) -> None:
+    def log_batch(
+        self, step: int, epoch: int, batch_loss: float, batch_outputs: List[Dict[str, Any]]
+    ) -> None:
         """
         Called after the optimizer step. Here ``batch_loss`` is the average loss across
         all distributed workers.
@@ -174,6 +182,10 @@ class TrainCallback(Registrable):
             This callback method is not necessarily called on every step.
             The frequency depends on the value of the ``log_every`` parameter of
             :class:`TorchTrainStep`.
+
+        .. note::
+            A type of ``batch_outputs`` is a list because with gradient accumulation there will
+            more than one "micro batch" in the batch.
 
         """
         pass
