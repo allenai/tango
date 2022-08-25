@@ -617,7 +617,10 @@ def _train(
                     raise ValueError("nan loss encountered")
                 batch_loss += micro_batch_loss.detach().item()
                 batch_outputs.append(
-                    {key: output.detach() if isinstance(output, torch.Tensor) else output for key, output in micro_batch_outputs.items()}
+                    {
+                        key: output.detach() if isinstance(output, torch.Tensor) else output
+                        for key, output in micro_batch_outputs.items()
+                    }
                 )
 
                 # Calculate gradients.

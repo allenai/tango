@@ -2,7 +2,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, cast, Tuple
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import torch
 import torch.distributed as dist
@@ -63,7 +63,7 @@ class TrainingEngine(Registrable):
     @abstractmethod
     def forward_train(
         self, micro_batch: Dict[str, Any], micro_batch_idx: int, num_micro_batches: int
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
         """
         Run a forward training pass on the model.
         """
