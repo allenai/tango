@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator, List, Mapping, Set, Type, Union
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.params import Params
-from tango.step import Step
+from tango.step import Step, StepIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class StepGraph(Mapping[str, Step]):
         keys = set(d.keys())
         if keys == {"ref"}:
             return True
-        if keys == {"type", "ref"} and d["type"] == "ref":
+        if keys >= {"type", "ref"} and d["type"] == "ref":
             return True
         return False
 
@@ -168,7 +168,10 @@ class StepGraph(Mapping[str, Step]):
             return o.__class__(cls._replace_step_dependencies(i, existing_steps) for i in o)
         elif isinstance(o, (dict, Params)):
             if cls._dict_is_ref(o):
-                return existing_steps[o["ref"]]
+                if "key" in o:
+                    return StepIndexer(existing_steps[o["ref"]], o["key"])
+                else:
+                    return existing_steps[o["ref"]]
             else:
                 return {
                     key: cls._replace_step_dependencies(value, existing_steps)
