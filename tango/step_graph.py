@@ -242,6 +242,8 @@ class StepGraph(Mapping[str, Step]):
                 return {key: _to_config(value) for key, value in o.items()}
             elif isinstance(o, Step):
                 return {"type": "ref", "ref": o.name}
+            elif isinstance(o, StepIndexer):
+                return {"type": "ref", "ref": o.step.name, "key": o.key}
             elif o is not None and not isinstance(o, (bool, str, int, float)):
                 raise ValueError(o)
             return o

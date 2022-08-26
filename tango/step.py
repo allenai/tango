@@ -623,6 +623,8 @@ class Step(Registrable, Generic[T]):
             elif isinstance(o, WithUnresolvedSteps):
                 yield from dependencies_internal(o.args)
                 yield from dependencies_internal(o.kwargs)
+            elif isinstance(o, StepIndexer):
+                yield o.step
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
             elif isinstance(o, (dict, Params)):
