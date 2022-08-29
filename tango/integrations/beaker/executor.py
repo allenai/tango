@@ -439,10 +439,12 @@ class BeakerExecutor(Executor):
         try:
             for line in self.beaker.experiment.follow(experiment, strict=True):
                 self._check_if_cancelled()
-                # Every log line from Beaker starts with an RFC 3339 UTC timestamp
+                # Most log lines from Beaker start with an RFC 3339 UTC timestamp
                 # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
-                # the timestamps so we split them off like this:
-                line = line[line.find(b"Z ") + 2 :]
+                # the timestamps so we split them off.
+                timestamp_end = line.find(b"Z ")
+                if timestamp_end > 0:
+                    line = line[timestamp_end + 2 :]
                 line_str = line.decode(errors="ignore").rstrip()
                 if not line_str:
                     continue
