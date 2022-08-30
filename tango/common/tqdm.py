@@ -64,6 +64,7 @@ class TqdmToLogsWriter:
         else:
             sys.stderr.write(message)
             sys.stderr.flush()
+        print(message)
 
         # Every 10 seconds we also log the message.
         now = time()
