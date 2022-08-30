@@ -121,6 +121,7 @@ class BeakerWorkspace(Workspace):
 
         step_info = self.step_info(step)
         if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
+            self.locks.pop(step).release()
             raise StepStateError(
                 step,
                 step_info.state,
