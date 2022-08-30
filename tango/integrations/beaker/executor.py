@@ -22,6 +22,7 @@ from beaker import (
     TaskResources,
     TaskSpec,
 )
+from git import InvalidGitRepositoryError, Repo
 
 from tango.common.exceptions import (
     CancellationError,
@@ -289,6 +290,14 @@ class BeakerExecutor(Executor):
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         import concurrent.futures
+
+        # Make sure repository is clean, if we're in one.
+        try:
+            repo = Repo(".")
+            if repo.is_dirty():
+                raise ValueError("You have uncommitted changes! Use --allow-dirty to force.")
+        except InvalidGitRepositoryError:
+            pass
 
         self._is_cancelled.clear()
 
