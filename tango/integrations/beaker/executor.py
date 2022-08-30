@@ -105,6 +105,7 @@ class BeakerExecutor(Executor):
     :param install_cmd: Override the command used to install your code and its dependencies
         in each Beaker job.
         For example, you could set ``install_cmd="pip install .[dev]"``.
+    :param priority: The default task priority to assign to jobs ran on Beaker.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
     .. attention::
@@ -220,6 +221,7 @@ class BeakerExecutor(Executor):
         venv_name: Optional[str] = None,
         parallelism: Optional[int] = -1,
         install_cmd: Optional[str] = None,
+        priority: str = "normal",
         **kwargs,
     ):
         # Pre-validate arguments.
