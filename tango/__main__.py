@@ -359,11 +359,18 @@ def run(
     help="Python packages or modules to import for tango components.",
     multiple=True,
 )
+@click.option(
+    "--log-level",
+    help="Set the global log level.",
+    type=click.Choice(["debug", "info", "warning", "error"], case_sensitive=False),
+    show_choices=True,
+)
 def beaker_executor_run(
     experiment: str,
     step_name: str,
     workspace_url: str,
     include_package: Optional[Sequence[str]] = None,
+    log_level: str = "debug",
 ):
     """
     This command is only used internally by the BeakerExecutor.
@@ -386,7 +393,7 @@ def beaker_executor_run(
     executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize logging.
-    initialize_logging(log_level="debug", enable_cli_logs=True)
+    initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
     do_json_logging(f"step {step.name}")
 
     # Run step.
