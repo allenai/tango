@@ -437,14 +437,11 @@ class BeakerExecutor(Executor):
         # Follow the experiment and stream the logs until it completes.
         setup_stage: bool = True
         try:
-            for line in self.beaker.experiment.follow(experiment, strict=True):
+            for line in self.beaker.experiment.follow(
+                experiment, strict=True, include_timestamps=False
+            ):
                 self._check_if_cancelled()
-                # Most log lines from Beaker start with an RFC 3339 UTC timestamp
-                # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
-                # the timestamps so we split them off.
-                timestamp_end = line.find(b"Z ")
-                if timestamp_end > 0:
-                    line = line[timestamp_end + 2 :]
+
                 line_str = line.decode(errors="ignore").rstrip()
                 if not line_str:
                     continue
@@ -453,7 +450,10 @@ class BeakerExecutor(Executor):
                 try:
                     log_record = log_record_from_json(line_str)
                     setup_stage = False
-                    logging.getLogger(log_record.name).handle(log_record)
+                    if log_record.name != "tqdm":
+                        # We don't need to handle logs from Tqdm since that would result in
+                        # duplicate messages (those Tqdm lines get printed directly to the output as well).
+                        logging.getLogger(log_record.name).handle(log_record)
                 except JSONDecodeError:
                     if setup_stage:
                         if line_str.startswith("[TANGO] "):

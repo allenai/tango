@@ -210,7 +210,7 @@ class BeakerWorkspace(Workspace):
             try:
                 run_dataset = self.beaker.dataset.create(run_dataset_name(name), commit=False)
             except DatasetConflict:
-                raise ValueError("Run name '{name}' is already in use")
+                raise ValueError(f"Run name '{name}' is already in use")
 
         # Collect step info and add data to run dataset.
         steps: Dict[str, StepInfo] = {}
