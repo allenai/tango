@@ -270,6 +270,7 @@ class BeakerExecutor(Executor):
         self.clusters = clusters
         self.venv_name = venv_name
         self.install_cmd = install_cmd
+        self.priority = priority
         self._is_cancelled = threading.Event()
 
         try:
@@ -676,6 +677,7 @@ class BeakerExecutor(Executor):
                 resources=task_resources,
                 datasets=self.datasets,
                 env_vars=self.env_vars,
+                priority=self.priority,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
