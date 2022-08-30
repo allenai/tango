@@ -60,11 +60,8 @@ class TqdmToLogsWriter:
             file_friendly_message = replace_cr_with_newline(message)
             if file_friendly_message.strip():
                 sys.stderr.write(file_friendly_message)
-                sys.stderr.flush()
         else:
             sys.stderr.write(message)
-            sys.stderr.flush()
-        print(message)
 
         # Every 10 seconds we also log the message.
         now = time()

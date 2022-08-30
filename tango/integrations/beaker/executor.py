@@ -587,6 +587,8 @@ class BeakerExecutor(Executor):
         return cluster_to_use
 
     def _build_experiment_spec(self, step_graph: StepGraph, step_name: str) -> ExperimentSpec:
+        from tango.common.logging import TANGO_LOG_LEVEL
+
         step = step_graph[step_name]
         sub_graph = step_graph.sub_graph(step_name)
         step_info = self.workspace.step_info(step)
@@ -648,7 +650,7 @@ class BeakerExecutor(Executor):
         ]
         if self.include_package is not None:
             for package in self.include_package:
-                command += ["-i", package]
+                command += ["-i", package, "--log-level", TANGO_LOG_LEVEL or "debug"]
 
         # Get cluster to use.
         cluster = self._ensure_cluster(task_resources)
