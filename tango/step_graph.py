@@ -170,10 +170,16 @@ class StepGraph(Mapping[str, Step]):
             if cls._dict_is_ref(o):
                 return existing_steps[o["ref"]]
             else:
-                return {
+                result = {
                     key: cls._replace_step_dependencies(value, existing_steps)
                     for key, value in o.items()
                 }
+                if isinstance(o, dict):
+                    return result
+                elif isinstance(o, Params):
+                    return Params(result, history=o.history)
+                else:
+                    raise RuntimeError(f"Object {o} is of unexpected type {o.__class__}.")
         elif o is not None and not isinstance(o, (bool, str, int, float)):
             raise ValueError(o)
         return o
