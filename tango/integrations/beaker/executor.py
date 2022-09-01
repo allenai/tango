@@ -342,7 +342,10 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        log_exception(exc, logger)
+                        if isinstance(exc, ExecutorError):
+                            logger.error(exc)
+                        else:
+                            log_exception(exc, logger)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError as exc:
                     log_exception(exc, logger)
