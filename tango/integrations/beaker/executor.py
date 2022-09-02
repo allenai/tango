@@ -21,7 +21,7 @@ from beaker import (
     TaskResources,
     TaskSpec,
 )
-from git import InvalidGitRepositoryError, Repo
+from git import Git, InvalidGitRepositoryError, Repo
 
 from tango.common.exceptions import (
     CancellationError,
@@ -293,13 +293,25 @@ class BeakerExecutor(Executor):
         if not self.allow_dirty:
             # Make sure repository is clean, if we're in one.
             try:
+                # Check for uncommitted changes.
                 repo = Repo(".")
                 if repo.is_dirty():
-                    raise ValueError(
-                        "You have uncommitted changes! Use the 'allow-dirty' option in your config file to force."
+                    raise ExecutorError(
+                        "You have uncommitted changes! Commit your changes or use the 'allow_dirty' option."
+                    )
+
+                # Check for un-pushed commits.
+                remote_name = repo.remote().name
+                git = Git(".")
+                if git.log([f"{remote_name}..HEAD", "--not", "--remotes", "--oneline"]):
+                    raise ExecutorError(
+                        "You have unpushed changes! Push your changes or use the 'allow_dirty' option."
                     )
             except InvalidGitRepositoryError:
-                pass
+                raise ExecutorError(
+                    "It appears you're not in a valid git repository. "
+                    "The Beaker executor requires a git repository."
+                )
 
     def execute_step(self, step: Step) -> None:
         raise NotImplementedError
