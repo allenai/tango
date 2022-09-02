@@ -423,6 +423,8 @@ class BeakerExecutor(Executor):
             )
             return
 
+        step.log_starting()
+
         # Initialize experiment and task spec.
         spec = self._build_experiment_spec(step_graph, step_name)
         self._check_if_cancelled()
@@ -433,12 +435,10 @@ class BeakerExecutor(Executor):
         )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         cli_logger.info(
-            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/] (%s)[/]',
+            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/][/]',
             self.beaker.experiment.url(experiment),
             step_name,
-            step.unique_id,
         )
-        step.log_starting()
 
         # Follow the experiment and stream the logs until it completes.
         try:
@@ -600,7 +600,13 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = git.commit
-        logger.info("Using GitHub repository '%s/%s' @ %s", github_account, github_repo, git_ref)
+        cli_logger.info(
+            '[blue]\N{black rightwards arrow} Using source code from [b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
+            github_account,
+            github_repo,
+            git_ref,
+            step_name,
+        )
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
