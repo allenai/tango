@@ -113,7 +113,6 @@ class TangoTestCase:
             parallelism=parallelism,
             multicore=multicore,
             name=name,
-            allow_dirty=True,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name

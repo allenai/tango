@@ -285,11 +285,6 @@ def cleanup(*args, **kwargs):
     type=str,
     help="""Specify the name for this run.""",
 )
-@click.option(
-    "--allow-dirty",
-    is_flag=True,
-    help="""Allow running the experiment with a dirty working directory (uncommitted code changes).""",
-)
 @click.pass_obj
 def run(
     settings: TangoGlobalSettings,
@@ -302,7 +297,6 @@ def run(
     parallelism: Optional[int] = None,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
-    allow_dirty: bool = False,
 ):
     """
     Run a tango experiment.
@@ -335,7 +329,6 @@ def run(
         step_name=step_name,
         name=name,
         called_by_executor=_CALLED_BY_EXECUTOR,
-        allow_dirty=allow_dirty,
     )
 
 
@@ -716,23 +709,11 @@ def _run(
     multicore: Optional[bool] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
-    allow_dirty: bool = False,
 ) -> str:
-    from git import InvalidGitRepositoryError, Repo
-
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
     from tango.server.workspace_server import WorkspaceServer
     from tango.workspaces import MemoryWorkspace, default_workspace
-
-    if not called_by_executor and not allow_dirty:
-        # Make sure repository is clean, if we're in one.
-        try:
-            repo = Repo(".")
-            if repo.is_dirty():
-                raise CliRunError("You have uncommitted changes! Use --allow-dirty to force.")
-        except InvalidGitRepositoryError:
-            pass
 
     # Read params.
     params = Params.from_file(experiment, params_overrides=overrides or "")
