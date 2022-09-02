@@ -610,7 +610,8 @@ class BeakerExecutor(Executor):
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = git.commit
         cli_logger.info(
-            '[blue]\N{black rightwards arrow} Using source code from [b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
+            "[blue]\N{black rightwards arrow} Using source code from "
+            '[b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
             github_account,
             github_repo,
             git_ref,
