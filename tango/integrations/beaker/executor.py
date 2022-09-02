@@ -5,7 +5,6 @@ import threading
 import time
 import uuid
 import warnings
-from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple
 
