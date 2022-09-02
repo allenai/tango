@@ -21,7 +21,7 @@ from beaker import (
     TaskResources,
     TaskSpec,
 )
-from git import Git, InvalidGitRepositoryError, Repo
+from git import Git, GitCommandError, InvalidGitRepositoryError, Repo
 
 from tango.common.exceptions import (
     CancellationError,
@@ -312,6 +312,8 @@ class BeakerExecutor(Executor):
                     "It appears you're not in a valid git repository. "
                     "The Beaker executor requires a git repository."
                 )
+            except GitCommandError:
+                pass
 
     def execute_step(self, step: Step) -> None:
         raise NotImplementedError
