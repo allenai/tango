@@ -447,7 +447,7 @@ class BeakerExecutor(Executor):
 
         # Follow the experiment and stream the logs until it completes.
         try:
-            self.beaker.experiment.wait_for(experiment, strict=True, quiet=True)
+            self.beaker.experiment.wait_for(experiment, strict=True, quiet=True, poll_interval=2.0)
         except JobFailedError:
             cli_logger.error(
                 '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
