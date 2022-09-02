@@ -242,6 +242,18 @@ class Workspace(Registrable):
         except KeyError:
             raise KeyError(f"Step result for '{step_name}' not found in workspace")
 
+    def step_result(self, step_name: str) -> Any:
+        """
+        Get the result of a step from the latest run with a step by that name.
+
+        :raises KeyError: If there is no run with the given step.
+        """
+        runs = sorted(self.registered_runs().values(), key=lambda run: run.start_date, reverse=True)
+        for run in runs:
+            if step_name in run.steps:
+                return self.step_cache[run.steps[step_name]]
+        raise KeyError(f"No step named '{step_name}' found in previous runs")
+
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
         Should return a context manager that can be used to capture the logs for a run.

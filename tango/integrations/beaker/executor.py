@@ -5,7 +5,6 @@ import threading
 import time
 import uuid
 import warnings
-from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple
 
@@ -105,6 +104,7 @@ class BeakerExecutor(Executor):
     :param install_cmd: Override the command used to install your code and its dependencies
         in each Beaker job.
         For example, you could set ``install_cmd="pip install .[dev]"``.
+    :param priority: The default task priority to assign to jobs ran on Beaker.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
     .. attention::
@@ -220,6 +220,7 @@ class BeakerExecutor(Executor):
         venv_name: Optional[str] = None,
         parallelism: Optional[int] = -1,
         install_cmd: Optional[str] = None,
+        priority: str = "normal",
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -268,6 +269,7 @@ class BeakerExecutor(Executor):
         self.clusters = clusters
         self.venv_name = venv_name
         self.install_cmd = install_cmd
+        self.priority = priority
         self._is_cancelled = threading.Event()
 
         try:
@@ -339,7 +341,10 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        log_exception(exc, logger)
+                        if isinstance(exc, ExecutorError):
+                            logger.error(exc)
+                        else:
+                            log_exception(exc, logger)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError as exc:
                     log_exception(exc, logger)
@@ -437,12 +442,11 @@ class BeakerExecutor(Executor):
         # Follow the experiment and stream the logs until it completes.
         setup_stage: bool = True
         try:
-            for line in self.beaker.experiment.follow(experiment, strict=True):
+            for line in self.beaker.experiment.follow(
+                experiment, strict=True, include_timestamps=False
+            ):
                 self._check_if_cancelled()
-                # Every log line from Beaker starts with an RFC 3339 UTC timestamp
-                # (e.g. '2021-12-07T19:30:24.637600011Z'). We don't want to print
-                # the timestamps so we split them off like this:
-                line = line[line.find(b"Z ") + 2 :]
+
                 line_str = line.decode(errors="ignore").rstrip()
                 if not line_str:
                     continue
@@ -451,8 +455,12 @@ class BeakerExecutor(Executor):
                 try:
                     log_record = log_record_from_json(line_str)
                     setup_stage = False
-                    logging.getLogger(log_record.name).handle(log_record)
-                except JSONDecodeError:
+                    if log_record.name != "tqdm":
+                        # We don't need to handle logs from Tqdm since that would result in
+                        # duplicate messages (those Tqdm lines get printed directly to the output as well).
+                        logging.getLogger(log_record.name).handle(log_record)
+                except Exception:  # noqa: E722
+                    # Line must not be a log record
                     if setup_stage:
                         if line_str.startswith("[TANGO] "):
                             logger.info(
@@ -585,6 +593,8 @@ class BeakerExecutor(Executor):
         return cluster_to_use
 
     def _build_experiment_spec(self, step_graph: StepGraph, step_name: str) -> ExperimentSpec:
+        from tango.common.logging import TANGO_LOG_LEVEL
+
         step = step_graph[step_name]
         sub_graph = step_graph.sub_graph(step_name)
         step_info = self.workspace.step_info(step)
@@ -646,7 +656,7 @@ class BeakerExecutor(Executor):
         ]
         if self.include_package is not None:
             for package in self.include_package:
-                command += ["-i", package]
+                command += ["-i", package, "--log-level", TANGO_LOG_LEVEL or "debug"]
 
         # Get cluster to use.
         cluster = self._ensure_cluster(task_resources)
@@ -670,6 +680,7 @@ class BeakerExecutor(Executor):
                 resources=task_resources,
                 datasets=self.datasets,
                 env_vars=self.env_vars,
+                priority=self.priority,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)

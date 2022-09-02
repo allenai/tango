@@ -541,8 +541,8 @@ class Step(Registrable, Generic[T]):
             return False
 
     def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
-        if isinstance(o, Step):
-            return o.result(workspace, self)
+        if isinstance(o, (Step, StepIndexer)):
+            return o.result(workspace=workspace, needed_by=self)
         elif isinstance(o, Lazy):
             return Lazy(
                 o._constructor,
@@ -623,6 +623,8 @@ class Step(Registrable, Generic[T]):
             elif isinstance(o, WithUnresolvedSteps):
                 yield from dependencies_internal(o.args)
                 yield from dependencies_internal(o.kwargs)
+            elif isinstance(o, StepIndexer):
+                yield o.step
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
             elif isinstance(o, (dict, Params)):
@@ -699,6 +701,17 @@ class Step(Registrable, Generic[T]):
     def log_failure(self, exception: BaseException) -> None:
         log_exception(exception, logger=self.logger)
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
+
+
+class StepIndexer:
+    def __init__(self, step: Step, key: Union[str, int]):
+        self.step = step
+        self.key = key
+
+    def result(
+        self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
+    ) -> Any:
+        return self.step.result(workspace=workspace, needed_by=needed_by)[self.key]
 
 
 class WithUnresolvedSteps(CustomDetHash):
@@ -794,8 +807,8 @@ class WithUnresolvedSteps(CustomDetHash):
         :return: A new object that's a copy of the original object, with all instances of :class:`.Step` replaced
                  with the results of the step.
         """
-        if isinstance(o, Step):
-            return o.result(workspace)
+        if isinstance(o, (Step, StepIndexer)):
+            return o.result(workspace=workspace)
         elif isinstance(o, Lazy):
             return Lazy(
                 o._constructor,
