@@ -440,7 +440,7 @@ class BeakerExecutor(Executor):
         )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         cli_logger.info(
-            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/][/]',
+            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
             self.beaker.experiment.url(experiment),
             step_name,
         )
