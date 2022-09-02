@@ -341,9 +341,7 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        if isinstance(exc, ExecutorError):
-                            logger.error(exc)
-                        else:
+                        if not isinstance(exc, ExecutorError):
                             log_exception(exc, logger)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError as exc:
@@ -398,8 +396,15 @@ class BeakerExecutor(Executor):
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
-    ) -> None:
-        self._execute_sub_graph_for_step(step_graph, step_name)
+    ) -> ExecutorOutput:
+        try:
+            self._execute_sub_graph_for_step(step_graph, step_name)
+        except Exception as exc:
+            if not isinstance(exc, ExecutorError):
+                log_exception(exc, logger)
+            return ExecutorOutput(successful=set(), failed={step_name}, not_run=set())
+        else:
+            return ExecutorOutput(successful={step_name}, failed=set(), not_run=set())
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
@@ -446,7 +451,7 @@ class BeakerExecutor(Executor):
         except JobFailedError:
             step.log_failure()
             raise ExecutorError(
-                f"Beaker job for step '{step_name}' failed. "
+                f'Beaker job for step "{step_name}" failed. '
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
             )
         except (KeyboardInterrupt, CancellationError):

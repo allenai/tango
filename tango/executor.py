@@ -114,13 +114,19 @@ class Executor(Registrable):
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
-    ) -> None:
+    ) -> ExecutorOutput:
         """
         Execute the sub-graph associated with a particular step in a
         :class:`~tango.step_graph.StepGraph`.
         """
         step = step_graph[step_name]
-        self.execute_step(step)
+        try:
+            self.execute_step(step)
+        except Exception as exc:
+            log_exception(exc, logger)
+            return ExecutorOutput(successful=set(), failed={step_name}, not_run=set())
+        else:
+            return ExecutorOutput(successful={step_name}, failed=set(), not_run=set())
 
 
 Executor.register("default")(Executor)
