@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
+
 ### Added
 
 - Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
