@@ -21,6 +21,7 @@ from beaker import (
     TaskResources,
     TaskSpec,
 )
+from git import InvalidGitRepositoryError, Repo
 
 from tango.common.exceptions import (
     CancellationError,
@@ -105,6 +106,8 @@ class BeakerExecutor(Executor):
         in each Beaker job.
         For example, you could set ``install_cmd="pip install .[dev]"``.
     :param priority: The default task priority to assign to jobs ran on Beaker.
+    :param allow_dirty: By default, the Beaker Executor requires that your git working directory has no uncommitted
+        changes. If you set this to ``True``, we skip this check.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
     .. attention::
@@ -221,6 +224,7 @@ class BeakerExecutor(Executor):
         parallelism: Optional[int] = -1,
         install_cmd: Optional[str] = None,
         priority: str = "normal",
+        allow_dirty: bool = False,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -270,6 +274,7 @@ class BeakerExecutor(Executor):
         self.venv_name = venv_name
         self.install_cmd = install_cmd
         self.priority = priority
+        self.allow_dirty = allow_dirty
         self._is_cancelled = threading.Event()
 
         try:
@@ -291,6 +296,17 @@ class BeakerExecutor(Executor):
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         import concurrent.futures
+
+        if not self.allow_dirty:
+            # Make sure repository is clean, if we're in one.
+            try:
+                repo = Repo(".")
+                if repo.is_dirty():
+                    raise ValueError(
+                        "You have uncommitted changes! Use the 'allow-dirty' option in your config file to force."
+                    )
+            except InvalidGitRepositoryError:
+                pass
 
         self._is_cancelled.clear()
 
