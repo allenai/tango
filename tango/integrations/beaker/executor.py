@@ -449,7 +449,11 @@ class BeakerExecutor(Executor):
         try:
             self.beaker.experiment.wait_for(experiment, strict=True, quiet=True)
         except JobFailedError:
-            step.log_failure()
+            cli_logger.error(
+                '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
+                step_name,
+                self.beaker.experiment.url(experiment),
+            )
             raise ExecutorError(
                 f'Beaker job for step "{step_name}" failed. '
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
