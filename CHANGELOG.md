@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for registered classes so that you don't always need to use the `--include-package` setting.
 - The minimum supported Python version is now 3.8.
 - Added support for PyTorch Lightning 1.7.x
+- Only the Beaker executor requires a clean working directory
 
 ### Fixed
 
