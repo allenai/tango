@@ -8,15 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Fixed
-- Fixed issue where the wandb step cache would not respect `artifact_kind`.
 
+- Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
+### Added
+
+- Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
+- Added `Workspace.step_result()` method for getting a step's result from the latest
+  run.
 
 ### Changed
+
 - The `TorchTrainStep` now enables monitoring arbitrary model outputs during training. `TorchTrainEngine.forward_train` now returns a tuple `loss, model_outputs` for each micro batch and the list of model outputs for all micro batches in a batch is passed to the `TrainCallback.log_batch` and `TrainCallback.post_batch`.
 - Tango will now automatically search Python modules in the current working directory
   for registered classes so that you don't always need to use the `--include-package` setting.
 - The minimum supported Python version is now 3.8.
 - Added support for PyTorch Lightning 1.7.x
+
+### Fixed
+
+- Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
+- Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
+  was found to be in an invalid state.
 
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
