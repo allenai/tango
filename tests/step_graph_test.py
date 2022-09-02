@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from tempfile import NamedTemporaryFile
 
 import pytest
@@ -92,3 +93,16 @@ class TestStepGraph(TangoTestCase):
             step_graph.to_file(file_ref.name)
             new_step_graph = StepGraph.from_file(file_ref.name)
             assert step_graph == new_step_graph
+
+    def test_with_step_indexer(self):
+        config = {
+            "list": {"type": "range_step", "start": 0, "end": 3},
+            "added": {
+                "type": "add_numbers",
+                "a_number": 2,
+                "b_number": {"type": "ref", "ref": "list", "key": 1},
+            },
+        }
+        step_graph = StepGraph.from_params(deepcopy(config))
+        assert [s.name for s in step_graph["added"].dependencies] == ["list"]
+        assert step_graph.to_config() == config

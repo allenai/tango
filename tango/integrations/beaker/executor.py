@@ -5,7 +5,6 @@ import threading
 import time
 import uuid
 import warnings
-from json import JSONDecodeError
 from pathlib import Path
 from typing import List, Optional, Sequence, Set, Tuple
 
@@ -476,7 +475,8 @@ class BeakerExecutor(Executor):
                         # We don't need to handle logs from Tqdm since that would result in
                         # duplicate messages (those Tqdm lines get printed directly to the output as well).
                         logging.getLogger(log_record.name).handle(log_record)
-                except JSONDecodeError:
+                except Exception:  # noqa: E722
+                    # Line must not be a log record
                     if setup_stage:
                         if line_str.startswith("[TANGO] "):
                             logger.info(

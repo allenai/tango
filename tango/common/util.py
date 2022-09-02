@@ -269,11 +269,13 @@ def local_timezone() -> Optional[tzinfo]:
 
 
 def replace_steps_with_unique_id(o: Any):
-    from tango.step import Step
+    from tango.step import Step, StepIndexer
 
     if isinstance(o, Step):
         return {"type": "ref", "ref": o.unique_id}
-    if isinstance(o, (list, tuple, set)):
+    elif isinstance(o, StepIndexer):
+        return {"type": "ref", "ref": o.step.unique_id, "key": o.key}
+    elif isinstance(o, (list, tuple, set)):
         return o.__class__(replace_steps_with_unique_id(i) for i in o)
     elif isinstance(o, dict):
         return {key: replace_steps_with_unique_id(value) for key, value in o.items()}

@@ -91,9 +91,8 @@ class WandbStepCache(LocalStepCache):
         """
         Create an artifact for the result of a step.
         """
-        artifact = wandb.Artifact(
-            self._step_artifact_name(step), type=ArtifactKind.STEP_RESULT.value
-        )
+        artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
+        artifact = wandb.Artifact(self._step_artifact_name(step), type=artifact_kind)
 
         # Add files
         if objects_dir is not None:
