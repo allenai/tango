@@ -289,14 +289,7 @@ class BeakerExecutor(Executor):
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
-    def execute_step(self, step: Step) -> None:
-        raise NotImplementedError
-
-    def execute_step_graph(
-        self, step_graph: StepGraph, run_name: Optional[str] = None
-    ) -> ExecutorOutput:
-        import concurrent.futures
-
+    def check_repo_state(self):
         if not self.allow_dirty:
             # Make sure repository is clean, if we're in one.
             try:
@@ -307,6 +300,16 @@ class BeakerExecutor(Executor):
                     )
             except InvalidGitRepositoryError:
                 pass
+
+    def execute_step(self, step: Step) -> None:
+        raise NotImplementedError
+
+    def execute_step_graph(
+        self, step_graph: StepGraph, run_name: Optional[str] = None
+    ) -> ExecutorOutput:
+        import concurrent.futures
+
+        self.check_repo_state()
 
         self._is_cancelled.clear()
 
@@ -413,6 +416,7 @@ class BeakerExecutor(Executor):
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
     ) -> ExecutorOutput:
+        self.check_repo_state()
         try:
             self._execute_sub_graph_for_step(step_graph, step_name)
         except Exception as exc:
