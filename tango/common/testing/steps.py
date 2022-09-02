@@ -3,6 +3,7 @@ import multiprocessing as mp
 import random
 import time
 from string import ascii_letters
+from typing import List
 
 import tango.common.logging as common_logging
 from tango import Step
@@ -141,6 +142,12 @@ class MultiprocessingStep(Step):
             worker.join()
 
         return True
+
+
+@Step.register("range_step")
+class RangeOutput(Step):
+    def run(self, start: int, end: int) -> List[int]:  # type: ignore
+        return list(range(start, end))
 
 
 def _worker_function(worker_id: int):

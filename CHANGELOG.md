@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
+- Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
+- Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
+  was found to be in an invalid state.
+
+### Added
+
+- You can now reference into a particular index of the result of another step in a config. For example: `{type: "ref", ref: "some_previous_step", key: 0}`.
+  The key field can be an integer if the result of the referenced step is a list or tuple, or a string if the result of the referenced step is a dictionary.
+- Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
+- Added `Workspace.step_result()` method for getting a step's result from the latest
+  run.
+
 ### Changed
 
 - The `TorchTrainStep` now enables monitoring arbitrary model outputs during training. `TorchTrainEngine.forward_train` now returns a tuple `loss, model_outputs` for each micro batch and the list of model outputs for all micro batches in a batch is passed to the `TrainCallback.log_batch` and `TrainCallback.post_batch`.
