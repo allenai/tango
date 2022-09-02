@@ -20,6 +20,7 @@ petname>=2.6,<3.0
 pytz
 jsonpickle>=2.1.0,<2.3.0
 tblib>=1.7.0,<1.8.0
+protobuf==3.19.4
 
 ##################################################
 ###### Extra dependencies for integrations #######
