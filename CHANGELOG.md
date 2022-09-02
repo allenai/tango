@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- You can now reference into a particular index of the result of another step in a config. For example: `{type: "ref", ref: "some_previous_step", key: 0}`.
+  The key field can be an integer if the result of the referenced step is a list or tuple, or a string if the result of the referenced step is a dictionary.
 - Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
 - Added `Workspace.step_result()` method for getting a step's result from the latest
   run.
