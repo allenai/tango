@@ -27,10 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
 - Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
 - Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
   was found to be in an invalid state.
-- Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
 
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
