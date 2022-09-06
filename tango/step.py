@@ -702,8 +702,9 @@ class Step(Registrable, Generic[T]):
                 self.name,
             )
 
-    def log_failure(self, exception: BaseException) -> None:
-        log_exception(exception, logger=self.logger)
+    def log_failure(self, exception: Optional[BaseException] = None) -> None:
+        if exception is not None:
+            log_exception(exception, logger=self.logger)
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
