@@ -18,8 +18,6 @@ sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
 pytz
-jsonpickle>=2.1.0,<2.3.0
-tblib>=1.7.0,<1.8.0
 
 # Protobuf is a dependency of wandb and others, but we need to pin this tightly to avoid
 # PIP dependency resolving issues.
