@@ -771,7 +771,7 @@ def _run(
             executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize step graph.
-    step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+    step_graph = StepGraph.from_params(params.pop("steps"))
     sub_graph: Optional[StepGraph] = None
     params.assert_empty("'tango run'")
 
