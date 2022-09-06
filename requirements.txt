@@ -21,7 +21,7 @@ pytz
 
 # Protobuf is a dependency of wandb and others, but we need to pin this tightly to avoid
 # PIP dependency resolving issues.
-protobuf==3.19.4
+protobuf==4.21.5
 
 ##################################################
 ###### Extra dependencies for integrations #######
