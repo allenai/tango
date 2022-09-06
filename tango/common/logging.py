@@ -202,6 +202,8 @@ class PrefixLogFilter(logging.Filter):
         self._prefix = prefix
 
     def filter(self, record):
+        if not isinstance(record.msg, str):
+            return True
         if record.name == "tango.__main__":
             from rich.markup import escape
 
