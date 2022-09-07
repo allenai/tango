@@ -20,8 +20,9 @@ from beaker import (
     JobFailedError,
     TaskResources,
     TaskSpec,
+    TaskStoppedError,
 )
-from git import InvalidGitRepositoryError, Repo
+from git import Git, GitCommandError, InvalidGitRepositoryError, Repo
 
 from tango.common.exceptions import (
     CancellationError,
@@ -29,7 +30,7 @@ from tango.common.exceptions import (
     ExecutorError,
     RunCancelled,
 )
-from tango.common.logging import cli_logger, log_exception, log_record_from_json
+from tango.common.logging import cli_logger, log_exception
 from tango.executor import Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
@@ -289,6 +290,32 @@ class BeakerExecutor(Executor):
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
+    def check_repo_state(self):
+        if not self.allow_dirty:
+            # Make sure repository is clean, if we're in one.
+            try:
+                # Check for uncommitted changes.
+                repo = Repo(".")
+                if repo.is_dirty():
+                    raise ExecutorError(
+                        "You have uncommitted changes! Commit your changes or use the 'allow_dirty' option."
+                    )
+
+                # Check for un-pushed commits.
+                remote_name = repo.remote().name
+                git = Git(".")
+                if git.log([f"{remote_name}..HEAD", "--not", "--remotes", "--oneline"]):
+                    raise ExecutorError(
+                        "You have unpushed changes! Push your changes or use the 'allow_dirty' option."
+                    )
+            except InvalidGitRepositoryError:
+                raise ExecutorError(
+                    "It appears you're not in a valid git repository. "
+                    "The Beaker executor requires a git repository."
+                )
+            except GitCommandError:
+                pass
+
     def execute_step(self, step: Step) -> None:
         raise NotImplementedError
 
@@ -297,16 +324,7 @@ class BeakerExecutor(Executor):
     ) -> ExecutorOutput:
         import concurrent.futures
 
-        if not self.allow_dirty:
-            # Make sure repository is clean, if we're in one.
-            try:
-                repo = Repo(".")
-                if repo.is_dirty():
-                    raise ValueError(
-                        "You have uncommitted changes! Use the 'allow-dirty' option in your config file to force."
-                    )
-            except InvalidGitRepositoryError:
-                pass
+        self.check_repo_state()
 
         self._is_cancelled.clear()
 
@@ -357,9 +375,7 @@ class BeakerExecutor(Executor):
                     if exc is None:
                         successful.add(step_name)
                     else:
-                        if isinstance(exc, ExecutorError):
-                            logger.error(exc)
-                        else:
+                        if not isinstance(exc, ExecutorError):
                             log_exception(exc, logger)
                         failed.add(step_name)
                 except concurrent.futures.TimeoutError as exc:
@@ -414,8 +430,16 @@ class BeakerExecutor(Executor):
 
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
-    ) -> None:
-        self._execute_sub_graph_for_step(step_graph, step_name)
+    ) -> ExecutorOutput:
+        self.check_repo_state()
+        try:
+            self._execute_sub_graph_for_step(step_graph, step_name)
+        except Exception as exc:
+            if not isinstance(exc, ExecutorError):
+                log_exception(exc, logger)
+            return ExecutorOutput(successful=set(), failed={step_name}, not_run=set())
+        else:
+            return ExecutorOutput(successful={step_name}, failed=set(), not_run=set())
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
@@ -439,6 +463,8 @@ class BeakerExecutor(Executor):
             )
             return
 
+        step.log_starting()
+
         # Initialize experiment and task spec.
         spec = self._build_experiment_spec(step_graph, step_name)
         self._check_if_cancelled()
@@ -449,46 +475,22 @@ class BeakerExecutor(Executor):
         )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         cli_logger.info(
-            'Submitted Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
+            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
             self.beaker.experiment.url(experiment),
             step_name,
-            step.unique_id,
         )
 
         # Follow the experiment and stream the logs until it completes.
-        setup_stage: bool = True
         try:
-            for line in self.beaker.experiment.follow(
-                experiment, strict=True, include_timestamps=False
-            ):
-                self._check_if_cancelled()
-
-                line_str = line.decode(errors="ignore").rstrip()
-                if not line_str:
-                    continue
-
-                # Try parsing a JSON log record from the line.
-                try:
-                    log_record = log_record_from_json(line_str)
-                    setup_stage = False
-                    if log_record.name != "tqdm":
-                        # We don't need to handle logs from Tqdm since that would result in
-                        # duplicate messages (those Tqdm lines get printed directly to the output as well).
-                        logging.getLogger(log_record.name).handle(log_record)
-                except Exception:  # noqa: E722
-                    # Line must not be a log record
-                    if setup_stage:
-                        if line_str.startswith("[TANGO] "):
-                            logger.info(
-                                "[step %s] [setup] %s", step_name, line_str[len("[TANGO] ") :]
-                            )
-                        else:
-                            logger.debug("[step %s] [setup] %s", step_name, line_str)
-                    else:
-                        logger.info("[step %s] %s", step_name, line_str)
-        except JobFailedError:
+            self.beaker.experiment.wait_for(experiment, strict=True, quiet=True, poll_interval=2.0)
+        except (JobFailedError, TaskStoppedError):
+            cli_logger.error(
+                '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
+                step_name,
+                self.beaker.experiment.url(experiment),
+            )
             raise ExecutorError(
-                f"Beaker job for step '{step_name}' failed. "
+                f'Beaker job for step "{step_name}" failed. '
                 f"You can check the logs at {self.beaker.experiment.url(experiment)}"
             )
         except (KeyboardInterrupt, CancellationError):
@@ -500,6 +502,8 @@ class BeakerExecutor(Executor):
             )
             self.beaker.experiment.stop(experiment)
             raise
+        else:
+            step.log_finished()
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
@@ -640,7 +644,14 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = git.commit
-        logger.info("Using GitHub repository '%s/%s' @ %s", github_account, github_repo, git_ref)
+        cli_logger.info(
+            "[blue]\N{black rightwards arrow} Using source code from "
+            '[b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
+            github_account,
+            github_repo,
+            git_ref,
+            step_name,
+        )
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.

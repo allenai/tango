@@ -173,7 +173,7 @@ class Step(Registrable, Generic[T]):
         step_name: Optional[str] = None,
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
-        step_config: Optional[Dict[str, Any]] = None,
+        step_config: Optional[Union[Dict[str, Any], Params]] = None,
         step_unique_id_override: Optional[str] = None,
         step_resources: Optional[StepResources] = None,
         step_metadata: Optional[Dict[str, Any]] = None,
@@ -249,7 +249,11 @@ class Step(Registrable, Generic[T]):
         self.work_dir_for_run: Optional[
             Path
         ] = None  # This is set only while the run() method runs.
-        self._config = step_config
+        if isinstance(step_config, Params):
+            self._config = step_config.as_dict(quiet=True)
+        else:
+            self._config = step_config
+        assert step_resources is None or isinstance(step_resources, StepResources)
         self.step_resources = step_resources
         self.metadata = deepcopy(self.METADATA)
         if step_metadata:
@@ -698,8 +702,9 @@ class Step(Registrable, Generic[T]):
                 self.name,
             )
 
-    def log_failure(self, exception: BaseException) -> None:
-        log_exception(exception, logger=self.logger)
+    def log_failure(self, exception: Optional[BaseException] = None) -> None:
+        if exception is not None:
+            log_exception(exception, logger=self.logger)
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 

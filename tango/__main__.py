@@ -368,7 +368,6 @@ def beaker_executor_run(
     """
     This command is only used internally by the BeakerExecutor.
     """
-    from tango.common.logging import do_json_logging
     from tango.executor import Executor
 
     if include_package:
@@ -387,7 +386,6 @@ def beaker_executor_run(
 
     # Initialize logging.
     initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
-    do_json_logging(f"step {step.name}")
 
     # Run step.
     executor.execute_step(step)
@@ -773,7 +771,7 @@ def _run(
             executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize step graph.
-    step_graph = StepGraph.from_params(params.pop("steps", keep_as_dict=True))
+    step_graph = StepGraph.from_params(params.pop("steps"))
     sub_graph: Optional[StepGraph] = None
     params.assert_empty("'tango run'")
 
@@ -810,25 +808,26 @@ def _run(
                 "Server started at [bold]%s[/bold]", server.address_for_display(run.name)
             )
 
+        executor_output: Optional[ExecutorOutput] = None
         if step_name is not None:
             assert sub_graph is not None
             step = sub_graph[step_name]
             if step.cache_results and step in workspace.step_cache:
                 step.log_cache_hit()
             else:
-                executor.execute_sub_graph_for_step(sub_graph, step_name, run_name=run.name)
-            if not called_by_executor:
-                step.log_finished(run.name)
+                executor_output = executor.execute_sub_graph_for_step(
+                    sub_graph, step_name, run_name=run.name
+                )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
-            if executor_output.failed:
-                cli_logger.error(
-                    "[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name
-                )
-            elif not called_by_executor:
-                cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
-            _display_run_results(run, step_graph, workspace, executor_output)
 
+        if executor_output is not None and executor_output.failed:
+            cli_logger.error("[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name)
+        elif not called_by_executor:
+            cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
+
+        if executor_output is not None:
+            _display_run_results(run, step_graph, workspace, executor_output)
             if executor_output.failed:
                 raise CliRunError
 

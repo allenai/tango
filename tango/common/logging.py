@@ -89,9 +89,7 @@ import threading
 from contextlib import contextmanager
 from typing import ContextManager, Generator, List, Optional
 
-import jsonpickle
 import rich
-import tblib
 from rich.console import Console
 from rich.logging import RichHandler as _RichHandler
 from rich.padding import Padding
@@ -204,6 +202,8 @@ class PrefixLogFilter(logging.Filter):
         self._prefix = prefix
 
     def filter(self, record):
+        if not isinstance(record.msg, str):
+            return True
         if record.name == "tango.__main__":
             from rich.markup import escape
 
@@ -678,38 +678,3 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)
     return insert_handlers(*handlers)
-
-
-def log_record_to_json(record: logging.LogRecord) -> str:
-    attrs = record.__dict__
-    if attrs.get("exc_info") is not None:
-        # Tracebacks cannot be pickled directly, so we need help from tblib.
-        et, ev, tb = attrs["exc_info"]
-        tb_dict = tblib.Traceback(tb).to_dict()
-        attrs["exc_info"] = (et, ev, tb_dict)
-    return jsonpickle.dumps(attrs)
-
-
-def log_record_from_json(json_record: str) -> logging.LogRecord:
-    attrs = jsonpickle.loads(json_record)
-    if attrs.get("exc_info") is not None:
-        et, ev, tb_dict = attrs["exc_info"]
-        tb = tblib.Traceback.from_dict(tb_dict)
-        attrs["exc_info"] = (et, ev, tb)
-    return logging.makeLogRecord(attrs)
-
-
-class JsonHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord):
-        print(log_record_to_json(record))
-
-
-def do_json_logging(prefix: str):
-    from tango.common.tqdm import logger as tqdm_logger
-
-    root_logger = logging.getLogger()
-    for logger in (root_logger, cli_logger, tqdm_logger):
-        logger.handlers.clear()
-        handler = JsonHandler()
-        handler.addFilter(PrefixLogFilter(prefix))
-        logger.addHandler(handler)
