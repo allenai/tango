@@ -5,7 +5,7 @@ import time
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, OrderedDict, Sequence, Set, TypeVar
 
-from tango.executor import Executor, ExecutorOutput
+from tango.executor import ExecutionMetadata, Executor, ExecutorOutput
 from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.step_info import StepState
@@ -49,8 +49,8 @@ class MulticoreExecutor(Executor):
         """
 
         _running: OrderedDict[str, subprocess.Popen] = OrderedDict({})
-        _successful: Set[str] = set()
-        _failed: Set[str] = set()
+        _successful: Dict[str, ExecutionMetadata] = {}
+        _failed: Dict[str, ExecutionMetadata] = {}
         _queued_steps: List[str] = []
 
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
@@ -157,10 +157,12 @@ class MulticoreExecutor(Executor):
                 _running.pop(step_name)
 
             for step_name in done:
-                _successful.add(step_name)
+                _successful[step_name] = ExecutionMetadata(
+                    result_location=self.workspace.step_info(step_graph[step_name]).result_location
+                )
 
             for step_name in errors:
-                _failed.add(step_name)
+                _failed[step_name] = ExecutionMetadata()
 
             return errors
 
@@ -271,7 +273,7 @@ class MulticoreExecutor(Executor):
                 step_states = _sync_step_states()
 
         assert not _running and not _queued_steps
-        _not_run = set()
+        _not_run: Dict[str, ExecutionMetadata] = {}
         for step_name, step in step_graph.items():
             if step_name in _successful or step_name in _failed:
                 # tried to execute directly
@@ -289,11 +291,13 @@ class MulticoreExecutor(Executor):
                 # called, we invoke the CLI logger here to let users know that we didn't run this
                 # step because we found it in the cache.
                 step.log_cache_hit()
-                _successful.add(step_name)
+                _successful[step_name] = ExecutionMetadata(
+                    result_location=self.workspace.step_info(step_graph[step_name]).result_location
+                )
             else:
                 # step wasn't executed because parents failed, or
                 # step is uncacheable leaf step, so we do care about what happened to it.
-                _not_run.add(step_name)
+                _not_run[step_name] = ExecutionMetadata()
 
         return ExecutorOutput(successful=_successful, failed=_failed, not_run=_not_run)
 

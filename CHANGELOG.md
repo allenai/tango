@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
 - Added `Workspace.step_result()` method for getting a step's result from the latest
   run.
+- `tango run` will now display a URL to the logs for failed steps when you use the `BeakerExecutor`.
 
 ### Changed
 

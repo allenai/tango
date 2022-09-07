@@ -104,7 +104,7 @@ from tango.version import VERSION
 from tango.workspace import Workspace
 
 if TYPE_CHECKING:
-    from tango.executor import ExecutorOutput
+    from tango.executor import ExecutionMetadata, ExecutorOutput
     from tango.workspace import Run
 
 _CLICK_GROUP_DEFAULTS = {
@@ -368,7 +368,7 @@ def beaker_executor_run(
     """
     This command is only used internally by the BeakerExecutor.
     """
-    from tango.executor import Executor
+    from tango.integrations.beaker import BeakerExecutor
 
     if include_package:
         for package_name in include_package:
@@ -382,7 +382,7 @@ def beaker_executor_run(
     # NOTE: We use the default executor here because we're just running the step
     # locally in the main process.
     workspace = Workspace.from_url(workspace_url)
-    executor = Executor(workspace=workspace, include_package=include_package)
+    executor = BeakerExecutor(workspace=workspace, clusters=[], include_package=include_package)
 
     # Initialize logging.
     initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
@@ -855,29 +855,33 @@ def _display_run_results(
     table = Table(caption_style="")
     table.add_column("Step Name", justify="left", style="cyan")
     table.add_column("Status", justify="left")
-    table.add_column("Cached Result", justify="left")
+    table.add_column("Results", justify="left")
     last_cached_step: Optional[str] = None
-    for step in sorted(step_graph.values(), key=lambda step: step.name):
-        step_info = workspace.step_info(step)
-
+    for step_name in sorted(step_graph):
+        execution_metadata: "ExecutionMetadata"
         status_str: str
-        if step.name in executor_output.failed:
+        if step_name in executor_output.failed:
             status_str = "[red]\N{ballot x} failed[/]"
-        elif step.name in executor_output.not_run:
+            execution_metadata = executor_output.failed[step_name]
+        elif step_name in executor_output.not_run:
             status_str = "[yellow]- not run[/]"
-        elif step.name in executor_output.successful:
+            execution_metadata = executor_output.not_run[step_name]
+        elif step_name in executor_output.successful:
             status_str = "[green]\N{check mark} succeeded[/]"
+            execution_metadata = executor_output.successful[step_name]
         else:
             continue
 
         result_str: str
-        if step_info.result_location is not None:
-            last_cached_step = step.name
-            result_str = f"[cyan]{step_info.result_location}[/]"
+        if execution_metadata.result_location is not None:
+            last_cached_step = step_name
+            result_str = f"[cyan]{execution_metadata.result_location}[/]"
+        elif execution_metadata.logs_location is not None:
+            result_str = f"[cyan]{execution_metadata.logs_location}[/]"
         else:
             result_str = "[grey62]N/A[/]"
 
-        table.add_row(step.name, status_str, result_str)
+        table.add_row(step_name, status_str, result_str)
 
     caption_parts: List[str] = []
     if executor_output.failed:
