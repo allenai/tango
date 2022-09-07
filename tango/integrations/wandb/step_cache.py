@@ -109,8 +109,9 @@ class WandbStepCache(LocalStepCache):
         artifact.wait()
 
     def get_step_result_artifact_url(self, step: Union[Step, StepInfo]) -> str:
+        artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         return (
-            f"{self.wandb_project_url}/artifacts/{ArtifactKind.STEP_RESULT.value}"
+            f"{self.wandb_project_url}/artifacts/{artifact_kind}"
             f"/{self._step_artifact_name(step)}/{step.unique_id}"
         )
 
