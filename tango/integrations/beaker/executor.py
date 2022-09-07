@@ -20,6 +20,7 @@ from beaker import (
     JobFailedError,
     TaskResources,
     TaskSpec,
+    TaskStoppedError,
 )
 from git import Git, GitCommandError, InvalidGitRepositoryError, Repo
 
@@ -482,7 +483,7 @@ class BeakerExecutor(Executor):
         # Follow the experiment and stream the logs until it completes.
         try:
             self.beaker.experiment.wait_for(experiment, strict=True, quiet=True, poll_interval=2.0)
-        except JobFailedError:
+        except (JobFailedError, TaskStoppedError):
             cli_logger.error(
                 '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
                 step_name,
