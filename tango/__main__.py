@@ -858,28 +858,22 @@ def _display_run_results(
     table.add_column("Results", justify="left")
     last_cached_step: Optional[str] = None
     for step_name in sorted(step_graph):
-        execution_metadata: "ExecutionMetadata"
         status_str: str
+        result_str: str = "[grey62]N/A[/]"
         if step_name in executor_output.failed:
             status_str = "[red]\N{ballot x} failed[/]"
             execution_metadata = executor_output.failed[step_name]
+            if execution_metadata.logs_location is not None:
+                result_str = f"[cyan]{execution_metadata.logs_location}[/]"
         elif step_name in executor_output.not_run:
             status_str = "[yellow]- not run[/]"
             execution_metadata = executor_output.not_run[step_name]
+            if execution_metadata.result_location is not None:
+                result_str = f"[cyan]{execution_metadata.result_location}[/]"
         elif step_name in executor_output.successful:
             status_str = "[green]\N{check mark} succeeded[/]"
-            execution_metadata = executor_output.successful[step_name]
         else:
             continue
-
-        result_str: str
-        if execution_metadata.result_location is not None:
-            last_cached_step = step_name
-            result_str = f"[cyan]{execution_metadata.result_location}[/]"
-        elif execution_metadata.logs_location is not None:
-            result_str = f"[cyan]{execution_metadata.logs_location}[/]"
-        else:
-            result_str = "[grey62]N/A[/]"
 
         table.add_row(step_name, status_str, result_str)
 
