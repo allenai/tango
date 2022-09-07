@@ -736,7 +736,7 @@ def _run(
         workspace = default_workspace
 
     executor: Executor
-    if settings.executor is not None:
+    if not called_by_executor and settings.executor is not None:
         if multicore is not None:
             logger.warning(
                 "Ignoring argument 'multicore' since executor is defined in %s",
@@ -826,7 +826,7 @@ def _run(
         elif not called_by_executor:
             cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
 
-        if executor_output is not None:
+        if not called_by_executor and executor_output is not None:
             _display_run_results(run, step_graph, workspace, executor_output)
             if executor_output.failed:
                 raise CliRunError
@@ -855,29 +855,27 @@ def _display_run_results(
     table = Table(caption_style="")
     table.add_column("Step Name", justify="left", style="cyan")
     table.add_column("Status", justify="left")
-    table.add_column("Cached Result", justify="left")
+    table.add_column("Results", justify="left")
     last_cached_step: Optional[str] = None
-    for step in sorted(step_graph.values(), key=lambda step: step.name):
-        step_info = workspace.step_info(step)
-
+    for step_name in sorted(step_graph):
         status_str: str
-        if step.name in executor_output.failed:
+        result_str: str = "[grey62]N/A[/]"
+        if step_name in executor_output.failed:
             status_str = "[red]\N{ballot x} failed[/]"
-        elif step.name in executor_output.not_run:
+            execution_metadata = executor_output.failed[step_name]
+            if execution_metadata.logs_location is not None:
+                result_str = f"[cyan]{execution_metadata.logs_location}[/]"
+        elif step_name in executor_output.not_run:
             status_str = "[yellow]- not run[/]"
-        elif step.name in executor_output.successful:
+        elif step_name in executor_output.successful:
             status_str = "[green]\N{check mark} succeeded[/]"
+            execution_metadata = executor_output.successful[step_name]
+            if execution_metadata.result_location is not None:
+                result_str = f"[cyan]{execution_metadata.result_location}[/]"
         else:
             continue
 
-        result_str: str
-        if step_info.result_location is not None:
-            last_cached_step = step.name
-            result_str = f"[cyan]{step_info.result_location}[/]"
-        else:
-            result_str = "[grey62]N/A[/]"
-
-        table.add_row(step.name, status_str, result_str)
+        table.add_row(step_name, status_str, result_str)
 
     caption_parts: List[str] = []
     if executor_output.failed:
