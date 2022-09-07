@@ -6,7 +6,7 @@ import time
 import uuid
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from beaker import (
     Beaker,
@@ -31,8 +31,7 @@ from tango.common.exceptions import (
     RunCancelled,
 )
 from tango.common.logging import cli_logger, log_exception
-from tango.executor import Executor, ExecutorOutput
-from tango.step import Step
+from tango.executor import ExecutionMetadata, Executor, ExecutorOutput
 from tango.step_graph import StepGraph
 from tango.step_info import GitMetadata
 from tango.version import VERSION
@@ -41,6 +40,12 @@ from tango.workspace import Workspace
 from .common import Constants
 
 logger = logging.getLogger(__name__)
+
+
+class StepFailedError(ExecutorError):
+    def __init__(self, msg: str, experiment_url: str):
+        super().__init__(msg)
+        self.experiment_url = experiment_url
 
 
 @Executor.register("beaker")
@@ -316,9 +321,6 @@ class BeakerExecutor(Executor):
             except GitCommandError:
                 pass
 
-    def execute_step(self, step: Step) -> None:
-        raise NotImplementedError
-
     def execute_step_graph(
         self, step_graph: StepGraph, run_name: Optional[str] = None
     ) -> ExecutorOutput:
@@ -329,9 +331,9 @@ class BeakerExecutor(Executor):
         self._is_cancelled.clear()
 
         # These will hold the final results which we'll update along the way.
-        successful: Set[str] = set()
-        failed: Set[str] = set()
-        not_run: Set[str] = set()
+        successful: Dict[str, ExecutionMetadata] = {}
+        failed: Dict[str, ExecutionMetadata] = {}
+        not_run: Dict[str, ExecutionMetadata] = {}
 
         # Keeps track of steps that are next up to run on Beaker.
         steps_to_run: Set[str] = set()
@@ -359,7 +361,7 @@ class BeakerExecutor(Executor):
                         if dependency.name not in successful and dependency.cache_results:
                             if dependency.name in failed or dependency.name in not_run:
                                 # A dependency failed or can't be run, so this step can't be run.
-                                not_run.add(step_name)
+                                not_run[step_name] = ExecutionMetadata()
                                 steps_to_run.discard(step_name)
                             break
                     else:
@@ -373,14 +375,22 @@ class BeakerExecutor(Executor):
                 try:
                     exc = future.exception()
                     if exc is None:
-                        successful.add(step_name)
+                        successful[step_name] = ExecutionMetadata(
+                            result_location=self.workspace.step_info(
+                                step_graph[step_name]
+                            ).result_location,
+                            logs_location=future.result(),
+                        )
+                    elif isinstance(exc, StepFailedError):
+                        failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
+                    elif isinstance(exc, ExecutorError):
+                        failed[step_name] = ExecutionMetadata()
                     else:
-                        if not isinstance(exc, ExecutorError):
-                            log_exception(exc, logger)
-                        failed.add(step_name)
+                        log_exception(exc, logger)
+                        failed[step_name] = ExecutionMetadata()
                 except concurrent.futures.TimeoutError as exc:
                     log_exception(exc, logger)
-                    failed.add(step_name)
+                    failed[step_name] = ExecutionMetadata()
 
             return future_done_callback
 
@@ -433,13 +443,28 @@ class BeakerExecutor(Executor):
     ) -> ExecutorOutput:
         self.check_repo_state()
         try:
-            self._execute_sub_graph_for_step(step_graph, step_name)
+            experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
         except Exception as exc:
-            if not isinstance(exc, ExecutorError):
+            if isinstance(exc, StepFailedError):
+                return ExecutorOutput(
+                    failed={step_name: ExecutionMetadata(logs_location=exc.experiment_url)}
+                )
+            elif isinstance(exc, ExecutorError):
+                return ExecutorOutput(failed={step_name: ExecutionMetadata()})
+            else:
                 log_exception(exc, logger)
-            return ExecutorOutput(successful=set(), failed={step_name}, not_run=set())
+                return ExecutorOutput(failed={step_name: ExecutionMetadata()})
         else:
-            return ExecutorOutput(successful={step_name}, failed=set(), not_run=set())
+            return ExecutorOutput(
+                successful={
+                    step_name: ExecutionMetadata(
+                        result_location=self.workspace.step_info(
+                            step_graph[step_name]
+                        ).result_location,
+                        logs_location=experiment_url,
+                    )
+                }
+            )
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
@@ -450,7 +475,7 @@ class BeakerExecutor(Executor):
         step_graph: StepGraph,
         step_name: str,
         in_thread: bool = False,
-    ) -> None:
+    ) -> Optional[str]:
         if not in_thread:
             self._is_cancelled.clear()
 
@@ -461,7 +486,7 @@ class BeakerExecutor(Executor):
                 '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
                 step_name,
             )
-            return
+            return None
 
         step.log_starting()
 
@@ -474,9 +499,10 @@ class BeakerExecutor(Executor):
             f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
         )
         experiment = self.beaker.experiment.create(experiment_name, spec)
+        experiment_url = self.beaker.experiment.url(experiment)
         cli_logger.info(
             '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
-            self.beaker.experiment.url(experiment),
+            experiment_url,
             step_name,
         )
 
@@ -487,16 +513,17 @@ class BeakerExecutor(Executor):
             cli_logger.error(
                 '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
                 step_name,
-                self.beaker.experiment.url(experiment),
+                experiment_url,
             )
-            raise ExecutorError(
+            raise StepFailedError(
                 f'Beaker job for step "{step_name}" failed. '
-                f"You can check the logs at {self.beaker.experiment.url(experiment)}"
+                f"You can check the logs at {experiment_url}",
+                experiment_url,
             )
         except (KeyboardInterrupt, CancellationError):
             cli_logger.warning(
                 'Stopping Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
-                self.beaker.experiment.url(experiment),
+                experiment_url,
                 step_name,
                 step.unique_id,
             )
@@ -504,6 +531,7 @@ class BeakerExecutor(Executor):
             raise
         else:
             step.log_finished()
+            return experiment_url
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:

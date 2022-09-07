@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
 - Added `Workspace.step_result()` method for getting a step's result from the latest
   run.
+- `tango run` will now display a URL to the logs for failed steps when you use the `BeakerExecutor`.
 
 ### Changed
 
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
 - Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
   was found to be in an invalid state.
+- Fixed bug sub-processes of the multicore executor would use the wrong executor if `executor` was defined in a `tango.yml` file.
 
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
