@@ -104,7 +104,7 @@ from tango.version import VERSION
 from tango.workspace import Workspace
 
 if TYPE_CHECKING:
-    from tango.executor import ExecutionMetadata, ExecutorOutput
+    from tango.executor import ExecutorOutput
     from tango.workspace import Run
 
 _CLICK_GROUP_DEFAULTS = {
