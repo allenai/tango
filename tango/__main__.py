@@ -736,7 +736,7 @@ def _run(
         workspace = default_workspace
 
     executor: Executor
-    if settings.executor is not None:
+    if not called_by_executor and settings.executor is not None:
         if multicore is not None:
             logger.warning(
                 "Ignoring argument 'multicore' since executor is defined in %s",
@@ -826,7 +826,7 @@ def _run(
         elif not called_by_executor:
             cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
 
-        if executor_output is not None:
+        if not called_by_executor and executor_output is not None:
             _display_run_results(run, step_graph, workspace, executor_output)
             if executor_output.failed:
                 raise CliRunError
