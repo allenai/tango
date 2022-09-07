@@ -1,7 +1,7 @@
 import logging
 import warnings
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional, Sequence, Set, TypeVar
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Dict, Optional, Sequence, TypeVar
 
 from .common.logging import log_exception
 from .common.registrable import Registrable
@@ -19,18 +19,31 @@ T = TypeVar("T")
 
 
 @dataclass
+class ExecutionMetadata:
+    logs_location: Optional[str] = None
+    """
+    Path or URL to the logs for the step's execution.
+    """
+
+    result_location: Optional[str] = None
+    """
+    Path or URL to the result of the step's execution.
+    """
+
+
+@dataclass
 class ExecutorOutput:
     """
     Describes the outcome of the execution.
     """
 
-    successful: Set[str]
+    successful: Dict[str, ExecutionMetadata] = field(default_factory=dict)
     """Steps which ran successfully or were found in the cache."""
 
-    failed: Set[str]
+    failed: Dict[str, ExecutionMetadata] = field(default_factory=dict)
     """Steps that failed."""
 
-    not_run: Set[str]
+    not_run: Dict[str, ExecutionMetadata] = field(default_factory=dict)
     """Steps that were ignored (usually because of failed dependencies)."""
 
 
@@ -85,9 +98,9 @@ class Executor(Registrable):
                 UserWarning,
             )
 
-        successful: Set[str] = set()
-        failed: Set[str] = set()
-        not_run: Set[str] = set()
+        successful: Dict[str, ExecutionMetadata] = {}
+        failed: Dict[str, ExecutionMetadata] = {}
+        not_run: Dict[str, ExecutionMetadata] = {}
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
         for step in step_graph.values():
@@ -96,13 +109,15 @@ class Executor(Registrable):
                 # executed as part of the downstream step's execution.
                 continue
             if any(dep.name in failed for dep in step.recursive_dependencies):
-                not_run.add(step.name)
+                not_run[step.name] = ExecutionMetadata()
             else:
                 try:
                     self.execute_step(step)
-                    successful.add(step.name)
+                    successful[step.name] = ExecutionMetadata(
+                        result_location=self.workspace.step_info(step).result_location
+                    )
                 except Exception as exc:
-                    failed.add(step.name)
+                    failed[step.name] = ExecutionMetadata()
                     log_exception(exc, logger)
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
@@ -124,9 +139,15 @@ class Executor(Registrable):
             self.execute_step(step)
         except Exception as exc:
             log_exception(exc, logger)
-            return ExecutorOutput(successful=set(), failed={step_name}, not_run=set())
+            return ExecutorOutput(failed={step_name: ExecutionMetadata()})
         else:
-            return ExecutorOutput(successful={step_name}, failed=set(), not_run=set())
+            return ExecutorOutput(
+                successful={
+                    step_name: ExecutionMetadata(
+                        result_location=self.workspace.step_info(step).result_location
+                    )
+                }
+            )
 
 
 Executor.register("default")(Executor)
