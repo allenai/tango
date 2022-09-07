@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import tempfile
 import threading
 import time
@@ -277,6 +278,7 @@ class BeakerExecutor(Executor):
         self.priority = priority
         self.allow_dirty = allow_dirty
         self._is_cancelled = threading.Event()
+        self._latest_clusters_used: List[str] = []
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -590,18 +592,32 @@ class BeakerExecutor(Executor):
         return dataset
 
     def _ensure_cluster(self, task_resources: TaskResources) -> str:
-        cluster_to_use: str
+        cluster_to_use: Optional[str] = None
         if not self.clusters:
             raise ConfigurationError("At least one cluster is required in 'clusters'")
         elif len(self.clusters) == 1:
             cluster_to_use = self.clusters[0]
         else:
+
+            def recency_ranking(cluster_name: str):
+                try:
+                    return self._latest_clusters_used.index(cluster_name)
+                except ValueError:
+                    return -1
+
             available_clusters = sorted(
                 self.beaker.cluster.filter_available(task_resources, *self.clusters),
-                key=lambda x: x.queued_jobs,
+                key=lambda x: (x.queued_jobs, recency_ranking(x.cluster.full_name)),
             )
+
             if available_clusters:
                 cluster_to_use = available_clusters[0].cluster.full_name
+                # Move cluster to the end of `self._latest_clusters_used`
+                try:
+                    self._latest_clusters_used.remove(cluster_to_use)
+                except ValueError:
+                    pass
+                self._latest_clusters_used.append(cluster_to_use)
                 logger.debug(f"Using cluster '{cluster_to_use}'")
             else:
                 cluster_to_use = self.clusters[0]
@@ -610,6 +626,10 @@ class BeakerExecutor(Executor):
                     "Will use '%' anyway.",
                     cluster_to_use,
                 )
+
+        if cluster_to_use is None:
+            cluster_to_use = self.clusters[0]
+
         return cluster_to_use
 
     def _build_experiment_spec(self, step_graph: StepGraph, step_name: str) -> ExperimentSpec:
