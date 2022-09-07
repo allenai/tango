@@ -867,11 +867,11 @@ def _display_run_results(
                 result_str = f"[cyan]{execution_metadata.logs_location}[/]"
         elif step_name in executor_output.not_run:
             status_str = "[yellow]- not run[/]"
-            execution_metadata = executor_output.not_run[step_name]
-            if execution_metadata.result_location is not None:
-                result_str = f"[cyan]{execution_metadata.result_location}[/]"
         elif step_name in executor_output.successful:
             status_str = "[green]\N{check mark} succeeded[/]"
+            execution_metadata = executor_output.successful[step_name]
+            if execution_metadata.result_location is not None:
+                result_str = f"[cyan]{execution_metadata.result_location}[/]"
         else:
             continue
 
