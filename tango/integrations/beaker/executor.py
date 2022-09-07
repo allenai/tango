@@ -613,10 +613,10 @@ class BeakerExecutor(Executor):
                 cluster_to_use = available_clusters[0].cluster.full_name
                 # Move cluster to the end of `self._latest_clusters_used`
                 try:
-                    self._latest_clusters_used.remove(cluster_to_use)
+                    self._latest_clusters_used.remove(cluster_to_use)  # type: ignore
                 except ValueError:
                     pass
-                self._latest_clusters_used.append(cluster_to_use)
+                self._latest_clusters_used.append(cluster_to_use)  # type: ignore
                 logger.debug(f"Using cluster '{cluster_to_use}'")
             else:
                 cluster_to_use = self.clusters[0]
