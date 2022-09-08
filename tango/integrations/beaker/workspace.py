@@ -94,9 +94,7 @@ class BeakerWorkspace(Workspace):
             if file_info.digest in self._step_info_cache:
                 step_info = self._step_info_cache.pop(file_info.digest)
             else:
-                step_info_bytes = b"".join(
-                    self.beaker.dataset.stream_file(dataset, file_info, quiet=True)
-                )
+                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
                 step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
             self._step_info_cache[file_info.digest] = step_info
             while len(self._step_info_cache) > self.STEP_INFO_CACHE_SIZE:
@@ -291,8 +289,8 @@ class BeakerWorkspace(Workspace):
         try:
             run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
             steps: Dict[str, StepInfo] = {}
-            steps_info_bytes = b"".join(
-                list(self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True))
+            steps_info_bytes = self.beaker.dataset.get_file(
+                dataset, Constants.RUN_DATA_FNAME, quiet=True
             )
             steps_info = json.loads(steps_info_bytes)
         except (DatasetNotFound, FileNotFoundError):
