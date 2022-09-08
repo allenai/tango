@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
+
 ### Added
 
 - You can now reference into a particular index of the result of another step in a config. For example: `{type: "ref", ref: "some_previous_step", key: 0}`.
