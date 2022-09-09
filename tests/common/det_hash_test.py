@@ -55,22 +55,3 @@ def test_versioned_det_hash():
     assert det_hash(c3_2) != det_hash(c2_2)
     assert det_hash(c1_2) != det_hash(c1_1)  # because the version is taken into account
     assert det_hash(c3_2) != det_hash(c3_1)  # because the version is taken into account
-
-
-def test_numpy_det_hash():
-    import numpy
-
-    a1 = numpy.array([[1, 2], [3, 4]], order="C")
-    a2 = numpy.array([[1, 2], [3, 4]], order="K")
-    assert det_hash(a1) == det_hash(a2)
-
-
-def test_torch_det_hash():
-    import numpy
-    import torch
-
-    a1 = numpy.array([[1, 2], [3, 4]], order="C")
-    a2 = numpy.array([[1, 2], [3, 4]], order="K")
-    a1 = torch.tensor(a1)
-    a2 = torch.tensor(a2)
-    assert det_hash(a1) == det_hash(a2)
