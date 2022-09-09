@@ -359,7 +359,7 @@ class WandbWorkspace(Workspace):
         matching_runs = list(
             self.wandb_client.runs(
                 f"{self.entity}/{self.project}",
-                filters={"config.job_type": RunKind.TANGO_RUN.value},
+                filters={"config.job_type": RunKind.TANGO_RUN.value},  # type: ignore
             )
         )
         for wandb_run in matching_runs:
@@ -370,7 +370,7 @@ class WandbWorkspace(Workspace):
         matching_runs = list(
             self.wandb_client.runs(
                 f"{self.entity}/{self.project}",
-                filters={"display_name": name, "config.job_type": RunKind.TANGO_RUN.value},
+                filters={"display_name": name, "config.job_type": RunKind.TANGO_RUN.value},  # type: ignore
             )
         )
         if not matching_runs:
@@ -414,7 +414,7 @@ class WandbWorkspace(Workspace):
             filters["display_name"] = step_name
         for wandb_run in self.wandb_client.runs(
             f"{self.entity}/{self.project}",
-            filters=filters,
+            filters=filters,  # type: ignore
         ):
             step_info = StepInfo.from_json_dict(wandb_run.config["step_info"])
             # Might need to fix the step info the step failed and we failed to update the config.
@@ -441,7 +441,7 @@ class WandbWorkspace(Workspace):
             filters[f"config.steps.{step_name}.unique_id"] = step_id
         for wandb_run in self.wandb_client.runs(
             f"{self.entity}/{self.project}",
-            filters=filters,
+            filters=filters,  # type: ignore
         ):
             if step_name is not None:
                 step_info_data = wandb_run.config["steps"][step_name]

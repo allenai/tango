@@ -230,7 +230,7 @@ class WandbStepCache(LocalStepCache):
     def __len__(self) -> int:
         completed_cacheable_step_runs = self.wandb_client.runs(
             f"{self.entity}/{self.project}",
-            filters={
+            filters={  # type: ignore
                 "config.job_type": "step",
                 "config.cacheable": True,
                 "state": "finished",
