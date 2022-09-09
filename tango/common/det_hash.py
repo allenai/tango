@@ -10,13 +10,13 @@ import dill
 ndarray: Optional[Type]
 try:
     from numpy import ndarray
-except ImportError:
+except ModuleNotFoundError:
     ndarray = None
 
 TorchTensor: Optional[Type]
 try:
     from torch import Tensor as TorchTensor
-except ImportError:
+except ModuleNotFoundError:
     TorchTensor = None
 
 
