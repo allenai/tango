@@ -345,6 +345,11 @@ class BeakerExecutor(Executor):
 
         uncacheable_leaf_steps = step_graph.uncacheable_leaf_steps()
 
+        # These are all of the steps that still need to be run at some point.
+        steps_left_to_run = uncacheable_leaf_steps | {
+            step for step in step_graph.values() if step.cache_results
+        }
+
         def update_steps_to_run():
             nonlocal steps_to_run, not_run
             for step_name, step in step_graph.items():
@@ -372,14 +377,16 @@ class BeakerExecutor(Executor):
 
         def make_future_done_callback(step_name: str):
             def future_done_callback(future: concurrent.futures.Future):
-                nonlocal successful, failed
+                nonlocal successful, failed, steps_left_to_run
+
+                step = step_graph[step_name]
+                steps_left_to_run.discard(step)
+
                 try:
                     exc = future.exception()
                     if exc is None:
                         successful[step_name] = ExecutionMetadata(
-                            result_location=self.workspace.step_info(
-                                step_graph[step_name]
-                            ).result_location,
+                            result_location=self.workspace.step_info(step).result_location,
                             logs_location=future.result(),
                         )
                     elif isinstance(exc, StepFailedError):
@@ -401,7 +408,7 @@ class BeakerExecutor(Executor):
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.parallelism or None
             ) as pool:
-                while steps_to_run or step_futures:
+                while steps_left_to_run:
                     # Submit steps left to run.
                     for step_name in steps_to_run:
                         future = pool.submit(
@@ -411,14 +418,19 @@ class BeakerExecutor(Executor):
                         step_futures.append(future)
                         submitted_steps.add(step_name)
 
-                    # Wait for something to happen.
-                    _, not_done = concurrent.futures.wait(
-                        step_futures, return_when=concurrent.futures.FIRST_COMPLETED
-                    )
+                    if step_futures:
+                        # Wait for something to happen.
+                        _, not_done = concurrent.futures.wait(
+                            step_futures,
+                            return_when=concurrent.futures.FIRST_COMPLETED,
+                            timeout=2.0,
+                        )
 
-                    # Update the list of running futures.
-                    step_futures.clear()
-                    step_futures = list(not_done)
+                        # Update the list of running futures.
+                        step_futures.clear()
+                        step_futures = list(not_done)
+                    else:
+                        time.sleep(2.0)
 
                     # Update the step queue.
                     update_steps_to_run()
@@ -772,4 +784,6 @@ class BeakerExecutor(Executor):
         if self.install_cmd is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
-        return ExperimentSpec(tasks=[task_spec])
+        return ExperimentSpec(
+            tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+        )
