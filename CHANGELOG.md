@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was found to be in an invalid state.
 - Improved cluster choice logic in `BeakerExecutor` to ensure greater diversity of clusters when submitting many steps at once.
 - Fixed bug where sub-processes of the multicore executor would use the wrong executor if `executor` was defined in a `tango.yml` file.
+- Deterministic hashes for numpy and torch tensors were not deterministic. Now they are.
 
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23

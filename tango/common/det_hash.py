@@ -2,10 +2,22 @@ import collections
 import hashlib
 import io
 from abc import abstractmethod
-from typing import Any, MutableMapping, Optional
+from typing import Any, MutableMapping, Optional, Type
 
 import base58
 import dill
+
+ndarray: Optional[Type]
+try:
+    from numpy import ndarray
+except ModuleNotFoundError:
+    ndarray = None
+
+TorchTensor: Optional[Type]
+try:
+    from torch import Tensor as TorchTensor
+except ModuleNotFoundError:
+    TorchTensor = None
 
 
 class CustomDetHash:
@@ -82,9 +94,12 @@ class DetHashWithVersion(CustomDetHash):
             return None  # When you return `None` from here, it falls back to just hashing the object itself.
 
 
+_PICKLE_PROTOCOL = 4
+
+
 class _DetHashPickler(dill.Pickler):
     def __init__(self, buffer: io.BytesIO):
-        super().__init__(buffer, protocol=4)
+        super().__init__(buffer, protocol=_PICKLE_PROTOCOL)
 
         # We keep track of how deeply we are nesting the pickling of an object.
         # If a class returns `self` as part of `det_hash_object()`, it causes an
@@ -111,6 +126,16 @@ class _DetHashPickler(dill.Pickler):
                 return None
         elif isinstance(obj, type):
             return obj.__module__, obj.__qualname__
+        elif ndarray is not None and isinstance(obj, ndarray):
+            # It's unclear why numpy arrays don't pickle in a consistent way.
+            return obj.dumps()
+        elif TorchTensor is not None and isinstance(obj, TorchTensor):
+            # It's unclear why torch tensors don't pickle in a consistent way.
+            import torch
+
+            with io.BytesIO() as buffer:
+                torch.save(obj, buffer, pickle_protocol=_PICKLE_PROTOCOL)
+                return buffer.getvalue()
         else:
             return None
 
