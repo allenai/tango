@@ -185,6 +185,8 @@ class BeakerWorkspace(Workspace):
             self.locks.pop(step).release()
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
+        import concurrent.futures
+
         all_steps = set(targets)
         for step in targets:
             all_steps |= step.recursive_dependencies
@@ -210,23 +212,28 @@ class BeakerWorkspace(Workspace):
             except DatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
 
-        # Collect step info and add data to run dataset.
         steps: Dict[str, StepInfo] = {}
         run_data: Dict[str, str] = {}
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
 
+        # Collect step info.
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=9, thread_name_prefix="BeakerWorkspace.register_run()-"
+        ) as executor:
+            step_info_futures = []
             for step in all_steps:
                 if step.name is None:
                     continue
+                step_info_futures.append(executor.submit(self.step_info, step))
+            for future in concurrent.futures.as_completed(step_info_futures):
+                step_info = future.result()
+                steps[step_info.step_name] = step_info
+                run_data[step_info.step_name] = step_info.unique_id
 
-                step_info = self.step_info(step)
-                steps[step.name] = step_info
-                run_data[step.name] = step.unique_id
-
+        # Create Beaker dataset for run.
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            tmp_dir = Path(tmp_dir_name)
             with open(tmp_dir / Constants.RUN_DATA_FNAME, "w") as f:
                 json.dump(run_data, f)
-
             self.beaker.dataset.sync(run_dataset, tmp_dir / Constants.RUN_DATA_FNAME, quiet=True)
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
