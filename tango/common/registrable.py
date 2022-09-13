@@ -123,9 +123,8 @@ class Registrable(FromParams):
                     ...  # construct some_params from files
                     return cls(some_params)
         """
-        from tango.step import Step
 
-        if cls == Step and name == "ref":
+        if _cls_is_step(cls) and name == "ref":
             raise ConfigurationError(
                 "You cannot use the name 'ref' to register a step. This name is reserved."
             )
@@ -135,9 +134,6 @@ class Registrable(FromParams):
         def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
             # Add to registry, raise an error if key has already been used.
             if name in registry:
-
-                def fullname(c: type) -> str:
-                    return f"{c.__module__}.{c.__qualname__}"
 
                 already_in_use_for = registry[name][0]
                 if already_in_use_for.__module__ == "__main__":
@@ -150,15 +146,15 @@ class Registrable(FromParams):
                     return already_in_use_for
                 elif exist_ok:
                     message = (
-                        f"Registering {fullname(subclass)} as a {fullname(cls)} under the name {name} overwrites "
-                        f"existing entry {fullname(already_in_use_for)}, which is fine because you said "
+                        f"Registering {_fullname(subclass)} as a {_fullname(cls)} under the name {name} overwrites "
+                        f"existing entry {_fullname(already_in_use_for)}, which is fine because you said "
                         "exist_ok=True."
                     )
                     logger.info(message)
                 else:
                     message = (
-                        f"Attempting to register {fullname(subclass)} as a {fullname(cls)} under the name "
-                        f"'{name}' failed. {fullname(already_in_use_for)} is already registered under that name."
+                        f"Attempting to register {_fullname(subclass)} as a {_fullname(cls)} under the name "
+                        f"'{name}' failed. {_fullname(already_in_use_for)} is already registered under that name."
                     )
                     raise ConfigurationError(message)
             registry[name] = (subclass, constructor)
@@ -185,12 +181,11 @@ class Registrable(FromParams):
         """
         Search for and import modules where ``name`` might be registered.
         """
-        from tango.step import Step
-
-        if could_be_class_name(name) or name in Registrable._registry[cls]:
-            return None
-
-        if cls == Step and name == "ref":
+        if (
+            could_be_class_name(name)
+            or name in Registrable._registry[cls]
+            or (_cls_is_step(cls) and name == "ref")
+        ):
             return None
 
         def try_import(module):
@@ -352,3 +347,14 @@ def _get_suggestion(name: str, available: List[str]) -> Optional[str]:
         if suggestion in available:
             return suggestion
     return None
+
+
+def _fullname(c: type) -> str:
+    return f"{c.__module__}.{c.__qualname__}"
+
+
+def _cls_is_step(c: type) -> bool:
+    # NOTE (epwalsh): importing the actual Step class here would result in a circular
+    # import, even though the import wouldn't be at the top of the module (believe me, I've tried).
+    # So instead we just check the fully qualified name of the class.
+    return _fullname(c) == "tango.step.Step"
