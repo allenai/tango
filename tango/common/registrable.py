@@ -146,9 +146,9 @@ class Registrable(FromParams):
                     return already_in_use_for
                 elif exist_ok:
                     message = (
-                        f"Registering {_fullname(subclass)} as a {_fullname(cls)} under the name {name} overwrites "
-                        f"existing entry {_fullname(already_in_use_for)}, which is fine because you said "
-                        "exist_ok=True."
+                        f"Registering {_fullname(subclass)} as a {_fullname(cls)} under the name {name} "
+                        f"overwrites existing entry {_fullname(already_in_use_for)}, which is fine because "
+                        "you said exist_ok=True."
                     )
                     logger.info(message)
                 else:
