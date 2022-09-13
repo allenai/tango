@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
+- Fixed a bug with the internal scheduling logic of the `BeakerExecutor` which
+  could delay submitting some steps in parallel.
 
 ## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
 
