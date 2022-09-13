@@ -1,6 +1,7 @@
 import json
 import random
 import tempfile
+import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
@@ -118,7 +119,16 @@ class BeakerWorkspace(Workspace):
         self.locks[step] = lock
 
         step_info = self.step_info(step)
-        if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
+        if step_info.state == StepState.RUNNING:
+            # Since we've acquired the step lock we know this step can't be running
+            # elsewhere. But the step state can still say its running if the last
+            # run exited before this workspace had a chance to update the step info.
+            warnings.warn(
+                f"Step info for step '{step.unique_id}' is invalid - says step is running "
+                "although it shouldn't be. Ignoring and overwriting step start time.",
+                UserWarning,
+            )
+        elif step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
             self.locks.pop(step).release()
             raise StepStateError(
                 step,
@@ -185,6 +195,8 @@ class BeakerWorkspace(Workspace):
             self.locks.pop(step).release()
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
+        import concurrent.futures
+
         all_steps = set(targets)
         for step in targets:
             all_steps |= step.recursive_dependencies
@@ -210,23 +222,29 @@ class BeakerWorkspace(Workspace):
             except DatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
 
-        # Collect step info and add data to run dataset.
         steps: Dict[str, StepInfo] = {}
         run_data: Dict[str, str] = {}
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
 
+        # Collect step info.
+        with concurrent.futures.ThreadPoolExecutor(
+            thread_name_prefix="BeakerWorkspace.register_run()-"
+        ) as executor:
+            step_info_futures = []
             for step in all_steps:
                 if step.name is None:
                     continue
+                step_info_futures.append(executor.submit(self.step_info, step))
+            for future in concurrent.futures.as_completed(step_info_futures):
+                step_info = future.result()
+                assert step_info.step_name is not None
+                steps[step_info.step_name] = step_info
+                run_data[step_info.step_name] = step_info.unique_id
 
-                step_info = self.step_info(step)
-                steps[step.name] = step_info
-                run_data[step.name] = step.unique_id
-
+        # Create Beaker dataset for run.
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            tmp_dir = Path(tmp_dir_name)
             with open(tmp_dir / Constants.RUN_DATA_FNAME, "w") as f:
                 json.dump(run_data, f)
-
             self.beaker.dataset.sync(run_dataset, tmp_dir / Constants.RUN_DATA_FNAME, quiet=True)
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)

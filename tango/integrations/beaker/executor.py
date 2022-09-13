@@ -18,6 +18,7 @@ from beaker import (
     EnvVar,
     ExperimentSpec,
     JobFailedError,
+    JobTimeoutError,
     TaskResources,
     TaskSpec,
     TaskStoppedError,
@@ -391,7 +392,7 @@ class BeakerExecutor(Executor):
                         )
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
-                    elif isinstance(exc, ExecutorError):
+                    elif isinstance(exc, (ExecutorError, CancellationError)):
                         failed[step_name] = ExecutionMetadata()
                     else:
                         log_exception(exc, logger)
@@ -491,6 +492,8 @@ class BeakerExecutor(Executor):
     ) -> Optional[str]:
         if not in_thread:
             self._is_cancelled.clear()
+        else:
+            self._check_if_cancelled()
 
         step = step_graph[step_name]
 
@@ -521,7 +524,16 @@ class BeakerExecutor(Executor):
 
         # Follow the experiment and stream the logs until it completes.
         try:
-            self.beaker.experiment.wait_for(experiment, strict=True, quiet=True, poll_interval=2.0)
+            while True:
+                try:
+                    self._check_if_cancelled()
+                    self.beaker.experiment.wait_for(
+                        experiment, strict=True, quiet=True, timeout=2.0
+                    )
+                    time.sleep(2.0)
+                    break
+                except JobTimeoutError:
+                    continue
         except (JobFailedError, TaskStoppedError):
             cli_logger.error(
                 '[red]\N{ballot x} Step [b]"%s"[/] failed. You can check the logs at [b]%s[/][/]',
