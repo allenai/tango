@@ -217,7 +217,7 @@ class BeakerWorkspace(Workspace):
 
         # Collect step info.
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=9, thread_name_prefix="BeakerWorkspace.register_run()-"
+            thread_name_prefix="BeakerWorkspace.register_run()-"
         ) as executor:
             step_info_futures = []
             for step in all_steps:
@@ -226,6 +226,7 @@ class BeakerWorkspace(Workspace):
                 step_info_futures.append(executor.submit(self.step_info, step))
             for future in concurrent.futures.as_completed(step_info_futures):
                 step_info = future.result()
+                assert step_info.step_name is not None
                 steps[step_info.step_name] = step_info
                 run_data[step_info.step_name] = step_info.unique_id
 
