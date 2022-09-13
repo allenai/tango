@@ -123,6 +123,13 @@ class Registrable(FromParams):
                     ...  # construct some_params from files
                     return cls(some_params)
         """
+        from tango.step import Step
+
+        if cls == Step and name == "ref":
+            raise ConfigurationError(
+                "You cannot use the name 'ref' to register a step. This name is reserved."
+            )
+
         registry = Registrable._registry[cls]
 
         def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
@@ -178,7 +185,12 @@ class Registrable(FromParams):
         """
         Search for and import modules where ``name`` might be registered.
         """
+        from tango.step import Step
+
         if could_be_class_name(name) or name in Registrable._registry[cls]:
+            return None
+
+        if cls == Step and name == "ref":
             return None
 
         def try_import(module):

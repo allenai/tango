@@ -301,7 +301,7 @@ class StepInfo(FromParams):
 
         :param json_dict: A dictionary representation, such as the one produced by :meth:`to_json_dict()`.
         """
-        return cls.from_params(
+        step_info = cls.from_params(
             {
                 k: (
                     datetime.strptime(v, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=pytz.utc)
@@ -309,8 +309,11 @@ class StepInfo(FromParams):
                     else v
                 )
                 for k, v in json_dict.items()
+                if k != "config"
             }
         )
+        step_info.config = json_dict.get("config")
+        return step_info
 
     @classmethod
     def new_from_step(cls, step: Step, **kwargs) -> "StepInfo":
