@@ -156,6 +156,7 @@ class BeakerStepLock:
                 # Dataset must have been manually deleted.
                 pass
             self._lock_dataset = None
+            atexit.unregister(self.release)
 
     def __del__(self):
         self.release()
