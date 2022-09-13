@@ -82,6 +82,39 @@ class BeakerStepLock:
             else self._current_beaker_experiment.id
         }
 
+    def _last_metadata(self) -> Optional[Dict[str, Any]]:
+        try:
+            metadata_bytes = self._beaker.dataset.get_file(
+                self._lock_dataset_name, self.METADATA_FNAME, quiet=True
+            )
+            metadata = json.loads(metadata_bytes)
+            return metadata
+        except (DatasetNotFound, FileNotFoundError):
+            return None
+
+    def _acquiring_experiment_is_done(self) -> bool:
+        last_metadata = self._last_metadata()
+        if last_metadata is None:
+            return False
+
+        last_experiment_id = last_metadata.get("beaker_experiment")
+        if last_experiment_id is None:
+            return False
+
+        try:
+            last_experiment = self._beaker.experiment.get(last_experiment_id)
+            job = self._beaker.experiment.latest_job(last_experiment)
+        except ExperimentNotFound:
+            # Experiment must have been deleted.
+            return True
+        except ValueError:
+            return False
+
+        if job is None:
+            return False
+        else:
+            return job.is_done
+
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
         if self._lock_dataset is not None:
             return
@@ -106,26 +139,9 @@ class BeakerStepLock:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.
-                try:
-                    metadata_bytes = self._beaker.dataset.get_file(
-                        self._lock_dataset_name, self.METADATA_FNAME, quiet=True
-                    )
-                    metadata = json.loads(metadata_bytes)
-                    experiment_id = metadata.get("beaker_experiment")
-                    if experiment_id is not None:
-                        try:
-                            experiment = self._beaker.experiment.get(experiment_id)
-                            job = self._beaker.experiment.latest_job(experiment)
-                            if job is not None and job.is_done:
-                                self._beaker.dataset.delete(self._lock_dataset_name)
-                                continue
-                        except ExperimentNotFound:
-                            self._beaker.dataset.delete(self._lock_dataset_name)
-                            continue
-                except DatasetNotFound:
+                if self._acquiring_experiment_is_done():
+                    self._beaker.dataset.delete(self._lock_dataset_name)
                     continue
-                except Exception:
-                    pass
 
                 if last_logged is None or last_logged - start >= log_interval:
                     logger.warning(
