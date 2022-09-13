@@ -1,6 +1,7 @@
 import json
 import random
 import tempfile
+import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
@@ -118,7 +119,16 @@ class BeakerWorkspace(Workspace):
         self.locks[step] = lock
 
         step_info = self.step_info(step)
-        if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
+        if step_info.state == StepState.RUNNING:
+            # Since we've acquired the step lock we know this step can't be running
+            # elsewhere. But the step state can still say its running if the last
+            # run exited before this workspace had a chance to update the step info.
+            warnings.warn(
+                f"Step info for step '{step.unique_id}' is invalid - says step is running "
+                "although it shouldn't be. Ignoring and overwriting step start time.",
+                UserWarning,
+            )
+        elif step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
             self.locks.pop(step).release()
             raise StepStateError(
                 step,
