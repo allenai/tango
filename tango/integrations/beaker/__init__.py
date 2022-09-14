@@ -14,8 +14,20 @@ try:
 except ModuleNotFoundError:
     raise IntegrationMissingError("beaker", dependencies={"beaker-py"})
 
-from .executor import BeakerExecutor
+from .executor import (
+    BeakerExecutor,
+    BeakerScheduler,
+    ResourceAssignment,
+    SimpleBeakerScheduler,
+)
 from .step_cache import BeakerStepCache
 from .workspace import BeakerWorkspace
 
-__all__ = ["BeakerStepCache", "BeakerWorkspace", "BeakerExecutor"]
+__all__ = [
+    "BeakerStepCache",
+    "BeakerWorkspace",
+    "BeakerExecutor",
+    "BeakerScheduler",
+    "SimpleBeakerScheduler",
+    "ResourceAssignment",
+]
