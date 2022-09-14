@@ -507,13 +507,10 @@ class BeakerExecutor(Executor):
         step.log_starting()
 
         # Initialize experiment and task spec.
-        spec = self._build_experiment_spec(step_graph, step_name)
+        experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
         self._check_if_cancelled()
 
         # Create experiment.
-        experiment_name = (
-            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
-        )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         experiment_url = self.beaker.experiment.url(experiment)
         cli_logger.info(
@@ -683,12 +680,17 @@ class BeakerExecutor(Executor):
 
         return cluster_to_use
 
-    def _build_experiment_spec(self, step_graph: StepGraph, step_name: str) -> ExperimentSpec:
+    def _build_experiment_spec(
+        self, step_graph: StepGraph, step_name: str
+    ) -> Tuple[str, ExperimentSpec]:
         from tango.common.logging import TANGO_LOG_LEVEL
 
         step = step_graph[step_name]
         sub_graph = step_graph.sub_graph(step_name)
         step_info = self.workspace.step_info(step)
+        experiment_name = (
+            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
+        )
 
         step_resources = step.resources
         task_resources = TaskResources(
@@ -786,6 +788,7 @@ class BeakerExecutor(Executor):
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)
+            .with_env_var(name="BEAKER_EXPERIMENT_NAME", value=experiment_name)
             .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
             .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
         )
@@ -796,6 +799,6 @@ class BeakerExecutor(Executor):
         if self.install_cmd is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
-        return ExperimentSpec(
+        return experiment_name, ExperimentSpec(
             tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
         )

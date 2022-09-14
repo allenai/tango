@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import tempfile
 import warnings
@@ -9,7 +10,15 @@ from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union
 from urllib.parse import ParseResult
 
 import petname
-from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, Digest
+from beaker import (
+    Beaker,
+    Dataset,
+    DatasetConflict,
+    DatasetNotFound,
+    Digest,
+    Experiment,
+    ExperimentNotFound,
+)
 
 from tango.common.exceptions import StepStateError
 from tango.common.logging import file_handler
@@ -73,6 +82,21 @@ class BeakerWorkspace(Workspace):
     @property
     def step_cache(self) -> StepCache:
         return self.cache
+
+    @property
+    def current_beaker_experiment(self) -> Optional[Experiment]:
+        """
+        When the workspace is being used within a Beaker experiment that was submitted
+        by the Beaker executor, this will return the `Experiment` object.
+        """
+        experiment_name = os.environ.get("BEAKER_EXPERIMENT_NAME")
+        if experiment_name is not None:
+            try:
+                return self.beaker.experiment.get(experiment_name)
+            except ExperimentNotFound:
+                return None
+        else:
+            return None
 
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         unique_id = (
