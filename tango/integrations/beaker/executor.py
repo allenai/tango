@@ -140,13 +140,15 @@ class SimpleBeakerScheduler(BeakerScheduler):
         )
         cluster_to_use = self._ensure_cluster(task_resources)
         if cluster_to_use is None:
-            cluster_to_use = self.clusters[0]
+            raise ResourceAssignmentError()
+
         # Move cluster to the end of `self._latest_clusters_used`
         try:
             self._latest_clusters_used.remove(cluster_to_use)  # type: ignore
         except ValueError:
             pass
         self._latest_clusters_used.append(cluster_to_use)  # type: ignore
+
         return ResourceAssignment(
             cluster=cluster_to_use, resources=task_resources, priority=self.priority
         )
