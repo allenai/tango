@@ -342,7 +342,7 @@ class BeakerExecutor(Executor):
     def __init__(
         self,
         workspace: Workspace,
-        clusters: Optional[List[str]],
+        clusters: Optional[List[str]] = None,
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
