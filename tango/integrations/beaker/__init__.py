@@ -18,6 +18,7 @@ from .executor import (
     BeakerExecutor,
     BeakerScheduler,
     ResourceAssignment,
+    ResourceAssignmentError,
     SimpleBeakerScheduler,
 )
 from .step_cache import BeakerStepCache
@@ -30,4 +31,5 @@ __all__ = [
     "BeakerScheduler",
     "SimpleBeakerScheduler",
     "ResourceAssignment",
+    "ResourceAssignmentError",
 ]

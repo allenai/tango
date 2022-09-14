@@ -53,6 +53,12 @@ class StepFailedError(ExecutorError):
         self.experiment_url = experiment_url
 
 
+class ResourceAssignmentError(ExecutorError):
+    """
+    Raised when a scheduler can't find enough free resources at the moment to run a step.
+    """
+
+
 class ResourceAssignment(NamedTuple):
     """
     Resources assigned to a step.
@@ -102,6 +108,9 @@ class BeakerScheduler(Registrable):
     def schedule(self, step: Step) -> ResourceAssignment:
         """
         Determine the :class:`ResourceAssignment` for a step.
+
+        :raises ResourceAssignmentError: If the scheduler can't find enough free
+            resources at the moment to run the step.
         """
         raise NotImplementedError()
 
@@ -427,6 +436,7 @@ class BeakerExecutor(Executor):
         self.scheduler.beaker = self.beaker
 
         self._is_cancelled = threading.Event()
+        self._logged_git_info = False
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -524,7 +534,6 @@ class BeakerExecutor(Executor):
                 nonlocal successful, failed, steps_left_to_run
 
                 step = step_graph[step_name]
-                steps_left_to_run.discard(step)
 
                 try:
                     exc = future.exception()
@@ -533,16 +542,23 @@ class BeakerExecutor(Executor):
                             result_location=self.workspace.step_info(step).result_location,
                             logs_location=future.result(),
                         )
+                        steps_left_to_run.discard(step)
+                    elif isinstance(exc, ResourceAssignmentError):
+                        submitted_steps.discard(step_name)
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
+                        steps_left_to_run.discard(step)
                     elif isinstance(exc, (ExecutorError, CancellationError)):
                         failed[step_name] = ExecutionMetadata()
+                        steps_left_to_run.discard(step)
                     else:
                         log_exception(exc, logger)
                         failed[step_name] = ExecutionMetadata()
+                        steps_left_to_run.discard(step)
                 except concurrent.futures.TimeoutError as exc:
                     log_exception(exc, logger)
                     failed[step_name] = ExecutionMetadata()
+                    steps_left_to_run.discard(step)
 
             return future_done_callback
 
@@ -647,11 +663,11 @@ class BeakerExecutor(Executor):
             )
             return None
 
-        step.log_starting()
-
         # Initialize experiment and task spec.
         experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
         self._check_if_cancelled()
+
+        step.log_starting()
 
         # Create experiment.
         experiment = self.beaker.experiment.create(experiment_name, spec)
@@ -811,14 +827,19 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = git.commit
-        cli_logger.info(
-            "[blue]\N{black rightwards arrow} Using source code from "
-            '[b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
-            github_account,
-            github_repo,
-            git_ref,
-            step_name,
-        )
+
+        if not self._logged_git_info:
+            self._logged_git_info = True
+            cli_logger.info(
+                "[blue]Using source code from "
+                "[b]https://github.com/%s/%s/commit/%s[/] to run steps on Beaker[/]",
+                github_account,
+                github_repo,
+                git_ref,
+            )
+
+        # Get cluster, resources, and priority to use.
+        cluster, task_resources, priority = self.scheduler.schedule(step)
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
@@ -852,8 +873,6 @@ class BeakerExecutor(Executor):
             for package in self.include_package:
                 command += ["-i", package, "--log-level", TANGO_LOG_LEVEL or "debug"]
 
-        # Get cluster, resources, and priority to use.
-        cluster, task_resources, priority = self.scheduler.schedule(step)
         self._check_if_cancelled()
 
         # Ignore the patch version.

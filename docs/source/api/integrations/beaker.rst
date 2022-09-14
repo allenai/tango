@@ -20,3 +20,5 @@ Reference
 
 .. autoclass:: tango.integrations.beaker.ResourceAssignment
    :members:
+
+.. autoclass:: tango.integrations.beaker.ResourceAssignmentError
