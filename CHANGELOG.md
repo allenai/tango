@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Adds a function to modify a Hugging Face transformer with IA3 adaptors
+
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
