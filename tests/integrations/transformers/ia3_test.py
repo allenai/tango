@@ -1,7 +1,7 @@
-from tango.integrations.transformers.ia3 import modify_with_ia3, GPT_2_IA3_CONFIG
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-import re
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from tango.integrations.transformers.ia3 import GPT_2_IA3_CONFIG, modify_with_ia3
 
 
 def test_ia3():
@@ -11,10 +11,7 @@ def test_ia3():
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    input_seq = tokenizer(
-        ["A tiny test on a tiny model."],
-        return_tensors="pt"
-    )
+    input_seq = tokenizer(["A tiny test on a tiny model."], return_tensors="pt")
 
     model = AutoModelForCausalLM.from_pretrained(model_name)
 
@@ -24,7 +21,7 @@ def test_ia3():
             attention_mask=input_seq.attention_mask,
             labels=input_seq.input_ids,
         )
-    
+
     model = modify_with_ia3(model, config)
 
     with torch.no_grad():
