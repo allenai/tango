@@ -273,6 +273,7 @@ jobs:
                   beaker: ${{ env.BEAKER_IMAGE }}
                 context:
                   cluster: ${{ env.BEAKER_DEFAULT_CLUSTER }}
+                  priority: preemptible
                 resources:
                   gpuCount: 2
                 envVars:
