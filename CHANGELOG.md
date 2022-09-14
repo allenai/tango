@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   could delay submitting some steps in parallel.
 - Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
 - Fixed a bug where canceling the Beaker executor might not work properly.
+- Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
 
 ## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
 
