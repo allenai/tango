@@ -1,9 +1,20 @@
+import atexit
+import json
 import logging
+import tempfile
 import time
 import urllib.parse
-from typing import Optional, Union
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
 
-from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound
+from beaker import (
+    Beaker,
+    Dataset,
+    DatasetConflict,
+    DatasetNotFound,
+    Experiment,
+    ExperimentNotFound,
+)
 
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -48,12 +59,61 @@ def dataset_url(workspace_url: str, dataset_name: str) -> str:
 
 
 class BeakerStepLock:
-    def __init__(self, beaker: Beaker, step: Union[str, StepInfo, Step], **kwargs):
+    METADATA_FNAME = "metadata.json"
+
+    def __init__(
+        self,
+        beaker: Beaker,
+        step: Union[str, StepInfo, Step],
+        current_beaker_experiment: Optional[Experiment] = None,
+    ):
         self._beaker = beaker
         self._step_id = step if isinstance(step, str) else step.unique_id
         self._lock_dataset_name = step_lock_dataset_name(step)
         self._lock_dataset: Optional[Dataset] = None
+        self._current_beaker_experiment = current_beaker_experiment
         self.lock_dataset_url = dataset_url(beaker.workspace.url(), self._lock_dataset_name)
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return {
+            "beaker_experiment": None
+            if not self._current_beaker_experiment
+            else self._current_beaker_experiment.id
+        }
+
+    def _last_metadata(self) -> Optional[Dict[str, Any]]:
+        try:
+            metadata_bytes = self._beaker.dataset.get_file(
+                self._lock_dataset_name, self.METADATA_FNAME, quiet=True
+            )
+            metadata = json.loads(metadata_bytes)
+            return metadata
+        except (DatasetNotFound, FileNotFoundError):
+            return None
+
+    def _acquiring_experiment_is_done(self) -> bool:
+        last_metadata = self._last_metadata()
+        if last_metadata is None:
+            return False
+
+        last_experiment_id = last_metadata.get("beaker_experiment")
+        if last_experiment_id is None:
+            return False
+
+        try:
+            last_experiment = self._beaker.experiment.get(last_experiment_id)
+            job = self._beaker.experiment.latest_job(last_experiment)
+        except ExperimentNotFound:
+            # Experiment must have been deleted.
+            return True
+        except ValueError:
+            return False
+
+        if job is None:
+            return False
+        else:
+            return job.is_done
 
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
         if self._lock_dataset is not None:
@@ -65,7 +125,24 @@ class BeakerStepLock:
                 self._lock_dataset = self._beaker.dataset.create(
                     self._lock_dataset_name, commit=False
                 )
+
+                atexit.register(self.release)
+
+                # Write metadata.
+                with tempfile.TemporaryDirectory() as tmp_dir_name:
+                    tmp_dir = Path(tmp_dir_name)
+                    metadata_path = tmp_dir / self.METADATA_FNAME
+                    with open(metadata_path, "w") as f:
+                        json.dump(self.metadata, f)
+                    self._beaker.dataset.sync(self._lock_dataset, metadata_path, quiet=True)
             except DatasetConflict:
+                # Check if existing lock was created from a Beaker experiment.
+                # If it was, and the experiment is no-longer running, we can safely
+                # delete it.
+                if self._acquiring_experiment_is_done():
+                    self._beaker.dataset.delete(self._lock_dataset_name)
+                    continue
+
                 if last_logged is None or last_logged - start >= log_interval:
                     logger.warning(
                         "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
@@ -95,6 +172,7 @@ class BeakerStepLock:
                 # Dataset must have been manually deleted.
                 pass
             self._lock_dataset = None
+            atexit.unregister(self.release)
 
     def __del__(self):
         self.release()

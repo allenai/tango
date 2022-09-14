@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
+- Made the `BeakerStepLock` more robust, and as a result `BeakerWorkspace` is more
+  robust and should require less manual intervention for locks in a bad state.
 - Fixed a bug with the internal scheduling logic of the `BeakerExecutor` which
   could delay submitting some steps in parallel.
 - Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
