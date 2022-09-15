@@ -11,6 +11,27 @@ from transformers.modeling_utils import Conv1D
 
 @dataclass
 class WithIA3Config:
+    """
+    A class for configuring which layers to modify with IA3 adaptors.
+
+
+    :param ia3_param_names:
+        A string used as the name for all ia3 parameters
+    :param attention_modules:
+        A regex that matches all attention modules which are parents to the keys and value layers to modify.
+    :param mlp_modules:
+        A regex that matches all modules that are parents to the feed forward layer to modify.
+    :param mlp_layers:
+        A regex that matches the feed forward layer in the modules specified by `mlp_modles`.
+    :param fused_qkv_layers:
+        A regex that matches the combined query, key, and value layer in the modules specified
+        by `attention_modules`.
+    :param k_layers:
+        A regex that matches the key layer in the modules specified by `attention_modules`.
+    :param v_layers:
+        A regex that matches the value layer in the modules specified by `attention_modules`.
+    """
+
     ia3_param_names: str
     attention_modules: str
     mlp_modules: str
@@ -78,30 +99,19 @@ MODEL_NAME_TO_CONFIG = {
 }
 
 
-class LinearWithIA3(nn.Module):
-    def __init__(self, linear_layer, ia3_param_names, unfuse_size: int = None):
+class WithIA3(nn.Module):
+    def __init__(self, ia3_param_names: str, unfuse_size: int = None):
         super().__init__()
-
-        self.in_features = linear_layer.in_features
-        self.out_features = linear_layer.out_features
-        self.unfuse_size = unfuse_size
-
-        self.weight = linear_layer.weight
-        self.bias = linear_layer.bias
-
         self.ia3_param_names = ia3_param_names
 
         # if (q,k,v) are stacked into one layer
         if unfuse_size is not None:
-            assert linear_layer.out_features == unfuse_size * 3
             # IA3 only operates on k and v (not q), thus the "* 2"
             setattr(self, ia3_param_names, nn.Parameter(torch.ones(unfuse_size * 2, 1)))
         else:
-            setattr(self, ia3_param_names, nn.Parameter(torch.ones(self.out_features, 1)))
+            setattr(self, ia3_param_names, nn.Parameter(torch.ones(self.out_features, 1))) # type: ignore
 
-    def forward(self, x):
-        x = F.linear(x, self.weight, self.bias)
-
+    def scale_by_ia3(self, x):
         ia3_params = getattr(self, self.ia3_param_names)
 
         if ia3_params.requires_grad:
@@ -117,46 +127,69 @@ class LinearWithIA3(nn.Module):
         return x
 
 
-class Conv1DWithIA3(nn.Module):
-    def __init__(self, conv1d_layer, ia3_param_names, unfuse_size: int = None):
-        super().__init__()
+class LinearWithIA3(WithIA3):
+    def __init__(self, linear_layer: nn.Linear, ia3_param_names: str, unfuse_size: int = None):
+        """
+        A replacement for :class:`~torch.nn.Linear` modified with an IA3 adaptor
+
+
+        :param linear_layer:
+            A :class:`~torch.nn.Linear` layer to adapt.
+        :param ia3_param_names:
+            A `str` to use as the name of ia3 parameters.
+        :param unfuse_size:
+            An `int` indicating hidden dimension of the query, key, and value vectors.
+            To be used only when the layer to modify is a fused projection of query,
+            key, and value vectors in an attention mechanism.
+        """
+        assert unfuse_size is None or (linear_layer.out_features == unfuse_size * 3)
+        self.in_features = linear_layer.in_features
+        self.out_features = linear_layer.out_features
+        self.unfuse_size = unfuse_size
+
+        super().__init__(ia3_param_names, unfuse_size)
+
+        self.weight = linear_layer.weight
+        self.bias = linear_layer.bias
+
+    def forward(self, x):
+        x = F.linear(x, self.weight, self.bias)
+        return self.scale_by_ia3(x)
+
+
+class Conv1DWithIA3(WithIA3):
+    def __init__(self, conv1d_layer: Conv1D, ia3_param_names: str, unfuse_size: int = None):
+        """
+        A replacement for :class:`~transformers.modeling_utils.Conv1D` modified with an IA3 adaptor
+
+
+        :param conv1d_layer:
+            A :class:`~transformers.modeling_utils.Conv1D` layer to adapt.
+        :param ia3_param_names:
+            A `str` to use as the name of ia3 parameters.
+        :param unfuse_size:
+            An `int` indicating hidden dimension of the query, key, and value vectors.
+            To be used only when the layer to modify is a fused projection of query,
+            key, and value vectors in an attention mechanism.
+        """
+        assert unfuse_size is None or (conv1d_layer.nf == unfuse_size * 3)
 
         # nf: number of output features; nx: number of input features
-        self.nf = conv1d_layer.nf
+        self.out_features = conv1d_layer.nf
         self.unfuse_size = unfuse_size
+
+        super().__init__(ia3_param_names, unfuse_size)
 
         self.weight = conv1d_layer.weight
         self.bias = conv1d_layer.bias
 
-        self.ia3_param_names = ia3_param_names
-
-        # in c_att parameters, (q,k,v) linear layers are stacked into one Conv1D layer
-        if unfuse_size is not None:
-            assert conv1d_layer.nf == unfuse_size * 3
-            # but IA3 only operates on k and v (not q), thus the "* 2"
-            setattr(self, ia3_param_names, nn.Parameter(torch.ones(unfuse_size * 2, 1)))
-        else:
-            setattr(self, ia3_param_names, nn.Parameter(torch.ones(self.nf, 1)))
-
     def forward(self, x):
         # copied and pasted from the original Conv1D implemnetation
-        size_out = x.size()[:-1] + (self.nf,)
+        size_out = x.size()[:-1] + (self.out_features,)
         x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
         x = x.view(size_out)  # ... * self.nf
 
-        ia3_params = getattr(self, self.ia3_param_names)
-
-        if ia3_params.requires_grad:
-            if self.unfuse_size is not None:
-                # non_q means k and v
-                q, non_q = x[:, :, : self.unfuse_size], x[:, :, self.unfuse_size :]
-                ia3_params = getattr(self, self.ia3_param_names)
-                non_q = non_q * ia3_params.flatten()
-                x = torch.cat([q, non_q], dim=2)
-            else:
-                x = x * ia3_params.flatten()
-
-        return x
+        return self.scale_by_ia3(x)
 
 
 def modify_with_ia3(
