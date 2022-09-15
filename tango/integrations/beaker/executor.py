@@ -550,15 +550,7 @@ class BeakerExecutor(Executor):
                         steps_left_to_run.discard(step)
                     elif isinstance(exc, ResourceAssignmentError):
                         submitted_steps.discard(step_name)
-                        if self._last_resource_assignment_warning is None or (
-                            time.monotonic() - self._last_resource_assignment_warning
-                            > self.RESOURCE_ASSIGNMENT_WARNING_INTERVAL
-                        ):
-                            self._last_resource_assignment_warning = time.monotonic()
-                            logger.warning(
-                                "Some steps can't be run yet - waiting on more Beaker resources "
-                                "to become available..."
-                            )
+                        self._emit_resource_assignment_warning()
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
                         steps_left_to_run.discard(step)
@@ -625,33 +617,46 @@ class BeakerExecutor(Executor):
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
+    def _emit_resource_assignment_warning(self):
+        if self._last_resource_assignment_warning is None or (
+            time.monotonic() - self._last_resource_assignment_warning
+            > self.RESOURCE_ASSIGNMENT_WARNING_INTERVAL
+        ):
+            self._last_resource_assignment_warning = time.monotonic()
+            logger.warning(
+                "Some steps can't be run yet - waiting on more Beaker resources "
+                "to become available..."
+            )
+
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         self.check_repo_state()
-        try:
-            experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
-        except Exception as exc:
-            if isinstance(exc, StepFailedError):
+        while True:
+            try:
+                experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
+                return ExecutorOutput(
+                    successful={
+                        step_name: ExecutionMetadata(
+                            result_location=self.workspace.step_info(
+                                step_graph[step_name]
+                            ).result_location,
+                            logs_location=experiment_url,
+                        )
+                    }
+                )
+            except ResourceAssignmentError:
+                self._emit_resource_assignment_warning()
+                time.sleep(3.0)
+            except StepFailedError as exc:
                 return ExecutorOutput(
                     failed={step_name: ExecutionMetadata(logs_location=exc.experiment_url)}
                 )
-            elif isinstance(exc, ExecutorError):
+            except ExecutorError:
                 return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-            else:
+            except Exception as exc:
                 log_exception(exc, logger)
                 return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-        else:
-            return ExecutorOutput(
-                successful={
-                    step_name: ExecutionMetadata(
-                        result_location=self.workspace.step_info(
-                            step_graph[step_name]
-                        ).result_location,
-                        logs_location=experiment_url,
-                    )
-                }
-            )
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
