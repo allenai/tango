@@ -5,8 +5,9 @@ import threading
 import time
 import uuid
 import warnings
+from abc import abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from beaker import (
     Beaker,
@@ -19,6 +20,7 @@ from beaker import (
     ExperimentSpec,
     JobFailedError,
     JobTimeoutError,
+    Priority,
     TaskResources,
     TaskSpec,
     TaskStoppedError,
@@ -32,7 +34,9 @@ from tango.common.exceptions import (
     RunCancelled,
 )
 from tango.common.logging import cli_logger, log_exception
+from tango.common.registrable import Registrable
 from tango.executor import ExecutionMetadata, Executor, ExecutorOutput
+from tango.step import Step
 from tango.step_graph import StepGraph
 from tango.step_info import GitMetadata
 from tango.version import VERSION
@@ -47,6 +51,131 @@ class StepFailedError(ExecutorError):
     def __init__(self, msg: str, experiment_url: str):
         super().__init__(msg)
         self.experiment_url = experiment_url
+
+
+class ResourceAssignmentError(ExecutorError):
+    """
+    Raised when a scheduler can't find enough free resources at the moment to run a step.
+    """
+
+
+class ResourceAssignment(NamedTuple):
+    """
+    Resources assigned to a step.
+    """
+
+    cluster: str
+    """
+    The cluster to use to execute the step.
+    """
+
+    resources: TaskResources
+    """
+    The compute resources on the cluster to allocate for execution of the step.
+    """
+
+    priority: Union[str, Priority]
+    """
+    The priority to execute the step with.
+    """
+
+
+class BeakerScheduler(Registrable):
+    """
+    A :class:`BeakerScheduler` is responsible for determining which resources and priority to
+    assign to the execution of a step.
+    """
+
+    default_implementation = "simple"
+    """
+    The default implementation is :class:`SimpleBeakerScheduler`.
+    """
+
+    def __init__(self):
+        self._beaker: Optional[Beaker] = None
+
+    @property
+    def beaker(self) -> Beaker:
+        if self._beaker is None:
+            raise ValueError("'beaker' client has not be assigned to scheduler yet!")
+        return self._beaker
+
+    @beaker.setter
+    def beaker(self, beaker: Beaker) -> None:
+        self._beaker = beaker
+
+    @abstractmethod
+    def schedule(self, step: Step) -> ResourceAssignment:
+        """
+        Determine the :class:`ResourceAssignment` for a step.
+
+        :raises ResourceAssignmentError: If the scheduler can't find enough free
+            resources at the moment to run the step.
+        """
+        raise NotImplementedError()
+
+
+@BeakerScheduler.register("simple")
+class SimpleBeakerScheduler(BeakerScheduler):
+    """
+    The :class:`SimpleBeakerScheduler` just searches the given clusters for one
+    with enough resources to match what's specified by the step's required resources.
+    """
+
+    def __init__(self, clusters: List[str], priority: Union[str, Priority]):
+        super().__init__()
+        self.clusters = clusters
+        self.priority = priority
+        self._latest_clusters_used: List[str] = []
+        if not self.clusters:
+            raise ConfigurationError("At least one cluster is required in 'clusters'")
+
+    def schedule(self, step: Step) -> ResourceAssignment:
+        step_resources = step.resources
+        task_resources = TaskResources(
+            cpu_count=step_resources.cpu_count,
+            gpu_count=step_resources.gpu_count,
+            memory=step_resources.memory,
+            shared_memory=step_resources.shared_memory,
+        )
+        cluster_to_use = self._ensure_cluster(task_resources)
+        if cluster_to_use is None:
+            raise ResourceAssignmentError()
+
+        # Move cluster to the end of `self._latest_clusters_used`
+        try:
+            self._latest_clusters_used.remove(cluster_to_use)  # type: ignore
+        except ValueError:
+            pass
+        self._latest_clusters_used.append(cluster_to_use)  # type: ignore
+
+        return ResourceAssignment(
+            cluster=cluster_to_use, resources=task_resources, priority=self.priority
+        )
+
+    def _ensure_cluster(self, task_resources: TaskResources) -> Optional[str]:
+        cluster_to_use: Optional[str] = None
+        if not self.clusters:
+            raise ConfigurationError("At least one cluster is required in 'clusters'")
+        elif len(self.clusters) == 1:
+            cluster_to_use = self.clusters[0]
+        else:
+
+            def recency_ranking(cluster_name: str):
+                try:
+                    return self._latest_clusters_used.index(cluster_name)
+                except ValueError:
+                    return -1
+
+            available_clusters = sorted(
+                self.beaker.cluster.filter_available(task_resources, *self.clusters),
+                key=lambda x: (x.queued_jobs, recency_ranking(x.cluster.full_name)),
+            )
+
+            if available_clusters:
+                cluster_to_use = available_clusters[0].cluster.full_name
+
+        return cluster_to_use
 
 
 @Executor.register("beaker")
@@ -88,6 +217,7 @@ class BeakerExecutor(Executor):
 
     :param workspace: The :class:`~tango.workspace.Workspace` to use.
     :param clusters: A list of Beaker clusters that the executor may use to run steps.
+        If ``scheduler`` is specified, this argument is ignored.
     :param include_package: A list of Python packages to import before running steps.
     :param beaker_workspace: The name or ID of the Beaker workspace to use.
     :param github_token: You can use this parameter to set a GitHub personal access token instead of using
@@ -113,6 +243,10 @@ class BeakerExecutor(Executor):
         in each Beaker job.
         For example, you could set ``install_cmd="pip install .[dev]"``.
     :param priority: The default task priority to assign to jobs ran on Beaker.
+        If ``scheduler`` is specified, this argument is ignored.
+    :param scheduler: A :class:`BeakerScheduler` to use for assigning resources to steps.
+        If not specified the :class:`SimpleBeakerScheduler` is used with the given
+        ``clusters`` and ``priority``.
     :param allow_dirty: By default, the Beaker Executor requires that your git working directory has no uncommitted
         changes. If you set this to ``True``, we skip this check.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
@@ -219,7 +353,7 @@ class BeakerExecutor(Executor):
     def __init__(
         self,
         workspace: Workspace,
-        clusters: List[str],
+        clusters: Optional[List[str]] = None,
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
@@ -230,8 +364,9 @@ class BeakerExecutor(Executor):
         venv_name: Optional[str] = None,
         parallelism: Optional[int] = -1,
         install_cmd: Optional[str] = None,
-        priority: str = "normal",
+        priority: Optional[Union[str, Priority]] = None,
         allow_dirty: bool = False,
+        scheduler: Optional[BeakerScheduler] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -272,18 +407,38 @@ class BeakerExecutor(Executor):
                 )
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
+
         self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets
         self.env_vars = env_vars
-        self.clusters = clusters
         self.venv_name = venv_name
         self.install_cmd = install_cmd
-        self.priority = priority
         self.allow_dirty = allow_dirty
+        self.scheduler: BeakerScheduler
+        if scheduler is None:
+            if clusters is None:
+                raise ConfigurationError(
+                    "Either 'scheduler' or 'clusters' argument to BeakerExecutor is required"
+                )
+            self.scheduler = SimpleBeakerScheduler(clusters, priority=priority or Priority.normal)
+        else:
+            if clusters is not None:
+                warnings.warn(
+                    "The 'clusters' parameter will be ignored since you specified a 'scheduler'",
+                    UserWarning,
+                )
+            if priority is not None:
+                warnings.warn(
+                    "The 'priority' parameter will be ignored since you specified a 'scheduler'",
+                    UserWarning,
+                )
+            self.scheduler = scheduler
+        self.scheduler.beaker = self.beaker
+
         self._is_cancelled = threading.Event()
-        self._latest_clusters_used: List[str] = []
+        self._logged_git_info = False
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -381,7 +536,6 @@ class BeakerExecutor(Executor):
                 nonlocal successful, failed, steps_left_to_run
 
                 step = step_graph[step_name]
-                steps_left_to_run.discard(step)
 
                 try:
                     exc = future.exception()
@@ -390,16 +544,23 @@ class BeakerExecutor(Executor):
                             result_location=self.workspace.step_info(step).result_location,
                             logs_location=future.result(),
                         )
+                        steps_left_to_run.discard(step)
+                    elif isinstance(exc, ResourceAssignmentError):
+                        submitted_steps.discard(step_name)
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
+                        steps_left_to_run.discard(step)
                     elif isinstance(exc, (ExecutorError, CancellationError)):
                         failed[step_name] = ExecutionMetadata()
+                        steps_left_to_run.discard(step)
                     else:
                         log_exception(exc, logger)
                         failed[step_name] = ExecutionMetadata()
+                        steps_left_to_run.discard(step)
                 except concurrent.futures.TimeoutError as exc:
                     log_exception(exc, logger)
                     failed[step_name] = ExecutionMetadata()
+                    steps_left_to_run.discard(step)
 
             return future_done_callback
 
@@ -504,16 +665,13 @@ class BeakerExecutor(Executor):
             )
             return None
 
-        step.log_starting()
-
         # Initialize experiment and task spec.
-        spec = self._build_experiment_spec(step_graph, step_name)
+        experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
         self._check_if_cancelled()
 
+        step.log_starting()
+
         # Create experiment.
-        experiment_name = (
-            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
-        )
         experiment = self.beaker.experiment.create(experiment_name, spec)
         experiment_url = self.beaker.experiment.url(experiment)
         cli_logger.info(
@@ -642,60 +800,16 @@ class BeakerExecutor(Executor):
             dataset = self.beaker.dataset.get(step_graph_dataset_name)
         return dataset
 
-    def _ensure_cluster(self, task_resources: TaskResources) -> str:
-        cluster_to_use: Optional[str] = None
-        if not self.clusters:
-            raise ConfigurationError("At least one cluster is required in 'clusters'")
-        elif len(self.clusters) == 1:
-            cluster_to_use = self.clusters[0]
-        else:
-
-            def recency_ranking(cluster_name: str):
-                try:
-                    return self._latest_clusters_used.index(cluster_name)
-                except ValueError:
-                    return -1
-
-            available_clusters = sorted(
-                self.beaker.cluster.filter_available(task_resources, *self.clusters),
-                key=lambda x: (x.queued_jobs, recency_ranking(x.cluster.full_name)),
-            )
-
-            if available_clusters:
-                cluster_to_use = available_clusters[0].cluster.full_name
-                # Move cluster to the end of `self._latest_clusters_used`
-                try:
-                    self._latest_clusters_used.remove(cluster_to_use)  # type: ignore
-                except ValueError:
-                    pass
-                self._latest_clusters_used.append(cluster_to_use)  # type: ignore
-                logger.debug(f"Using cluster '{cluster_to_use}'")
-            else:
-                cluster_to_use = self.clusters[0]
-                logger.debug(
-                    "No clusters currently have enough free resources available. "
-                    "Will use '%' anyway.",
-                    cluster_to_use,
-                )
-
-        if cluster_to_use is None:
-            cluster_to_use = self.clusters[0]
-
-        return cluster_to_use
-
-    def _build_experiment_spec(self, step_graph: StepGraph, step_name: str) -> ExperimentSpec:
+    def _build_experiment_spec(
+        self, step_graph: StepGraph, step_name: str
+    ) -> Tuple[str, ExperimentSpec]:
         from tango.common.logging import TANGO_LOG_LEVEL
 
         step = step_graph[step_name]
         sub_graph = step_graph.sub_graph(step_name)
         step_info = self.workspace.step_info(step)
-
-        step_resources = step.resources
-        task_resources = TaskResources(
-            cpu_count=step_resources.cpu_count,
-            gpu_count=step_resources.gpu_count,
-            memory=step_resources.memory,
-            shared_memory=step_resources.shared_memory,
+        experiment_name = (
+            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
         )
 
         # Ensure we're working in a GitHub repository.
@@ -715,14 +829,19 @@ class BeakerExecutor(Executor):
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
         git_ref = git.commit
-        cli_logger.info(
-            "[blue]\N{black rightwards arrow} Using source code from "
-            '[b]https://github.com/%s/%s/commit/%s[/] for step [b]"%s"[/][/]',
-            github_account,
-            github_repo,
-            git_ref,
-            step_name,
-        )
+
+        if not self._logged_git_info:
+            self._logged_git_info = True
+            cli_logger.info(
+                "[blue]Using source code from "
+                "[b]https://github.com/%s/%s/commit/%s[/] to run steps on Beaker[/]",
+                github_account,
+                github_repo,
+                git_ref,
+            )
+
+        # Get cluster, resources, and priority to use.
+        cluster, task_resources, priority = self.scheduler.schedule(step)
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
@@ -756,8 +875,6 @@ class BeakerExecutor(Executor):
             for package in self.include_package:
                 command += ["-i", package, "--log-level", TANGO_LOG_LEVEL or "debug"]
 
-        # Get cluster to use.
-        cluster = self._ensure_cluster(task_resources)
         self._check_if_cancelled()
 
         # Ignore the patch version.
@@ -778,7 +895,7 @@ class BeakerExecutor(Executor):
                 resources=task_resources,
                 datasets=self.datasets,
                 env_vars=self.env_vars,
-                priority=self.priority,
+                priority=priority,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
@@ -786,6 +903,7 @@ class BeakerExecutor(Executor):
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)
+            .with_env_var(name="BEAKER_EXPERIMENT_NAME", value=experiment_name)
             .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
             .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
         )
@@ -796,6 +914,6 @@ class BeakerExecutor(Executor):
         if self.install_cmd is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
-        return ExperimentSpec(
+        return experiment_name, ExperimentSpec(
             tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
         )
