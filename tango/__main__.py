@@ -261,7 +261,7 @@ def cleanup(*args, **kwargs):
     "--server/--no-server",
     type=bool,
     help="Start a server that visualizes the current run.",
-    default=True,
+    default=False,
 )
 @click.option(
     "-j",
