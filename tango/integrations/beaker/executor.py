@@ -544,7 +544,9 @@ class BeakerExecutor(Executor):
                     exc = future.exception()
                     if exc is None:
                         successful[step_name] = ExecutionMetadata(
-                            result_location=self.workspace.step_info(step).result_location,
+                            result_location=None
+                            if not step.cache_results
+                            else self.workspace.step_info(step).result_location,
                             logs_location=future.result(),
                         )
                         steps_left_to_run.discard(step)
@@ -634,13 +636,14 @@ class BeakerExecutor(Executor):
         self.check_repo_state()
         while True:
             try:
+                step = step_graph[step_name]
                 experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
                 return ExecutorOutput(
                     successful={
                         step_name: ExecutionMetadata(
-                            result_location=self.workspace.step_info(
-                                step_graph[step_name]
-                            ).result_location,
+                            result_location=None
+                            if not step.cache_results
+                            else self.workspace.step_info(step).result_location,
                             logs_location=experiment_url,
                         )
                     }

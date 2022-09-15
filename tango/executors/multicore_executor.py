@@ -157,8 +157,11 @@ class MulticoreExecutor(Executor):
                 _running.pop(step_name)
 
             for step_name in done:
+                step = step_graph[step_name]
                 _successful[step_name] = ExecutionMetadata(
-                    result_location=self.workspace.step_info(step_graph[step_name]).result_location
+                    result_location=None
+                    if not step.cache_results
+                    else self.workspace.step_info(step).result_location
                 )
 
             for step_name in errors:
