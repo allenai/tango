@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
   Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
 
+### Changed
+
+- In the `tango run` command, `--no-server` is now the default. Use `--server` to start the server.
+
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
