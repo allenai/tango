@@ -350,6 +350,8 @@ class BeakerExecutor(Executor):
 
     DEFAULT_NFS_DRIVE = "/net/nfs.cirrascale"
 
+    RESOURCE_ASSIGNMENT_WARNING_INTERVAL = 60 * 5
+
     def __init__(
         self,
         workspace: Workspace,
@@ -439,6 +441,7 @@ class BeakerExecutor(Executor):
 
         self._is_cancelled = threading.Event()
         self._logged_git_info = False
+        self._last_resource_assignment_warning: Optional[float] = None
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -547,6 +550,15 @@ class BeakerExecutor(Executor):
                         steps_left_to_run.discard(step)
                     elif isinstance(exc, ResourceAssignmentError):
                         submitted_steps.discard(step_name)
+                        if self._last_resource_assignment_warning is None or (
+                            time.monotonic() - self._last_resource_assignment_warning
+                            > self.RESOURCE_ASSIGNMENT_WARNING_INTERVAL
+                        ):
+                            self._last_resource_assignment_warning = time.monotonic()
+                            logger.warning(
+                                "Some steps can't be run yet - waiting on more Beaker resources "
+                                "to become available..."
+                            )
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
                         steps_left_to_run.discard(step)
