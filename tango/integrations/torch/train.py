@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import shutil
 from itertools import islice
@@ -412,7 +413,9 @@ def _train(
             steps_per_epoch = len(train_dataloader)
         except TypeError:
             raise ConfigurationError("You must set 'train_steps' for streaming/iterable datasets")
-        config.train_steps = steps_per_epoch * (config.train_epochs or 1)
+        config.train_steps = math.ceil(
+            steps_per_epoch * (config.train_epochs or 1) / config.grad_accum
+        )
 
     assert config.train_steps is not None  # for mypy
 

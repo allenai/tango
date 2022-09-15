@@ -10,14 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Adds a function to modify a Hugging Face transformer with IA3 adaptors
+- Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
+  Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
 
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
+- Made the `BeakerStepLock` more robust, and as a result `BeakerWorkspace` is more
+  robust and should require less manual intervention for locks in a bad state.
 - Fixed a bug with the internal scheduling logic of the `BeakerExecutor` which
   could delay submitting some steps in parallel.
 - Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
 - Fixed a bug where canceling the Beaker executor might not work properly.
+- Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
 
 ## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
 
