@@ -109,7 +109,7 @@ class WithIA3(nn.Module):
             # IA3 only operates on k and v (not q), thus the "* 2"
             setattr(self, ia3_param_names, nn.Parameter(torch.ones(unfuse_size * 2, 1)))
         else:
-            setattr(self, ia3_param_names, nn.Parameter(torch.ones(self.out_features, 1))) # type: ignore
+            setattr(self, ia3_param_names, nn.Parameter(torch.ones(self.out_features, 1)))  # type: ignore
 
     def scale_by_ia3(self, x):
         ia3_params = getattr(self, self.ia3_param_names)
