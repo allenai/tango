@@ -144,7 +144,9 @@ class Executor(Registrable):
             return ExecutorOutput(
                 successful={
                     step_name: ExecutionMetadata(
-                        result_location=self.workspace.step_info(step).result_location
+                        result_location=None
+                        if not step.cache_results
+                        else self.workspace.step_info(step).result_location
                     )
                 }
             )
