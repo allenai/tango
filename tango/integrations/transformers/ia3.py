@@ -193,7 +193,10 @@ class Conv1DWithIA3(WithIA3):
 
 
 def modify_with_ia3(
-    transformer: PreTrainedModel, config: WithIA3Config, *, only_ia3_requires_grad: bool = True
+    transformer: PreTrainedModel,
+    *,
+    config: WithIA3Config = None,
+    only_ia3_requires_grad: bool = True,
 ) -> PreTrainedModel:
     """
     A function to add ia3 adaptors to the given transformer. Code modified from
@@ -239,6 +242,13 @@ def modify_with_ia3(
         model = AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2")
         model = modify_with_ia3(model, my_config)
     """
+    if config is None:
+        model_name = transformer.config._name_or_path # type: ignore
+        assert (
+            model_name in MODEL_NAME_TO_CONFIG
+        ), f"{model_name} does not have an pre made configuration; please make your own."
+        config = MODEL_NAME_TO_CONFIG[model_name]
+
     for m_name, module in dict(transformer.named_modules()).items():  # type: ignore
         if re.fullmatch(config.attention_modules, m_name) or re.fullmatch(
             config.mlp_modules, m_name
