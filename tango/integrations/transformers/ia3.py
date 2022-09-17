@@ -243,7 +243,7 @@ def modify_with_ia3(
         model = modify_with_ia3(model, my_config)
     """
     if config is None:
-        model_name = transformer.config._name_or_path # type: ignore
+        model_name = transformer.config._name_or_path  # type: ignore
         assert (
             model_name in MODEL_NAME_TO_CONFIG
         ), f"{model_name} does not have an pre made configuration; please make your own."
