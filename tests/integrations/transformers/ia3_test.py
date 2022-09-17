@@ -15,7 +15,7 @@ def test_ia3():
 
     model = AutoModelForCausalLM.from_pretrained(model_name)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         old_outputs = model(
             input_ids=input_seq.input_ids,
             attention_mask=input_seq.attention_mask,
@@ -24,7 +24,7 @@ def test_ia3():
 
     model = modify_with_ia3(model, config=config)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         new_outputs = model(
             input_ids=input_seq.input_ids,
             attention_mask=input_seq.attention_mask,

@@ -246,7 +246,7 @@ def modify_with_ia3(
         model_name = transformer.config._name_or_path  # type: ignore
         assert (
             model_name in MODEL_NAME_TO_CONFIG
-        ), f"{model_name} does not have an pre made configuration; please make your own."
+        ), f"{model_name} does not have a pre made configuration; please make your own."
         config = MODEL_NAME_TO_CONFIG[model_name]
 
     for m_name, module in dict(transformer.named_modules()).items():  # type: ignore
