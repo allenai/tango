@@ -22,7 +22,7 @@ def test_ia3():
             labels=input_seq.input_ids,
         )
 
-    model = modify_with_ia3(model, config)
+    model = modify_with_ia3(model, config=config)
 
     with torch.no_grad():
         new_outputs = model(
