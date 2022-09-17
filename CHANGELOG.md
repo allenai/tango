@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
   Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
 
+### Changed
+
+- In the `tango run` command, `--no-server` is now the default. Use `--server` to start the server.
+
 ### Fixed
 
 - Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
@@ -23,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
 - Fixed a bug where canceling the Beaker executor might not work properly.
 - Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
+- Fixed how the results of uncacheable steps are displayed by `tango run`.
 
 ## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
 

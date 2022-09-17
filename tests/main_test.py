@@ -51,7 +51,7 @@ class TestRun(TangoTestCase):
         cleaned_log_lines = self.clean_log_lines(log_lines)
 
         for line in cleaned_stdout_lines[
-            next(i for i, line in enumerate(stdout_lines) if "Server started at" in line) :
+            next(i for i, line in enumerate(stdout_lines) if "Starting new run" in line) :
         ]:
             assert line in cleaned_log_lines
 
