@@ -222,7 +222,7 @@ def modify_with_ia3(
         from tango.integrations.transformers.ia3 import modify_with_ia3, GPT_2_IA3_CONFIG
 
         model = AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2")
-        model = modify_with_ia3(model, GPT_2_IA3_CONFIG)
+        model = modify_with_ia3(model, config=GPT_2_IA3_CONFIG)
 
     Or you can write your own configuration with regex matching the layers to modify and their parents:
 
@@ -240,7 +240,7 @@ def modify_with_ia3(
         )
 
         model = AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2")
-        model = modify_with_ia3(model, my_config)
+        model = modify_with_ia3(model, config=my_config)
     """
     if config is None:
         model_name = transformer.config._name_or_path  # type: ignore
