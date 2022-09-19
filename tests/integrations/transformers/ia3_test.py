@@ -13,7 +13,7 @@ def test_ia3():
 
     input_seq = tokenizer(["A tiny test on a tiny model."], return_tensors="pt")
 
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name).eval()
 
     with torch.inference_mode():
         old_outputs = model(
