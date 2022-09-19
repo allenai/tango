@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Adds a function to modify a Hugging Face transformer with IA3 adaptors
 - Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
   Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
 
