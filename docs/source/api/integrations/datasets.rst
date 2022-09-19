@@ -21,3 +21,6 @@ Reference
 
 .. autoclass:: tango.integrations.datasets.ConcatenateDatasets
    :members:
+
+.. autoclass:: tango.integrations.datasets.DatasetRemixStep
+   :members:

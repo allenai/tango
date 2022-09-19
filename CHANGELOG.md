@@ -9,6 +9,200 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
+  Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
+
+### Changed
+
+- In the `tango run` command, `--no-server` is now the default. Use `--server` to start the server.
+
+### Fixed
+
+- Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
+- Made the `BeakerStepLock` more robust, and as a result `BeakerWorkspace` is more
+  robust and should require less manual intervention for locks in a bad state.
+- Fixed a bug with the internal scheduling logic of the `BeakerExecutor` which
+  could delay submitting some steps in parallel.
+- Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
+- Fixed a bug where canceling the Beaker executor might not work properly.
+- Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
+- Fixed how the results of uncacheable steps are displayed by `tango run`.
+
+## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
+
+### Added
+
+- You can now reference into a particular index of the result of another step in a config. For example: `{type: "ref", ref: "some_previous_step", key: 0}`.
+  The key field can be an integer if the result of the referenced step is a list or tuple, or a string if the result of the referenced step is a dictionary.
+- Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
+- Added `Workspace.step_result()` method for getting a step's result from the latest
+  run.
+- `tango run` will now display a URL to the logs for failed steps when you use the `BeakerExecutor`.
+
+### Changed
+
+- The `TorchTrainStep` now enables monitoring arbitrary model outputs during training. `TorchTrainEngine.forward_train` now returns a tuple `loss, model_outputs` for each micro batch and the list of model outputs for all micro batches in a batch is passed to the `TrainCallback.log_batch` and `TrainCallback.post_batch`.
+- Tango will now automatically search Python modules in the current working directory
+  for registered classes so that you don't always need to use the `--include-package` setting.
+- The minimum supported Python version is now 3.8.
+- Added support for PyTorch Lightning 1.7.x
+- The Beaker Executor will no-longer live-stream logs from Beaker jobs, but logs will be viewable on Beaker and more readable.
+- Only the Beaker executor requires a clean working directory
+
+### Fixed
+
+- Fixed a bug that did not allow a wandb artifact's type to be set from a step's metadata dictionary. 
+- Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
+- Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
+  was found to be in an invalid state.
+- Improved cluster choice logic in `BeakerExecutor` to ensure greater diversity of clusters when submitting many steps at once.
+- Fixed bug where sub-processes of the multicore executor would use the wrong executor if `executor` was defined in a `tango.yml` file.
+- Deterministic hashes for numpy and torch tensors were not deterministic. Now they are.
+
+
+## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23
+
+### Added
+
+- **Step resources:**
+  - Added a `step_resources` parameter to the `Step` class which should be used to describe the computational resources required to run a step.
+    `Executor` implementations can use this information. For example, if your step needs 2 GPUs, you should set
+    `step_resources=StepResources(gpu_count=2)` (`"step_resources": {"gpu_count": 2}` in the configuration language).
+  - Added a `Step.resources()` property method. By default this returns the value specified by the `step_resources` parameter.
+    If your step implementation always requires the same resources, you can just override this method so you don't have to provide
+    the `step_resources` parameter.
+- **Step execution:**
+  - Added an `executor` field to the `tango.yml` settings. You can use this to define the executor you want to use by default.
+  - Added a Beaker `Executor` to the Beaker integration, registered as an `Executor` with the name "beaker".
+    To use this executor, add these lines to your `tango.yml` file:
+    ```yaml
+    executor:
+      type: beaker
+      beaker_workspace: ai2/my-workspace
+      clusters:
+        - ai2/general-cirrascale
+    ```
+    See the docs for the `BeakerExecutor` for more information on the input parameters.
+- **Step class:**
+  - Added a metadata field to the step class API. This can be set through the class
+    variable `METADATA` or through the constructor argument `step_metadata`.
+- **Weights & Biases integration:**
+  - You can now change the artifact kind for step result artifacts by adding a field
+    called "artifact_kind" to a step's metadata.
+    For models, setting "artifact_kind" to "model" will add the corresponding artifact to W&B's new model zoo.
+
+### Changed
+
+- **CLI:**
+  - The `tango run` command will throw an error if you have uncommitted changes in your repository, unless
+    you use the `--allow-dirty` flag.
+  - The `tango run` command will use the lightweight base executor (single process) by default.
+    To use the multi-process executor, set `-j/--parallelism` to 1 or higher or -1 to use all available CPU cores.
+
+### Fixed
+
+- Fixed bug where `StepInfo` environment and platform metadata could be out-of-date if a step is run again due to failure.
+- Fixed a bug where an unfortunate combination of early stopping and decreasing model performance could result in a crash in the torch trainer.
+
+## [v0.11.0](https://github.com/allenai/tango/releases/tag/v0.11.0) - 2022-08-04
+
+### Added
+
+- Added a [Flax](https://flax.readthedocs.io/en/latest/) integration along with an example config.
+
+## [v0.10.1](https://github.com/allenai/tango/releases/tag/v0.10.1) - 2022-07-26
+
+### Fixed
+
+- Fixed issue where the StepInfo config argument could be parsed into a Step. 
+- Restored capability to run tests out-of-tree.
+
+## [v0.10.0](https://github.com/allenai/tango/releases/tag/v0.10.0) - 2022-07-07
+
+### Changed
+
+- Renamed `workspace` parameter of `BeakerWorkspace` class to `beaker_workspace`.
+- `Executor` class is now a `Registrable` base class. `MulticoreExecutor` is registered as "multicore".
+
+### Removed
+
+- Removed `StepExecutionMetadata`. Its fields have been absorbed into `StepInfo`.
+
+### Fixed
+
+- Improved `Step.ensure_result()` such that the step's result doesn't have to be read from the cache.
+- Fixed an issue with the output from `MulticoreExecutor` such that it's now consistent with the default `Executor` for steps that were found in the cache.
+- One of our error messages referred to a configuration file that no longer exists.
+- Improved performance of `BeakerWorkspace`.
+
+### Added
+
+- Added the ability to train straight `Model` instead of just `Lazy[Model]`
+
+
+## [v0.9.1](https://github.com/allenai/tango/releases/tag/v0.9.1) - 2022-06-24
+
+### Fixed
+
+- Fixed non-deterministic behavior in `TorchTrainStep`.
+- Fixed bug in `BeakerWorkspace` where `.step_info(step)` would raise a `KeyError` if the step hasn't been registered as part of a run yet.
+- Fixed a bug in `BeakerWorkspace` where it would send too many requests to the beaker service.
+- Fixed a bug where `WandbWorkspace.step_finished()` or `.step_failed()` would crash if called
+  from a different process than `.step_starting()`.
+- Fixed a bug in `WandbWorkspace.step_finished()` which led to a `RuntimeError` sometimes while
+  caching the result of a step.
+
+
+## [v0.9.0](https://github.com/allenai/tango/releases/tag/v0.9.0) - 2022-06-01
+
+### Added
+
+- Added a [Beaker](https://beaker.org) integration that comes with `BeakerWorkspace`, a remote `Workspace` implementation that uses Beaker Datasets under the hood.
+- Added a `datasets::dataset_remix` step that provides the split remixing functionality of `tango.steps.datasest_remix.DatasetRemixStep` now for Huggingface `DatasetDict`.
+- Added a config and code example of Registrable to the First Step docs with edits for clarity.
+
+### Changed
+
+- If you try to import something from a tango integration that is not fully installed due to missing dependencies, an `IntegrationMissingError` will be raised
+instead of `ModuleNotFound`.
+- You can now set `-j 0` in `tango run` to disable multicore execution altogether.
+
+### Fixed
+
+- Improved how steps and workspaces handle race conditions when different processes are competing to execute the same step. This would result in a `RuntimeError` before with most workspaces, but now it's handled gracefully.
+- Fixed bug which caused GradScaler state to not be saved and loaded with checkpoints. 
+
+## [v0.8.0](https://github.com/allenai/tango/releases/tag/v0.8.0) - 2022-05-19
+
+### Added
+
+- Added a Weights & Baises remote `Workspace` implementation: `WandbWorkspace`, registered as "wandb".
+  This can be instantiated from a workspace URL in the form "wandb://entity/project".
+- Added a method `Workspace.step_result_for_run` which gives the result of a step given the run name and step name within that run.
+- Added property `Workspace.url`, which returns a URL for the workspace that can be used to instantiate the exact same workspace using `Workspace.from_url()`. Subclasses must implement this.
+
+### Changed
+
+- `StepInfo` start and end times will be always be in UTC now.
+- `WandbTrainCallback` now logs system metrics from each worker process in distributed training.
+- `StepCache.__contains__()` and `StepCache.__getitem__()` now take accept either a `Step` or `StepInfo` as an argument (`Union[Step, StepInfo]`).
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+
+### Fixed
+
+- Fixed bug with `LocalWorkspace.from_parsed_url()` ([#278](https://github.com/allenai/tango/issues/278)).
+- Deprecation warnings will now be logged from `tango` CLI.
+- Fixed the text format in the case of serializing an iterator of string.
+- Added missing default value of `None` to `TangoGlobalSettings.find_or_default()`.
+- Mypy has become incompatible with transformers and datasets, so we have to disable the checks in some places.
+- The `VERSION` member of step arguments that were wrapped in `Lazy` were not respected. Now they are.
+
+
+## [v0.7.0](https://github.com/allenai/tango/releases/tag/v0.7.0) - 2022-04-19
+
+### Added
+
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
@@ -16,19 +210,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added CLI option to run a single step in a config using `--step-name` or `-s`.
 - Added a `MultiCoreExecutor` that executes steps in parallel.
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
+- `StepGraph` now prints itself in a readable way.
+- Tango now automatically detects when it's running under a debugger, and disables multicore support accordingly. Many debuggers can't properly follow sub-processes, so this is a convenience for people who love debuggers.
+- Added more models to the stuff we can import from the transformers library.
+- Added new example for finetuning text-to-text models.
 
 ### Changed
 
+- Renamed `click_logger` to `cli_logger`, and we now use [rich](https://github.com/Textualize/rich)'s logging `Handler` as the default handler, which means prettier output, better tracebacks, and you can use rich's markup syntax with the `cli_logger` to easily add style to text.
+- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
+- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
 - Upgraded PyTorch version in `tango` Docker image to latest `v1.11.0+cu113`.
+- `RunGeneration` now allows model object as input.
 
 ### Fixed
 
 - Fixed bug that mistakenly disallowed fully-qualified names containing `"_"` (underscores) in the config.
-
-### Changed
-
-- Refactored `tango.step_graph.StepGraph` to allow initialization from a `Dict[str, Step]`.
-- `Executor.execute_step_graph()` now attempts to execute all steps and summarizes success/failures.
+- Fixed bug where `TorchTrainStep` working directory would be left in an unrecoverable state if training failed after saving the final model weights.
+- Fixed bug in `FromParams` where `**kwargs` might be passed down to the constructors of arguments.
+- Fixed bug in the way dependencies are tracked between steps.
+- Fixed bug that caused `MulticoreExecutor` to hang in case of a failing step that was required recursively (not directly) downstream.
+- Fixed bug in the way dependencies are tracked between steps
+- Compatibility with PyTorch Lightning 1.6
 
 
 ## [v0.6.0](https://github.com/allenai/tango/releases/tag/v0.6.0) - 2022-02-25

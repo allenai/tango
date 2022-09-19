@@ -8,6 +8,7 @@ The core components of **AI2 Tango**.
    :caption: Components
 
    step
+   step_info
    step_graph
    workspace
    step_cache

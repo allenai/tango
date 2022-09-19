@@ -1,9 +1,14 @@
+import pytest
+
+from tango.common.exceptions import CliRunError
+from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
 
 class TestExperiment(TangoTestCase):
     def setup_method(self):
         super().setup_method()
+        initialize_logging()
         self.config = {
             "steps": {
                 "step1": {
@@ -27,17 +32,21 @@ class TestExperiment(TangoTestCase):
             }
         }
 
+    def teardown_method(self):
+        super().teardown_method()
+        teardown_logging()
+
     def test_experiment(self, caplog):
-        self.run(
-            self.config,
-            include_package=["test_fixtures.package.steps"],
-            multicore=True,
-            parallelism=2,
-        )
+        with pytest.raises(CliRunError):
+            self.run(
+                self.config,
+                multicore=True,
+                parallelism=2,
+            )
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
         num_executed = 0
         for out in latest_outputs.iterdir():
-            if (out / "execution-metadata.json").exists():
+            if (out / "cache-metadata.json").exists():
                 num_executed += 1
         assert num_executed == 1
 
@@ -46,7 +55,6 @@ class TestExperiment(TangoTestCase):
 
         self.run(
             self.config,
-            include_package=["test_fixtures.package.steps"],
             multicore=True,
             parallelism=2,
             overrides=json.dumps({"steps.step1.fail": False}),
@@ -54,6 +62,6 @@ class TestExperiment(TangoTestCase):
         latest_outputs = self.TEST_DIR / "workspace" / "latest"
         num_executed = 0
         for out in latest_outputs.iterdir():
-            if (out / "execution-metadata.json").exists():
+            if (out / "cache-metadata.json").exists():
                 num_executed += 1
         assert num_executed == 3

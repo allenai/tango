@@ -1,4 +1,8 @@
-from typing import Any, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Set, Tuple, Union
+
+if TYPE_CHECKING:
+    from tango.step import Step
+    from tango.step_info import StepInfo, StepState
 
 
 class TangoError(Exception):
@@ -31,7 +35,73 @@ class RegistryKeyError(ConfigurationError):
     """
 
 
-class SigTermReceived(TangoError):
+class CancellationError(TangoError):
+    """
+    Base class for errors raised due to manual cancellation of a run or step.
+    """
+
+
+class SigTermReceived(CancellationError):
     """
     Raised when a SIGTERM is caught.
+    """
+
+
+class StepCancelled(CancellationError):
+    pass
+
+
+class RunCancelled(CancellationError):
+    pass
+
+
+class CliRunError(TangoError):
+    """
+    Raised when `tango run` command fails.
+    """
+
+
+class IntegrationMissingError(TangoError):
+    """
+    Raised when an integration can't be used due to missing dependencies.
+    """
+
+    def __init__(self, integration: str, dependencies: Optional[Set[str]] = None):
+        self.integration = integration
+        self.dependencies = dependencies or {integration}
+        msg = (
+            f"'{self.integration}' integration can't be used due to "
+            f"missing dependencies ({', '.join(self.dependencies)})"
+        )
+        super().__init__(msg)
+
+
+class StepStateError(TangoError):
+    """
+    Raised when a step is in an unexpected state.
+    """
+
+    def __init__(
+        self,
+        step: Union["Step", "StepInfo"],
+        step_state: "StepState",
+        context: Optional[str] = None,
+    ):
+        self.step_state = step_state
+        self.step_id = step.unique_id
+        msg = f"Step '{self.step_id}' is in unexpected state '{self.step_state.value}'"
+        if context is not None:
+            msg = msg + " " + context
+        super().__init__(msg)
+
+
+class DirtyRepoError(TangoError):
+    """
+    Raised when a repository is in a dirty state.
+    """
+
+
+class ExecutorError(TangoError):
+    """
+    A base class for executor-specific errors.
     """

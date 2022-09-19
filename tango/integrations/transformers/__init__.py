@@ -66,6 +66,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForImageClassification::from_pretrained
             transformers::AutoModelForImageSegmentation::from_config
             transformers::AutoModelForImageSegmentation::from_pretrained
+            transformers::AutoModelForInstanceSegmentation::from_config
+            transformers::AutoModelForInstanceSegmentation::from_pretrained
             transformers::AutoModelForMaskedImageModeling::from_config
             transformers::AutoModelForMaskedImageModeling::from_pretrained
             transformers::AutoModelForMaskedLM::from_config
@@ -94,6 +96,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForTokenClassification::from_pretrained
             transformers::AutoModelForVision2Seq::from_config
             transformers::AutoModelForVision2Seq::from_pretrained
+            transformers::AutoModelForVisualQuestionAnswering::from_config
+            transformers::AutoModelForVisualQuestionAnswering::from_pretrained
             transformers::AutoModelWithLMHead::from_config
             transformers::AutoModelWithLMHead::from_pretrained
 
@@ -185,16 +189,27 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
 """
 
+from tango.common.exceptions import IntegrationMissingError
+
+try:
+    import transformers
+except ModuleNotFoundError:
+    raise IntegrationMissingError("transformers")
+
 __all__ = [
     "RunGeneration",
     "RunGenerationDataset",
     "Tokenizer",
     "Config",
     "add_soft_prompt",
+    "FinetuneWrapper",
+    "FinetuneStep",
+    "TokenizeText2TextData",
 ]
 
 from .config import Config
 from .data import *  # noqa: F403
+from .finetune import FinetuneStep, FinetuneWrapper, TokenizeText2TextData
 from .model import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset

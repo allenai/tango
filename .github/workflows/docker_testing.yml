@@ -33,6 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: allenai/setup-beaker@v2
+        with:
+          token: ${{ secrets.BEAKER_TOKEN }}
+          workspace: ${{ env.BEAKER_WORKSPACE }}
+
       - name: Build Docker image
         run: |
           docker build -t "$IMAGE_NAME" -f Dockerfile.test .
@@ -51,38 +56,30 @@ jobs:
         run: |
           docker run --rm --env COMMIT_SHA="$COMMIT_SHA" "$IMAGE_NAME" tango info
 
-      - name: Install beaker client
-        if: github.event_name != 'pull_request'
-        shell: bash
+       # In order to push a new version of an image to beaker, we have to delete the old version first.
+       # This doesn't actually delete the backing Docker image, so we'll still benefit from layer
+       # caching when we push new versions. But we have to be careful to minimize the amount
+       # of time between deletion and creation, because during that time any Beaker job trying to start
+       # that depends on that image will fail. So to minimize this downtime, we first push a
+       # "temp" version of the image, then delete the current one and quickly rename the "temp" one to take its place.
+       # The image might not exist yet though, so it's okay if the delete fails.
+
+      - name: Delete existing commit image
+        continue-on-error: true
         run: |
-          mkdir -p "$HOME/bin"
+          beaker image delete petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }}
 
-          # Download and install from latest GitHub release.
-          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
-            | grep 'browser_download_url.*linux' \
-            | cut -d '"' -f 4 \
-            | wget -qi - \
-          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
+      - name: Upload new commit image
+        run: |
+          beaker image create --workspace ${{ env.BEAKER_WORKSPACE }} --name ${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}
 
-          # Add to path.
-          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Delete existing image
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          beaker image delete petew/${{ env.IMAGE_NAME }}
 
-      - name: Verify beaker install
+      - name: Rename new commit image to final image
         if: github.event_name != 'pull_request'
         run: |
-          beaker account whoami
-
-      - name: Push release to beaker
-        if: github.event_name != 'pull_request'
-        run: |
-          # In order to push a new version of an image to beaker, we have to delete the old version first.
-          # This doesn't actually delete the backing Docker image, so we'll still benefit from layer
-          # caching when we push new versions. But we have to be careful to minimize the amount
-          # of time between deletion and creation, because during that time any Beaker job trying to start
-          # that depends on that image will fail. So to minimize this downtime, we first push a
-          # "temp" version of the image, then delete the current one and quickly rename the "temp" one to take its place.
-          # The image might not exist yet though, so it's okay if this fails.
-          beaker image delete "petew/${IMAGE_NAME}-${COMMIT_SHA}" || true
-          beaker image create --workspace "$BEAKER_WORKSPACE" --name "${IMAGE_NAME}-${COMMIT_SHA}" "$IMAGE_NAME"
-          beaker image delete "petew/${IMAGE_NAME}" || true
-          beaker image rename "petew/${IMAGE_NAME}-${COMMIT_SHA}" "$IMAGE_NAME"
+          beaker image rename petew/${{ env.IMAGE_NAME }}-${{ env.COMMIT_SHA }} ${{ env.IMAGE_NAME }}

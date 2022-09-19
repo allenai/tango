@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import subprocess
@@ -7,11 +8,9 @@ from typing import List, Tuple
 import click
 import pytest
 
-from tango.common import Params
 from tango.common.testing import TangoTestCase
 from tango.settings import TangoGlobalSettings
 from tango.version import VERSION
-from tango.workspace import StepExecutionMetadata
 
 
 class TestRun(TangoTestCase):
@@ -20,17 +19,18 @@ class TestRun(TangoTestCase):
     ) -> List[str]:
         out = []
         for line in log_lines:
-            # Remove the logging prefix with PID, timestamp, level, etc so we're just left
-            # with the message.
-            line = re.sub(
-                r"^\[\d+ \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} (DEBUG|INFO|WARNING|ERROR) [^\]]+\] ",
-                "",
-                line,
-            )
             unstyled_line = click.unstyle(line)
             if file_friendly_logging:
                 assert line == unstyled_line
             line = unstyled_line
+            parts = re.split(r"(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s+", line)
+            if len(parts) >= 3:
+                line = "".join(parts[2:])
+            elif len(parts) == 1:
+                line = parts[0]
+            else:
+                raise ValueError(str(parts))
+            line = re.sub(r"\s+[^ ]+$", "", line)
             if line:
                 out.append(line.strip())
         return out
@@ -41,22 +41,18 @@ class TestRun(TangoTestCase):
         process_result: subprocess.CompletedProcess,
         file_friendly_logging: bool = False,
     ) -> Tuple[List[str], List[str]]:
-        stdout_lines = self.clean_log_lines(
-            process_result.stdout.decode().replace("\r", "\n").split("\n")
-        )
+        stdout_lines = process_result.stdout.decode().replace("\r", "\n").split("\n")
+        cleaned_stdout_lines = self.clean_log_lines(stdout_lines, file_friendly_logging)
 
         log_file = run_dir / "out.log"
         assert log_file.is_file()
 
-        log_lines = open(log_file).readlines()
-        cleaned_log_lines = self.clean_log_lines(log_lines, file_friendly_logging)
+        log_lines = open(log_file).read().split("\n")
+        cleaned_log_lines = self.clean_log_lines(log_lines)
 
-        # The first few log messages in stdout may not be in the log file, since those get
-        # emitted before the run dir is created.
-        filtered_stdout_lines = stdout_lines[
-            next(i for i, line in enumerate(stdout_lines) if line.startswith("Server started at")) :
-        ]
-        for line in filtered_stdout_lines:
+        for line in cleaned_stdout_lines[
+            next(i for i, line in enumerate(stdout_lines) if "Starting new run" in line) :
+        ]:
             assert line in cleaned_log_lines
 
         return log_lines, cleaned_log_lines
@@ -66,13 +62,60 @@ class TestRun(TangoTestCase):
         assert result.returncode == 0
         assert VERSION in result.stdout
 
+    @pytest.mark.parametrize("log_level", ["debug", "info", "warning", "error"])
+    @pytest.mark.parametrize("raise_error", (True, False))
+    def test_logging_all_levels(self, log_level: str, raise_error):
+        cmd = [
+            "tango",
+            "--log-level",
+            log_level,
+            "run",
+            str(self.FIXTURES_ROOT / "experiment" / "noisy.jsonnet"),
+            "-w",
+            str(self.TEST_DIR),
+            "-o",
+            json.dumps({"steps.noisy_step.raise_error": raise_error}),
+        ]
+        result = subprocess.run(cmd, capture_output=True)
+        run_dir = next((self.TEST_DIR / "runs").iterdir())
+        if raise_error:
+            assert result.returncode == 1
+        else:
+            assert result.returncode == 0
+        _, cleaned_log_lines = self.check_logs(run_dir, result)
+
+        # Debug messages.
+        assert cleaned_log_lines.count("debug message from cli_logger") == 1
+        assert cleaned_log_lines.count("debug message") == (1 if log_level == "debug" else 0)
+
+        # Info messages.
+        assert cleaned_log_lines.count("info message from cli_logger") == 1
+        assert cleaned_log_lines.count("info message") == (
+            1 if log_level in {"debug", "info"} else 0
+        )
+
+        # Warning messages.
+        assert cleaned_log_lines.count("warning message from cli_logger") == 1
+        assert cleaned_log_lines.count("warning message") == (
+            1 if log_level in {"debug", "info", "warning"} else 0
+        )
+
+        # Error messages.
+        assert cleaned_log_lines.count("error message from cli_logger") == 1
+        assert cleaned_log_lines.count("error message") == (
+            1 if log_level in {"debug", "info", "warning", "error"} else 0
+        )
+
+        # Traceback.
+        if raise_error:
+            assert "Traceback (most recent call last):" in cleaned_log_lines
+            assert "ValueError: Oh no!" in cleaned_log_lines
+
     def test_deterministic_experiment(self):
         cmd = [
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
         ]
@@ -82,26 +125,7 @@ class TestRun(TangoTestCase):
         run_dir = next((self.TEST_DIR / "runs").iterdir())
         assert (run_dir / "hello").is_dir()
         assert (run_dir / "hello" / "cache-metadata.json").is_file()
-        assert (run_dir / "hello" / "execution-metadata.json").is_file()
         assert (run_dir / "hello_world").is_dir()
-
-        # Check metadata.
-        metadata_path = run_dir / "hello_world" / "execution-metadata.json"
-        assert metadata_path.is_file()
-        metadata_params = Params.from_file(metadata_path)
-        metadata = StepExecutionMetadata.from_params(metadata_params)
-        assert metadata.config == {
-            "type": "concat_strings",
-            "string1": {"type": "ref", "ref": "StringStep-4cHbmoHigd3rvNn3w7shc1d45WA1ijSp"},
-            "string2": "World!",
-            "join_with": ", ",
-        }
-        if (Path.cwd() / ".git").exists():
-            assert metadata.git.commit is not None
-            assert metadata.git.remote is not None
-
-        # Check for requirements.txt file.
-        assert (run_dir / "hello_world" / "requirements.txt").is_file()
 
         # Check logs.
         self.check_logs(run_dir, result)
@@ -118,8 +142,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             "memory://",
         ]
@@ -131,8 +153,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
         ]
         result = subprocess.run(cmd, capture_output=True)
         assert result.returncode == 0
@@ -142,8 +162,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "random.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
         ]
@@ -156,8 +174,6 @@ class TestRun(TangoTestCase):
             "tango",
             "run",
             str(self.FIXTURES_ROOT / "experiment" / "hello_world.jsonnet"),
-            "-i",
-            "test_fixtures.package",
             "-w",
             str(self.TEST_DIR),
             "--name",
@@ -187,8 +203,6 @@ class TestRun(TangoTestCase):
             + [
                 "run",
                 str(self.FIXTURES_ROOT / "experiment" / "logging_check.jsonnet"),
-                "-i",
-                "test_fixtures.package",
                 "-w",
                 str(self.TEST_DIR),
                 "-j",
@@ -214,11 +228,11 @@ class TestRun(TangoTestCase):
         assert "[step multiprocessing_result rank 0] Hello from worker 0!" in all_logs
         assert "[step multiprocessing_result rank 1] Hello from worker 1!" in all_logs
         assert (
-            "[step multiprocessing_result rank 0] Hello from the click logger in worker 0!"
+            "[step multiprocessing_result rank 0] Hello from the cli logger in worker 0!"
             in all_logs
         )
         assert (
-            "[step multiprocessing_result rank 1] Hello from the click logger in worker 1!"
+            "[step multiprocessing_result rank 1] Hello from the cli logger in worker 1!"
             in all_logs
         )
 

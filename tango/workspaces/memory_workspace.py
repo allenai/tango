@@ -1,15 +1,16 @@
 import copy
-from datetime import datetime
 from typing import Dict, Iterable, Iterator, Optional, TypeVar, Union
 from urllib.parse import ParseResult
 
 import petname
 
-from tango.common.util import exception_to_string
+from tango.common.exceptions import StepStateError
+from tango.common.util import exception_to_string, utc_now_datetime
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import default_step_cache
-from tango.workspace import Run, StepInfo, StepState, Workspace
+from tango.step_info import StepInfo, StepState
+from tango.workspace import Run, Workspace
 
 T = TypeVar("T")
 
@@ -30,6 +31,10 @@ class MemoryWorkspace(Workspace):
         self.unique_id_to_info: Dict[str, StepInfo] = {}
         self.runs: Dict[str, Run] = {}
 
+    @property
+    def url(self) -> str:
+        return "memory://"
+
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> "Workspace":
         return cls()
@@ -49,14 +54,7 @@ class MemoryWorkspace(Workspace):
         except KeyError:
             if isinstance(step_or_unique_id, Step):
                 step = step_or_unique_id
-                return StepInfo(
-                    step.unique_id,
-                    step.name if step.name != step.unique_id else None,
-                    step.__class__.__name__,
-                    step.VERSION,
-                    {dep.unique_id for dep in step.dependencies},
-                    step.cache_results,
-                )
+                return StepInfo.new_from_step(step)
             else:
                 raise KeyError()
 
@@ -65,14 +63,8 @@ class MemoryWorkspace(Workspace):
         if not step.cache_results:
             return
 
-        self.unique_id_to_info[step.unique_id] = StepInfo(
-            step.unique_id,
-            step.name if step.name != step.unique_id else None,
-            step.__class__.__name__,
-            step.VERSION,
-            {dep.unique_id for dep in step.dependencies},
-            step.cache_results,
-            datetime.now(),
+        self.unique_id_to_info[step.unique_id] = StepInfo.new_from_step(
+            step, start_time=utc_now_datetime()
         )
 
     def step_finished(self, step: Step, result: T) -> T:
@@ -82,8 +74,8 @@ class MemoryWorkspace(Workspace):
 
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is ending, but it never started.")
-        existing_step_info.end_time = datetime.now()
+            raise StepStateError(step, existing_step_info.state)
+        existing_step_info.end_time = utc_now_datetime()
 
         if step.cache_results:
             self.step_cache[step] = result
@@ -102,8 +94,8 @@ class MemoryWorkspace(Workspace):
         assert e is not None
         existing_step_info = self.unique_id_to_info[step.unique_id]
         if existing_step_info.state != StepState.RUNNING:
-            raise RuntimeError(f"Step {step.name} is failing, but it never started.")
-        existing_step_info.end_time = datetime.now()
+            raise StepStateError(step, existing_step_info.state)
+        existing_step_info.end_time = utc_now_datetime()
         existing_step_info.error = exception_to_string(e)
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
@@ -111,17 +103,10 @@ class MemoryWorkspace(Workspace):
             name = petname.generate()
         steps: Dict[str, StepInfo] = {}
         for step in targets:
-            step_info = StepInfo(
-                step.unique_id,
-                step.name if step.name != step.unique_id else None,
-                step.__class__.__name__,
-                step.VERSION,
-                {dep.unique_id for dep in step.dependencies},
-                step.cache_results,
-            )
+            step_info = StepInfo.new_from_step(step)
             self.unique_id_to_info[step.unique_id] = step_info
             steps[step.unique_id] = step_info
-        run = Run(name, steps, datetime.now())
+        run = Run(name, steps, utc_now_datetime())
         self.runs[name] = run
         return run
 

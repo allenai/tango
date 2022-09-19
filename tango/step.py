@@ -6,6 +6,7 @@ import re
 import warnings
 from abc import abstractmethod
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import (
@@ -23,7 +24,19 @@ from typing import (
     cast,
 )
 
-import click
+from tango.common.det_hash import CustomDetHash, det_hash
+from tango.common.exceptions import ConfigurationError, StepStateError
+from tango.common.from_params import (
+    FromParams,
+    infer_constructor_params,
+    infer_method_params,
+    pop_and_construct_arg,
+)
+from tango.common.lazy import Lazy
+from tango.common.logging import cli_logger, log_exception
+from tango.common.params import Params
+from tango.common.registrable import Registrable
+from tango.format import DillFormat, Format
 
 try:
     from typing import get_args, get_origin  # type: ignore
@@ -36,19 +49,6 @@ except ImportError:
         return getattr(tp, "__args__", ())
 
 
-from tango.common.det_hash import CustomDetHash, det_hash
-from tango.common.exceptions import ConfigurationError
-from tango.common.from_params import (
-    infer_constructor_params,
-    infer_method_params,
-    pop_and_construct_arg,
-)
-from tango.common.lazy import Lazy
-from tango.common.logging import click_logger
-from tango.common.params import Params
-from tango.common.registrable import Registrable
-from tango.format import DillFormat, Format
-
 if TYPE_CHECKING:
     from tango.workspace import Workspace
 
@@ -58,6 +58,40 @@ T = TypeVar("T")
 
 
 _random_for_step_names = random.Random()
+
+
+@dataclass
+class StepResources(FromParams):
+    """
+    TaskResources describe minimum external hardware requirements which must be available for a
+    step to run.
+    """
+
+    cpu_count: Optional[float] = None
+    """
+    Minimum number of logical CPU cores. It may be fractional.
+
+    Examples: ``4``, ``0.5``.
+    """
+
+    gpu_count: Optional[int] = None
+    """
+    Minimum number of GPUs. It must be non-negative.
+    """
+
+    memory: Optional[str] = None
+    """
+    Minimum available system memory as a number with unit suffix.
+
+    Examples: ``2.5GiB``, ``1024m``.
+    """
+
+    shared_memory: Optional[str] = None
+    """
+    Size of ``/dev/shm`` as a number with unit suffix.
+
+    Examples: ``2.5GiB``, ``1024m``.
+    """
 
 
 class Step(Registrable, Generic[T]):
@@ -79,6 +113,19 @@ class Step(Registrable, Generic[T]):
     :param step_format: gives you a way to override the step's default format (which is given in :attr:`FORMAT`).
     :param step_config: is the original raw part of the experiment config corresponding to this step.
       This can be accessed via the :attr:`config` property within each step's :meth:`run()` method.
+    :param step_unique_id_override: overrides the construction of the step's unique id using the hash
+      of inputs.
+    :param step_resources: gives you a way to set the minimum compute resources required
+      to run this step. Certain executors require this information.
+    :param step_metadata: use this to specify additional metadata for your step.
+      This is added to the :attr:`METADATA` class variable to form the ``self.metadata`` attribute.
+      Values in ``step_metadata`` take precedence over ``METADATA``.
+
+    .. important::
+        Overriding the unique id means that the step will always map to this value, regardless of the inputs,
+        and therefore, the step cache will only hold a single copy of the step's output (from the last execution).
+        Thus, in most cases, this should not be used when constructing steps. We include this option for the case
+        when the executor creates subprocesses, which also need to access the *same* ``Step`` object.
     """
 
     DETERMINISTIC: bool = True
@@ -111,12 +158,25 @@ class Step(Registrable, Generic[T]):
     the model output, not about how many outputs you can produce at the same time.
     """
 
+    METADATA: Dict[str, Any] = {}
+    """
+    Arbitrary metadata about the step.
+    """
+
+    _UNIQUE_ID_SUFFIX: Optional[str] = None
+    """
+    Used internally for testing.
+    """
+
     def __init__(
         self,
         step_name: Optional[str] = None,
         cache_results: Optional[bool] = None,
         step_format: Optional[Format] = None,
-        step_config: Optional[Dict[str, Any]] = None,
+        step_config: Optional[Union[Dict[str, Any], Params]] = None,
+        step_unique_id_override: Optional[str] = None,
+        step_resources: Optional[StepResources] = None,
+        step_metadata: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -138,7 +198,7 @@ class Step(Registrable, Generic[T]):
         else:
             self.format = step_format
 
-        self.unique_id_cache: Optional[str] = None
+        self.unique_id_cache = step_unique_id_override
         if step_name is None:
             self.name = self.unique_id
         else:
@@ -189,8 +249,15 @@ class Step(Registrable, Generic[T]):
         self.work_dir_for_run: Optional[
             Path
         ] = None  # This is set only while the run() method runs.
-
-        self._config = step_config
+        if isinstance(step_config, Params):
+            self._config = step_config.as_dict(quiet=True)
+        else:
+            self._config = step_config
+        assert step_resources is None or isinstance(step_resources, StepResources)
+        self.step_resources = step_resources
+        self.metadata = deepcopy(self.METADATA)
+        if step_metadata:
+            self.metadata.update(step_metadata)
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -330,7 +397,7 @@ class Step(Registrable, Generic[T]):
         """
         raise NotImplementedError()
 
-    def _run_with_work_dir(self, workspace: "Workspace", **kwargs) -> T:
+    def _run_with_work_dir(self, workspace: "Workspace", needed_by: Optional["Step"] = None) -> T:
         if self.work_dir_for_run is not None:
             raise RuntimeError("You can only run a Step's run() method once at a time.")
 
@@ -347,19 +414,20 @@ class Step(Registrable, Generic[T]):
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
         try:
-            if self.cache_results:
-                workspace.step_starting(self)
+            kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+            self.log_starting(needed_by=needed_by)
+            workspace.step_starting(self)
+
             try:
                 result = self.run(**kwargs)
-                if self.cache_results:
-                    result = workspace.step_finished(self, result)
-                return result
             except BaseException as e:
-                # TODO (epwalsh): do we want to handle KeyboardInterrupts differently?
-                # Maybe have a `workspace.step_interrupted()` method?
-                if self.cache_results:
-                    workspace.step_failed(self, e)
+                self.log_failure(e)
+                workspace.step_failed(self, e)
                 raise
+
+            result = workspace.step_finished(self, result)
+            self.log_finished()
+            return result
         finally:
             self._workspace = None
             self.work_dir_for_run = None
@@ -412,6 +480,17 @@ class Step(Registrable, Generic[T]):
         return self.unique_id
 
     @property
+    def resources(self) -> StepResources:
+        """
+        Defines the minimum compute resources required to run this step.
+        Certain executors require this information in order to allocate resources for each step.
+
+        You can set this with the ``step_resources`` argument to :class:`Step`
+        or you can override this method to automatically define the required resources.
+        """
+        return self.step_resources or StepResources()
+
+    @property
     def unique_id(self) -> str:
         """Returns the unique ID for this step.
 
@@ -439,8 +518,10 @@ class Step(Registrable, Generic[T]):
                 )[:32]
             else:
                 self.unique_id_cache += det_hash(
-                    _random_for_step_names.getrandbits((58 ** 32).bit_length())
+                    _random_for_step_names.getrandbits((58**32).bit_length())
                 )[:32]
+            if self._UNIQUE_ID_SUFFIX is not None:
+                self.unique_id_cache += f"-{self._UNIQUE_ID_SUFFIX}"
 
         return self.unique_id_cache
 
@@ -464,8 +545,8 @@ class Step(Registrable, Generic[T]):
             return False
 
     def _replace_steps_with_results(self, o: Any, workspace: "Workspace"):
-        if isinstance(o, Step):
-            return o.result(workspace, self)
+        if isinstance(o, (Step, StepIndexer)):
+            return o.result(workspace=workspace, needed_by=self)
         elif isinstance(o, Lazy):
             return Lazy(
                 o._constructor,
@@ -499,34 +580,22 @@ class Step(Registrable, Generic[T]):
 
             workspace = default_workspace
 
-        if self.cache_results and self in workspace.step_cache:
-            if click_logger.isEnabledFor(logging.INFO):
-                message = click.style("\N{check mark} Found output for step ", fg="green")
-                message += click.style(f'"{self.name}"', bold=True, fg="green")
-                message += click.style(" in cache", fg="green")
-                if needed_by is None:
-                    message += click.style(" ...", fg="green")
-                else:
-                    message += click.style(f' (needed by "{needed_by.name}") ...', fg="green")
-                click_logger.info(message)
-            return workspace.step_cache[self]
+        from tango.step_info import StepState
 
-        kwargs = self._replace_steps_with_results(self.kwargs, workspace)
+        if not self.cache_results or self not in workspace.step_cache:
+            # Try running the step. It might get completed by a different tango process
+            # if there is a race, so we catch "StepStateError" and check if it's "COMPLETED"
+            # at that point.
+            try:
+                return self._run_with_work_dir(workspace, needed_by=needed_by)
+            except StepStateError as exc:
+                if exc.step_state != StepState.COMPLETED:
+                    raise
+                # Step has been completed (and cached) by a different process, so we
+                # do nothing here and pull the result from the cache below.
 
-        if click_logger.isEnabledFor(logging.INFO):
-            message = click.style("\N{black circle} Starting step ", fg="blue")
-            message += click.style(f'"{self.name}"', bold=True, fg="blue")
-            if needed_by is None:
-                message += click.style(" ...", fg="blue")
-            else:
-                message += click.style(f' (needed by "{needed_by.name}") ...', fg="blue")
-            click_logger.info(message)
-        result = self._run_with_work_dir(workspace, **kwargs)
-        click_logger.info(
-            click.style("\N{check mark} Finished step ", fg="green")
-            + click.style(f'"{self.name}"', bold=True, fg="green")
-        )
-        return result
+        self.log_cache_hit(needed_by=needed_by)
+        return workspace.step_cache[self]
 
     def ensure_result(
         self,
@@ -539,7 +608,15 @@ class Step(Registrable, Generic[T]):
                 "It does not make sense to call ensure_result() on a step that's not cacheable."
             )
 
-        self.result(workspace)
+        if workspace is None:
+            from tango.workspaces import default_workspace
+
+            workspace = default_workspace
+
+        if self in workspace.step_cache:
+            self.log_cache_hit()
+        else:
+            self.result(workspace)
 
     def _ordered_dependencies(self) -> Iterable["Step"]:
         def dependencies_internal(o: Any) -> Iterable[Step]:
@@ -550,9 +627,11 @@ class Step(Registrable, Generic[T]):
             elif isinstance(o, WithUnresolvedSteps):
                 yield from dependencies_internal(o.args)
                 yield from dependencies_internal(o.kwargs)
+            elif isinstance(o, StepIndexer):
+                yield o.step
             elif isinstance(o, str):
                 return  # Confusingly, str is an Iterable of itself, resulting in infinite recursion.
-            elif isinstance(o, dict):
+            elif isinstance(o, (dict, Params)):
                 yield from dependencies_internal(o.values())
             elif isinstance(o, Iterable):
                 yield from itertools.chain(*(dependencies_internal(i) for i in o))
@@ -582,6 +661,62 @@ class Step(Registrable, Generic[T]):
             seen.add(step)
             steps.extend(step.dependencies)
         return seen
+
+    def log_cache_hit(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/bold] in cache '
+                '(needed by "%s")...[/green]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                self.name,
+            )
+
+    def log_starting(self, needed_by: Optional["Step"] = None) -> None:
+        if needed_by is not None:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/] (needed by "%s")...[/]',
+                self.name,
+                needed_by.name,
+            )
+        else:
+            cli_logger.info(
+                '[blue]\N{black circle} Starting step [bold]"%s"[/]...[/]',
+                self.name,
+            )
+
+    def log_finished(self, run_name: Optional[str] = None) -> None:
+        if run_name is not None:
+            cli_logger.info(
+                '[green]\N{check mark} Finished run for step [bold]"%s"[/] (%s)[/]',
+                self.name,
+                run_name,
+            )
+        else:
+            cli_logger.info(
+                '[green]\N{check mark} Finished step [bold]"%s"[/][/]',
+                self.name,
+            )
+
+    def log_failure(self, exception: Optional[BaseException] = None) -> None:
+        if exception is not None:
+            log_exception(exception, logger=self.logger)
+        cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
+
+
+class StepIndexer:
+    def __init__(self, step: Step, key: Union[str, int]):
+        self.step = step
+        self.key = key
+
+    def result(
+        self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
+    ) -> Any:
+        return self.step.result(workspace=workspace, needed_by=needed_by)[self.key]
 
 
 class WithUnresolvedSteps(CustomDetHash):
@@ -677,8 +812,8 @@ class WithUnresolvedSteps(CustomDetHash):
         :return: A new object that's a copy of the original object, with all instances of :class:`.Step` replaced
                  with the results of the step.
         """
-        if isinstance(o, Step):
-            return o.result(workspace)
+        if isinstance(o, (Step, StepIndexer)):
+            return o.result(workspace=workspace)
         elif isinstance(o, Lazy):
             return Lazy(
                 o._constructor,

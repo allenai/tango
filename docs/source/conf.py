@@ -26,7 +26,6 @@ author = "Allen Institute for Artificial Intelligence"
 version = VERSION_SHORT
 release = VERSION
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -43,9 +42,6 @@ extensions = [
     "sphinx_autodoc_typehints",
 ]
 
-# Tell myst-parser to assign header anchors for h1-h3.
-myst_heading_anchors = 3
-
 suppress_warnings = ["myst.header"]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -58,17 +54,32 @@ exclude_patterns = ["_build"]
 
 source_suffix = [".rst", ".md"]
 
+# -- Extension configuration -------------------------------------------------
+
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "rich": ("https://rich.readthedocs.io/en/latest", None),
     "torch": ("https://pytorch.org/docs/stable", None),
     "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
     # Just leaving this here for when we do finally add a deepspeed integration:
     #  "deepspeed": ("https://deepspeed.readthedocs.io/en/latest/", None),
+    "flax": ("https://flax.readthedocs.io/en/latest", None),
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     "datasets": ("https://huggingface.co/docs/datasets/master/en", None),
     "transformers": ("https://huggingface.co/docs/transformers/master/en", None),
+    "beaker": ("https://beaker-py.readthedocs.io/en/latest/", None),
 }
 
+# Tell myst-parser to assign header anchors for h1-h3.
+myst_heading_anchors = 3
+
+# By default, sort documented members by type within classes and modules.
+autodoc_member_order = "groupwise"
+
+python_use_unqualified_type_names = True
+
+# Include default values when documenting parameter types.
+typehints_defaults = "comma"
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -109,5 +120,3 @@ html_theme_options = {
         },
     ],
 }
-
-python_use_unqualified_type_names = True

@@ -20,7 +20,7 @@ from typing import (
     get_type_hints,
 )
 
-from tango.common.det_hash import CustomDetHash
+from tango.common.det_hash import DetHashWithVersion
 from tango.common.exceptions import ConfigurationError
 from tango.common.lazy import Lazy
 from tango.common.params import Params
@@ -130,7 +130,13 @@ def infer_method_params(
 
     has_kwargs = False
     var_positional_key = None
-    for param_name in parameters.keys():
+    for param_name in list(parameters.keys()):
+        # Ignore special private parameters.
+        # This is necessary to make `FromParams` work with Pydantic, for example.
+        if param_name.startswith("__"):
+            del parameters[param_name]
+            continue
+
         param = parameters[param_name]
         if param.kind == param.VAR_KEYWORD:
             has_kwargs = True
@@ -343,7 +349,7 @@ def pop_and_construct_arg(
     if popped_params is None:
         return None
 
-    return construct_arg(class_name, name, popped_params, annotation, default, **extras)
+    return construct_arg(class_name, name, popped_params, annotation, default)
 
 
 def _params_contain_step(o: Any) -> bool:
@@ -373,7 +379,6 @@ def construct_arg(
     annotation: Type,
     default: Any,
     try_from_step: bool = True,
-    **extras,
 ) -> Any:
     """
     The first two parameters here are only used for logging if we encounter an error.
@@ -382,17 +387,21 @@ def construct_arg(
     if popped_params is default:
         return popped_params
 
-    from tango.step import Step, WithUnresolvedSteps
+    from tango.step import Step, StepIndexer, WithUnresolvedSteps
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
 
     # Try to guess if `popped_params` might be a step, come from a step, or contain a step.
-    could_be_step = try_from_step and (
-        origin == Step
-        or isinstance(popped_params, Step)
-        or _params_contain_step(popped_params)
-        or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+    could_be_step = (
+        try_from_step
+        and (
+            origin == Step
+            or isinstance(popped_params, Step)
+            or _params_contain_step(popped_params)
+            or (isinstance(popped_params, (dict, Params)) and popped_params.get("type") == "ref")
+        )
+        and not (class_name == "StepInfo" and argument_name == "config")
     )
     if could_be_step:
         # If we think it might be a step, we try parsing as a step _first_.
@@ -407,7 +416,6 @@ def construct_arg(
                 Step[annotation],  # type: ignore
                 default,
                 try_from_step=False,
-                **extras,
             )
         except (ValueError, TypeError, ConfigurationError, AttributeError, IndexError):
             popped_params = backup_params
@@ -421,8 +429,6 @@ def construct_arg(
         if origin is None and isinstance(popped_params, annotation):
             return popped_params
         elif popped_params is not None:
-            subextras = create_extras(annotation, extras)
-
             # In some cases we allow a string instead of a param dict, so
             # we need to handle that case separately.
             if isinstance(popped_params, str):
@@ -447,7 +453,7 @@ def construct_arg(
                 if origin != Step and _params_contain_step(popped_params):
                     result = WithUnresolvedSteps(annotation.from_params, popped_params)
                 else:
-                    result = annotation.from_params(popped_params, **subextras)
+                    result = annotation.from_params(popped_params)
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
@@ -474,6 +480,18 @@ def construct_arg(
             raise ConfigurationError(f"expected key {argument_name} for {class_name}")
         else:
             return default
+
+    # For StepIndexer, we just return as-is and hope the for the best.
+    # At worst, user will get an error at runtime if they are trying to index a step
+    # result that can't be indexed.
+    # TODO (epwalsh): we could check the return type of the wrapped step here
+    # and make sure that:
+    #  1. It's an index-able object,
+    #  2. The item in the index-able object matches `annotation`.
+    #
+    # But that's complex and might have false negatives.
+    elif type(popped_params) == StepIndexer:
+        return popped_params
 
     # If the parameter type is a Python primitive, just pop it off
     # using the correct casting pop_xyz operation.
@@ -527,7 +545,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
 
         return value_dict
@@ -542,7 +559,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_list.append(value)
 
@@ -560,7 +576,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_set.add(value)
 
@@ -581,7 +596,6 @@ def construct_arg(
                     popped_params,
                     arg_annotation,
                     default,
-                    **extras,
                 )
             except (ValueError, TypeError, ConfigurationError, AttributeError) as e:
                 # Our attempt to construct the argument may have modified popped_params, so we
@@ -616,7 +630,6 @@ def construct_arg(
                 value_params,
                 value_cls,
                 _NO_DEFAULT,
-                **extras,
             )
             value_list.append(value)
 
@@ -627,11 +640,10 @@ def construct_arg(
     ):
         # Constructing arbitrary classes from params
         arbitrary_class = origin or annotation
-        subextras = create_extras(arbitrary_class, extras)
         constructor_to_inspect = arbitrary_class.__init__
         constructor_to_call = arbitrary_class
         params_contain_step = _params_contain_step(popped_params)
-        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params, subextras)
+        kwargs = create_kwargs(constructor_to_inspect, arbitrary_class, popped_params)
         from tango.step import WithUnresolvedSteps
 
         if origin != Step and params_contain_step:
@@ -646,7 +658,7 @@ def construct_arg(
         return popped_params
 
 
-class FromParams(CustomDetHash):
+class FromParams(DetHashWithVersion):
     """
     Mixin to give a :meth:`from_params` method to classes. We create a distinct base class for this
     because sometimes we want non :class:`~tango.common.Registrable`
@@ -843,9 +855,3 @@ class FromParams(CustomDetHash):
             raise NotImplementedError(
                 f"{self.__class__.__name__}._to_params() needs to be implemented"
             )
-
-    def det_hash_object(self) -> Any:
-        if hasattr(self, "VERSION"):
-            return getattr(self, "VERSION"), self.to_params()
-        else:
-            return self.to_params()

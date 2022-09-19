@@ -4,7 +4,6 @@ from typing import Optional
 
 from filelock import AcquireReturnProxy
 from filelock import FileLock as _FileLock
-from filelock import Timeout
 
 from .aliases import PathOrStr
 
@@ -42,18 +41,18 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
                     "Race conditions are possible if other processes are writing to the same resource.",
                     UserWarning,
                 )
-                return None  # type: ignore[return-value]
+                return AcquireReturnProxy(self)
             else:
                 raise
 
-    def acquire_with_updates(self, desc: Optional[str] = None):
+    def acquire_with_updates(self, desc: Optional[str] = None) -> AcquireReturnProxy:
         """
         Same as :meth:`acquire()`, except that when the lock cannot be immediately acquired,
         it will keep trying and print status updates as it goes.
         """
         try:
             return self.acquire(timeout=0.1)
-        except Timeout:
+        except TimeoutError:
             pass
 
         from .tqdm import Tqdm
@@ -66,5 +65,5 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
             progress.update()
             try:
                 return self.acquire(timeout=1)
-            except Timeout:
+            except TimeoutError:
                 continue

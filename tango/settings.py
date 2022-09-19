@@ -17,7 +17,12 @@ class TangoGlobalSettings(FromParams):
 
     workspace: Optional[Dict[str, Any]] = None
     """
-    Parameters to initialize a :class:`tango.workspace.Workspace` with.
+    Parameters to initialize a :class:`~tango.workspace.Workspace` with.
+    """
+
+    executor: Optional[Dict[str, Any]] = None
+    """
+    Parameters to initialize an :class:`~tango.executor.Executor` with.
     """
 
     include_package: Optional[List[str]] = None
@@ -30,7 +35,7 @@ class TangoGlobalSettings(FromParams):
     The log level to use. Options are "debug", "info", "warning", and "error".
 
     .. note::
-        This does not affect the :data:`~tango.common.logging.click_logger`
+        This does not affect the :data:`~tango.common.logging.cli_logger`
         or logs from :class:`~tango.common.Tqdm` progress bars.
 
     """
@@ -72,7 +77,7 @@ class TangoGlobalSettings(FromParams):
         return cls()
 
     @classmethod
-    def find_or_default(cls, path: Optional[PathOrStr]) -> "TangoGlobalSettings":
+    def find_or_default(cls, path: Optional[PathOrStr] = None) -> "TangoGlobalSettings":
         """
         Initialize the config from a given configuration file, or falls back to returning
         the default configuration if no file is given.

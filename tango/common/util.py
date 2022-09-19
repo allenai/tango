@@ -4,12 +4,27 @@ import signal
 import string
 import sys
 import traceback
+from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import asdict, is_dataclass
+from datetime import datetime, tzinfo
 from pathlib import Path
-from typing import Iterable, Optional, Set, Tuple, Union
+from typing import Any, Iterable, Optional, Set, Tuple, Union
+
+import pytz
 
 from .aliases import PathOrStr
 from .exceptions import SigTermReceived
+
+
+def tango_cache_dir() -> Path:
+    """
+    Returns a directory suitable for caching things from Tango, defaulting
+    to ``$HOME/.cache/tango``.
+    """
+    cache_dir = Path.home() / ".cache" / "tango"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir
 
 
 def _handle_sigterm(sig, frame):
@@ -236,10 +251,54 @@ def exception_to_string(e: BaseException) -> str:
     """
     Generates a string that contains an exception plus stack frames based on an exception.
 
-    This became trivial in Python 3.10, but we need to run on Pytohn 3.7 as well.
+    This became trivial in Python 3.10, but we need to run on Python 3.8 as well.
     """
     if sys.version_info >= (3, 10):
         formatted = traceback.format_exception(e)
     else:
         formatted = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
     return "".join(formatted)
+
+
+def utc_now_datetime() -> datetime:
+    return datetime.utcnow().replace(tzinfo=pytz.utc)
+
+
+def local_timezone() -> Optional[tzinfo]:
+    return datetime.now().astimezone().tzinfo
+
+
+def replace_steps_with_unique_id(o: Any):
+    from tango.step import Step, StepIndexer
+
+    if isinstance(o, Step):
+        return {"type": "ref", "ref": o.unique_id}
+    elif isinstance(o, StepIndexer):
+        return {"type": "ref", "ref": o.step.unique_id, "key": o.key}
+    elif isinstance(o, (list, tuple, set)):
+        return o.__class__(replace_steps_with_unique_id(i) for i in o)
+    elif isinstance(o, dict):
+        return {key: replace_steps_with_unique_id(value) for key, value in o.items()}
+    else:
+        return o
+
+
+def jsonify(o: Any) -> Any:
+    """
+    Transform an object into a JSON-serializable equivalent (if there is one)
+    in a deterministic way. For example, tuples and sets are turned into lists,
+    dictionaries are turned into ordered dictionaries where the order depends on the sorting
+    of the keys, and datetimes are turned into formatted strings.
+    """
+    if isinstance(o, (tuple, set)):
+        return [jsonify(x) for x in o]
+    elif isinstance(o, dict):
+        return OrderedDict((k, jsonify(v)) for k, v in sorted(o.items(), key=lambda x: x[0]))
+    elif isinstance(o, datetime):
+        return o.strftime("%Y-%m-%dT%H:%M:%S")
+    elif is_dataclass(o):
+        return jsonify(asdict(o))
+    elif isinstance(o, Path):
+        return str(o)
+    else:
+        return o

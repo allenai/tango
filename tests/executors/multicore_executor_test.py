@@ -4,10 +4,10 @@ import pytest
 
 from tango.common.logging import initialize_logging
 from tango.common.testing import TangoTestCase
+from tango.common.testing.steps import SleepPrintMaybeFail
 from tango.executors.multicore_executor import MulticoreExecutor
 from tango.step_graph import StepGraph
 from tango.workspaces import LocalWorkspace
-from test_fixtures.package.steps import SleepPrintMaybeFail
 
 
 class TestMulticoreExecutor(TangoTestCase):
@@ -79,7 +79,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -113,11 +112,43 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
         assert len(executor.workspace.step_cache) == 1
+
+    @pytest.mark.parametrize("parallelism", [1, 2, 3])
+    def test_failing_step_with_further_downstream_task(self, parallelism):
+        step_graph = StepGraph.from_params(
+            {
+                "step1": {
+                    "type": "sleep-print-maybe-fail",
+                    "string": "string_to_pass_down",
+                    "seconds": 0,
+                    "fail": True,
+                },
+                "step2": {
+                    "type": "sleep-print-maybe-fail",
+                    "string": {"type": "ref", "ref": "step1"},
+                    "seconds": 0,
+                    "fail": False,
+                },
+                "step3": {
+                    "type": "sleep-print-maybe-fail",
+                    "string": {"type": "ref", "ref": "step2"},
+                    "seconds": 0,
+                    "fail": False,
+                },
+            }
+        )
+
+        executor = MulticoreExecutor(
+            workspace=LocalWorkspace(self.TEST_DIR),
+            parallelism=parallelism,
+        )
+
+        executor.execute_step_graph(step_graph)
+        assert len(executor.workspace.step_cache) == 0
 
     def test_uncacheable_failing_step_no_downstream_task(self):
         step_graph = StepGraph.from_params(
@@ -147,7 +178,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=2,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -181,7 +211,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=2,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)
@@ -200,7 +229,6 @@ class TestMulticoreExecutor(TangoTestCase):
         executor = MulticoreExecutor(
             workspace=LocalWorkspace(self.TEST_DIR),
             parallelism=parallelism,
-            include_package=["test_fixtures.package.steps"],
         )
 
         executor.execute_step_graph(step_graph)

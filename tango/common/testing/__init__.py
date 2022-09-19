@@ -6,9 +6,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
-from tango.common.aliases import PathOrStr
+from tango.common.aliases import EnvVarNames, PathOrStr
 from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.params import Params
+from tango.settings import TangoGlobalSettings
 
 
 class TangoTestCase:
@@ -21,22 +22,37 @@ class TangoTestCase:
 
     """
 
-    PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
+    PROJECT_ROOT = (Path(__file__).parent / ".." / ".." / "..").resolve()
     """
     Root of the git repository.
     """
 
-    MODULE_ROOT = PROJECT_ROOT / "tango"
+    # to run test suite with finished package, which does not contain
+    # tests & fixtures, we must be able to look them up somewhere else
+    PROJECT_ROOT_FALLBACK = (
+        # users wanting to run test suite for installed package
+        Path(os.environ["TANGO_SRC_DIR"])
+        if "TANGO_SRC_DIR" in os.environ
+        else (
+            # fallback for conda packaging
+            Path(os.environ["SRC_DIR"])
+            if "CONDA_BUILD" in os.environ
+            # stay in-tree
+            else PROJECT_ROOT
+        )
+    )
+
+    MODULE_ROOT = PROJECT_ROOT_FALLBACK / "tango"
     """
     Root of the tango module.
     """
 
-    TESTS_ROOT = PROJECT_ROOT / "tests"
+    TESTS_ROOT = PROJECT_ROOT_FALLBACK / "tests"
     """
     Root of the tests directory.
     """
 
-    FIXTURES_ROOT = PROJECT_ROOT / "test_fixtures"
+    FIXTURES_ROOT = PROJECT_ROOT_FALLBACK / "test_fixtures"
     """
     Root of the test fixtures directory.
     """
@@ -54,19 +70,27 @@ class TangoTestCase:
         self.TEST_DIR = Path(tempfile.mkdtemp(prefix="tango_tests"))
         os.makedirs(self.TEST_DIR, exist_ok=True)
 
+        # Set an artificial console width so logs are not mangled.
+        os.environ[EnvVarNames.CONSOLE_WIDTH.value] = str(300)
+
     def teardown_method(self):
         shutil.rmtree(self.TEST_DIR)
+        if EnvVarNames.CONSOLE_WIDTH.value in os.environ:
+            del os.environ[EnvVarNames.CONSOLE_WIDTH.value]
 
     def run(
         self,
         config: Union[PathOrStr, Dict[str, Any], Params],
         overrides: Optional[Union[Dict[str, Any], str]] = None,
         include_package: Optional[List[str]] = None,
+        workspace_url: Optional[str] = None,
         step_name: Optional[str] = None,
-        parallelism: int = 1,
-        multicore: bool = False,
+        parallelism: Optional[int] = 1,
+        multicore: Optional[bool] = False,
+        name: Optional[str] = None,
+        settings: Optional[TangoGlobalSettings] = None,
     ) -> Path:
-        from tango.__main__ import TangoGlobalSettings, _run
+        from tango.__main__ import _run
 
         if isinstance(config, (dict, Params)):
             params = config if isinstance(config, Params) else Params(config)
@@ -79,15 +103,16 @@ class TangoTestCase:
             overrides = json.dumps(overrides)
 
         run_name = _run(
-            TangoGlobalSettings(),
+            settings or TangoGlobalSettings(),
             str(config),
-            workspace_url="local://" + str(self.TEST_DIR / "workspace"),
+            workspace_url=workspace_url or "local://" + str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
             start_server=False,
             step_name=step_name,
             parallelism=parallelism,
             multicore=multicore,
+            name=name,
         )
 
         return self.TEST_DIR / "workspace" / "runs" / run_name
@@ -99,15 +124,18 @@ def run_experiment(
     overrides: Optional[Union[Dict[str, Any], str]] = None,
     file_friendly_logging: bool = True,
     include_package: Optional[List[str]] = None,
-    parallelism: int = 1,
-    multicore: bool = False,
+    workspace_url: Optional[str] = None,
+    parallelism: Optional[int] = 1,
+    multicore: Optional[bool] = False,
+    name: Optional[str] = None,
+    settings: Optional[TangoGlobalSettings] = None,
 ):
     """
     A context manager to make testing experiments easier. On ``__enter__`` it runs
     the experiment and returns the path to the run directory, a temporary directory that will be
     cleaned up on ``__exit__``.
     """
-    initialize_logging(enable_click_logs=True, file_friendly_logging=file_friendly_logging)
+    initialize_logging(enable_cli_logs=True, file_friendly_logging=file_friendly_logging)
     test_case = TangoTestCase()
     try:
         test_case.setup_method()
@@ -115,8 +143,11 @@ def run_experiment(
             config,
             overrides=overrides,
             include_package=include_package,
+            workspace_url=workspace_url,
             parallelism=parallelism,
             multicore=multicore,
+            name=name,
+            settings=settings,
         )
     finally:
         test_case.teardown_method()

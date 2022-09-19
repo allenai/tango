@@ -1,13 +1,9 @@
-from pathlib import Path
-
-from tango.common.params import Params
 from tango.common.testing import TangoTestCase
+from tango.common.testing.steps import SleepPrintMaybeFail  # noqa:F401
 from tango.executor import Executor
 from tango.step import Step
 from tango.step_graph import StepGraph
-from tango.workspace import StepExecutionMetadata
 from tango.workspaces import LocalWorkspace
-from test_fixtures.package.steps import SleepPrintMaybeFail  # noqa:F401
 
 
 @Step.register("sum_numbers")
@@ -18,23 +14,6 @@ class AdditionStep(Step):
 
     def run(self, a: int, b: int) -> int:  # type: ignore
         return a + b
-
-
-class TestMetadata(TangoTestCase):
-    def test_metadata(self):
-        metadata = StepExecutionMetadata("some_step")
-        metadata.save(self.TEST_DIR)
-
-        if (Path.cwd() / ".git").exists():
-            assert metadata.git is not None
-            assert metadata.git.commit is not None
-            assert metadata.git.remote is not None
-            assert "allenai/tango" in metadata.git.remote
-
-        metadata2 = StepExecutionMetadata.from_params(
-            Params.from_file(self.TEST_DIR / "execution-metadata.json")
-        )
-        assert metadata == metadata2
 
 
 class TestExecutor(TangoTestCase):

@@ -15,10 +15,15 @@ on:
       - 'v*.*.*'
 
 env:
-  # Change this to invalidate existing cache.
-  CACHE_PREFIX: v3
+  CACHE_PREFIX: v3  # Change this to invalidate existing cache.
   PYTHON_PATH: ./
-  DEFAULT_PYTHON: 3.7
+  DEFAULT_PYTHON: 3.8
+  WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+  BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+  BEAKER_WORKSPACE: ai2/tango-testing
+  BEAKER_DEFAULT_CLUSTER: ai2/tango-gpu-tests
+  BEAKER_IMAGE: petew/tango-testing
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   checks:
@@ -28,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.7']
+        python: ['3.8']
         task:
           - name: Lint
             extras: dev,all
@@ -67,7 +72,7 @@ jobs:
             extras: dev
             requires_torch: false
             run: |
-              pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+              pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Datasets integration
             extras: dev,datasets
@@ -88,7 +93,7 @@ jobs:
               pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
 
           - name: Transformers integration
-            extras: dev,transformers
+            extras: dev,flax,transformers
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
@@ -98,6 +103,24 @@ jobs:
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
+
+          - name: W&B integration
+            extras: dev,torch,flax,wandb
+            requires_torch: true
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/wandb tests/integrations/wandb
+
+          - name: Beaker integration
+            extras: dev,beaker
+            requires_torch: false
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/beaker tests/integrations/beaker
+
+          - name: Flax integration
+            extras: dev,flax,transformers
+            requires_torch: false
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/flax tests/integrations/flax
 
           - name: Example - train_lm
             extras: dev,all
@@ -113,15 +136,7 @@ jobs:
               extras: dev
               requires_torch: false
               run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.8'
-
-          - task:
-              name: Test
-              extras: dev
-              requires_torch: false
-              run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.9'
 
           - task:
@@ -129,14 +144,24 @@ jobs:
               extras: dev
               requires_torch: false
               run: |
-                pytest -v --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
+                pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
             python: '3.10'
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v3
+
+      # For pull requests we need to checkout the HEAD commit instead of the merge
+      # commit since some tests depend on having an existing commit.
+      - name: Checkout (pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
 
@@ -155,7 +180,7 @@ jobs:
           echo "WEEK_NUMBER=$(date +%V)" >> $GITHUB_ENV
           echo "EXTRAS_HASH=$(python scripts/hash_extras.py ${{ matrix.task.extras }})" >> $GITHUB_ENV
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         id: virtualenv-cache
         with:
           path: .venv
@@ -170,7 +195,13 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
         run: |
           . .venv/bin/activate
-          pip install torch==1.11.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
+          pip install torch==1.12.0 --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Pre-install flax
+        if: steps.virtualenv-cache.outputs.cache-hit != 'true' && contains(matrix.task.extras, 'flax')
+        run: |
+          . .venv/bin/activate
+          pip install flax==0.5.0 jax==0.3.13 jaxlib==0.3.10 tensorflow-cpu==2.9.1 optax==0.1.3
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -198,14 +229,14 @@ jobs:
 
       - name: Upload package distribution files
         if: matrix.task.name == 'Build' && matrix.python == env.DEFAULT_PYTHON
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: package
           path: dist
 
       - name: Upload docs build
         if: matrix.task.name == 'Docs' && matrix.python == env.DEFAULT_PYTHON
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docs
           path: docs/build
@@ -218,16 +249,8 @@ jobs:
 
   gpu_tests:
     name: GPU Tests
-    runs-on: [ubuntu-latest]
-    timeout-minutes: 20
-    env:
-      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
-      BEAKER_WORKSPACE: ai2/tango-testing
-      BEAKER_CLUSTER: ai2/tango-gpu-tests
-      IMAGE_NAME: petew/tango-testing
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
       - name: Determine current commit SHA (pull request)
         if: github.event_name == 'pull_request'
         run: |
@@ -238,111 +261,46 @@ jobs:
         run: |
           echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
 
-      - name: Install beaker client
-        shell: bash
-        run: |
-          mkdir -p "$HOME/bin"
-
-          # Download and install from latest GitHub release.
-          curl -s https://api.github.com/repos/allenai/beaker/releases/latest \
-            | grep 'browser_download_url.*linux' \
-            | cut -d '"' -f 4 \
-            | wget -qi - \
-          && tar -xvzf beaker_linux.tar.gz -C "$HOME/bin"
-
-          # Add to path.
-          echo "$HOME/bin" >> "$GITHUB_PATH"
-
-      - name: Verify beaker install
-        run: |
-          beaker account whoami
-
-      - name: Create beaker experiment config
-        run: |
-          cat >beaker_config.yml << EOL
-          version: v2-alpha
-          description: GPU Tests
-          tasks:
-            - name: tests
-              image:
-                beaker: ${{ env.IMAGE_NAME }}
-              command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
-              envVars:
-                - name: COMMIT_SHA
-                  value: $COMMIT_SHA
-              result:
-                path: '/results'
-              resources:
-                gpuCount: 2
-              context:
-                cluster: ${{ env.BEAKER_CLUSTER }}
-                priority: normal
-          EOL
-          cat beaker_config.yml
-
-      - name: Submit beaker job
-        run: |
-          TIMESTAMP=$(date +%H%M%S)
-          EXPERIMENT=$(beaker experiment create beaker_config.yml --workspace $BEAKER_WORKSPACE --name "gpu-tests-${COMMIT_SHA}-${TIMESTAMP}" | awk '{print $2}')
-          if [ -z "$EXPERIMENT" ]; then
-            exit 1
-          else
-            echo "EXPERIMENT=$EXPERIMENT" >> $GITHUB_ENV
-            echo "Experiment $EXPERIMENT submitted. See progress at https://beaker.org/ex/$EXPERIMENT"
-          fi
-
-      - name: Wait for job to finish
-        run: |
-          beaker experiment await $EXPERIMENT tests finalized --timeout 20m
-          # Check the job's exit code.
-          test $(beaker experiment get $EXPERIMENT --format=json | jq '.[0].jobs[0].status.exitCode') -eq 0
-
-      - name: Get logs
-        if: always()
-        run: |
-          # EXPERIMENT could be empty if the submission step failed.
-          # We'll exit right away if that's the case.
-          if [ -z "$EXPERIMENT" ]; then
-            echo "No logs to show"
-            exit 0
-          fi
-
-          # Download logs from beaker.
-          beaker experiment results $EXPERIMENT --prefix out.log --output results
-
-          # If the experiment failed during startup, there might not be any logs.
-          if [ -f results/tests/out.log ]; then
-            echo ""
-            echo ">>> Logs:"
-            echo ""
-            cat results/tests/out.log
-          else
-            echo "No logs to show"
-          fi
-
-      - name: Stop job
-        if: cancelled()
-        run: |
-          if [ ! -z "$EXPERIMENT" ]; then
-            beaker experiment stop $EXPERIMENT
-          fi
+      - name: GPU Tests
+        uses: allenai/beaker-run-action@v1.1
+        with:
+          spec: |
+            version: v2
+            description: GPU Tests
+            tasks:
+              - name: tests
+                image:
+                  beaker: ${{ env.BEAKER_IMAGE }}
+                context:
+                  cluster: ${{ env.BEAKER_DEFAULT_CLUSTER }}
+                resources:
+                  gpuCount: 2
+                envVars:
+                  - name: COMMIT_SHA
+                    value: ${{ env.COMMIT_SHA }}
+                command: ["/entrypoint.sh", "pytest", "-v", "-m", "gpu", "tests/"]
+                result:
+                  path: /unused
+          token: ${{ secrets.BEAKER_TOKEN }}
+          workspace: ${{ env.BEAKER_WORKSPACE }}
+          clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [checks, gpu_tests]
+    needs: [gpu_tests, checks]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v1  # needs v1 for now
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Install requirements
         run: |
-          pip install --upgrade pip setuptools wheel twine
+          pip install -r dev-requirements.txt
 
       - name: Prepare environment
         run: |
@@ -350,7 +308,7 @@ jobs:
           echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Download package distribution files
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: package
           path: dist
@@ -365,8 +323,6 @@ jobs:
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           body_path: ${{ github.workspace }}-RELEASE_NOTES.md
           prerelease: ${{ contains(env.TAG, 'rc') }}

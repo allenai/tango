@@ -3,7 +3,8 @@ from typing import Any, Dict, Mapping, MutableMapping
 
 import pytest
 
-import test_fixtures.package.steps  # noqa: F401
+from tango import StepGraph
+from tango.common import Params, Registrable
 from tango.common.from_params import FromParams
 from tango.common.testing import TangoTestCase
 from tango.step import Step
@@ -24,7 +25,7 @@ class TestStep(TangoTestCase):
             def __init__(self, x: int):
                 self.x = x
 
-        @Step.register("foo")
+        @Step.register("foo", exist_ok=True)
         class FooStep(Step):
             def run(self, bar: Bar) -> Bar:  # type: ignore
                 return bar
@@ -74,3 +75,62 @@ class TestStep(TangoTestCase):
 
         assert explicit.unique_id == implicit.unique_id
         assert explicit.result() == implicit.result()
+
+    def test_steps_in_params(self):
+        class Widget(Registrable):
+            def __init__(self, x: int):
+                self.x = x
+
+        @Widget.register("gizmo")
+        class GizmoWidget(Widget):
+            def __init__(self, x: int):
+                super().__init__(x * x)
+
+        @Step.register("consumer")
+        class WidgetConsumerStep(Step):
+            def run(self, widget: Widget):  # type: ignore
+                return widget.x
+
+        @Step.register("producer")
+        class WidgetProducerStep(Step):
+            def run(self, x: int) -> Widget:  # type: ignore
+                return GizmoWidget(x)
+
+        config = {
+            "widget_producer": Params({"type": "producer", "x": 4}),
+            "widget_consumer": Params(
+                {"type": "consumer", "widget": {"type": "ref", "ref": "widget_producer"}}
+            ),
+        }
+
+        sg = StepGraph.from_params(config)
+        assert len(sg["widget_consumer"].dependencies) > 0
+
+        class WidgetHolder(Registrable):
+            def __init__(self, widget: Widget):
+                self.widget = widget
+
+        @WidgetHolder.register("gizmo")
+        class GizmoWidgetHolder(WidgetHolder):
+            def __init__(self, gizmo: GizmoWidget):
+                super().__init__(gizmo)
+
+        @Step.register("holder_consumer")
+        class WidgetHolderConsumerStep(Step):
+            def run(self, widget_holder: WidgetHolder) -> int:  # type: ignore
+                return widget_holder.widget.x
+
+        config = {
+            "widget_producer": Params({"type": "producer", "x": 4}),
+            "holder_consumer": Params(
+                {
+                    "type": "holder_consumer",
+                    "widget_holder": {
+                        "type": "gizmo",
+                        "gizmo": {"type": "ref", "ref": "widget_producer"},
+                    },
+                }
+            ),
+        }
+        sg = StepGraph.from_params(config)
+        assert len(sg["holder_consumer"].dependencies) > 0

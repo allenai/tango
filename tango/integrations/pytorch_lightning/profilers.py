@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+import pytorch_lightning.profiler
 
 from tango.common.registrable import Registrable
 
@@ -14,7 +15,7 @@ class LightningProfiler(pl.profiler.base.BaseProfiler, Registrable):
 for name, cls in pl.profiler.__dict__.items():
     if (
         isinstance(cls, type)
-        and issubclass(cls, pl.profiler.base.BaseProfiler)
+        and issubclass(cls, (pl.profiler.base.BaseProfiler, pl.profiler.base.Profiler))
         and not cls == pl.profiler.base.BaseProfiler
     ):
         LightningProfiler.register("pytorch_lightning::" + name)(cls)

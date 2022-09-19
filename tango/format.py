@@ -29,7 +29,6 @@ import dill
 from tango.common import DatasetDict, filename_is_safe
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
-from tango.common.logging import TangoLogger
 from tango.common.registrable import Registrable
 from tango.common.sequences import SqliteSparseSequence
 
@@ -44,7 +43,7 @@ class Format(Registrable, Generic[T]):
     the result of a :class:`~tango.step.Step`.
     """
 
-    VERSION: int = NotImplemented
+    VERSION: str = NotImplemented
     """
     Formats can have versions. Versions are part of a step's unique signature, part of
     :attr:`~tango.step.Step.unique_id`, so when a step's format changes,
@@ -118,7 +117,7 @@ class DillFormat(Format[T], Generic[T]):
 
     """
 
-    VERSION = 1
+    VERSION = "001"
 
     def __init__(self, compress: Optional[str] = None):
         if compress not in _OPEN_FUNCTIONS:
@@ -200,10 +199,10 @@ class JsonFormat(Format[T], Generic[T]):
         iterator. If you read an iterator, it will read the iterator lazily.
     """
 
-    VERSION = 2
+    VERSION = "002"
 
     def __init__(self, compress: Optional[str] = None):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        self.logger = logging.getLogger(self.__class__.__name__)
         if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
         self.compress = compress
@@ -337,10 +336,10 @@ class TextFormat(Format[Union[str, Iterable[str]]]):
         all special characters are escaped, strings are quoted, but it's all still human-readable.
     """
 
-    VERSION = 1
+    VERSION = "001"
 
     def __init__(self, compress: Optional[str] = None):
-        self.logger = cast(TangoLogger, logging.getLogger(self.__class__.__name__))
+        self.logger = logging.getLogger(self.__class__.__name__)
         if compress not in _OPEN_FUNCTIONS:
             raise ConfigurationError(f"The {compress} compression format does not exist.")
         self.compress = compress
@@ -408,6 +407,8 @@ class TextFormatIterator(Iterator[str]):
             line = self.f.readline()
             if len(line) <= 0:
                 raise EOFError()
+            if line.endswith("\n"):
+                line = line[:-1]
             return line
         except EOFError:
             self.f.close()
@@ -417,7 +418,7 @@ class TextFormatIterator(Iterator[str]):
 
 @Format.register("sqlite_sequence")
 class SqliteSequenceFormat(Format[Sequence[T]]):
-    VERSION = 3
+    VERSION = "003"
 
     FILENAME = "data.sqlite"
 
@@ -490,7 +491,7 @@ class SqliteDictFormat(Format[DatasetDict]):
     not empty when you open it.
     """
 
-    VERSION = 3
+    VERSION = "003"
 
     def write(self, artifact: DatasetDict, dir: Union[str, PathLike]):
         dir = Path(dir)

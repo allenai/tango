@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning.plugins import PLUGIN_INPUT
 
 from tango.common.dataset_dict import DatasetDict
 from tango.common.lazy import Lazy
@@ -18,7 +19,7 @@ from .callbacks import LightningCallback
 from .data import LightningDataModule
 from .loggers import LightningLogger
 from .model import LightningModule
-from .plugins import ALL_PLUGIN_TYPES, LightningTrainingTypePlugin
+from .plugins import LightningTrainingTypePlugin
 from .profilers import LightningProfiler
 
 logger = logging.getLogger(__name__)
@@ -34,11 +35,11 @@ class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
         self,
         work_dir: Path,
         logger: Optional[Union[List[Lazy[LightningLogger]], Lazy[LightningLogger]]] = None,
-        callbacks: Optional[List[LightningCallback]] = None,
+        callbacks: Union[List[LightningCallback], LightningCallback, None] = None,
         profiler: Optional[Union[str, Lazy[LightningProfiler]]] = None,
         accelerator: Optional[Union[str, LightningAccelerator]] = None,
         strategy: Optional[Union[str, LightningTrainingTypePlugin]] = None,
-        plugins: Optional[List[Union[str, ALL_PLUGIN_TYPES]]] = None,
+        plugins: Optional[Union[PLUGIN_INPUT, List[PLUGIN_INPUT]]] = None,
         **kwargs,
     ):
         loggers: List[LightningLogger] = (
@@ -56,7 +57,7 @@ class LightningTrainer(pl.Trainer, Registrable):  # type: ignore
 
         super().__init__(
             logger=loggers,
-            callbacks=callbacks,
+            callbacks=callbacks,  # type: ignore  # (type is correct but mypy can't figure it out)
             profiler=profiler,
             accelerator=accelerator,
             strategy=strategy,
@@ -81,6 +82,7 @@ class LightningTrainStep(Step):
     DETERMINISTIC: bool = True
     CACHEABLE = True
     FORMAT: Format = TorchFormat()
+    METADATA = {"artifact_kind": "model"}
 
     def run(  # type: ignore[override]
         self,

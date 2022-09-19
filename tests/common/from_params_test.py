@@ -17,6 +17,8 @@ from typing import (
 
 import pytest
 
+from tango.common import det_hash
+from tango.common.det_hash import DetHashWithVersion
 from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import (
     FromParams,
@@ -138,144 +140,6 @@ class TestFromParams(TangoTestCase):
 
         assert c.name == "extra_c"  # type: ignore[attr-defined]
         assert c.size == 20  # type: ignore[attr-defined]
-
-    def test_extras_for_custom_classes(self):
-        class BaseClass(Registrable):
-            pass
-
-        class BaseClass2(Registrable):
-            pass
-
-        @BaseClass.register("A")
-        class A(BaseClass):
-            def __init__(self, a: int, b: int, val: str) -> None:
-                self.a = a
-                self.b = b
-                self.val = val
-
-            def __hash__(self):
-                return self.b
-
-            def __eq__(self, other):
-                return self.b == other.b
-
-            @classmethod
-            def from_params(cls, params: Params, a: int, **extras) -> "A":  # type: ignore
-                # A custom from params
-                b = params.pop_int("b")
-                assert b is not None
-                val = params.pop("val", "C")
-                params.assert_empty(cls.__name__)
-                return cls(a=a, b=b, val=val)
-
-        @BaseClass2.register("B")
-        class B(BaseClass2):
-            def __init__(self, c: int, b: int) -> None:
-                self.c = c
-                self.b = b
-
-            @classmethod
-            def from_params(cls, params: Params, c: int, **extras) -> "B":  # type: ignore
-                b = params.pop_int("b")
-                assert b is not None
-                params.assert_empty(cls.__name__)
-                return cls(c=c, b=b)
-
-        @BaseClass.register("E")
-        class E(BaseClass):
-            def __init__(self, m: int, n: int) -> None:
-                self.m = m
-                self.n = n
-
-            @classmethod
-            def from_params(cls, params: Params, **extras2) -> "E":  # type: ignore
-                m = params.pop_int("m")
-                assert m is not None
-                params.assert_empty(cls.__name__)
-                n = extras2["n"]
-                return cls(m=m, n=n)
-
-        class C:
-            pass
-
-        @BaseClass.register("D")
-        class D(BaseClass):
-            def __init__(
-                self,
-                arg1: List[BaseClass],
-                arg2: Tuple[BaseClass, BaseClass2],
-                arg3: Dict[str, BaseClass],
-                arg4: Set[BaseClass],
-                arg5: List[BaseClass],
-            ) -> None:
-                self.arg1 = arg1
-                self.arg2 = arg2
-                self.arg3 = arg3
-                self.arg4 = arg4
-                self.arg5 = arg5
-
-        vals = [1, 2, 3]
-        params = Params(
-            {
-                "type": "D",
-                "arg1": [
-                    {"type": "A", "b": vals[0]},
-                    {"type": "A", "b": vals[1]},
-                    {"type": "A", "b": vals[2]},
-                ],
-                "arg2": [{"type": "A", "b": vals[0]}, {"type": "B", "b": vals[0]}],
-                "arg3": {
-                    "class_1": {"type": "A", "b": vals[0]},
-                    "class_2": {"type": "A", "b": vals[1]},
-                },
-                "arg4": [
-                    {"type": "A", "b": vals[0], "val": "M"},
-                    {"type": "A", "b": vals[1], "val": "N"},
-                    {"type": "A", "b": vals[1], "val": "N"},
-                ],
-                "arg5": [{"type": "E", "m": 9}],
-            }
-        )
-        extra = C()
-        tval1 = 5
-        tval2 = 6
-        d: D = BaseClass.from_params(  # type: ignore[assignment]
-            params, extra=extra, a=tval1, c=tval2, n=10
-        )
-
-        # Tests for List # Parameters
-        assert len(d.arg1) == len(vals)
-        assert isinstance(d.arg1, list)
-        assert isinstance(d.arg1[0], A)
-        assert all(x.b == y for x, y in zip(d.arg1, vals))  # type: ignore[attr-defined]
-        assert all(x.a == tval1 for x in d.arg1)  # type: ignore[attr-defined]
-
-        # Tests for Tuple
-        assert isinstance(d.arg2, tuple)
-        assert isinstance(d.arg2[0], A)
-        assert isinstance(d.arg2[1], B)
-        assert d.arg2[0].a == tval1
-        assert d.arg2[1].c == tval2
-        assert d.arg2[0].b == d.arg2[1].b == vals[0]
-
-        # Tests for Dict
-        assert isinstance(d.arg3, dict)
-        assert isinstance(d.arg3["class_1"], A)
-        assert d.arg3["class_1"].a == d.arg3["class_2"].a == tval1  # type: ignore[attr-defined]
-        assert d.arg3["class_1"].b == vals[0]
-        assert d.arg3["class_2"].b == vals[1]  # type: ignore[attr-defined]
-
-        # Tests for Set
-        assert isinstance(d.arg4, set)
-        assert len(d.arg4) == 2
-        assert any(x.val == "M" for x in d.arg4)  # type: ignore[attr-defined]
-        assert any(x.val == "N" for x in d.arg4)  # type: ignore[attr-defined]
-
-        # Tests for custom extras parameters
-        assert isinstance(d.arg5, list)
-        assert isinstance(d.arg5[0], E)
-        assert d.arg5[0].m == 9
-        assert d.arg5[0].n == 10
 
     def test_union(self):
         class A(FromParams):
@@ -1102,6 +966,81 @@ class TestFromParams(TangoTestCase):
             return MyRegistrableClass(options.a, options.b)
 
         MyRegistrableClass.from_params({"type": "func_constructor", "options": {"a": 1, "b": 2}})
+
+    def test_from_params_passes_no_extra_args_in_factory_construction(self):
+        class InnerBase(Registrable):
+            pass
+
+        from typing import Callable
+
+        def innerbase_with_x_factory(cls) -> Callable[..., InnerBase]:
+            def factory(x: int, **kwargs) -> InnerBase:
+                return cls(x=x, **kwargs)
+
+            return factory
+
+        class Inner(InnerBase):
+            def __init__(self, x: int):
+                self.x = x
+
+        InnerBase.register("inner")(innerbase_with_x_factory(Inner))
+
+        class OuterBase(Registrable):
+            default_implementation = "default"
+
+            def __init__(self, y: str, i: InnerBase, c: int):
+                self.i = i
+                self.y = y
+                self.c = c
+
+        OuterBase.register("default")(OuterBase)
+
+        config = {"c": 4, "i": {"type": "inner", "x": 5}}
+
+        outer_lazy = Lazy(OuterBase, Params(config))
+        outer = outer_lazy.construct(y="placeholder")
+        assert outer.i.x == 5
+
+    def test_lazy_from_params_with_version(self):
+        class Gizmo(Registrable):
+            pass
+
+        @Gizmo.register("widget")
+        class WidgetGizmo(Gizmo, DetHashWithVersion):
+            VERSION = "001"
+
+            def __init__(self, x: int):
+                self.x = x
+
+            @classmethod
+            def default(cls):
+                return WidgetGizmo(0)
+
+        Gizmo.register("default_widget", "default")(WidgetGizmo)
+
+        lazy = Lazy(Gizmo, params=Params({"type": "widget", "x": 1}))
+
+        hash_before = det_hash(lazy)
+        WidgetGizmo.VERSION = "001"
+        assert hash_before == det_hash(lazy)
+        WidgetGizmo.VERSION = "002"
+        assert hash_before != det_hash(lazy)
+        assert lazy.construct().x == 1
+
+        default_lazy = Lazy(
+            Gizmo,
+            params=Params(
+                {
+                    "type": "default_widget",
+                }
+            ),
+        )
+        assert hash_before != det_hash(default_lazy)
+        assert det_hash(lazy) != det_hash(default_lazy)
+        hash_before = det_hash(default_lazy)
+        WidgetGizmo.VERSION = "003"
+        assert hash_before != det_hash(default_lazy)
+        assert default_lazy.construct().x == 0
 
 
 class MyClass(FromParams):
