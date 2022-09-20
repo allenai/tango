@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
+
 ### Added
 
 - Adds a function to modify a Hugging Face transformer with IA3 adaptors
