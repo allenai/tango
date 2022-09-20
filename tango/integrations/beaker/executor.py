@@ -695,6 +695,7 @@ class BeakerExecutor(Executor):
             for exp in self.beaker.workspace.experiments(
                 match=f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-"
             ):
+                self._check_if_cancelled()
                 try:
                     latest_job = self.beaker.experiment.latest_job(exp)
                 except (ValueError, ExperimentNotFound):
