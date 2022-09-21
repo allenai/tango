@@ -87,14 +87,17 @@ import struct
 import sys
 import threading
 from contextlib import contextmanager
-from typing import ContextManager, Generator, List, Optional
+from datetime import datetime
+from pathlib import Path
+from typing import Callable, ClassVar, ContextManager, Generator, List, Optional, Union
 
 import rich
-from rich.console import Console
-from rich.logging import RichHandler as _RichHandler
+from rich.console import Console, ConsoleRenderable, Group
+from rich.highlighter import NullHighlighter
 from rich.padding import Padding
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.text import Text
 
 from .aliases import EnvVarNames, PathOrStr
 from .exceptions import CancellationError, CliRunError, SigTermReceived
@@ -287,21 +290,129 @@ _LOGGING_SERVER: Optional[LogRecordSocketReceiver] = None
 _LOGGING_SERVER_THREAD: Optional[threading.Thread] = None
 
 
-class RichHandler(_RichHandler):
+class RichHandler(logging.Handler):
+    """
+    Adapted from
+    https://github.com/Textualize/rich/blob/master/rich/logging.py
+    """
+
+    KEYWORDS: ClassVar[Optional[List[str]]] = [
+        "GET",
+        "POST",
+        "HEAD",
+        "PUT",
+        "DELETE",
+        "OPTIONS",
+        "TRACE",
+        "PATCH",
+    ]
+
+    def __init__(
+        self,
+        level: Union[int, str] = logging.NOTSET,
+        console: Optional[Console] = None,
+        *,
+        markup: bool = False,
+        log_time_format: Union[str, Callable[[datetime], str]] = "[%x %X]",
+        keywords: Optional[List[str]] = None,
+        show_time: bool = True,
+        show_level: bool = True,
+        show_path: bool = True,
+    ) -> None:
+        super().__init__(level=level)
+        self.console = console or rich.get_console()
+        self.highlighter = NullHighlighter()
+        self.time_format = log_time_format
+        self.markup = markup
+        self.keywords = keywords or self.KEYWORDS
+        self.show_time = show_time
+        self.show_level = show_level
+        self.show_path = show_path
+
     def emit(self, record: logging.LogRecord) -> None:
-        if isinstance(record.msg, Table):
-            if record.msg.title is not None:
-                attrdict = {k: v for k, v in record.__dict__.items() if k != "msg"}
-                attrdict["msg"] = "[italic]" + record.msg.title + "[/]"
-                self.emit(logging.makeLogRecord(attrdict))
-            record.msg.title = None
-            self.console.print(Padding(record.msg, (1, 0, 1, 1)))
-        elif isinstance(record.msg, Syntax):
+        if isinstance(record.msg, (Syntax, Table)):
             self.console.print(Padding(record.msg, (1, 0, 1, 1)))
         elif hasattr(record.msg, "__rich__") or hasattr(record.msg, "__rich_console__"):
             self.console.print(record.msg)
         else:
-            super().emit(record)
+            message = self.format(record)
+            message_renderable = self.render_message(record, message)
+            log_renderable = self.render(record=record, message_renderable=message_renderable)
+            try:
+                self.console.print(log_renderable)
+            except Exception:
+                self.handleError(record)
+
+    def render_message(self, record: logging.LogRecord, message: str) -> ConsoleRenderable:
+        use_markup = getattr(record, "markup", self.markup)
+        message_text = Text.from_markup(message) if use_markup else Text(message)
+        if self.show_path and record.exc_info is None:
+            message_text.end = " "
+
+        highlighter = getattr(record, "highlighter", self.highlighter)
+        if highlighter:
+            message_text = highlighter(message_text)
+
+        if self.keywords is None:
+            self.keywords = self.KEYWORDS
+
+        if self.keywords:
+            message_text.highlight_words(self.keywords, "logging.keyword")
+
+        return message_text
+
+    def get_time_text(self, record: logging.LogRecord) -> Text:
+        log_time = datetime.fromtimestamp(record.created)
+        time_str: str
+        if callable(self.time_format):
+            time_str = self.time_format(log_time)
+        else:
+            time_str = log_time.strftime(self.time_format)
+        return Text(time_str, style="log.time", end=" ")
+
+    def get_level_text(self, record: logging.LogRecord) -> Text:
+        level_name = record.levelname
+        level_text = Text.styled(level_name.ljust(8), f"logging.level.{level_name.lower()}")
+        level_text.style = "log.level"
+        level_text.end = " "
+        return level_text
+
+    def get_path_text(self, record: logging.LogRecord, length_so_far: int) -> Text:
+        path = Path(record.pathname)
+        for package_root in sys.path:
+            try:
+                path = path.relative_to(Path(package_root))
+                break
+            except ValueError:
+                continue
+        text = f"{path}:{record.lineno}"
+        length_after_wrap = length_so_far % self.console.width
+        return Text(
+            text.rjust(self.console.width - length_after_wrap - 3),
+            style="log.path",
+        )
+
+    def render(
+        self,
+        *,
+        record: logging.LogRecord,
+        message_renderable: ConsoleRenderable,
+    ) -> ConsoleRenderable:
+        components: List[ConsoleRenderable] = []
+        if self.show_time:
+            components.append(self.get_time_text(record))
+        if self.show_level:
+            components.append(self.get_level_text(record))
+        components.append(message_renderable)
+        if self.show_path and record.exc_info is None:
+            try:
+                length_so_far = sum(len(x) for x in components)  # type: ignore
+            except TypeError:
+                pass
+            else:
+                components.append(self.get_path_text(record, length_so_far))
+
+        return Group(*components)
 
 
 def get_handler(
@@ -312,27 +423,21 @@ def get_handler(
     show_level: bool = True,
     show_path: bool = True,
 ) -> logging.Handler:
-    import click
-
     console = Console(
         color_system="auto" if not FILE_FRIENDLY_LOGGING else None,
         stderr=stderr,
         width=TANGO_CONSOLE_WIDTH,
+        soft_wrap=True,
     )
     if TANGO_CONSOLE_WIDTH is None and not console.is_terminal:
         console.width = 160
     handler = RichHandler(
         level=level,
         console=console,
-        rich_tracebacks=False,
-        tracebacks_show_locals=False,
-        tracebacks_suppress=[click],
         markup=enable_markup,
         show_time=show_time,
         show_level=show_level,
         show_path=show_path,
-        omit_repeated_times=False,
-        highlighter=rich.highlighter.NullHighlighter(),
     )
     return handler
 
@@ -657,8 +762,6 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
         teardown_logging()
 
     """
-    import click
-
     log_file = open(filepath, "w")
     handlers: List[logging.Handler] = []
     console = Console(
@@ -670,10 +773,7 @@ def file_handler(filepath: PathOrStr) -> ContextManager[None]:
     for is_cli_handler in (True, False):
         handler = RichHandler(
             console=console,
-            tracebacks_suppress=[click],
             markup=is_cli_handler,
-            highlighter=rich.highlighter.NullHighlighter(),
-            omit_repeated_times=False,
         )
         handler.addFilter(CliFilter(filter_out=not is_cli_handler))
         handlers.append(handler)

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Long log lines will be soft-wrapped to ensure that links are clickable.
+
 ## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
 
 ### Added
