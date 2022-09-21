@@ -1,12 +1,11 @@
+import json
 import logging
 import os
-import tempfile
 import threading
 import time
 import uuid
 import warnings
 from abc import abstractmethod
-from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from beaker import (
@@ -330,20 +329,6 @@ class BeakerExecutor(Executor):
         }
 
     """
-
-    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
-
-    BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
-
-    RESULTS_DIR: str = "/tango/output"
-
-    ENTRYPOINT_DIR: str = "/tango/entrypoint"
-
-    ENTRYPOINT_FILENAME: str = "entrypoint.sh"
-
-    INPUT_DIR: str = "/tango/input"
-
-    STEP_GRAPH_FILENAME: str = "config.json"
 
     DEFAULT_BEAKER_IMAGE: str = "ai2/conda"
     """
@@ -790,7 +775,7 @@ class BeakerExecutor(Executor):
 
         # Get hash of the local entrypoint source file.
         sha256_hash = hashlib.sha256()
-        contents = read_binary(tango.integrations.beaker, "entrypoint.sh")
+        contents = read_binary(tango.integrations.beaker, Constants.ENTRYPOINT_FILENAME)
         sha256_hash.update(contents)
 
         entrypoint_dataset_name = (
@@ -808,17 +793,16 @@ class BeakerExecutor(Executor):
             # Create it.
             logger.debug(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
             try:
-                with tempfile.TemporaryDirectory() as tmpdirname:
-                    tmpdir = Path(tmpdirname)
-                    entrypoint_path = tmpdir / "entrypoint.sh"
-                    with open(entrypoint_path, "wb") as entrypoint_file:
-                        entrypoint_file.write(contents)
-                    tmp_entrypoint_dataset = self.beaker.dataset.create(
-                        tmp_entrypoint_dataset_name, entrypoint_path, quiet=True
-                    )
-                    entrypoint_dataset = self.beaker.dataset.rename(
-                        tmp_entrypoint_dataset, entrypoint_dataset_name
-                    )
+                tmp_entrypoint_dataset = self.beaker.dataset.create(
+                    tmp_entrypoint_dataset_name, quiet=True, commit=False
+                )
+                self.beaker.dataset.upload(
+                    tmp_entrypoint_dataset, contents, Constants.ENTRYPOINT_FILENAME, quiet=True
+                )
+                self.beaker.dataset.commit(tmp_entrypoint_dataset)
+                entrypoint_dataset = self.beaker.dataset.rename(
+                    tmp_entrypoint_dataset, entrypoint_dataset_name
+                )
             except DatasetConflict:  # could be in a race with another `tango` process.
                 time.sleep(1.0)
                 entrypoint_dataset = self.beaker.dataset.get(entrypoint_dataset_name)
@@ -841,11 +825,14 @@ class BeakerExecutor(Executor):
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
         step_graph_dataset_name = f"{Constants.STEP_GRAPH_DATASET_PREFIX}{str(uuid.uuid4())}"
         try:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                tmpdir = Path(tmpdirname)
-                path = tmpdir / self.STEP_GRAPH_FILENAME
-                step_graph.to_file(path, include_unique_id=True)
-                dataset = self.beaker.dataset.create(step_graph_dataset_name, path, quiet=True)
+            dataset = self.beaker.dataset.create(step_graph_dataset_name, quiet=True, commit=False)
+            self.beaker.dataset.upload(
+                dataset,
+                json.dumps({"steps": step_graph.to_config(include_unique_id=True)}).encode(),
+                Constants.STEP_GRAPH_FILENAME,
+                quiet=True,
+            )
+            self.beaker.dataset.commit(dataset)
         except DatasetConflict:  # could be in a race with another `tango` process.
             time.sleep(1.0)
             dataset = self.beaker.dataset.get(step_graph_dataset_name)
@@ -904,11 +891,11 @@ class BeakerExecutor(Executor):
         self._check_if_cancelled()
 
         # Write the GitHub token secret.
-        self.beaker.secret.write(self.GITHUB_TOKEN_SECRET_NAME, self.github_token)
+        self.beaker.secret.write(Constants.GITHUB_TOKEN_SECRET_NAME, self.github_token)
         self._check_if_cancelled()
 
         # Write the Beaker token secret.
-        self.beaker.secret.write(self.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
+        self.beaker.secret.write(Constants.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
         self._check_if_cancelled()
 
         # Build Tango command to run.
@@ -918,7 +905,7 @@ class BeakerExecutor(Executor):
             "debug",
             "--called-by-executor",
             "beaker-executor-run",
-            self.INPUT_DIR + "/" + self.STEP_GRAPH_FILENAME,
+            Constants.INPUT_DIR + "/" + Constants.STEP_GRAPH_FILENAME,
             step.name,
             self.workspace.url,
         ]
@@ -940,8 +927,8 @@ class BeakerExecutor(Executor):
                 cluster,
                 beaker_image=self.beaker_image,
                 docker_image=self.docker_image,
-                result_path=self.RESULTS_DIR,
-                command=["bash", self.ENTRYPOINT_DIR + "/" + self.ENTRYPOINT_FILENAME],
+                result_path=Constants.RESULTS_DIR,
+                command=["bash", Constants.ENTRYPOINT_DIR + "/" + Constants.ENTRYPOINT_FILENAME],
                 arguments=command,
                 resources=task_resources,
                 datasets=self.datasets,
@@ -949,14 +936,14 @@ class BeakerExecutor(Executor):
                 priority=priority,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
-            .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
-            .with_env_var(name="BEAKER_TOKEN", secret=self.BEAKER_TOKEN_SECRET_NAME)
+            .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
+            .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)
             .with_env_var(name="BEAKER_EXPERIMENT_NAME", value=experiment_name)
-            .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
-            .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
+            .with_dataset(Constants.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
+            .with_dataset(Constants.INPUT_DIR, beaker=step_graph_dataset.id)
         )
 
         if self.venv_name is not None:
