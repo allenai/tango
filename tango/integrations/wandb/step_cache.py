@@ -76,6 +76,21 @@ class WandbStepCache(RemoteStepCache):
     def create_step_result_artifact(self, step: Step, objects_dir: Optional[PathOrStr] = None):
         self._sync_step_remote(step, objects_dir)
 
+    def get_step_result_artifact(
+        self, step: Union[Step, StepInfo]
+    ) -> Optional[wandb.apis.public.Artifact]:
+        artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
+        try:
+            return self.wandb_client.artifact(
+                f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}",
+                type=artifact_kind,
+            )
+        except WandbError as exc:
+            if is_missing_artifact_error(exc):
+                return None
+            else:
+                raise
+
     def _sync_step_remote(self, step: Step, objects_dir: Optional[PathOrStr] = None) -> Any:
         """
         Create an artifact for the result of a step.
