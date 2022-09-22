@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `beaker-py >= 1.10` required.
+
 ### Fixed
 
 - Long log lines will be soft-wrapped to ensure that links are clickable.
