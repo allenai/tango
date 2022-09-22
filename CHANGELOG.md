@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Long log lines will be soft-wrapped to ensure that links are clickable.
+
+## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
+
 ### Added
 
 - Adds a function to modify a Hugging Face transformer with IA3 adaptors
@@ -28,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where canceling the Beaker executor might not work properly.
 - Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
 - Fixed how the results of uncacheable steps are displayed by `tango run`.
+- Beaker executor won't run duplicate cacheable steps at the same time.
 
 ## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
 

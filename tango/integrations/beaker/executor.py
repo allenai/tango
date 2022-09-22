@@ -17,6 +17,8 @@ from beaker import (
     DatasetNotFound,
     Digest,
     EnvVar,
+    Experiment,
+    ExperimentNotFound,
     ExperimentSpec,
     JobFailedError,
     JobTimeoutError,
@@ -685,20 +687,49 @@ class BeakerExecutor(Executor):
             )
             return None
 
-        # Initialize experiment and task spec.
-        experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
-        self._check_if_cancelled()
+        experiment: Optional[Experiment] = None
+        experiment_url: Optional[str] = None
 
-        step.log_starting()
+        # Try to find any existing experiments for this step that are still running.
+        if step.cache_results:
+            for exp in self.beaker.workspace.experiments(
+                match=f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-"
+            ):
+                self._check_if_cancelled()
+                try:
+                    latest_job = self.beaker.experiment.latest_job(exp)
+                except (ValueError, ExperimentNotFound):
+                    continue
+                if latest_job is not None and not latest_job.is_done:
+                    experiment = exp
+                    experiment_url = self.beaker.experiment.url(exp)
+                    cli_logger.info(
+                        "[blue]\N{black rightwards arrow} Found existing Beaker experiment [b]%s[/] for "
+                        'step [b]"%s"[/] that is still running...[/]',
+                        experiment_url,
+                        step_name,
+                    )
+                    break
 
-        # Create experiment.
-        experiment = self.beaker.experiment.create(experiment_name, spec)
-        experiment_url = self.beaker.experiment.url(experiment)
-        cli_logger.info(
-            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
-            experiment_url,
-            step_name,
-        )
+        # Otherwise we submit a new experiment...
+        if experiment is None:
+            # Initialize experiment and task spec.
+            experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
+            self._check_if_cancelled()
+
+            step.log_starting()
+
+            # Create experiment.
+            experiment = self.beaker.experiment.create(experiment_name, spec)
+            experiment_url = self.beaker.experiment.url(experiment)
+            cli_logger.info(
+                '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
+                experiment_url,
+                step_name,
+            )
+
+        assert experiment is not None
+        assert experiment_url is not None
 
         # Follow the experiment and stream the logs until it completes.
         try:
