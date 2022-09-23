@@ -26,11 +26,11 @@ class TestRun(TangoTestCase):
             parts = re.split(r"(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s+", line)
             if len(parts) >= 3:
                 line = "".join(parts[2:])
+                line = re.sub(r"\s+[^ ]+$", "", line)
             elif len(parts) == 1:
                 line = parts[0]
             else:
                 raise ValueError(str(parts))
-            line = re.sub(r"\s+[^ ]+$", "", line)
             if line:
                 out.append(line.strip())
         return out
