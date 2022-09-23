@@ -5,7 +5,6 @@ import string
 import sys
 import traceback
 from collections import OrderedDict
-from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, tzinfo
 from pathlib import Path
@@ -13,7 +12,6 @@ from typing import Any, Iterable, Optional, Set, Tuple, Union
 
 import pytz
 
-from .aliases import PathOrStr
 from .exceptions import SigTermReceived
 
 
@@ -33,25 +31,6 @@ def _handle_sigterm(sig, frame):
 
 def install_sigterm_handler():
     signal.signal(signal.SIGTERM, _handle_sigterm)
-
-
-@contextmanager
-def push_python_path(path: PathOrStr):
-    """
-    Prepends the given path to `sys.path`.
-
-    This method is intended to use with `with`, so after its usage, its value willbe removed from
-    `sys.path`.
-    """
-    # In some environments, such as TC, it fails when sys.path contains a relative path, such as ".".
-    path = Path(path).resolve()
-    path = str(path)
-    sys.path.insert(0, path)
-    try:
-        yield
-    finally:
-        # Better to remove by value, in case `sys.path` was manipulated in between.
-        sys.path.remove(path)
 
 
 _extra_imported_modules: Set[str] = set()
