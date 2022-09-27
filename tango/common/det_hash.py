@@ -126,6 +126,11 @@ class _DetHashPickler(dill.Pickler):
                 return None
         elif isinstance(obj, type):
             return obj.__module__, obj.__qualname__
+        elif callable(obj):
+            if hasattr(obj, "__module__") and hasattr(obj, "__qualname__"):
+                return obj.__module__, obj.__qualname__
+            else:
+                return None
         elif ndarray is not None and isinstance(obj, ndarray):
             # It's unclear why numpy arrays don't pickle in a consistent way.
             return obj.dumps()
