@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Long log lines will be soft-wrapped to ensure that links are clickable.
 - Fixed a bug where some workspaces could be left in a bad state if a step's `Format` failed to serialize the step's result in `Workspace.step_finished()`.
+- Sometimes functions and methods end up as arguments to steps, which means we have to hash them. Instead of taking
+  a hash of the function, we now take a hash of the function's module and name.
 
 ## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
 
