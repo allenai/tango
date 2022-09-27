@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `beaker-py >= 1.10` required.
+
 ### Fixed
 
 - Long log lines will be soft-wrapped to ensure that links are clickable.
+- Fixed a bug where some workspaces could be left in a bad state if a step's `Format` failed to serialize the step's result in `Workspace.step_finished()`.
 
 ## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
 
@@ -33,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
 - Fixed a bug where canceling the Beaker executor might not work properly.
 - Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
+- Fixed a bug where included modules might not be found when using multiprocessing when they're not on `sys.path` / `PYTHONPATH`.
 - Fixed how the results of uncacheable steps are displayed by `tango run`.
 - Beaker executor won't run duplicate cacheable steps at the same time.
 
