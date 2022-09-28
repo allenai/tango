@@ -31,6 +31,13 @@ class Constants:
     ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
     STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
     STEP_EXPERIMENT_PREFIX = "tango-step-"
+    STEP_GRAPH_FILENAME = "config.json"
+    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
+    BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
+    RESULTS_DIR: str = "/tango/output"
+    ENTRYPOINT_DIR: str = "/tango/entrypoint"
+    ENTRYPOINT_FILENAME: str = "entrypoint.sh"
+    INPUT_DIR: str = "/tango/input"
 
 
 def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:

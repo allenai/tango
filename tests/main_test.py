@@ -26,11 +26,11 @@ class TestRun(TangoTestCase):
             parts = re.split(r"(DEBUG|INFO|WARNING|ERROR|CRITICAL)\s+", line)
             if len(parts) >= 3:
                 line = "".join(parts[2:])
+                line = re.sub(r"\s+[^ ]+$", "", line)
             elif len(parts) == 1:
                 line = parts[0]
             else:
                 raise ValueError(str(parts))
-            line = re.sub(r"\s+[^ ]+$", "", line)
             if line:
                 out.append(line.strip())
         return out
@@ -51,7 +51,7 @@ class TestRun(TangoTestCase):
         cleaned_log_lines = self.clean_log_lines(log_lines)
 
         for line in cleaned_stdout_lines[
-            next(i for i, line in enumerate(stdout_lines) if "Server started at" in line) :
+            next(i for i, line in enumerate(stdout_lines) if "Starting new run" in line) :
         ]:
             assert line in cleaned_log_lines
 
