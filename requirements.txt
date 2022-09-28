@@ -19,10 +19,6 @@ glob2>=0.7
 petname>=2.6,<3.0
 pytz
 
-# Protobuf is a dependency of wandb and others, but we need to pin this tightly to avoid
-# PIP dependency resolving issues.
-protobuf==3.19.4
-
 ##################################################
 ###### Extra dependencies for integrations #######
 ##################################################
