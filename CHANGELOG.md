@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `beaker-py >= 1.10` required.
+
+### Fixed
+
+- Long log lines will be soft-wrapped to ensure that links are clickable.
+- Fixed a bug where some workspaces could be left in a bad state if a step's `Format` failed to serialize the step's result in `Workspace.step_finished()`.
+- Sometimes functions and methods end up as arguments to steps, which means we have to hash them. Instead of taking
+  a hash of the function, we now take a hash of the function's module and name.
+
+## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
+
+### Added
+
+- Adds a function to modify a Hugging Face transformer with IA3 adaptors
+- Added a `BeakerScheduler` registrable class, specified as the argument `scheduler` to `BeakerExecutor`, which controls the resources assigned to steps ran on Beaker.
+  Users can implement their own `BeakerScheduler` subclasses to customize the resource assignment behavior.
+
+### Changed
+
+- In the `tango run` command, `--no-server` is now the default. Use `--server` to start the server.
+
+### Fixed
+
+- Made `BeakerExecutor` more robust to connection, timeout, SSL, and other recoverable HTTP errors.
+- Made the `BeakerStepLock` more robust, and as a result `BeakerWorkspace` is more
+  robust and should require less manual intervention for locks in a bad state.
+- Fixed a bug with the internal scheduling logic of the `BeakerExecutor` which
+  could delay submitting some steps in parallel.
+- Fixed a bug where creating a `StepInfo` object from params might result in unnecessary imports.
+- Fixed a bug where canceling the Beaker executor might not work properly.
+- Fixed a bug where the trainer trains too much when `train_epochs` is set and you're using gradient accumulation.
+- Fixed a bug where included modules might not be found when using multiprocessing when they're not on `sys.path` / `PYTHONPATH`.
+- Fixed how the results of uncacheable steps are displayed by `tango run`.
+- Beaker executor won't run duplicate cacheable steps at the same time.
+
+## [v0.13.0](https://github.com/allenai/tango/releases/tag/v0.13.0) - 2022-09-07
+
 ### Added
 
 - You can now reference into a particular index of the result of another step in a config. For example: `{type: "ref", ref: "some_previous_step", key: 0}`.
@@ -14,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `priority` parameter to Beaker executor for setting the default task priority for Beaker jobs.
 - Added `Workspace.step_result()` method for getting a step's result from the latest
   run.
+- `tango run` will now display a URL to the logs for failed steps when you use the `BeakerExecutor`.
 
 ### Changed
 
@@ -31,6 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed a bug with how the Beaker executor streams log lines from Beaker which sometimes resulted in messages missing some starting characters, and tqdm lines being duplicated.
 - Fixed a bug in the Beaker workspace where the lock dataset wouldn't be removed if the step
   was found to be in an invalid state.
+- Improved cluster choice logic in `BeakerExecutor` to ensure greater diversity of clusters when submitting many steps at once.
+- Fixed bug where sub-processes of the multicore executor would use the wrong executor if `executor` was defined in a `tango.yml` file.
+- Deterministic hashes for numpy and torch tensors were not deterministic. Now they are.
 
 
 ## [v0.12.0](https://github.com/allenai/tango/releases/tag/v0.12.0) - 2022-08-23

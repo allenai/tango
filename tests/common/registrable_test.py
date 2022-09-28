@@ -3,6 +3,7 @@ import pytest
 from tango.common.exceptions import ConfigurationError
 from tango.common.registrable import Registrable
 from tango.common.testing import TangoTestCase
+from tango.step import Step
 
 
 class TestRegistrable(TangoTestCase):
@@ -39,3 +40,10 @@ class TestRegistrable(TangoTestCase):
         with pytest.raises(ConfigurationError) as exc:
             MockBaseClass.by_name("mock_1")
             assert "did you mean 'mock-1'?" in str(exc.value)
+
+    def test_registering_step_by_reserved_name(self):
+        with pytest.raises(ConfigurationError, match="cannot use the name 'ref'"):
+
+            @Step.register("ref")
+            class BadStep(Step):
+                pass

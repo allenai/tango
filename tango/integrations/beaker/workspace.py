@@ -1,6 +1,8 @@
 import json
+import os
 import random
 import tempfile
+import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
@@ -8,7 +10,15 @@ from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union
 from urllib.parse import ParseResult
 
 import petname
-from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, Digest
+from beaker import (
+    Beaker,
+    Dataset,
+    DatasetConflict,
+    DatasetNotFound,
+    Digest,
+    Experiment,
+    ExperimentNotFound,
+)
 
 from tango.common.exceptions import StepStateError
 from tango.common.logging import file_handler
@@ -73,6 +83,21 @@ class BeakerWorkspace(Workspace):
     def step_cache(self) -> StepCache:
         return self.cache
 
+    @property
+    def current_beaker_experiment(self) -> Optional[Experiment]:
+        """
+        When the workspace is being used within a Beaker experiment that was submitted
+        by the Beaker executor, this will return the `Experiment` object.
+        """
+        experiment_name = os.environ.get("BEAKER_EXPERIMENT_NAME")
+        if experiment_name is not None:
+            try:
+                return self.beaker.experiment.get(experiment_name)
+            except ExperimentNotFound:
+                return None
+        else:
+            return None
+
     def step_dir(self, step_or_unique_id: Union[Step, str]) -> Path:
         unique_id = (
             step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
@@ -94,9 +119,7 @@ class BeakerWorkspace(Workspace):
             if file_info.digest in self._step_info_cache:
                 step_info = self._step_info_cache.pop(file_info.digest)
             else:
-                step_info_bytes = b"".join(
-                    self.beaker.dataset.stream_file(dataset, file_info, quiet=True)
-                )
+                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
                 step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
             self._step_info_cache[file_info.digest] = step_info
             while len(self._step_info_cache) > self.STEP_INFO_CACHE_SIZE:
@@ -120,7 +143,16 @@ class BeakerWorkspace(Workspace):
         self.locks[step] = lock
 
         step_info = self.step_info(step)
-        if step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
+        if step_info.state == StepState.RUNNING:
+            # Since we've acquired the step lock we know this step can't be running
+            # elsewhere. But the step state can still say its running if the last
+            # run exited before this workspace had a chance to update the step info.
+            warnings.warn(
+                f"Step info for step '{step.unique_id}' is invalid - says step is running "
+                "although it shouldn't be. Ignoring and overwriting step start time.",
+                UserWarning,
+            )
+        elif step_info.state not in {StepState.INCOMPLETE, StepState.FAILED, StepState.UNCACHEABLE}:
             self.locks.pop(step).release()
             raise StepStateError(
                 step,
@@ -187,6 +219,8 @@ class BeakerWorkspace(Workspace):
             self.locks.pop(step).release()
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
+        import concurrent.futures
+
         all_steps = set(targets)
         for step in targets:
             all_steps |= step.recursive_dependencies
@@ -212,24 +246,30 @@ class BeakerWorkspace(Workspace):
             except DatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
 
-        # Collect step info and add data to run dataset.
         steps: Dict[str, StepInfo] = {}
         run_data: Dict[str, str] = {}
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
 
+        # Collect step info.
+        with concurrent.futures.ThreadPoolExecutor(
+            thread_name_prefix="BeakerWorkspace.register_run()-"
+        ) as executor:
+            step_info_futures = []
             for step in all_steps:
                 if step.name is None:
                     continue
+                step_info_futures.append(executor.submit(self.step_info, step))
+            for future in concurrent.futures.as_completed(step_info_futures):
+                step_info = future.result()
+                assert step_info.step_name is not None
+                steps[step_info.step_name] = step_info
+                run_data[step_info.step_name] = step_info.unique_id
 
-                step_info = self.step_info(step)
-                steps[step.name] = step_info
-                run_data[step.name] = step.unique_id
-
-            with open(tmp_dir / Constants.RUN_DATA_FNAME, "w") as f:
-                json.dump(run_data, f)
-
-            self.beaker.dataset.sync(run_dataset, tmp_dir / Constants.RUN_DATA_FNAME, quiet=True)
+        # Upload run data to dataset.
+        # NOTE: We don't commit the dataset here since we'll need to upload the logs file
+        # after the run.
+        self.beaker.dataset.upload(
+            run_dataset, json.dumps(run_data).encode(), Constants.RUN_DATA_FNAME, quiet=True
+        )
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
 
@@ -291,8 +331,8 @@ class BeakerWorkspace(Workspace):
         try:
             run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
             steps: Dict[str, StepInfo] = {}
-            steps_info_bytes = b"".join(
-                list(self.beaker.dataset.stream_file(dataset, Constants.RUN_DATA_FNAME, quiet=True))
+            steps_info_bytes = self.beaker.dataset.get_file(
+                dataset, Constants.RUN_DATA_FNAME, quiet=True
             )
             steps_info = json.loads(steps_info_bytes)
         except (DatasetNotFound, FileNotFoundError):
@@ -304,7 +344,7 @@ class BeakerWorkspace(Workspace):
             max_workers=9, thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
         ) as executor:
             step_info_futures = []
-            for step_name, unique_id in steps_info.items():
+            for unique_id in steps_info.values():
                 step_info_futures.append(executor.submit(self.step_info, unique_id))
             for future in concurrent.futures.as_completed(step_info_futures):
                 step_info = future.result()
@@ -322,11 +362,9 @@ class BeakerWorkspace(Workspace):
         except DatasetConflict:
             step_info_dataset = self.beaker.dataset.get(dataset_name)
 
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
-
-            # Save step info.
-            step_info_path = tmp_dir / Constants.STEP_INFO_FNAME
-            with open(step_info_path, "w") as f:
-                json.dump(step_info.to_json_dict(), f)
-            self.beaker.dataset.sync(step_info_dataset, step_info_path, quiet=True)
+        self.beaker.dataset.upload(
+            step_info_dataset,
+            json.dumps(step_info.to_json_dict()).encode(),
+            Constants.STEP_INFO_FNAME,
+            quiet=True,
+        )
