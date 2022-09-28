@@ -1,12 +1,11 @@
+import json
 import logging
 import os
-import tempfile
 import threading
 import time
 import uuid
 import warnings
 from abc import abstractmethod
-from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from beaker import (
@@ -17,6 +16,8 @@ from beaker import (
     DatasetNotFound,
     Digest,
     EnvVar,
+    Experiment,
+    ExperimentNotFound,
     ExperimentSpec,
     JobFailedError,
     JobTimeoutError,
@@ -329,26 +330,14 @@ class BeakerExecutor(Executor):
 
     """
 
-    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
-
-    BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
-
-    RESULTS_DIR: str = "/tango/output"
-
-    ENTRYPOINT_DIR: str = "/tango/entrypoint"
-
-    ENTRYPOINT_FILENAME: str = "entrypoint.sh"
-
-    INPUT_DIR: str = "/tango/input"
-
-    STEP_GRAPH_FILENAME: str = "config.json"
-
     DEFAULT_BEAKER_IMAGE: str = "ai2/conda"
     """
     The default image. Used if neither ``beaker_image`` nor ``docker_image`` are set.
     """
 
     DEFAULT_NFS_DRIVE = "/net/nfs.cirrascale"
+
+    RESOURCE_ASSIGNMENT_WARNING_INTERVAL = 60 * 5
 
     def __init__(
         self,
@@ -439,6 +428,7 @@ class BeakerExecutor(Executor):
 
         self._is_cancelled = threading.Event()
         self._logged_git_info = False
+        self._last_resource_assignment_warning: Optional[float] = None
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -541,12 +531,15 @@ class BeakerExecutor(Executor):
                     exc = future.exception()
                     if exc is None:
                         successful[step_name] = ExecutionMetadata(
-                            result_location=self.workspace.step_info(step).result_location,
+                            result_location=None
+                            if not step.cache_results
+                            else self.workspace.step_info(step).result_location,
                             logs_location=future.result(),
                         )
                         steps_left_to_run.discard(step)
                     elif isinstance(exc, ResourceAssignmentError):
                         submitted_steps.discard(step_name)
+                        self._emit_resource_assignment_warning()
                     elif isinstance(exc, StepFailedError):
                         failed[step_name] = ExecutionMetadata(logs_location=exc.experiment_url)
                         steps_left_to_run.discard(step)
@@ -613,33 +606,47 @@ class BeakerExecutor(Executor):
 
         return ExecutorOutput(successful=successful, failed=failed, not_run=not_run)
 
+    def _emit_resource_assignment_warning(self):
+        if self._last_resource_assignment_warning is None or (
+            time.monotonic() - self._last_resource_assignment_warning
+            > self.RESOURCE_ASSIGNMENT_WARNING_INTERVAL
+        ):
+            self._last_resource_assignment_warning = time.monotonic()
+            logger.warning(
+                "Some steps can't be run yet - waiting on more Beaker resources "
+                "to become available..."
+            )
+
     def execute_sub_graph_for_step(
         self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         self.check_repo_state()
-        try:
-            experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
-        except Exception as exc:
-            if isinstance(exc, StepFailedError):
+        while True:
+            try:
+                step = step_graph[step_name]
+                experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
+                return ExecutorOutput(
+                    successful={
+                        step_name: ExecutionMetadata(
+                            result_location=None
+                            if not step.cache_results
+                            else self.workspace.step_info(step).result_location,
+                            logs_location=experiment_url,
+                        )
+                    }
+                )
+            except ResourceAssignmentError:
+                self._emit_resource_assignment_warning()
+                time.sleep(3.0)
+            except StepFailedError as exc:
                 return ExecutorOutput(
                     failed={step_name: ExecutionMetadata(logs_location=exc.experiment_url)}
                 )
-            elif isinstance(exc, ExecutorError):
+            except ExecutorError:
                 return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-            else:
+            except Exception as exc:
                 log_exception(exc, logger)
                 return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-        else:
-            return ExecutorOutput(
-                successful={
-                    step_name: ExecutionMetadata(
-                        result_location=self.workspace.step_info(
-                            step_graph[step_name]
-                        ).result_location,
-                        logs_location=experiment_url,
-                    )
-                }
-            )
 
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
@@ -665,20 +672,49 @@ class BeakerExecutor(Executor):
             )
             return None
 
-        # Initialize experiment and task spec.
-        experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
-        self._check_if_cancelled()
+        experiment: Optional[Experiment] = None
+        experiment_url: Optional[str] = None
 
-        step.log_starting()
+        # Try to find any existing experiments for this step that are still running.
+        if step.cache_results:
+            for exp in self.beaker.workspace.experiments(
+                match=f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-"
+            ):
+                self._check_if_cancelled()
+                try:
+                    latest_job = self.beaker.experiment.latest_job(exp)
+                except (ValueError, ExperimentNotFound):
+                    continue
+                if latest_job is not None and not latest_job.is_done:
+                    experiment = exp
+                    experiment_url = self.beaker.experiment.url(exp)
+                    cli_logger.info(
+                        "[blue]\N{black rightwards arrow} Found existing Beaker experiment [b]%s[/] for "
+                        'step [b]"%s"[/] that is still running...[/]',
+                        experiment_url,
+                        step_name,
+                    )
+                    break
 
-        # Create experiment.
-        experiment = self.beaker.experiment.create(experiment_name, spec)
-        experiment_url = self.beaker.experiment.url(experiment)
-        cli_logger.info(
-            '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
-            experiment_url,
-            step_name,
-        )
+        # Otherwise we submit a new experiment...
+        if experiment is None:
+            # Initialize experiment and task spec.
+            experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
+            self._check_if_cancelled()
+
+            step.log_starting()
+
+            # Create experiment.
+            experiment = self.beaker.experiment.create(experiment_name, spec)
+            experiment_url = self.beaker.experiment.url(experiment)
+            cli_logger.info(
+                '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
+                experiment_url,
+                step_name,
+            )
+
+        assert experiment is not None
+        assert experiment_url is not None
 
         # Follow the experiment and stream the logs until it completes.
         try:
@@ -739,7 +775,7 @@ class BeakerExecutor(Executor):
 
         # Get hash of the local entrypoint source file.
         sha256_hash = hashlib.sha256()
-        contents = read_binary(tango.integrations.beaker, "entrypoint.sh")
+        contents = read_binary(tango.integrations.beaker, Constants.ENTRYPOINT_FILENAME)
         sha256_hash.update(contents)
 
         entrypoint_dataset_name = (
@@ -757,17 +793,16 @@ class BeakerExecutor(Executor):
             # Create it.
             logger.debug(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
             try:
-                with tempfile.TemporaryDirectory() as tmpdirname:
-                    tmpdir = Path(tmpdirname)
-                    entrypoint_path = tmpdir / "entrypoint.sh"
-                    with open(entrypoint_path, "wb") as entrypoint_file:
-                        entrypoint_file.write(contents)
-                    tmp_entrypoint_dataset = self.beaker.dataset.create(
-                        tmp_entrypoint_dataset_name, entrypoint_path, quiet=True
-                    )
-                    entrypoint_dataset = self.beaker.dataset.rename(
-                        tmp_entrypoint_dataset, entrypoint_dataset_name
-                    )
+                tmp_entrypoint_dataset = self.beaker.dataset.create(
+                    tmp_entrypoint_dataset_name, quiet=True, commit=False
+                )
+                self.beaker.dataset.upload(
+                    tmp_entrypoint_dataset, contents, Constants.ENTRYPOINT_FILENAME, quiet=True
+                )
+                self.beaker.dataset.commit(tmp_entrypoint_dataset)
+                entrypoint_dataset = self.beaker.dataset.rename(
+                    tmp_entrypoint_dataset, entrypoint_dataset_name
+                )
             except DatasetConflict:  # could be in a race with another `tango` process.
                 time.sleep(1.0)
                 entrypoint_dataset = self.beaker.dataset.get(entrypoint_dataset_name)
@@ -790,11 +825,14 @@ class BeakerExecutor(Executor):
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
         step_graph_dataset_name = f"{Constants.STEP_GRAPH_DATASET_PREFIX}{str(uuid.uuid4())}"
         try:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                tmpdir = Path(tmpdirname)
-                path = tmpdir / self.STEP_GRAPH_FILENAME
-                step_graph.to_file(path, include_unique_id=True)
-                dataset = self.beaker.dataset.create(step_graph_dataset_name, path, quiet=True)
+            dataset = self.beaker.dataset.create(step_graph_dataset_name, quiet=True, commit=False)
+            self.beaker.dataset.upload(
+                dataset,
+                json.dumps({"steps": step_graph.to_config(include_unique_id=True)}).encode(),
+                Constants.STEP_GRAPH_FILENAME,
+                quiet=True,
+            )
+            self.beaker.dataset.commit(dataset)
         except DatasetConflict:  # could be in a race with another `tango` process.
             time.sleep(1.0)
             dataset = self.beaker.dataset.get(step_graph_dataset_name)
@@ -853,11 +891,11 @@ class BeakerExecutor(Executor):
         self._check_if_cancelled()
 
         # Write the GitHub token secret.
-        self.beaker.secret.write(self.GITHUB_TOKEN_SECRET_NAME, self.github_token)
+        self.beaker.secret.write(Constants.GITHUB_TOKEN_SECRET_NAME, self.github_token)
         self._check_if_cancelled()
 
         # Write the Beaker token secret.
-        self.beaker.secret.write(self.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
+        self.beaker.secret.write(Constants.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
         self._check_if_cancelled()
 
         # Build Tango command to run.
@@ -867,7 +905,7 @@ class BeakerExecutor(Executor):
             "debug",
             "--called-by-executor",
             "beaker-executor-run",
-            self.INPUT_DIR + "/" + self.STEP_GRAPH_FILENAME,
+            Constants.INPUT_DIR + "/" + Constants.STEP_GRAPH_FILENAME,
             step.name,
             self.workspace.url,
         ]
@@ -889,8 +927,8 @@ class BeakerExecutor(Executor):
                 cluster,
                 beaker_image=self.beaker_image,
                 docker_image=self.docker_image,
-                result_path=self.RESULTS_DIR,
-                command=["bash", self.ENTRYPOINT_DIR + "/" + self.ENTRYPOINT_FILENAME],
+                result_path=Constants.RESULTS_DIR,
+                command=["bash", Constants.ENTRYPOINT_DIR + "/" + Constants.ENTRYPOINT_FILENAME],
                 arguments=command,
                 resources=task_resources,
                 datasets=self.datasets,
@@ -898,14 +936,14 @@ class BeakerExecutor(Executor):
                 priority=priority,
             )
             .with_env_var(name="TANGO_VERSION", value=VERSION)
-            .with_env_var(name="GITHUB_TOKEN", secret=self.GITHUB_TOKEN_SECRET_NAME)
-            .with_env_var(name="BEAKER_TOKEN", secret=self.BEAKER_TOKEN_SECRET_NAME)
+            .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
+            .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)
             .with_env_var(name="BEAKER_EXPERIMENT_NAME", value=experiment_name)
-            .with_dataset(self.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
-            .with_dataset(self.INPUT_DIR, beaker=step_graph_dataset.id)
+            .with_dataset(Constants.ENTRYPOINT_DIR, beaker=entrypoint_dataset.id)
+            .with_dataset(Constants.INPUT_DIR, beaker=step_graph_dataset.id)
         )
 
         if self.venv_name is not None:

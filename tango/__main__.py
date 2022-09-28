@@ -872,6 +872,9 @@ def _display_run_results(
             execution_metadata = executor_output.successful[step_name]
             if execution_metadata.result_location is not None:
                 result_str = f"[cyan]{execution_metadata.result_location}[/]"
+                last_cached_step = step_name
+            elif execution_metadata.logs_location is not None:
+                result_str = f"[cyan]{execution_metadata.logs_location}[/]"
         else:
             continue
 

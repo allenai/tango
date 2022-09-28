@@ -420,12 +420,12 @@ class Step(Registrable, Generic[T]):
 
             try:
                 result = self.run(**kwargs)
+                result = workspace.step_finished(self, result)
             except BaseException as e:
                 self.log_failure(e)
                 workspace.step_failed(self, e)
                 raise
 
-            result = workspace.step_finished(self, result)
             self.log_finished()
             return result
         finally:
