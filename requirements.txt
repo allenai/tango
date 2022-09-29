@@ -19,8 +19,6 @@ glob2>=0.7
 petname>=2.6,<3.0
 pytz
 
--c constraints.txt
-
 ##################################################
 ###### Extra dependencies for integrations #######
 ##################################################
@@ -50,3 +48,15 @@ numpy>=1.12		     # needed by: flax
 msgpack                      # needed by: flax
 typing_extensions>=4.1.1     # needed by: flax
 PyYAML>=5.4.1                # needed by: flax
+
+# Long story:
+# We depend on cached_path, which depends on some other Google package, which
+# depends on google-api-core, which depends on a very recent protobuf. Wandb
+# and tensorflow are incompatible with this version of protobuf.
+# The solution is to depend on an older version of google-api-core, which does
+# not require this recent protobuf.
+# The necessary information to resolve this is all there in the various
+# setup.py and requirements.txt files. It's just pip that's not smart enough to
+# figure this out. So we declare this here manually. My confidence in pip is
+# more shaken than ever.
+google-api-core<=2.8.2
