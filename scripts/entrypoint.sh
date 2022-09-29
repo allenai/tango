@@ -11,7 +11,6 @@ if [ -z "$COMMIT_SHA" ]; then
 fi
 
 # Clone and install tango.
-/opt/conda/bin/pip freeze  # DEBUG
 git clone https://github.com/allenai/tango.git
 cd tango
 git checkout --quiet "$COMMIT_SHA"
