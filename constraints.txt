@@ -1,0 +1,2 @@
+# Foo
+google-api-core<=2.8.2
