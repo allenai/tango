@@ -138,7 +138,9 @@ class BeakerWorkspace(Workspace):
             return
 
         # Get local file lock + remote Beaker dataset lock.
-        lock = BeakerStepLock(self.beaker, step)
+        lock = BeakerStepLock(
+            self.beaker, step, current_beaker_experiment=self.current_beaker_experiment
+        )
         lock.acquire()
         self.locks[step] = lock
 
