@@ -567,24 +567,24 @@ class BeakerExecutor(Executor):
             if now - last_progress_update >= 60 * 2:
                 last_progress_update = now
 
-                waiting_on = [
+                waiting_for = [
                     step_name
                     for step_name in submitted_steps
                     if step_name not in failed and step_name not in successful
                 ]
-                if len(waiting_on) > 5:
+                if len(waiting_for) > 5:
                     logger.info(
                         "Waiting on %d running steps...",
-                        len(waiting_on),
+                        len(waiting_for),
                     )
-                elif len(waiting_on) > 1:
+                elif len(waiting_for) > 1:
                     logger.info(
                         "Waiting on %d running steps (%s)...",
-                        len(waiting_on),
-                        list(waiting_on),
+                        len(waiting_for),
+                        list(waiting_for),
                     )
-                elif len(waiting_on) == 1:
-                    logger.info("Waiting on 1 running step ('%s')...", list(waiting_on)[0])
+                elif len(waiting_for) == 1:
+                    logger.info("Waiting on 1 running step ('%s')...", list(waiting_for)[0])
 
                 still_to_run = [
                     step.name for step in steps_left_to_run if step.name not in submitted_steps
