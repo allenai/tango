@@ -10,6 +10,9 @@ if [ -z "$COMMIT_SHA" ]; then
   exit 1
 fi
 
+# Upgrade pip
+/opt/conda/bin/pip install --upgrade pip
+
 # Clone and install tango.
 git clone https://github.com/allenai/tango.git
 cd tango
