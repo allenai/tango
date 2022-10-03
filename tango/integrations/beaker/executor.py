@@ -515,6 +515,7 @@ class BeakerExecutor(Executor):
                                 # A dependency failed or can't be run, so this step can't be run.
                                 not_run[step_name] = ExecutionMetadata()
                                 steps_to_run.discard(step_name)
+                                steps_left_to_run.discard(step)
                             break
                     else:
                         # Dependencies are OK, so we can run this step now.
@@ -557,6 +558,51 @@ class BeakerExecutor(Executor):
 
             return future_done_callback
 
+        last_progress_update = time.monotonic()
+
+        def log_progress():
+            nonlocal last_progress_update
+
+            now = time.monotonic()
+            if now - last_progress_update >= 60 * 2:
+                last_progress_update = now
+
+                waiting_for = [
+                    step_name
+                    for step_name in submitted_steps
+                    if step_name not in failed and step_name not in successful
+                ]
+                if len(waiting_for) > 5:
+                    logger.info(
+                        "Waiting for %d running steps...",
+                        len(waiting_for),
+                    )
+                elif len(waiting_for) > 1:
+                    logger.info(
+                        "Waiting for %d running steps (%s)...",
+                        len(waiting_for),
+                        list(waiting_for),
+                    )
+                elif len(waiting_for) == 1:
+                    logger.info("Waiting for 1 running step ('%s')...", list(waiting_for)[0])
+
+                still_to_run = [
+                    step.name for step in steps_left_to_run if step.name not in submitted_steps
+                ]
+                if len(still_to_run) > 5:
+                    logger.info(
+                        "Still waiting to submit %d more steps...",
+                        len(still_to_run),
+                    )
+                elif len(still_to_run) > 1:
+                    logger.info(
+                        "Still waiting to submit %d more steps (%s)...",
+                        len(still_to_run),
+                        still_to_run,
+                    )
+                elif len(still_to_run) == 1:
+                    logger.info("Still waiting to submit 1 more step ('%s')...", still_to_run)
+
         update_steps_to_run()
 
         try:
@@ -589,6 +635,8 @@ class BeakerExecutor(Executor):
 
                     # Update the step queue.
                     update_steps_to_run()
+
+                    log_progress()
         except (KeyboardInterrupt, CancellationError):
             if step_futures:
                 cli_logger.warning("Received interrupt, canceling steps...")

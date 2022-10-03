@@ -19,10 +19,6 @@ glob2>=0.7
 petname>=2.6,<3.0
 pytz
 
-# Protobuf is a dependency of wandb and others, but we need to pin this tightly to avoid
-# PIP dependency resolving issues.
-protobuf==3.19.4
-
 ##################################################
 ###### Extra dependencies for integrations #######
 ##################################################
@@ -36,7 +32,7 @@ wandb>=0.12,<0.14            # needed by: wandb
 pytorch-lightning>=1.6,<1.8  # needed by: pytorch_lightning
 transformers>=4.12.3         # needed by: transformers
 sentencepiece==0.1.97        # needed by: transformers
-fairscale==0.4.9             # needed by: fairscale
+fairscale==0.4.11             # needed by: fairscale
 beaker-py>=1.10.0,<2.0.0      # needed by: beaker
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
@@ -45,3 +41,4 @@ jax>=0.3.13                  # needed by: flax
 flax>=0.5.0                  # needed by: flax
 optax>=0.1.2                 # needed by: flax
 tensorflow-cpu>=2.9.1        # needed by: flax
+
