@@ -120,7 +120,7 @@ class Step(Registrable, Generic[T]):
     :param step_metadata: use this to specify additional metadata for your step.
       This is added to the :attr:`METADATA` class variable to form the ``self.metadata`` attribute.
       Values in ``step_metadata`` take precedence over ``METADATA``.
-    :param step_requires: use this to force a dependency on other steps. Normally dependencies
+    :param step_extra_dependencies: use this to force a dependency on other steps. Normally dependencies
       between steps are determined by the inputs and outputs of the steps, but you can use this
       parameter to force that other steps run before this step even if this step doesn't
       explicitly depend on the outputs of those steps.
@@ -181,7 +181,7 @@ class Step(Registrable, Generic[T]):
         step_unique_id_override: Optional[str] = None,
         step_resources: Optional[StepResources] = None,
         step_metadata: Optional[Dict[str, Any]] = None,
-        step_requires: Optional[Iterable["Step"]] = None,
+        step_extra_dependencies: Optional[Iterable["Step"]] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -263,7 +263,7 @@ class Step(Registrable, Generic[T]):
         self.metadata = deepcopy(self.METADATA)
         if step_metadata:
             self.metadata.update(step_metadata)
-        self.step_requires = set(step_requires) if step_requires else set()
+        self.extra_dependencies = set(step_extra_dependencies) if step_extra_dependencies else set()
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -644,7 +644,7 @@ class Step(Registrable, Generic[T]):
             else:
                 return
 
-        yield from self.step_requires
+        yield from self.extra_dependencies
         yield from dependencies_internal(self.kwargs.values())
 
     @property

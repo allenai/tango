@@ -112,7 +112,7 @@ class TestStepGraph(TangoTestCase):
             "some_string": {
                 "type": "string",
                 "result": "I should run second",
-                "step_requires": [{"type": "ref", "ref": "other_string"}],
+                "step_extra_dependencies": [{"type": "ref", "ref": "other_string"}],
             },
             "other_string": {"type": "string", "result": "I should run first"},
             "added": {
