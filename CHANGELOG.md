@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a hash of the function, we now take a hash of the function's module and name.
 - Fixed a bug with the Beaker executor where it would hang at the end of a run if a step failed that is a dependency of another step.
 - Fixed tests to work with new version of transformers.
+- Fixed `Executor.execute_sub_graph_for_step()` to be able to run the step's dependencies in parallel.
 
 
 ## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20
