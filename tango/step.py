@@ -595,10 +595,15 @@ class Step(Registrable, Generic[T]):
             try:
                 return self._run_with_work_dir(workspace, needed_by=needed_by)
             except StepStateError as exc:
-                if exc.step_state != StepState.COMPLETED:
+                if exc.step_state != StepState.COMPLETED or not self.cache_results:
                     raise
-                # Step has been completed (and cached) by a different process, so we
-                # do nothing here and pull the result from the cache below.
+                elif self not in workspace.step_cache:
+                    raise StepStateError(
+                        self, exc.step_state, "because it's not found in the cache"
+                    )
+                else:
+                    # Step has been completed (and cached) by a different process, so we're done.
+                    pass
 
         self.log_cache_hit(needed_by=needed_by)
         return workspace.step_cache[self]
