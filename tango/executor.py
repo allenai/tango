@@ -134,22 +134,8 @@ class Executor(Registrable):
         Execute the sub-graph associated with a particular step in a
         :class:`~tango.step_graph.StepGraph`.
         """
-        step = step_graph[step_name]
-        try:
-            self.execute_step(step)
-        except Exception as exc:
-            log_exception(exc, logger)
-            return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-        else:
-            return ExecutorOutput(
-                successful={
-                    step_name: ExecutionMetadata(
-                        result_location=None
-                        if not step.cache_results
-                        else self.workspace.step_info(step).result_location
-                    )
-                }
-            )
+        sub_graph = step_graph.sub_graph(step_name)
+        return self.execute_step_graph(sub_graph, run_name=run_name)
 
 
 Executor.register("default")(Executor)
