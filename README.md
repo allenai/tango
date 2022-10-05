@@ -165,11 +165,11 @@ python -m pdb -m tango run config.jsonnet
 ### How is Tango different from [Metaflow](https://metaflow.org), [Airflow](https://airflow.apache.org), or [redun](https://github.com/insitro/redun)?
 
 We've found that existing DAG execution engines like these tools are great for production workflows but not as well suited for messy, collaborative research projects
-where code is changing constantly. Tango was built *specifically* for these kinds of research projects.
+where code is changing constantly. AI2 Tango was built *specifically* for these kinds of research projects.
 
 ### How does Tango's caching mechanism work?
 
-Tango caches the results of steps based on the `unique_id` of the step. The `unique_id` is essentially a hash of all of the inputs to the step along with:
+AI2 Tango caches the results of steps based on the `unique_id` of the step. The `unique_id` is essentially a hash of all of the inputs to the step along with:
 
 1. the step class's fully qualified name, and
 2. the step class's `VERSION` class variable (an arbitrary string).
