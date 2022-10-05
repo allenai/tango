@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union
+from retry import retry
 
 import wandb
 from wandb.errors import Error as WandbError
@@ -60,9 +61,9 @@ class WandbStepCache(LocalStepCache):
         return f"{app_url}/{self.entity}/{self.project}"
 
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
-        return FileLock(
-            self.step_dir(step).with_suffix(".lock"), read_only_ok=read_only_ok
-        ).acquire_with_updates(desc=f"acquiring step cache lock for '{step.unique_id}'")
+        return FileLock(self.step_dir(step).with_suffix(".lock"), read_only_ok=read_only_ok).acquire_with_updates(
+            desc=f"acquiring step cache lock for '{step.unique_id}'"
+        )
 
     def _step_artifact_name(self, step: Union[Step, StepInfo]) -> str:
         if isinstance(step, Step):
@@ -70,9 +71,7 @@ class WandbStepCache(LocalStepCache):
         else:
             return step.step_class_name
 
-    def get_step_result_artifact(
-        self, step: Union[Step, StepInfo]
-    ) -> Optional[wandb.apis.public.Artifact]:
+    def get_step_result_artifact(self, step: Union[Step, StepInfo]) -> Optional[wandb.apis.public.Artifact]:
         artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         try:
             return self.wandb_client.artifact(
@@ -85,9 +84,7 @@ class WandbStepCache(LocalStepCache):
             else:
                 raise
 
-    def create_step_result_artifact(
-        self, step: Step, objects_dir: Optional[PathOrStr] = None
-    ) -> None:
+    def create_step_result_artifact(self, step: Step, objects_dir: Optional[PathOrStr] = None) -> None:
         """
         Create an artifact for the result of a step.
         """
@@ -111,19 +108,17 @@ class WandbStepCache(LocalStepCache):
     def get_step_result_artifact_url(self, step: Union[Step, StepInfo]) -> str:
         artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         return (
-            f"{self.wandb_project_url}/artifacts/{artifact_kind}"
-            f"/{self._step_artifact_name(step)}/{step.unique_id}"
+            f"{self.wandb_project_url}/artifacts/{artifact_kind}" f"/{self._step_artifact_name(step)}/{step.unique_id}"
         )
 
+    @retry(RuntimeError, delay=10, backoff=2, max_delay=120)
     def use_step_result_artifact(self, step: Union[Step, StepInfo]) -> None:
         """
         "Use" the artifact corresponding to the result of a step.
         """
         if wandb.run is None:
             raise RuntimeError("This can only be called from within a W&B run")
-        wandb.run.use_artifact(
-            f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}"
-        )
+        wandb.run.use_artifact(f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}")
 
     def __contains__(self, step: Any) -> bool:
         if isinstance(step, (Step, StepInfo)):
