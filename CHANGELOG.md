@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed bug with `TorchEvalStep` when constructing callbacks.
+
 ## [v1.0.0](https://github.com/allenai/tango/releases/tag/v1.0.0) - 2022-10-05
 
 ### Added
