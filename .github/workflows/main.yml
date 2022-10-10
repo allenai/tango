@@ -72,7 +72,6 @@ jobs:
             extras: dev
             requires_torch: false
             run: |
-              tango info
               pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
 
           - name: Datasets integration
@@ -220,8 +219,12 @@ jobs:
         run: |
           . .venv/bin/activate
           which python
+          echo "========="
           python --version
+          echo "========="
           pip freeze
+          echo "========="
+          tango info
 
       - name: ${{ matrix.task.name }}
         run: |
