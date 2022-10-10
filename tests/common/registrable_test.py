@@ -47,3 +47,6 @@ class TestRegistrable(TangoTestCase):
             @Step.register("ref")
             class BadStep(Step):
                 pass
+
+    def test_search_modules(self):
+        Step.search_modules("foo-bar-baz-non-existent")

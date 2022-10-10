@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed bug with `TorchEvalStep` when constructing callbacks.
+- Fixed some import error issues caused when an integration is not installed.
 
 ### Changed
 
