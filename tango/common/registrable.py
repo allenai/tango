@@ -188,9 +188,9 @@ class Registrable(FromParams):
         ):
             return None
 
-        def try_import(module):
+        def try_import(module, recursive: bool = True):
             try:
-                import_module_and_submodules(module)
+                import_module_and_submodules(module, recursive=recursive)
             except IntegrationMissingError:
                 pass
             except ImportError as e:
@@ -200,7 +200,7 @@ class Registrable(FromParams):
         integrations = {m.split(".")[-1]: m for m in find_integrations()}
         integrations_imported: Set[str] = set()
         if name in integrations:
-            try_import(integrations[name])
+            try_import(integrations[name], recursive=False)
             integrations_imported.add(name)
             if name in Registrable._registry[cls]:
                 return None
@@ -209,7 +209,7 @@ class Registrable(FromParams):
             # Try to guess the integration that it comes from.
             maybe_integration = name.split("::")[0]
             if maybe_integration in integrations:
-                try_import(integrations[maybe_integration])
+                try_import(integrations[maybe_integration], recursive=False)
                 integrations_imported.add(maybe_integration)
                 if name in Registrable._registry[cls]:
                     return None
@@ -248,7 +248,7 @@ class Registrable(FromParams):
         # Try importing all other integrations.
         for integration_name, module in integrations.items():
             if integration_name not in integrations_imported:
-                try_import(module)
+                try_import(module, recursive=False)
                 integrations_imported.add(integration_name)
                 if name in Registrable._registry[cls]:
                     return None
