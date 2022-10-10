@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed bug with `TorchEvalStep` when constructing callbacks.
+
 ### Changed
 
 - `beaker-py >= 1.11` required.
