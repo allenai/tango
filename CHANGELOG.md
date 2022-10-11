@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
+- Fixed bug with `TorchEvalStep` when constructing callbacks.
+- Fixed some import error issues caused when an integration is not installed.
+
+### Changed
+
+- `beaker-py >= 1.11` required.
+
+## [v1.0.0](https://github.com/allenai/tango/releases/tag/v1.0.0) - 2022-10-05
+
 ### Added
 
 - Added `step_extra_dependencies` input field to `Step` class that can be used to force a dependency on another step even if the current step doesn't directly depend on the output of the other step. See [#418](https://github.com/allenai/tango/issues/418) for more context.
@@ -23,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a hash of the function, we now take a hash of the function's module and name.
 - Fixed a bug with the Beaker executor where it would hang at the end of a run if a step failed that is a dependency of another step.
 - Fixed tests to work with new version of transformers.
+- Fixed `Executor.execute_sub_graph_for_step()` to be able to run the step's dependencies in parallel.
 
 
 ## [v0.14.0](https://github.com/allenai/tango/releases/tag/v0.14.0) - 2022-09-20

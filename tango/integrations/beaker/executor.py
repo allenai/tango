@@ -665,37 +665,6 @@ class BeakerExecutor(Executor):
                 "to become available..."
             )
 
-    def execute_sub_graph_for_step(
-        self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
-    ) -> ExecutorOutput:
-        self.check_repo_state()
-        while True:
-            try:
-                step = step_graph[step_name]
-                experiment_url = self._execute_sub_graph_for_step(step_graph, step_name)
-                return ExecutorOutput(
-                    successful={
-                        step_name: ExecutionMetadata(
-                            result_location=None
-                            if not step.cache_results
-                            else self.workspace.step_info(step).result_location,
-                            logs_location=experiment_url,
-                        )
-                    }
-                )
-            except ResourceAssignmentError:
-                self._emit_resource_assignment_warning()
-                time.sleep(3.0)
-            except StepFailedError as exc:
-                return ExecutorOutput(
-                    failed={step_name: ExecutionMetadata(logs_location=exc.experiment_url)}
-                )
-            except ExecutorError:
-                return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-            except Exception as exc:
-                log_exception(exc, logger)
-                return ExecutorOutput(failed={step_name: ExecutionMetadata()})
-
     def _check_if_cancelled(self):
         if self._is_cancelled.is_set():
             raise RunCancelled
