@@ -10,8 +10,8 @@ Components for Tango integration with `Beaker <https://beaker.org/>`_.
 from tango.common.exceptions import IntegrationMissingError
 
 try:
-    import beaker
-except ModuleNotFoundError:
+    from beaker import Beaker
+except (ModuleNotFoundError, ImportError):
     raise IntegrationMissingError("beaker", dependencies={"beaker-py"})
 
 from .executor import (

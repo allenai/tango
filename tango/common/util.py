@@ -5,7 +5,6 @@ import string
 import sys
 import traceback
 from collections import OrderedDict
-from contextlib import contextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, tzinfo
 from pathlib import Path
@@ -13,7 +12,6 @@ from typing import Any, Iterable, Optional, Set, Tuple, Union
 
 import pytz
 
-from .aliases import PathOrStr
 from .exceptions import SigTermReceived
 
 
@@ -33,25 +31,6 @@ def _handle_sigterm(sig, frame):
 
 def install_sigterm_handler():
     signal.signal(signal.SIGTERM, _handle_sigterm)
-
-
-@contextmanager
-def push_python_path(path: PathOrStr):
-    """
-    Prepends the given path to `sys.path`.
-
-    This method is intended to use with `with`, so after its usage, its value willbe removed from
-    `sys.path`.
-    """
-    # In some environments, such as TC, it fails when sys.path contains a relative path, such as ".".
-    path = Path(path).resolve()
-    path = str(path)
-    sys.path.insert(0, path)
-    try:
-        yield
-    finally:
-        # Better to remove by value, in case `sys.path` was manipulated in between.
-        sys.path.remove(path)
 
 
 _extra_imported_modules: Set[str] = set()
@@ -96,7 +75,9 @@ def resolve_module_name(package_name: str) -> Tuple[str, Path]:
     return package_name, base_path
 
 
-def import_module_and_submodules(package_name: str, exclude: Optional[Set[str]] = None) -> None:
+def import_module_and_submodules(
+    package_name: str, exclude: Optional[Set[str]] = None, recursive: bool = True
+) -> None:
     """
     Import all submodules under the given package.
 
@@ -108,21 +89,25 @@ def import_module_and_submodules(package_name: str, exclude: Optional[Set[str]] 
         package_name, base_path = resolve_module_name(package_name)
     else:
         base_path = Path(".")
+    base_path = base_path.resolve()
 
     if exclude and package_name in exclude:
         return
 
     importlib.invalidate_caches()
 
-    # For some reason, python doesn't always add this by default to your path, but you pretty much
-    # always want it when using `--include-package`.  And if it's already there, adding it again at
-    # the end won't hurt anything.
-    with push_python_path(base_path):
-        # Import at top level
-        module = importlib.import_module(package_name)
-        path = getattr(module, "__path__", [])
-        path_string = "" if not path else path[0]
+    # Ensure `base_path` is first in `sys.path`.
+    if str(base_path) not in sys.path:
+        sys.path.insert(0, str(base_path))
+    else:
+        sys.path.insert(0, sys.path.pop(sys.path.index(str(base_path))))
 
+    # Import at top level
+    module = importlib.import_module(package_name)
+    path = getattr(module, "__path__", [])
+    path_string = "" if not path else path[0]
+
+    if recursive:
         # walk_packages only finds immediate children, so need to recurse.
         for module_finder, name, _ in pkgutil.walk_packages(path):
             # Sometimes when you import third-party libraries that are on your path,
