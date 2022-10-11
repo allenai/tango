@@ -130,6 +130,7 @@ class TorchEvalStep(Step):
         # Initialize callbacks.
         callbacks: List[EvalCallback] = [
             callback.construct(
+                workspace=self.workspace,
                 step_id=self.unique_id,
                 work_dir=self.work_dir,
                 model=model,
