@@ -4,9 +4,9 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union
-from retry import retry
 
 import wandb
+from retry import retry
 from wandb.errors import Error as WandbError
 
 from tango.common.aliases import PathOrStr
