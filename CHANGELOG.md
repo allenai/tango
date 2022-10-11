@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
+- Fixed bug with `TorchEvalStep` when constructing callbacks.
+- Fixed some import error issues caused when an integration is not installed.
+
 ### Changed
 
 - `beaker-py >= 1.11` required.

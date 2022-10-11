@@ -219,8 +219,12 @@ jobs:
         run: |
           . .venv/bin/activate
           which python
+          echo "========="
           python --version
+          echo "========="
           pip freeze
+          echo "========="
+          tango info
 
       - name: ${{ matrix.task.name }}
         run: |
