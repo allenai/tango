@@ -186,6 +186,11 @@ def filename_is_safe(filename: str) -> bool:
     return all(c in SAFE_FILENAME_CHARS for c in filename)
 
 
+def make_safe_filename(name: str) -> str:
+    name = name.replace(" ", "-")
+    return "".join(c for c in name if c in SAFE_FILENAME_CHARS)
+
+
 def could_be_class_name(name: str) -> bool:
     if "." in name and not name.endswith("."):
         return all([_is_valid_python_name(part) for part in name.split(".")])
