@@ -141,7 +141,6 @@ class MulticoreExecutor(Executor):
                             done.append(step_name)
                         else:
                             errors.append(step_name)
-                    # We check for uncacheable leaf step too.
                     elif step_states[step_name] == StepState.COMPLETED:
                         done.append(step_name)
                     elif (
