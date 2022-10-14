@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
 - Fixed bug with `TorchEvalStep` when constructing callbacks.
 - Fixed some import error issues caused when an integration is not installed.
+- Fix incorrect reporting of final results in `MulticoreExecutor`.
 
 ### Changed
 
