@@ -187,7 +187,7 @@ def filename_is_safe(filename: str) -> bool:
 
 
 def make_safe_filename(name: str) -> str:
-    name = name.replace(" ", "-")
+    name = name.replace(" ", "-").replace("/", "--")
     return "".join(c for c in name if c in SAFE_FILENAME_CHARS)
 
 
