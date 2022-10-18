@@ -121,7 +121,7 @@ class WandbStepCache(LocalStepCache):
             f"/{self._step_artifact_name(step)}/{step.unique_id}"
         )
 
-    @retry(RuntimeError, delay=10, backoff=2, max_delay=120)
+    @retry(exceptions=(wandb.errors.CommError,), delay=10, backoff=2, max_delay=120)
     def use_step_result_artifact(self, step: Union[Step, StepInfo]) -> None:
         """
         "Use" the artifact corresponding to the result of a step.
