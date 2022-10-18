@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
+- Fixed issue where remote `Workspace` implementations like `WandbWorkspace` and `BeakerWorkspace` would use the same local cache regardless of the W&B / Beaker workspace
+  being used.
 - Fixed bug with `TorchEvalStep` when constructing callbacks.
 - Fixed some import error issues caused when an integration is not installed.
+- Fix incorrect reporting of final results in `MulticoreExecutor`.
 
 ### Changed
 

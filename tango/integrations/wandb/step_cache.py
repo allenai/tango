@@ -12,7 +12,7 @@ from wandb.errors import Error as WandbError
 from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.params import Params
-from tango.common.util import tango_cache_dir
+from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import CacheMetadata, StepCache
 from tango.step_caches.local_step_cache import LocalStepCache
@@ -43,7 +43,12 @@ class WandbStepCache(LocalStepCache):
 
     def __init__(self, project: str, entity: str):
         check_environment()
-        super().__init__(tango_cache_dir() / "wandb_cache")
+        super().__init__(
+            tango_cache_dir()
+            / "wandb_cache"
+            / make_safe_filename(entity)
+            / make_safe_filename(project)
+        )
         self.project = project
         self.entity = entity
 

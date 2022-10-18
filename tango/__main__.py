@@ -826,8 +826,9 @@ def _run(
         elif not called_by_executor:
             cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
 
-        if not called_by_executor and executor_output is not None:
-            _display_run_results(run, step_graph, workspace, executor_output)
+        if executor_output is not None:
+            if not called_by_executor:
+                _display_run_results(run, step_graph, workspace, executor_output)
             if executor_output.failed:
                 raise CliRunError
 
