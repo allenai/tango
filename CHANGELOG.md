@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Wandb step cache retries api call in case of timeout
 - `beaker-py >= 1.11` required.
 
 ## [v1.0.0](https://github.com/allenai/tango/releases/tag/v1.0.0) - 2022-10-05
