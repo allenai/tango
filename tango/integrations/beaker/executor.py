@@ -598,7 +598,7 @@ class BeakerExecutor(Executor):
                     logger.info(
                         "Still waiting to submit %d more steps (%s)...",
                         len(still_to_run),
-                        still_to_run,
+                        "'" + "', '".join(still_to_run) + "'",
                     )
                 elif len(still_to_run) == 1:
                     logger.info("Still waiting to submit 1 more step ('%s')...", still_to_run[0])
