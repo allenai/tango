@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.0.1](https://github.com/allenai/tango/releases/tag/v1.0.1) - 2022-10-20
+
 ### Fixed
 
 - `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
