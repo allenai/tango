@@ -574,17 +574,17 @@ class BeakerExecutor(Executor):
                 ]
                 if len(waiting_for) > 5:
                     logger.info(
-                        "Waiting for %d running steps...",
+                        "Waiting for %d steps...",
                         len(waiting_for),
                     )
                 elif len(waiting_for) > 1:
                     logger.info(
-                        "Waiting for %d running steps (%s)...",
+                        "Waiting for %d steps (%s)...",
                         len(waiting_for),
-                        list(waiting_for),
+                        "'" + "', '".join(waiting_for) + "'",
                     )
                 elif len(waiting_for) == 1:
-                    logger.info("Waiting for 1 running step ('%s')...", list(waiting_for)[0])
+                    logger.info("Waiting for 1 step ('%s')...", list(waiting_for)[0])
 
                 still_to_run = [
                     step.name for step in steps_left_to_run if step.name not in submitted_steps
