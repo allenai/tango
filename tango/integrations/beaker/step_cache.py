@@ -16,7 +16,7 @@ from tango.step_cache import CacheMetadata, StepCache
 from tango.step_caches.local_step_cache import LocalStepCache
 from tango.step_info import StepInfo
 
-from .common import Constants, step_dataset_name
+from .common import Constants, get_client, step_dataset_name
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +44,8 @@ class BeakerStepCache(LocalStepCache):
             if beaker_workspace is not None:
                 self.beaker.config.default_workspace = beaker_workspace
                 self.beaker.workspace.ensure(beaker_workspace)
-        elif beaker_workspace is not None:
-            self.beaker = Beaker.from_env(default_workspace=beaker_workspace)
         else:
-            self.beaker = Beaker.from_env()
+            self.beaker = get_client(beaker_workspace=beaker_workspace)
         if self.beaker.config.default_workspace is None:
             raise ConfigurationError("Beaker default workspace must be set")
         super().__init__(

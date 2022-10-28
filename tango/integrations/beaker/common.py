@@ -18,6 +18,7 @@ from beaker import (
 
 from tango.step import Step
 from tango.step_info import StepInfo
+from tango.version import VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,19 @@ class Constants:
     ENTRYPOINT_DIR: str = "/tango/entrypoint"
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
     INPUT_DIR: str = "/tango/input"
+
+
+def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
+    user_agent = f"tango v{VERSION}"
+    if beaker_workspace is not None:
+        return Beaker.from_env(
+            default_workspace=beaker_workspace,
+            session=True,
+            user_agent=user_agent,
+            **kwargs,
+        )
+    else:
+        return Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
 
 def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:
