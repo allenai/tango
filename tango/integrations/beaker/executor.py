@@ -43,7 +43,7 @@ from tango.step_info import GitMetadata
 from tango.version import VERSION
 from tango.workspace import Workspace
 
-from .common import Constants
+from .common import Constants, get_client
 
 logger = logging.getLogger(__name__)
 
@@ -397,7 +397,7 @@ class BeakerExecutor(Executor):
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
 
-        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
+        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets
