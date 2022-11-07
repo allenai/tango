@@ -62,6 +62,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForCTC::from_pretrained
             transformers::AutoModelForCausalLM::from_config
             transformers::AutoModelForCausalLM::from_pretrained
+            transformers::AutoModelForDepthEstimation::from_config
+            transformers::AutoModelForDepthEstimation::from_pretrained
             transformers::AutoModelForDocumentQuestionAnswering::from_config
             transformers::AutoModelForDocumentQuestionAnswering::from_pretrained
             transformers::AutoModelForImageClassification::from_config
