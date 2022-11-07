@@ -706,10 +706,10 @@ class BeakerExecutor(Executor):
                         experiment,
                         strict=True,
                         quiet=True,
-                        timeout=6.0,
-                        poll_interval=5.0,
+                        timeout=31,
+                        poll_interval=30,
                     )
-                    time.sleep(5.0)
+                    time.sleep(30)
                     break
                 except JobTimeoutError:
                     continue
