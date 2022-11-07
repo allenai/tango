@@ -697,13 +697,13 @@ class BeakerExecutor(Executor):
         assert experiment is not None
         assert experiment_url is not None
 
-        # Follow the experiment and stream the logs until it completes.
+        # Follow the experiment until it completes.
         try:
             while True:
                 try:
                     self._check_if_cancelled()
                     self.beaker.experiment.wait_for(
-                        experiment, strict=True, quiet=True, timeout=2.0
+                        experiment, strict=True, quiet=True, timeout=5.0
                     )
                     time.sleep(2.0)
                     break
@@ -915,7 +915,7 @@ class BeakerExecutor(Executor):
                 env_vars=self.env_vars,
                 priority=priority,
             )
-            .with_constraint("cluster", [clusters] if isinstance(clusters, str) else clusters)
+            .with_constraint(cluster=[clusters] if isinstance(clusters, str) else clusters)
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
             .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
