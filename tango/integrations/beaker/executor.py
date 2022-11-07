@@ -703,9 +703,13 @@ class BeakerExecutor(Executor):
                 try:
                     self._check_if_cancelled()
                     self.beaker.experiment.wait_for(
-                        experiment, strict=True, quiet=True, timeout=5.0
+                        experiment,
+                        strict=True,
+                        quiet=True,
+                        timeout=6.0,
+                        poll_interval=5.0,
                     )
-                    time.sleep(2.0)
+                    time.sleep(5.0)
                     break
                 except JobTimeoutError:
                     continue
