@@ -65,9 +65,9 @@ class ResourceAssignment(NamedTuple):
     Resources assigned to a step.
     """
 
-    cluster: str
+    cluster: Union[str, List[str]]
     """
-    The cluster to use to execute the step.
+    The cluster(s) to use to execute the step.
     """
 
     resources: TaskResources
@@ -127,7 +127,6 @@ class SimpleBeakerScheduler(BeakerScheduler):
         super().__init__()
         self.clusters = clusters
         self.priority = priority
-        self._latest_clusters_used: List[str] = []
         if not self.clusters:
             raise ConfigurationError("At least one cluster is required in 'clusters'")
 
@@ -139,44 +138,9 @@ class SimpleBeakerScheduler(BeakerScheduler):
             memory=step_resources.memory,
             shared_memory=step_resources.shared_memory,
         )
-        cluster_to_use = self._ensure_cluster(task_resources)
-        if cluster_to_use is None:
-            raise ResourceAssignmentError()
-
-        # Move cluster to the end of `self._latest_clusters_used`
-        try:
-            self._latest_clusters_used.remove(cluster_to_use)  # type: ignore
-        except ValueError:
-            pass
-        self._latest_clusters_used.append(cluster_to_use)  # type: ignore
-
         return ResourceAssignment(
-            cluster=cluster_to_use, resources=task_resources, priority=self.priority
+            cluster=self.clusters, resources=task_resources, priority=self.priority
         )
-
-    def _ensure_cluster(self, task_resources: TaskResources) -> Optional[str]:
-        cluster_to_use: Optional[str] = None
-        if not self.clusters:
-            raise ConfigurationError("At least one cluster is required in 'clusters'")
-        elif len(self.clusters) == 1:
-            cluster_to_use = self.clusters[0]
-        else:
-
-            def recency_ranking(cluster_name: str):
-                try:
-                    return self._latest_clusters_used.index(cluster_name)
-                except ValueError:
-                    return -1
-
-            available_clusters = sorted(
-                self.beaker.cluster.filter_available(task_resources, *self.clusters),
-                key=lambda x: (x.queued_jobs, recency_ranking(x.cluster.full_name)),
-            )
-
-            if available_clusters:
-                cluster_to_use = available_clusters[0].cluster.full_name
-
-        return cluster_to_use
 
 
 @Executor.register("beaker")
@@ -896,7 +860,7 @@ class BeakerExecutor(Executor):
             )
 
         # Get cluster, resources, and priority to use.
-        cluster, task_resources, priority = self.scheduler.schedule(step)
+        clusters, task_resources, priority = self.scheduler.schedule(step)
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
@@ -941,7 +905,6 @@ class BeakerExecutor(Executor):
         task_spec = (
             TaskSpec.new(
                 step.unique_id,
-                cluster,
                 beaker_image=self.beaker_image,
                 docker_image=self.docker_image,
                 result_path=Constants.RESULTS_DIR,
@@ -952,6 +915,7 @@ class BeakerExecutor(Executor):
                 env_vars=self.env_vars,
                 priority=priority,
             )
+            .with_constraint("cluster", [clusters] if isinstance(clusters, str) else clusters)
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
             .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
