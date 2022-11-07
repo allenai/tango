@@ -709,9 +709,9 @@ class BeakerExecutor(Executor):
                         timeout=31,
                         poll_interval=30,
                     )
-                    time.sleep(30)
                     break
                 except JobTimeoutError:
+                    time.sleep(30)
                     continue
         except (JobFailedError, TaskStoppedError):
             cli_logger.error(
