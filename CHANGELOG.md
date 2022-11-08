@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.0.1](https://github.com/allenai/tango/releases/tag/v1.0.1) - 2022-10-20
+
 ### Fixed
 
+- `LightningTrainStep` now can take a `Lazy` model object which results in a gauranteed deterministic hash.
+- Fixed issue where remote `Workspace` implementations like `WandbWorkspace` and `BeakerWorkspace` would use the same local cache regardless of the W&B / Beaker workspace
+  being used.
 - Fixed bug with `TorchEvalStep` when constructing callbacks.
 - Fixed some import error issues caused when an integration is not installed.
+- Fix incorrect reporting of final results in `MulticoreExecutor`.
 
 ### Changed
 
+- Wandb step cache retries api call in case of timeout
 - `beaker-py >= 1.11` required.
 
 ## [v1.0.0](https://github.com/allenai/tango/releases/tag/v1.0.0) - 2022-10-05

@@ -186,6 +186,17 @@ def filename_is_safe(filename: str) -> bool:
     return all(c in SAFE_FILENAME_CHARS for c in filename)
 
 
+def make_safe_filename(name: str) -> str:
+    if filename_is_safe(name):
+        return name
+    else:
+        from tango.common.det_hash import det_hash
+
+        name_hash = det_hash(name)
+        name = name.replace(" ", "-").replace("/", "--")
+        return "".join(c for c in name if c in SAFE_FILENAME_CHARS) + f"-{name_hash[:7]}"
+
+
 def could_be_class_name(name: str) -> bool:
     if "." in name and not name.endswith("."):
         return all([_is_valid_python_name(part) for part in name.split(".")])

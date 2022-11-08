@@ -87,7 +87,7 @@ class LightningTrainStep(Step):
     def run(  # type: ignore[override]
         self,
         trainer: Lazy[LightningTrainer],
-        model: LightningModule,
+        model: Union[Lazy[LightningModule], LightningModule],  # Lazy has to come first
         *,
         dataset_dict: Optional[DatasetDict] = None,
         train_dataloader: Optional[Lazy[DataLoader]] = None,
@@ -131,6 +131,7 @@ class LightningTrainStep(Step):
 
         """
         trainer: LightningTrainer = trainer.construct(work_dir=self.work_dir)
+        model_: LightningModule = model.construct() if isinstance(model, Lazy) else model
 
         # Find the checkpoint callback and make sure it uses the right directory.
         checkpoint_callback: pl.callbacks.model_checkpoint.ModelCheckpoint
@@ -144,7 +145,7 @@ class LightningTrainStep(Step):
                 "A datamodule object has been given. Other data loading arguments "
                 "will be ignored!"
             )
-            trainer.fit(model, datamodule=datamodule)
+            trainer.fit(model_, datamodule=datamodule)
         elif dataset_dict and train_dataloader:
             # Construct data loaders.
             validation_dataloader_: Optional[DataLoader] = None
@@ -163,7 +164,7 @@ class LightningTrainStep(Step):
             except KeyError:
                 raise KeyError(f"'{train_split}', available keys are {list(dataset_dict.keys())}")
             train_dataloader: DataLoader = train_dataloader.construct(dataset=train_dataset)  # type: ignore
-            trainer.fit(model, train_dataloader, validation_dataloader)  # type: ignore
+            trainer.fit(model_, train_dataloader, validation_dataloader)  # type: ignore
         else:
             raise AssertionError(
                 "You need to provide either the `datamodule` argument, "

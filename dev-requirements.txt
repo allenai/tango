@@ -10,9 +10,10 @@ mypy==0.982
 types-PyYAML
 types-setuptools
 types-pytz
+types-retry
 
 # Automatic code formatting
-black==22.8.0
+black==22.10.0
 isort==5.10.1
 
 # Running tests
@@ -35,10 +36,10 @@ setuptools
 wheel
 
 # Building docs
-Sphinx==5.2.3
+Sphinx==5.3.0
 
 # Sphinx theme: https://sphinx-themes.org/sample-sites/furo/
-furo==2022.9.15
+furo==2022.9.29
 
 # Lets Sphinx parse markdown files in addition to rst.
 myst-parser==0.18.1

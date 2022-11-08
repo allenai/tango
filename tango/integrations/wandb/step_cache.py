@@ -2,10 +2,11 @@ import logging
 from typing import Any, Optional, Union
 
 import wandb
+from retry import retry
 from wandb.errors import Error as WandbError
 
 from tango.common.aliases import PathOrStr
-from tango.common.util import tango_cache_dir
+from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
@@ -34,7 +35,12 @@ class WandbStepCache(RemoteStepCache):
 
     def __init__(self, project: str, entity: str):
         check_environment()
-        super().__init__(tango_cache_dir() / "wandb_cache")
+        super().__init__(
+            tango_cache_dir()
+            / "wandb_cache"
+            / make_safe_filename(entity)
+            / make_safe_filename(project)
+        )
         self.project = project
         self.entity = entity
 
@@ -118,6 +124,7 @@ class WandbStepCache(RemoteStepCache):
             f"/{self._step_artifact_name(step)}/{step.unique_id}"
         )
 
+    @retry(exceptions=(wandb.errors.CommError,), delay=10, backoff=2, max_delay=120)
     def use_step_result_artifact(self, step: Union[Step, StepInfo]) -> None:
         """
         "Use" the artifact corresponding to the result of a step.
