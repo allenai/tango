@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `BeakerScheduler` can now return a list of clusters.
+
 ## [v1.0.1](https://github.com/allenai/tango/releases/tag/v1.0.1) - 2022-10-20
 
 ### Fixed
