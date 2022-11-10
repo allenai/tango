@@ -1,20 +1,21 @@
 import logging
 import os
+from pathlib import Path
 from typing import Optional, Union
 
+import gcsfs
+from google.api_core.exceptions import NotFound
 from google.cloud import storage
-from pathlib import Path
+
+from tango.common.aliases import PathOrStr
 from tango.common.file_lock import FileLock
 from tango.common.util import tango_cache_dir
 from tango.integrations.gcs.util import CloudStorageWrapper
 from tango.step import Step
 from tango.step_cache import CacheMetadata, StepCache
 from tango.step_caches.local_step_cache import LocalStepCache
-from tango.step_caches.remote_step_cache import RemoteStepCache, Constants
+from tango.step_caches.remote_step_cache import Constants, RemoteStepCache
 from tango.step_info import StepInfo
-import gcsfs
-from google.api_core.exceptions import NotFound
-from tango.common.aliases import PathOrStr
 
 logger = logging.getLogger(__name__)
 
