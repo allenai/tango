@@ -78,6 +78,9 @@ class BeakerStepCache(RemoteStepCache):
         except DatasetNotFound:
             self._raise_remote_not_found()
 
+    def _step_results_dir(self) -> str:
+        return Constants.STEP_RESULT_DIR
+
     def __len__(self) -> int:
         # NOTE: lock datasets should not count here. They start with the same prefix,
         # but they never get committed.

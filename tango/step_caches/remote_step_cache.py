@@ -14,19 +14,6 @@ from tango.step_cache import CacheMetadata
 from tango.step_caches.local_step_cache import LocalStepCache
 from tango.step_info import StepInfo
 
-
-# TODO: move this somewhere
-class Constants:
-    RUN_DATASET_PREFIX = "tango-run-"
-    RUN_DATA_FNAME = "run.json"
-    STEP_DATASET_PREFIX = "tango-step-"
-    STEP_INFO_FNAME = "step_info.json"
-    STEP_RESULT_DIR = "result"
-    ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
-    STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
-    STEP_EXPERIMENT_PREFIX = "tango-step-"
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -83,6 +70,9 @@ class RemoteStepCache(LocalStepCache):
         else:
             return False
 
+    def _step_results_dir(self) -> str:
+        raise NotImplementedError()
+
     # TODO: change output type
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Any]:
         raise NotImplementedError()
@@ -107,7 +97,7 @@ class RemoteStepCache(LocalStepCache):
         def load_and_return():
             metadata = CacheMetadata.from_params(Params.from_file(self._metadata_path(step)))
             # TODO: note that this is slightly different for beaker and wandb
-            result = metadata.format.read(self.step_dir(step) / Constants.STEP_RESULT_DIR)
+            result = metadata.format.read(self.step_dir(step) / self._step_results_dir())
             self._add_to_cache(key, result)
             return result
 
@@ -148,9 +138,9 @@ class RemoteStepCache(LocalStepCache):
             # We'll write the step's results to temporary directory first, and try to upload to
             # Beaker from there in case anything goes wrong.
             temp_dir = Path(tempfile.mkdtemp(dir=self.dir, prefix=step.unique_id))
-            (temp_dir / Constants.STEP_RESULT_DIR).mkdir()
+            (temp_dir / self._step_results_dir()).mkdir()
             try:
-                step.format.write(value, temp_dir / Constants.STEP_RESULT_DIR)
+                step.format.write(value, temp_dir / self._step_results_dir())
                 metadata = CacheMetadata(step=step.unique_id, format=step.format)
                 metadata.to_params().to_file(temp_dir / self.METADATA_FILE_NAME)
                 # Create the dataset and upload serialized result to it.
