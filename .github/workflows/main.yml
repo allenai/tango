@@ -45,7 +45,7 @@ jobs:
             extras: dev,all
             requires_torch: true
             run: |
-              mypy .
+              mypy --check-untyped-defs .
 
           - name: Build
             extras: dev,all
