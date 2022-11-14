@@ -121,7 +121,7 @@ class TestStepGraph(TangoTestCase):
                 "string2": {"type": "ref", "ref": "some_string"},
             },
         }
-        step_graph = StepGraph.from_params(deepcopy(config))
+        step_graph = StepGraph.from_params(deepcopy(config))  # type: ignore[arg-type]
         assert step_graph["some_string"].dependencies == {step_graph["other_string"]}
         assert step_graph["added"].recursive_dependencies == {
             step_graph["other_string"],

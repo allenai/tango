@@ -31,7 +31,7 @@ def test_normal_det_hash():
 
 def test_versioned_det_hash():
     class C(DetHashWithVersion):
-        VERSION = 1
+        VERSION = "1"
 
         def __init__(self, x: int):
             self.x = x
@@ -43,7 +43,7 @@ def test_versioned_det_hash():
     assert det_hash(c3_1) != det_hash(c2_1)
 
     class C(DetHashWithVersion):
-        VERSION = 2
+        VERSION = "2"
 
         def __init__(self, x: int):
             self.x = x
