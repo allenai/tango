@@ -103,7 +103,7 @@ class TestStepGraph(TangoTestCase):
                 "b_number": {"type": "ref", "ref": "list", "key": 1},
             },
         }
-        step_graph = StepGraph.from_params(deepcopy(config))
+        step_graph = StepGraph.from_params(deepcopy(config))  # type: ignore[arg-type]
         assert [s.name for s in step_graph["added"].dependencies] == ["list"]
         assert step_graph.to_config() == config
 
