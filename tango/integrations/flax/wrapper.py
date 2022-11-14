@@ -16,7 +16,7 @@ class FlaxWrapper(Registrable):
         """
         Returns the train metrics other than loss as Dict.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def train_loss(self, params, state, batch, dropout_rng, labels):
@@ -25,18 +25,18 @@ class FlaxWrapper(Registrable):
         should return the loss for the batch as a jax device array. The gradient
         of this function is used for training.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def val_metrics(self, batch, logits, labels) -> Dict:
         """
         Returns the validation metrics as Dict.
         """
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def eval_metrics(self, batch, logits, labels) -> Dict:
         """
         Returns the evaluation metrics as  Dict.
         """
-        pass
+        raise NotImplementedError()
