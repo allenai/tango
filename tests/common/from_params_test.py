@@ -908,7 +908,7 @@ class TestFromParams(TangoTestCase):
                 self.a = a
 
         class ClassWithStdGenerics(FromParams):
-            def __init__(self, x: list[Item], y: dict[str, Item]) -> None:
+            def __init__(self, x: list[Item], y: dict[str, Item]) -> None:  # type: ignore[syntax]
                 self.x = x
                 self.y = y
 
@@ -938,7 +938,7 @@ class TestFromParams(TangoTestCase):
                 self.a = a
 
         class ClassWithUnionType(FromParams):
-            def __init__(self, x: Item | str):
+            def __init__(self, x: Item | str):  # type: ignore[syntax]
                 self.x = x
 
         o = ClassWithUnionType.from_params({"x": {"a": 1}})
@@ -983,7 +983,7 @@ class TestFromParams(TangoTestCase):
             def __init__(self, x: int):
                 self.x = x
 
-        InnerBase.register("inner")(innerbase_with_x_factory(Inner))
+        InnerBase.register("inner")(innerbase_with_x_factory(Inner))  # type: ignore[arg-type]
 
         class OuterBase(Registrable):
             default_implementation = "default"
@@ -999,7 +999,7 @@ class TestFromParams(TangoTestCase):
 
         outer_lazy = Lazy(OuterBase, Params(config))
         outer = outer_lazy.construct(y="placeholder")
-        assert outer.i.x == 5
+        assert outer.i.x == 5  # type: ignore[attr-defined]
 
     def test_lazy_from_params_with_version(self):
         class Gizmo(Registrable):
@@ -1025,7 +1025,7 @@ class TestFromParams(TangoTestCase):
         assert hash_before == det_hash(lazy)
         WidgetGizmo.VERSION = "002"
         assert hash_before != det_hash(lazy)
-        assert lazy.construct().x == 1
+        assert lazy.construct().x == 1  # type: ignore[attr-defined]
 
         default_lazy = Lazy(
             Gizmo,
@@ -1040,7 +1040,7 @@ class TestFromParams(TangoTestCase):
         hash_before = det_hash(default_lazy)
         WidgetGizmo.VERSION = "003"
         assert hash_before != det_hash(default_lazy)
-        assert default_lazy.construct().x == 0
+        assert default_lazy.construct().x == 0  # type: ignore[attr-defined]
 
 
 class MyClass(FromParams):
