@@ -25,7 +25,7 @@ pytz
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
-torch>=1.9,<1.13             # needed by: torch,pytorch_lightning,transformers,fairscale
+torch>=1.9,<1.14             # needed by: torch,pytorch_lightning,transformers,fairscale
 numpy                        # needed by: torch,pytorch_lightning,transformers,fairscale
 datasets>=1.12,<3.0          # needed by: datasets,transformers
 wandb>=0.12,<0.14            # needed by: wandb
