@@ -85,7 +85,7 @@ from typing import TYPE_CHECKING, List, Optional, Sequence, Union
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 
-from tango.common.exceptions import CliRunError
+from tango.common.exceptions import CliRunError, IntegrationMissingError
 from tango.common.logging import (
     cli_logger,
     initialize_logging,
@@ -479,7 +479,7 @@ def info(settings: TangoGlobalSettings):
         is_installed = True
         try:
             import_module_and_submodules(integration)
-        except (ModuleNotFoundError, ImportError):
+        except (IntegrationMissingError, ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
             cli_logger.info(" [green]\N{check mark} %s[/]", name)
@@ -826,8 +826,9 @@ def _run(
         elif not called_by_executor:
             cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
 
-        if not called_by_executor and executor_output is not None:
-            _display_run_results(run, step_graph, workspace, executor_output)
+        if executor_output is not None:
+            if not called_by_executor:
+                _display_run_results(run, step_graph, workspace, executor_output)
             if executor_output.failed:
                 raise CliRunError
 

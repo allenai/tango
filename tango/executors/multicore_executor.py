@@ -136,8 +136,12 @@ class MulticoreExecutor(Executor):
                     if step_states[step_name] == StepState.RUNNING:
                         step_states[step_name] = self._get_state(step_graph[step_name])
 
-                    # We check for uncacheable leaf step too.
-                    if step_states[step_name] in [StepState.COMPLETED, StepState.UNCACHEABLE]:
+                    if step_states[step_name] == StepState.UNCACHEABLE:
+                        if poll_status == 0:
+                            done.append(step_name)
+                        else:
+                            errors.append(step_name)
+                    elif step_states[step_name] == StepState.COMPLETED:
                         done.append(step_name)
                     elif (
                         step_states[step_name] == StepState.FAILED

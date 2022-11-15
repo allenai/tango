@@ -11,7 +11,6 @@ from urllib.parse import ParseResult
 
 import petname
 from beaker import (
-    Beaker,
     Dataset,
     DatasetConflict,
     DatasetNotFound,
@@ -32,6 +31,7 @@ from .common import (
     BeakerStepLock,
     Constants,
     dataset_url,
+    get_client,
     run_dataset_name,
     step_dataset_name,
 )
@@ -56,7 +56,7 @@ class BeakerWorkspace(Workspace):
 
     def __init__(self, beaker_workspace: str, **kwargs):
         super().__init__()
-        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
+        self.beaker = get_client(beaker_workspace=beaker_workspace)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}
@@ -138,7 +138,9 @@ class BeakerWorkspace(Workspace):
             return
 
         # Get local file lock + remote Beaker dataset lock.
-        lock = BeakerStepLock(self.beaker, step)
+        lock = BeakerStepLock(
+            self.beaker, step, current_beaker_experiment=self.current_beaker_experiment
+        )
         lock.acquire()
         self.locks[step] = lock
 
@@ -264,12 +266,12 @@ class BeakerWorkspace(Workspace):
                 steps[step_info.step_name] = step_info
                 run_data[step_info.step_name] = step_info.unique_id
 
-        # Create Beaker dataset for run.
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
-            with open(tmp_dir / Constants.RUN_DATA_FNAME, "w") as f:
-                json.dump(run_data, f)
-            self.beaker.dataset.sync(run_dataset, tmp_dir / Constants.RUN_DATA_FNAME, quiet=True)
+        # Upload run data to dataset.
+        # NOTE: We don't commit the dataset here since we'll need to upload the logs file
+        # after the run.
+        self.beaker.dataset.upload(
+            run_dataset, json.dumps(run_data).encode(), Constants.RUN_DATA_FNAME, quiet=True
+        )
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
 
@@ -344,7 +346,7 @@ class BeakerWorkspace(Workspace):
             max_workers=9, thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-"
         ) as executor:
             step_info_futures = []
-            for step_name, unique_id in steps_info.items():
+            for unique_id in steps_info.values():
                 step_info_futures.append(executor.submit(self.step_info, unique_id))
             for future in concurrent.futures.as_completed(step_info_futures):
                 step_info = future.result()
@@ -362,11 +364,9 @@ class BeakerWorkspace(Workspace):
         except DatasetConflict:
             step_info_dataset = self.beaker.dataset.get(dataset_name)
 
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            tmp_dir = Path(tmp_dir_name)
-
-            # Save step info.
-            step_info_path = tmp_dir / Constants.STEP_INFO_FNAME
-            with open(step_info_path, "w") as f:
-                json.dump(step_info.to_json_dict(), f)
-            self.beaker.dataset.sync(step_info_dataset, step_info_path, quiet=True)
+        self.beaker.dataset.upload(
+            step_info_dataset,
+            json.dumps(step_info.to_json_dict()).encode(),
+            Constants.STEP_INFO_FNAME,
+            quiet=True,
+        )

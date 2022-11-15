@@ -120,6 +120,10 @@ class Step(Registrable, Generic[T]):
     :param step_metadata: use this to specify additional metadata for your step.
       This is added to the :attr:`METADATA` class variable to form the ``self.metadata`` attribute.
       Values in ``step_metadata`` take precedence over ``METADATA``.
+    :param step_extra_dependencies: use this to force a dependency on other steps. Normally dependencies
+      between steps are determined by the inputs and outputs of the steps, but you can use this
+      parameter to force that other steps run before this step even if this step doesn't
+      explicitly depend on the outputs of those steps.
 
     .. important::
         Overriding the unique id means that the step will always map to this value, regardless of the inputs,
@@ -177,6 +181,7 @@ class Step(Registrable, Generic[T]):
         step_unique_id_override: Optional[str] = None,
         step_resources: Optional[StepResources] = None,
         step_metadata: Optional[Dict[str, Any]] = None,
+        step_extra_dependencies: Optional[Iterable["Step"]] = None,
         **kwargs,
     ):
         if self.VERSION is not None:
@@ -258,6 +263,7 @@ class Step(Registrable, Generic[T]):
         self.metadata = deepcopy(self.METADATA)
         if step_metadata:
             self.metadata.update(step_metadata)
+        self.extra_dependencies = set(step_extra_dependencies) if step_extra_dependencies else set()
 
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
@@ -295,8 +301,10 @@ class Step(Registrable, Generic[T]):
     def from_params(  # type: ignore[override]
         cls: Type["Step"],
         params: Union[Params, dict, str],
-        constructor_to_call: Callable[..., "Step"] = None,
-        constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
+        constructor_to_call: Optional[Callable[..., "Step"]] = None,
+        constructor_to_inspect: Optional[
+            Union[Callable[..., "Step"], Callable[["Step"], None]]
+        ] = None,
         step_name: Optional[str] = None,
         **extras,
     ) -> "Step":
@@ -420,12 +428,12 @@ class Step(Registrable, Generic[T]):
 
             try:
                 result = self.run(**kwargs)
+                result = workspace.step_finished(self, result)
             except BaseException as e:
                 self.log_failure(e)
                 workspace.step_failed(self, e)
                 raise
 
-            result = workspace.step_finished(self, result)
             self.log_finished()
             return result
         finally:
@@ -589,10 +597,15 @@ class Step(Registrable, Generic[T]):
             try:
                 return self._run_with_work_dir(workspace, needed_by=needed_by)
             except StepStateError as exc:
-                if exc.step_state != StepState.COMPLETED:
+                if exc.step_state != StepState.COMPLETED or not self.cache_results:
                     raise
-                # Step has been completed (and cached) by a different process, so we
-                # do nothing here and pull the result from the cache below.
+                elif self not in workspace.step_cache:
+                    raise StepStateError(
+                        self, exc.step_state, "because it's not found in the cache"
+                    )
+                else:
+                    # Step has been completed (and cached) by a different process, so we're done.
+                    pass
 
         self.log_cache_hit(needed_by=needed_by)
         return workspace.step_cache[self]
@@ -638,7 +651,8 @@ class Step(Registrable, Generic[T]):
             else:
                 return
 
-        return dependencies_internal(self.kwargs.values())
+        yield from self.extra_dependencies
+        yield from dependencies_internal(self.kwargs.values())
 
     @property
     def dependencies(self) -> Set["Step"]:

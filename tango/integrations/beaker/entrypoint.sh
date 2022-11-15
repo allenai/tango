@@ -23,7 +23,9 @@ echo "
 "
 
 # Install GitHub CLI.
-conda install gh --channel conda-forge
+if ! command -v gh &> /dev/null; then
+    conda install gh --channel conda-forge
+fi
 
 # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
 gh auth setup-git

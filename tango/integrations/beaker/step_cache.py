@@ -7,15 +7,16 @@ from typing import Any, Optional, Union
 
 from beaker import Beaker, Dataset, DatasetConflict, DatasetNotFound, DatasetWriteError
 
+from tango.common.exceptions import ConfigurationError
 from tango.common.file_lock import FileLock
 from tango.common.params import Params
-from tango.common.util import tango_cache_dir
+from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import CacheMetadata, StepCache
 from tango.step_caches.local_step_cache import LocalStepCache
 from tango.step_info import StepInfo
 
-from .common import Constants, step_dataset_name
+from .common import Constants, get_client, step_dataset_name
 
 logger = logging.getLogger(__name__)
 
@@ -37,17 +38,21 @@ class BeakerStepCache(LocalStepCache):
     """
 
     def __init__(self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None):
-        super().__init__(tango_cache_dir() / "beaker_cache")
         self.beaker: Beaker
         if beaker is not None:
             self.beaker = beaker
             if beaker_workspace is not None:
                 self.beaker.config.default_workspace = beaker_workspace
                 self.beaker.workspace.ensure(beaker_workspace)
-        elif beaker_workspace is not None:
-            self.beaker = Beaker.from_env(default_workspace=beaker_workspace)
         else:
-            self.beaker = Beaker.from_env()
+            self.beaker = get_client(beaker_workspace=beaker_workspace)
+        if self.beaker.config.default_workspace is None:
+            raise ConfigurationError("Beaker default workspace must be set")
+        super().__init__(
+            tango_cache_dir()
+            / "beaker_cache"
+            / make_safe_filename(self.beaker.config.default_workspace)
+        )
 
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
         return FileLock(
