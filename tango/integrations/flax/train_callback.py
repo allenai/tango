@@ -38,7 +38,7 @@ class TrainCallback(Registrable):
     :ivar tango.common.DatasetDictBase dataset_dict: The dataset dict containing train and
         optional validation splits.
     :ivar DataLoader train_dataloader: The dataloader used for the training split.
-    :ivar FlaxModel model: The flax model being trained.
+    :ivar Model model: The flax model being trained.
     :ivar Optimizer optimizer: The optimizer being used for training.
     :ivar DataLoader validation_dataloader: Optional dataloader used for the validation split.
     """
