@@ -301,8 +301,10 @@ class Step(Registrable, Generic[T]):
     def from_params(  # type: ignore[override]
         cls: Type["Step"],
         params: Union[Params, dict, str],
-        constructor_to_call: Callable[..., "Step"] = None,
-        constructor_to_inspect: Union[Callable[..., "Step"], Callable[["Step"], None]] = None,
+        constructor_to_call: Optional[Callable[..., "Step"]] = None,
+        constructor_to_inspect: Optional[
+            Union[Callable[..., "Step"], Callable[["Step"], None]]
+        ] = None,
         step_name: Optional[str] = None,
         **extras,
     ) -> "Step":

@@ -103,7 +103,7 @@ class TestStepGraph(TangoTestCase):
                 "b_number": {"type": "ref", "ref": "list", "key": 1},
             },
         }
-        step_graph = StepGraph.from_params(deepcopy(config))
+        step_graph = StepGraph.from_params(deepcopy(config))  # type: ignore[arg-type]
         assert [s.name for s in step_graph["added"].dependencies] == ["list"]
         assert step_graph.to_config() == config
 
@@ -121,7 +121,7 @@ class TestStepGraph(TangoTestCase):
                 "string2": {"type": "ref", "ref": "some_string"},
             },
         }
-        step_graph = StepGraph.from_params(deepcopy(config))
+        step_graph = StepGraph.from_params(deepcopy(config))  # type: ignore[arg-type]
         assert step_graph["some_string"].dependencies == {step_graph["other_string"]}
         assert step_graph["added"].recursive_dependencies == {
             step_graph["other_string"],

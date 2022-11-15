@@ -36,7 +36,11 @@ class FlaxDataLoader(DataLoader):
         self.logger = logging.getLogger(FlaxDataLoader.__name__)
 
     def _get_size(self):
-        size = self.dataset["num_rows"] if type(self.dataset) is dict else self.dataset.num_rows
+        size = (
+            self.dataset["num_rows"]
+            if type(self.dataset) is dict
+            else self.dataset.num_rows  # type: ignore[attr-defined]
+        )
         return size
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):

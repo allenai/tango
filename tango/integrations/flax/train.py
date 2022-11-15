@@ -411,7 +411,7 @@ class FlaxTrainStep(Step):
             if do_distributed:
                 grad = jax.lax.pmean(grad, "batch")
             new_state = state.apply_gradients(grads=grad)
-            other_metrics = train_wrapper.compute_metrics(state, batch, labels=labels)
+            other_metrics = train_wrapper.train_metrics(state, batch, labels=labels)
             metrics = {"loss": loss}
             metrics.update(other_metrics)
             if do_distributed:
