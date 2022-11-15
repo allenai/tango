@@ -69,7 +69,6 @@ You can pick and choose from the integrations with one of these:
 
 ```bash
 conda install tango-datasets -c conda-forge
-conda install tango-pytorch_lightning -c conda-forge
 conda install tango-torch -c conda-forge
 conda install tango-wandb -c conda-forge
 ```

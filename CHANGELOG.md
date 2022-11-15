@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- Removed PyTorch Lightning integration.
+
 ### Fixed
 
 - Fixed issue where Executor `parallelism` option in a Tango settings file would be ignored.
