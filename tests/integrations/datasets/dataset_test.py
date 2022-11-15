@@ -47,23 +47,23 @@ class TestDatasets(TangoTestCase):
 
 def test_mapped_sequence_of_dataset():
     ds = datasets.load_dataset("piqa", split="validation")
-    mapped_ds = MappedSequence(lambda x: x["goal"], ds)
-    assert len(ds) == len(mapped_ds)
-    assert ds[0]["goal"] == mapped_ds[0]
-    assert ds[0]["goal"] == mapped_ds[:10][0]
+    mapped_ds = MappedSequence(lambda x: x["goal"], ds)  # type: ignore[arg-type]
+    assert len(ds) == len(mapped_ds)  # type: ignore[arg-type]
+    assert ds[0]["goal"] == mapped_ds[0]  # type: ignore[index]
+    assert ds[0]["goal"] == mapped_ds[:10][0]  # type: ignore[index]
 
 
 def test_datasets_dataset_remix():
     dataset_dict = datasets.load_dataset("lhoestq/test")
     step = DatasetRemixStep()
     result = step.run(
-        input=dataset_dict,
+        input=dataset_dict,  # type: ignore[arg-type]
         new_splits={
             "all": "train + validation",
             "crossval_train": "train[:1] + validation[1:]",
             "crossval_test": "train[1:] + validation[:1]",
         },
     )
-    assert len(result["all"]) == len(dataset_dict["train"]) + len(dataset_dict["validation"])
+    assert len(result["all"]) == len(dataset_dict["train"]) + len(dataset_dict["validation"])  # type: ignore
     assert len(result["crossval_train"]) == 3
     assert len(result["crossval_test"]) == 2

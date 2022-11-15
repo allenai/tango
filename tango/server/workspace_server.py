@@ -66,11 +66,12 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             self.path = "report.html"
         elif self.path == "/api/stepinfo":
             try:
-                output_data = {
-                    sub: self._run_map(sub, self.server.workspace)
-                    for sub in list(self.server.workspace.registered_runs())
-                }
-                output_json = json.dumps(output_data)
+                output_json = json.dumps(
+                    {
+                        sub: self._run_map(sub, self.server.workspace)
+                        for sub in list(self.server.workspace.registered_runs())
+                    }
+                )
             except BaseException:
                 self.send_response(500)
                 self.end_headers()
@@ -82,11 +83,12 @@ class WorkspaceRequestHandler(SimpleHTTPRequestHandler):
             return
         elif self.path == "/api/runlist":
             try:
-                output_data = [
-                    {"name": run.name, "start_date": run.start_date.isoformat()}
-                    for run in self.server.workspace.registered_runs().values()
-                ]
-                output_json = json.dumps(output_data)
+                output_json = json.dumps(
+                    [
+                        {"name": run.name, "start_date": run.start_date.isoformat()}
+                        for run in self.server.workspace.registered_runs().values()
+                    ]
+                )
             except BaseException:
                 self.send_response(500)
                 self.end_headers()
