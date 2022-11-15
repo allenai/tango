@@ -315,7 +315,7 @@ class BeakerExecutor(Executor):
         datasets: Optional[List[DataMount]] = None,
         env_vars: Optional[List[EnvVar]] = None,
         venv_name: Optional[str] = None,
-        parallelism: Optional[int] = -1,
+        parallelism: Optional[int] = None,
         install_cmd: Optional[str] = None,
         priority: Optional[Union[str, Priority]] = None,
         allow_dirty: bool = False,
@@ -570,9 +570,7 @@ class BeakerExecutor(Executor):
         update_steps_to_run()
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=self.parallelism or None
-            ) as pool:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism) as pool:
                 while steps_left_to_run:
                     # Submit steps left to run.
                     for step_name in steps_to_run:
