@@ -45,7 +45,7 @@ furo==2022.9.29
 myst-parser==0.18.1
 
 # Adds a copy button to code examples in the docs.
-sphinx-copybutton==0.5.0
+sphinx-copybutton==0.5.1
 
 # Live rebuilding and reloading of docs for developing locally.
 sphinx-autobuild==2021.3.14
