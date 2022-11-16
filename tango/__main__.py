@@ -746,7 +746,7 @@ def _run(
             settings.executor,
             workspace=workspace,
             include_package=include_package,
-            parallelism=parallelism,
+            **(dict(parallelism=parallelism) if parallelism is not None else {}),  # type: ignore
         )
     else:
         # Determine if we can use the multicore executor.
