@@ -6,7 +6,6 @@ from typing import Any, Dict, Optional
 import torch
 from torch import nn
 from transformers import PreTrainedModel
-from transformers.file_utils import ModelOutput
 from transformers.modeling_outputs import (
     CausalLMOutputWithCrossAttentions,
     Seq2SeqModelOutput,
