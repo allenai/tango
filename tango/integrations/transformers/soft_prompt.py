@@ -210,9 +210,9 @@ def add_soft_prompt(
                     [prompt_embedding.expand(inputs_embeds.size(0), -1, -1), inputs_embeds], dim=1
                 )
 
-            kwargs["encoder_outputs"]: ModelOutput = model.get_encoder()(
-                inputs_embeds=inputs_embeds, return_dict=True
-            )
+            assert callable(model.get_encoder)
+            encoder = model.get_encoder()
+            kwargs["encoder_outputs"] = encoder(inputs_embeds=inputs_embeds, return_dict=True)
 
             return old_generate(**kwargs)
 
