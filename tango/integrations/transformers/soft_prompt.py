@@ -183,7 +183,7 @@ def add_soft_prompt(
 
     model.forward = new_forward  # type: ignore
 
-    # For encoder/decoder models, HF doesn't call `forward()` like it should when you use `generate()`. Instead it
+    # For encoder/decoder models, HF doesn't call `forward()` like it should when you use `generate()`. Instead, it
     # calls the encoder separately, and then passes the results into `forward()`. So in that case, we have to patch
     # this too.
     if model.config.is_encoder_decoder:
