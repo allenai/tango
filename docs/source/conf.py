@@ -4,6 +4,7 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import logging
 import os
 import sys
 from datetime import datetime
@@ -60,9 +61,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "rich": ("https://rich.readthedocs.io/en/latest", None),
     "torch": ("https://pytorch.org/docs/stable", None),
-    "pytorch_lightning": ("https://pytorch-lightning.readthedocs.io/en/latest", None),
-    # Just leaving this here for when we do finally add a deepspeed integration:
-    #  "deepspeed": ("https://deepspeed.readthedocs.io/en/latest/", None),
     "flax": ("https://flax.readthedocs.io/en/latest", None),
     "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     "datasets": ("https://huggingface.co/docs/datasets/master/en", None),
@@ -120,3 +118,15 @@ html_theme_options = {
         },
     ],
 }
+
+# -- Hack to get rid of stupid warnings from sphinx_autodoc_typehints --------
+
+
+class ShutupSphinxAutodocTypehintsFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if "Cannot resolve forward reference" in record.msg:
+            return False
+        return True
+
+
+logging.getLogger("sphinx.sphinx_autodoc_typehints").addFilter(ShutupSphinxAutodocTypehintsFilter())

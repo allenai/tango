@@ -86,12 +86,6 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/torch tests/integrations/torch
 
-          - name: PyTorch Lightning integration
-            extras: dev,pytorch_lightning
-            requires_torch: true
-            run: |
-              pytest -v --color=yes --doctest-modules tango/integrations/pytorch_lightning tests/integrations/pytorch_lightning
-
           - name: Transformers integration
             extras: dev,flax,transformers
             requires_torch: true
