@@ -100,7 +100,7 @@ MODEL_NAME_TO_CONFIG = {
 
 
 class WithIA3(nn.Module):
-    def __init__(self, ia3_param_names: str, unfuse_size: int = None):
+    def __init__(self, ia3_param_names: str, unfuse_size: Optional[int] = None):
         super().__init__()
         self.ia3_param_names = ia3_param_names
 
@@ -117,7 +117,7 @@ class WithIA3(nn.Module):
         if ia3_params.requires_grad:
             if self.unfuse_size is not None:
                 # non_q means k and v
-                q, non_q = x[:, :, : self.unfuse_size], x[:, :, self.unfuse_size :]
+                q, non_q = x[:, :, : self.unfuse_size], x[:, :, self.unfuse_size :]  # type: ignore
                 ia3_params = getattr(self, self.ia3_param_names)
                 non_q = non_q * ia3_params.flatten()
                 x = torch.cat([q, non_q], dim=2)
@@ -128,7 +128,9 @@ class WithIA3(nn.Module):
 
 
 class LinearWithIA3(WithIA3):
-    def __init__(self, linear_layer: nn.Linear, ia3_param_names: str, unfuse_size: int = None):
+    def __init__(
+        self, linear_layer: nn.Linear, ia3_param_names: str, unfuse_size: Optional[int] = None
+    ):
         """
         A replacement for :class:`~torch.nn.Linear` modified with an IA3 adaptor
 
@@ -158,7 +160,9 @@ class LinearWithIA3(WithIA3):
 
 
 class Conv1DWithIA3(WithIA3):
-    def __init__(self, conv1d_layer: Conv1D, ia3_param_names: str, unfuse_size: int = None):
+    def __init__(
+        self, conv1d_layer: Conv1D, ia3_param_names: str, unfuse_size: Optional[int] = None
+    ):
         """
         A replacement for :class:`~transformers.modeling_utils.Conv1D` modified with an IA3 adaptor
 
@@ -195,7 +199,7 @@ class Conv1DWithIA3(WithIA3):
 def modify_with_ia3(
     transformer: PreTrainedModel,
     *,
-    config: WithIA3Config = None,
+    config: Optional[WithIA3Config] = None,
     only_ia3_requires_grad: bool = True,
 ) -> PreTrainedModel:
     """

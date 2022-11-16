@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- Removed PyTorch Lightning integration.
+
+### Fixed
+
+- Fixed issue where Executor `parallelism` option in a Tango settings file would be ignored.
+
+## [v1.0.2](https://github.com/allenai/tango/releases/tag/v1.0.2) - 2022-11-14
+
+### Changed
+
+- `BeakerScheduler` can now return a list of clusters.
+
 ## [v1.0.1](https://github.com/allenai/tango/releases/tag/v1.0.1) - 2022-10-20
 
 ### Fixed

@@ -73,7 +73,7 @@ class PreProcessing(Step):
 
 @FlaxWrapper.register("xsum_wrapper")  # type: ignore
 class TransformerWrapper(FlaxWrapper):
-    def compute_metrics(self, state, batch, labels):
+    def train_metrics(self, state, batch, labels):
         # return empty dict if no other metrics to compute
         return {}
 

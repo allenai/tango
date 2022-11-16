@@ -474,7 +474,7 @@ class Params(MutableMapping):
         cls,
         params_file: PathOrStr,
         params_overrides: Union[str, Dict[str, Any]] = "",
-        ext_vars: dict = None,
+        ext_vars: Optional[dict] = None,
     ) -> "Params":
         """
         Load a ``Params`` object from a configuration file.
@@ -523,14 +523,16 @@ class Params(MutableMapping):
 
         return cls(param_dict)
 
-    def to_file(self, params_file: PathOrStr, preference_orders: List[List[str]] = None) -> None:
+    def to_file(
+        self, params_file: PathOrStr, preference_orders: Optional[List[List[str]]] = None
+    ) -> None:
         """
         Write the params to file.
         """
         with open(params_file, "w") as handle:
             json.dump(self.as_ordered_dict(preference_orders), handle, indent=4)
 
-    def as_ordered_dict(self, preference_orders: List[List[str]] = None) -> OrderedDict:
+    def as_ordered_dict(self, preference_orders: Optional[List[List[str]]] = None) -> OrderedDict:
         """
         Returns an ``OrderedDict`` of ``Params`` from list of partial order preferences.
 
