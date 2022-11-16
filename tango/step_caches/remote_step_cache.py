@@ -23,6 +23,20 @@ class RemoteNotFoundError(TangoError):
     """
 
 
+class RemoteConstants:
+    RUN_DATASET_PREFIX = "tango-run-"
+    RUN_DATA_FNAME = "run.json"
+    STEP_DATASET_PREFIX = "tango-step-"
+    STEP_INFO_FNAME = "step_info.json"
+    STEP_RESULT_DIR = "result"
+    STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
+    STEP_EXPERIMENT_PREFIX = "tango-step-"
+    STEP_GRAPH_FILENAME = "config.json"
+    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
+    RESULTS_DIR: str = "/tango/output"
+    INPUT_DIR: str = "/tango/input"
+
+
 # This class inherits from `LocalStepCache` to benefit from its in-memory "weak cache" and "strong cache",
 # but it handles saving artifacts to disk a little differently.
 class RemoteStepCache(LocalStepCache):
@@ -71,7 +85,8 @@ class RemoteStepCache(LocalStepCache):
             return False
 
     def _step_results_dir(self) -> str:
-        raise NotImplementedError()
+        # TODO: unnecessary. handle Constants better.
+        return "result"
 
     # TODO: change output type
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Any]:
@@ -136,7 +151,7 @@ class RemoteStepCache(LocalStepCache):
 
         with self._acquire_step_lock_file(step):
             # We'll write the step's results to temporary directory first, and try to upload to
-            # Beaker from there in case anything goes wrong.
+            # remote workspace from there in case anything goes wrong.
             temp_dir = Path(tempfile.mkdtemp(dir=self.dir, prefix=step.unique_id))
             (temp_dir / self._step_results_dir()).mkdir()
             try:

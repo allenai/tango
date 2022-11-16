@@ -63,9 +63,6 @@ class WandbStepCache(RemoteStepCache):
         else:
             return step.step_class_name
 
-    def _step_results_dir(self) -> str:
-        return "result"
-
     def _step_result_remote(
         self, step: Union[Step, StepInfo]
     ) -> Optional[wandb.apis.public.Artifact]:
