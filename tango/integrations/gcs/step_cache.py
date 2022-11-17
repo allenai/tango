@@ -6,42 +6,16 @@ from typing import Optional, Union
 from google.cloud import storage
 
 from tango.common.aliases import PathOrStr
-from tango.common.exceptions import TangoError
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import StepCache
-from tango.step_caches.remote_step_cache import RemoteConstants, RemoteStepCache
+from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
-from .util import GCSClient, GCSDataset, GCSDatasetNotFound
+from .common import Constants, step_dataset_name
+from .util import GCSClient, GCSDataset, GCSDatasetNotFound, GCSDatasetWriteError
 
 logger = logging.getLogger(__name__)
-
-# TODO: duplicate code. move some place else.
-
-
-class Constants(RemoteConstants):
-    pass
-
-
-def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{Constants.STEP_DATASET_PREFIX}{step if isinstance(step, str) else step.unique_id}"
-
-
-def step_lock_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{step_dataset_name(step)}-lock"
-
-
-def run_dataset_name(name: str) -> str:
-    return f"{Constants.RUN_DATASET_PREFIX}{name}"
-
-
-class GCSDatasetConflict(TangoError):
-    pass
-
-
-class GCSDatasetWriteError(TangoError):
-    pass
 
 
 @StepCache.register("gcs")
@@ -60,10 +34,18 @@ class GCSStepCache(RemoteStepCache):
     :param storage_client: The google cloud storage client to use.
     """
 
-    def __init__(self, bucket_name: str, storage_client: Optional[storage.Client] = None):
-        super().__init__(tango_cache_dir() / "gcs_cache" / make_safe_filename(bucket_name))
-        self.bucket_name = bucket_name
-        self.gcs_client = GCSClient(bucket_name)
+    def __init__(self, bucket_name: str, client: Optional[GCSClient] = None):
+        if client is not None:
+            # TODO
+            assert (
+                bucket_name == client.bucket_name
+            ), "Assert that bucket name is same as client bucket until we do better"
+            self.bucket_name = bucket_name
+        else:
+            self.gcs_client = GCSClient(bucket_name)
+        super().__init__(
+            tango_cache_dir() / "gcs_cache" / make_safe_filename(self.gcs_client.bucket_name)
+        )
 
     def _gcs_path(self, blob_name: str):
         return os.path.join(self.bucket_name, blob_name)
