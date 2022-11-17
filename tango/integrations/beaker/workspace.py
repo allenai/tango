@@ -56,7 +56,7 @@ class BeakerWorkspace(Workspace):
 
     def __init__(self, beaker_workspace: str, **kwargs):
         super().__init__()
-        self.beaker = get_client(beaker_workspace=beaker_workspace)
+        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}
