@@ -1,6 +1,6 @@
+import inspect
 import logging
 import random
-from inspect import getcallargs
 from typing import Any, Dict, Optional
 
 import torch
@@ -16,13 +16,14 @@ from tango.integrations.torch import Model
 logger = logging.getLogger(__name__)
 
 
-def _get_callargs_with_decorators(fn, *args, **kwargs):
+def _get_bound_args_with_decorators(fn, *args, **kwargs):
     while True:
         try:
             fn = fn.__wrapped__
         except AttributeError:
             break
-    return getcallargs(fn, *args, **kwargs)
+    signature = inspect.Signature.from_callable(fn)
+    return signature.bind(*args, **kwargs)
 
 
 def add_soft_prompt(
@@ -190,20 +191,20 @@ def add_soft_prompt(
 
         def new_generate(*args, **kwargs):
             args = (model,) + args
-            kwargs = _get_callargs_with_decorators(old_generate, *args, **kwargs)
-            del kwargs["self"]
+            ba = _get_bound_args_with_decorators(old_generate, *args, **kwargs)
+            del ba.arguments["self"]
 
-            if kwargs.get("encoder_outputs") is not None:
+            if "encoder_outputs" in ba.arguments:
                 # For encoder/decoder models, this runs only on the encoder. If we already have encoder outputs,
                 # we don't have to do anything.
-                return old_generate(**kwargs)
+                return old_generate(*ba.args, **ba.kwargs)
 
             inputs_embeds: Optional[torch.Tensor] = None
-            inputs = kwargs.pop("inputs", None)
+            inputs = ba.arguments.pop("inputs", None)
             if inputs is not None:
                 inputs_embeds = original_embedding(inputs)
 
-            inputs_embeds = kwargs.pop("inputs_embeds", inputs_embeds)
+            inputs_embeds = ba.arguments.pop("inputs_embeds", inputs_embeds)
             if inputs_embeds is not None:
                 inputs_embeds = torch.cat(
                     [prompt_embedding.expand(inputs_embeds.size(0), -1, -1), inputs_embeds], dim=1
@@ -211,9 +212,10 @@ def add_soft_prompt(
 
             assert callable(model.get_encoder)
             encoder = model.get_encoder()
+            kwargs = ba.kwargs
             kwargs["encoder_outputs"] = encoder(inputs_embeds=inputs_embeds, return_dict=True)
 
-            return old_generate(**kwargs)
+            return old_generate(*ba.args, **kwargs)
 
         model.generate = new_generate  # type: ignore
 
