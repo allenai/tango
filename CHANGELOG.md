@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed issue where Executor `parallelism` option in a Tango settings file would be ignored.
+- Fixed a bug where the unique ID of a step that depends on a key-value of the result of another step could change if the name of the other step changes.
 
 ## [v1.0.2](https://github.com/allenai/tango/releases/tag/v1.0.2) - 2022-11-14
 

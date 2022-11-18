@@ -722,7 +722,7 @@ class Step(Registrable, Generic[T]):
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
-class StepIndexer:
+class StepIndexer(CustomDetHash):
     def __init__(self, step: Step, key: Union[str, int]):
         self.step = step
         self.key = key
@@ -731,6 +731,9 @@ class StepIndexer:
         self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
     ) -> Any:
         return self.step.result(workspace=workspace, needed_by=needed_by)[self.key]
+
+    def det_hash_object(self) -> Any:
+        return self.step.unique_id, self.key
 
 
 class WithUnresolvedSteps(CustomDetHash):
