@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Removed PyTorch Lightning integration.
+- Removed `tango server` command and `--serve/--no-serve` option for `tango run`.
 
 ### Fixed
 

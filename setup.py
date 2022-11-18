@@ -103,7 +103,7 @@ setup(
         ],
     ),
     package_data={
-        "tango.server": ["*.svg", "*.css", "*.js", "*.html"],
+        #  "tango.server": ["*.svg", "*.css", "*.js", "*.html"],
         "tango.integrations.beaker": ["*.sh"],
         "tango": ["py.typed"],
     },

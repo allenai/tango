@@ -33,7 +33,6 @@ You can see the the list of all available commands by running:
     Commands:
       info      Get info about the current tango installation.
       run       Run a tango experiment.
-      server    Run a local webserver that watches a workspace.
       settings  Commands for initializing and updating global settings.
 
 To see all of the available arguments and options for a particular command, run
@@ -60,12 +59,6 @@ for a quick introduction to the format.
 
 The ``info`` command just prints out some useful information about the current tango installation,
 such as which integrations are available.
-
-``tango server``
-----------------
-
-The ``server`` command spins up a web server that watches a workspace. You can use this to track the
-progress of your runs while they are happening.
 
 ``tango settings``
 ------------------
@@ -258,12 +251,6 @@ def cleanup(*args, **kwargs):
     multiple=True,
 )
 @click.option(
-    "--server/--no-server",
-    type=bool,
-    help="Start a server that visualizes the current run.",
-    default=False,
-)
-@click.option(
     "-j",
     "--parallelism",
     type=int,
@@ -293,7 +280,6 @@ def run(
     workspace_dir: Optional[Union[str, os.PathLike]] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-    server: bool = True,
     parallelism: Optional[int] = None,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
@@ -324,7 +310,6 @@ def run(
         workspace_url=workspace,
         overrides=overrides,
         include_package=include_package,
-        start_server=server,
         parallelism=parallelism,
         step_name=step_name,
         name=name,
@@ -389,58 +374,6 @@ def beaker_executor_run(
 
     # Run step.
     executor.execute_step(step)
-
-
-@main.command(**_CLICK_COMMAND_DEFAULTS)
-@click.option(
-    "-w",
-    "--workspace",
-    type=click.Path(file_okay=False),
-    help="""A workspace URL. If not specified, the workspace from any global tango
-    settings file will be used, if found, otherwise an ephemeral MemoryWorkspace.""",
-    default=None,
-)
-@click.option(
-    "-d",
-    "--workspace-dir",
-    type=click.Path(file_okay=False),
-    default=None,
-    hidden=True,
-)
-@click.pass_obj
-def server(
-    settings: TangoGlobalSettings,
-    workspace: Optional[str],
-    workspace_dir: Optional[Union[str, os.PathLike]] = None,
-):
-    """
-    Run a local webserver that watches a workspace.
-    """
-    from tango.server.workspace_server import WorkspaceServer
-    from tango.workspaces import LocalWorkspace
-
-    workspace_to_watch: Workspace
-    if workspace_dir is not None:
-        if workspace is not None:
-            raise click.ClickException(
-                "-w/--workspace is mutually exclusive with -d/--workspace-dir"
-            )
-        workspace_to_watch = LocalWorkspace(workspace_dir)
-    elif workspace is not None:
-        workspace_to_watch = Workspace.from_url(workspace)
-    elif settings.workspace is not None:
-        workspace_to_watch = Workspace.from_params(settings.workspace)
-    else:
-        raise click.ClickException(
-            "-w/--workspace or -d/--workspace-dir required unless a default workspace is specified "
-            "in tango settings file."
-        )
-
-    server = WorkspaceServer.on_free_port(workspace_to_watch)
-    cli_logger.info(
-        "Server started at [bold underline]%s[/bold underline]", server.address_for_display()
-    )
-    server.serve_forever()
 
 
 @main.command(**_CLICK_COMMAND_DEFAULTS)
@@ -701,7 +634,6 @@ def _run(
     workspace_url: Optional[str] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-    start_server: bool = True,
     step_name: Optional[str] = None,
     parallelism: Optional[int] = None,
     multicore: Optional[bool] = None,
@@ -710,7 +642,6 @@ def _run(
 ) -> str:
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
-    from tango.server.workspace_server import WorkspaceServer
     from tango.workspaces import MemoryWorkspace, default_workspace
 
     # Read params.
@@ -799,14 +730,6 @@ def _run(
     def log_and_execute_run():
         if step_name is None:
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
-
-        # Initialize server.
-        if start_server:
-            server = WorkspaceServer.on_free_port(workspace)
-            server.serve_in_background()
-            cli_logger.info(
-                "Server started at [bold]%s[/bold]", server.address_for_display(run.name)
-            )
 
         executor_output: Optional[ExecutorOutput] = None
         if step_name is not None:
