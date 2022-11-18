@@ -79,6 +79,11 @@ class StepResources(FromParams):
     Minimum number of GPUs. It must be non-negative.
     """
 
+    gpu_type: Optional[str] = None
+    """
+    The type of GPU that the step requires, e.g. 'NVIDIA A100-SXM-80GB'.
+    """
+
     memory: Optional[str] = None
     """
     Minimum available system memory as a number with unit suffix.
