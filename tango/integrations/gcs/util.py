@@ -3,7 +3,7 @@ import os
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import gcsfs
 from google.cloud import storage
@@ -62,6 +62,18 @@ class CloudStorageWrapper:
         pass
 
 
+class GCSDatasetNotFound(TangoError):
+    pass
+
+
+class GCSDatasetConflict(TangoError):
+    pass
+
+
+class GCSDatasetWriteError(TangoError):
+    pass
+
+
 class GCSDataset:
     # For the purpose of this, GCSDataset will be conceptually a folder.
     def __init__(self, info: Dict):
@@ -77,18 +89,6 @@ class GCSDataset:
     @property
     def name(self):
         return self.info["name"].replace(self.info["bucket"] + "/", "")
-
-
-class GCSDatasetNotFound(TangoError):
-    pass
-
-
-class GCSDatasetConflict(TangoError):
-    pass
-
-
-class GCSDatasetWriteError(TangoError):
-    pass
 
 
 @dataclass
@@ -107,26 +107,32 @@ class GCSClient:
 
     placeholder_file = ".placeholder"
 
-    def __init__(self, bucket_name: str, project: Optional[str] = None, location: str = "US"):
-        # TODO: with google_default, cannot specify project.
-        # TODO: FIX Credentials are inferred from the environment right now.
-        self.gcs_fs = gcsfs.GCSFileSystem(token="google_default")
+    def __init__(self, bucket_name: str, token: str = "google_default"):
+        # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
+        # https://cloud.google.com/storage/docs/buckets. So, the project name does not matter. TODO: Confirm.
+        self.gcs_fs = gcsfs.GCSFileSystem(token=token)
         self.bucket_name = bucket_name
 
     @classmethod
-    def from_env(cls):
-        # TODO: fix credentials situation.
-        pass
+    def from_env(cls, bucket_name: str):
+        return cls(bucket_name, token="google_default")
 
-    def url(self, dataset: str):
-        return f"gs://{self.bucket_name}/{dataset}"
+    def url(self, dataset: Optional[str] = None):
+        path = f"gs://{self.bucket_name}"
+        if dataset:
+            path = f"{path}/dataset"
+        return path
 
     @property
     def full_name(self):
         return self.bucket_name
 
-    def get(self, dataset: str) -> GCSDataset:
-        path = os.path.join(self.bucket_name, dataset)
+    def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:
+        if isinstance(dataset, str):
+            path = os.path.join(self.bucket_name, dataset)
+        else:
+            # We have a dataset, and we recreate it with refreshed info.
+            path = dataset.dataset_path()
         try:
             return GCSDataset(self.gcs_fs.info(path=path))
         except FileNotFoundError:
@@ -141,7 +147,7 @@ class GCSClient:
             if info["type"] == "directory":
                 raise GCSDatasetConflict(f"{folder_path} already exists!")
             else:
-                # Hack. Technically, this is mean that a folder of the name doesn't exist.
+                # Hack. Technically, this means that a folder of the name doesn't exist.
                 # A file may still exist. Ideally, shouldn't happen.
                 raise FileNotFoundError
         except FileNotFoundError:
@@ -152,8 +158,14 @@ class GCSClient:
 
         return GCSDataset(self.gcs_fs.info(folder_path))
 
-    def sync(self, dataset: str, objects_dir: Path):
-        folder_path = os.path.join(self.bucket_name, dataset)
+    def delete(self, dataset: GCSDataset):
+        self.gcs_fs.rm(dataset.dataset_path(), recursive=True)
+
+    def sync(self, dataset: Union[str, GCSDataset], objects_dir: Path):
+        if isinstance(dataset, str):
+            folder_path = os.path.join(self.bucket_name, dataset)
+        else:
+            folder_path = dataset.dataset_path()
         # Does not remove files that may have been present before, but aren't now.
         # TODO: potentially consider gsutil rsync with --delete --ignore-existing command
         # Using gsutil programmatically:
@@ -162,23 +174,26 @@ class GCSClient:
         self.gcs_fs.put(str(objects_dir), folder_path, recursive=True)
         return self.get(dataset)
 
-    def upload(self, dataset: str, source: bytes, target: PathOrStr) -> None:
-        file_path = os.path.join(self.bucket_name, dataset, target)
+    def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
+        file_path = os.path.join(dataset.dataset_path(), target)
         with self.gcs_fs.open(file_path, "wb") as file_ref:
             file_ref.write(source)
 
-    def get_file(self, dataset: str, file_path: str):
-        full_file_path = os.path.join(self.bucket_name, dataset, file_path)
+    def get_file(self, dataset: GCSDataset, file_path: Union[str, FileInfo]):
+        if isinstance(file_path, FileInfo):
+            full_file_path = file_path.path
+        else:
+            full_file_path = os.path.join(dataset.dataset_path(), file_path)
         with self.gcs_fs.open(full_file_path, "r") as file_ref:
             file_contents = file_ref.read()
         return file_contents
 
-    def file_info(self, dataset: str, file_path: str) -> FileInfo:
-        full_file_path = os.path.join(self.bucket_name, dataset, file_path)
+    def file_info(self, dataset: GCSDataset, file_path: str) -> FileInfo:
+        full_file_path = os.path.join(dataset.dataset_path(), file_path)
         info = self.gcs_fs.ls(full_file_path, detail=True)[0]  # TODO: add sanity checks
-        # TODO: digest?
+        # TODO: should digest be crc32c instead of md5Hash?
         return FileInfo(
-            path=full_file_path, digest=file_path, updated=info["updated"], size=info["size"]
+            path=full_file_path, digest=info["md5Hash"], updated=info["updated"], size=info["size"]
         )
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):

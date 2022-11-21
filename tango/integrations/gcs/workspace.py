@@ -29,42 +29,30 @@ from .common import (
 from .step_cache import GCSStepCache
 from .util import GCSDataset, GCSDatasetConflict, GCSDatasetNotFound
 
-# from beaker import (
-#     Dataset,
-#     DatasetConflict,
-#     DatasetNotFound,
-#     Digest,
-#     Experiment,
-#     ExperimentNotFound,
-# )
-
-
 T = TypeVar("T")
 
 
-@Workspace.register("gcs")
+@Workspace.register("gs")
 class GCSWorkspace(Workspace):
     """
     This is a :class:`~tango.workspace.Workspace` that stores step artifacts on `Google Cloud Storage Buckets`_.
 
     .. tip::
-        Registered as a :class:`~tango.workspace.Workspace` under the name "gcs".
+        Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
 
     :param gcs_workspace: The name or ID of the Google Cloud Storage bucket to use.
     :param kwargs: Additional keyword arguments passed to `GCSClient()`.
     """
 
-    STEP_INFO_CACHE_SIZE = 512  # TODO: is this needed?
+    STEP_INFO_CACHE_SIZE = 512
 
     def __init__(self, gcs_workspace: str, **kwargs):
         super().__init__()
         self.client = get_client(gcs_workspace=gcs_workspace, **kwargs)
         self.cache = GCSStepCache(gcs_workspace, client=self.client)
-        self.steps_dir = tango_cache_dir() / "gcs_workspace"
+        self.steps_dir = tango_cache_dir() / "gs_workspace"
         self.locks: Dict[Step, GCSStepLock] = {}
-        self._step_info_cache: "OrderedDict[str, StepInfo]" = (
-            OrderedDict()
-        )  # TODO: replaced Digest with str.
+        self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
 
     @property
     def url(self) -> str:
@@ -72,10 +60,11 @@ class GCSWorkspace(Workspace):
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
-        # TODO: revisit
         workspace: str
         if parsed_url.netloc and parsed_url.path:
             # e.g. "gs://ai2/my-workspace"
+            # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
+            # https://cloud.google.com/storage/docs/buckets. So, this should never happen.
             workspace = parsed_url.netloc + parsed_url.path
         elif parsed_url.netloc:
             # e.g. "gs://my-workspace"
@@ -104,7 +93,6 @@ class GCSWorkspace(Workspace):
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
             dataset = self.client.get(step_dataset_name(step_or_unique_id))
-            # TODO: Ask Pete for Digest sha thing's purpose.
             file_info = self.client.file_info(dataset, Constants.STEP_INFO_FNAME)
             step_info: StepInfo
             if file_info.digest in self._step_info_cache:

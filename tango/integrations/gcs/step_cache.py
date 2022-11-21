@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 from typing import Optional, Union
 
@@ -18,7 +17,7 @@ from .util import GCSClient, GCSDataset, GCSDatasetNotFound, GCSDatasetWriteErro
 logger = logging.getLogger(__name__)
 
 
-@StepCache.register("gcs")
+@StepCache.register("gs")
 class GCSStepCache(RemoteStepCache):
     """
     This is a :class:`~tango.step_cache.StepCache` that's used by :class:`GCSWorkspace`.
@@ -41,18 +40,16 @@ class GCSStepCache(RemoteStepCache):
                 bucket_name == client.bucket_name
             ), "Assert that bucket name is same as client bucket until we do better"
             self.bucket_name = bucket_name
+            self.client = client
         else:
-            self.gcs_client = GCSClient(bucket_name)
+            self.client = GCSClient(bucket_name)
         super().__init__(
-            tango_cache_dir() / "gcs_cache" / make_safe_filename(self.gcs_client.bucket_name)
+            tango_cache_dir() / "gs_cache" / make_safe_filename(self.client.bucket_name)
         )
-
-    def _gcs_path(self, blob_name: str):
-        return os.path.join(self.bucket_name, blob_name)
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GCSDataset]:
         try:
-            dataset = self.gcs_client.get(step_dataset_name(step))
+            dataset = self.client.get(step_dataset_name(step))
             return dataset if dataset.committed is not None else None
         except GCSDatasetNotFound:
             return None
@@ -61,8 +58,8 @@ class GCSStepCache(RemoteStepCache):
         dataset_name = step_dataset_name(step)
 
         try:
-            dataset = self.gcs_client.sync(dataset_name, objects_dir)
-            # dataset = self.gcs_client.commit(dataset)
+            dataset = self.client.sync(dataset_name, objects_dir)
+            # dataset = self.client.commit(dataset)
         except GCSDatasetWriteError:  # TODO: this doesn't happen yet.
             pass
 
@@ -70,7 +67,7 @@ class GCSStepCache(RemoteStepCache):
 
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
         try:
-            self.gcs_client.fetch(step_result, target_dir)
+            self.client.fetch(step_result, target_dir)
         except GCSDatasetNotFound:
             self._raise_remote_not_found()
 
@@ -80,8 +77,6 @@ class GCSStepCache(RemoteStepCache):
         # TODO: check for lock files in a different way.
         return sum(
             1
-            for ds in self.gcs_client.datasets(
-                uncommitted=False, match=Constants.STEP_DATASET_PREFIX
-            )
+            for ds in self.client.datasets(uncommitted=False, match=Constants.STEP_DATASET_PREFIX)
             if ds.name is not None and ds.name.startswith(Constants.STEP_DATASET_PREFIX)
         )
