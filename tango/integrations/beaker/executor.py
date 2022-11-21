@@ -696,6 +696,7 @@ class BeakerExecutor(Executor):
 
         experiment: Optional[Experiment] = None
         experiment_url: Optional[str] = None
+        ephemeral_datasets: List[Dataset] = []
 
         # Try to find any existing experiments for this step that are still running.
         if step.cache_results:
@@ -721,7 +722,9 @@ class BeakerExecutor(Executor):
         # Otherwise we submit a new experiment...
         if experiment is None:
             # Initialize experiment and task spec.
-            experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
+            experiment_name, spec, ephemeral_datasets = self._build_experiment_spec(
+                step_graph, step_name
+            )
             self._check_if_cancelled()
 
             step.log_starting()
@@ -776,7 +779,18 @@ class BeakerExecutor(Executor):
             raise
         else:
             step.log_finished()
-            return experiment_url
+        finally:
+            # Remove ephemeral datasets.
+            result_dataset = self.beaker.experiment.results(experiment)
+            if result_dataset is not None:
+                ephemeral_datasets.append(result_dataset)
+            for dataset in ephemeral_datasets:
+                try:
+                    self.beaker.dataset.delete(dataset)
+                except DatasetNotFound:
+                    pass
+
+        return experiment_url
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
@@ -866,7 +880,7 @@ class BeakerExecutor(Executor):
 
     def _build_experiment_spec(
         self, step_graph: StepGraph, step_name: str
-    ) -> Tuple[str, ExperimentSpec]:
+    ) -> Tuple[str, ExperimentSpec, List[Dataset]]:
         from tango.common.logging import TANGO_LOG_LEVEL
 
         step = step_graph[step_name]
@@ -978,6 +992,10 @@ class BeakerExecutor(Executor):
         if self.install_cmd is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
-        return experiment_name, ExperimentSpec(
-            tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+        return (
+            experiment_name,
+            ExperimentSpec(
+                tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+            ),
+            [step_graph_dataset],
         )
