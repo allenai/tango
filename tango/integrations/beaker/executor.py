@@ -21,6 +21,7 @@ from beaker import (
     ExperimentSpec,
     JobFailedError,
     JobTimeoutError,
+    NodeResources,
     Priority,
     TaskResources,
     TaskSpec,
@@ -57,6 +58,13 @@ class StepFailedError(ExecutorError):
 class ResourceAssignmentError(ExecutorError):
     """
     Raised when a scheduler can't find enough free resources at the moment to run a step.
+    """
+
+
+class UnrecoverableResourceAssignmentError(ExecutorError):
+    """
+    An unrecoverable version of :class:`ResourceAssignmentError`. Raises this
+    from a :class:`BeakerScheduler` will cause the executor to fail.
     """
 
 
@@ -127,8 +135,21 @@ class SimpleBeakerScheduler(BeakerScheduler):
         super().__init__()
         self.clusters = clusters
         self.priority = priority
+        self._node_resources: Optional[Dict[str, List[NodeResources]]] = None
         if not self.clusters:
             raise ConfigurationError("At least one cluster is required in 'clusters'")
+
+    @property
+    def node_resources(self) -> Dict[str, List[NodeResources]]:
+        if self._node_resources is None:
+            node_resources = {
+                cluster: [node.limits for node in self.beaker.cluster.nodes(cluster)]
+                for cluster in self.clusters
+            }
+            self._node_resources = node_resources
+            return node_resources
+        else:
+            return self._node_resources
 
     def schedule(self, step: Step) -> ResourceAssignment:
         step_resources = step.resources
@@ -138,8 +159,19 @@ class SimpleBeakerScheduler(BeakerScheduler):
             memory=step_resources.memory,
             shared_memory=step_resources.shared_memory,
         )
+        clusters = self.clusters
+        if step_resources.gpu_type is not None:
+            clusters = [
+                cluster
+                for cluster, nodes in self.node_resources.items()
+                if all([node.gpu_type == step_resources.gpu_type for node in nodes])
+            ]
+            if not clusters:
+                raise UnrecoverableResourceAssignmentError(
+                    f"Could not find cluster with nodes that have GPU type '{step_resources.gpu_type}'"
+                )
         return ResourceAssignment(
-            cluster=self.clusters, resources=task_resources, priority=self.priority
+            cluster=clusters, resources=task_resources, priority=self.priority
         )
 
 
@@ -649,6 +681,17 @@ class BeakerExecutor(Executor):
                 '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
                 step_name,
             )
+            return None
+
+        if step.resources.machine == "local":
+            if step.cache_results:
+                step.ensure_result(self.workspace)
+            else:
+                result = step.result(self.workspace)
+                if hasattr(result, "__next__"):
+                    from collections import deque
+
+                    deque(result, maxlen=0)
             return None
 
         experiment: Optional[Experiment] = None

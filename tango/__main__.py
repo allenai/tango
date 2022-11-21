@@ -797,7 +797,7 @@ def _run(
         run = workspace.register_run((step for step in step_graph.values()), name)
 
     def log_and_execute_run():
-        if step_name is None:
+        if not called_by_executor:
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
 
         # Initialize server.
