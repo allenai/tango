@@ -67,6 +67,14 @@ class StepResources(FromParams):
     step to run.
     """
 
+    machine: Optional[str] = None
+    """
+    This is an executor-dependent option.
+
+    With the Beaker executor, for example, you can set this to "local" to force
+    the executor to run the step locally instead of on Beaker.
+    """
+
     cpu_count: Optional[float] = None
     """
     Minimum number of logical CPU cores. It may be fractional.
@@ -81,7 +89,11 @@ class StepResources(FromParams):
 
     gpu_type: Optional[str] = None
     """
-    The type of GPU that the step requires, e.g. 'NVIDIA A100-SXM-80GB'.
+    The type of GPU that the step requires.
+
+    The exact string you should use to define a GPU type depends on the executor.
+    With the Beaker executor, for example, you should use the same strings you
+    see in the Beaker UI, such as 'NVIDIA A100-SXM-80GB'.
     """
 
     memory: Optional[str] = None

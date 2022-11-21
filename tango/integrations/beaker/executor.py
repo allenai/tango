@@ -6,7 +6,6 @@ import time
 import uuid
 import warnings
 from abc import abstractmethod
-from fnmatch import fnmatch
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 from beaker import (
@@ -247,8 +246,6 @@ class BeakerExecutor(Executor):
         ``clusters`` and ``priority``.
     :param allow_dirty: By default, the Beaker Executor requires that your git working directory has no uncommitted
         changes. If you set this to ``True``, we skip this check.
-    :param run_local: If you want some steps to run locally (as opposed to on Beaker), pass
-        those step names or glob patterns here.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
 
     .. attention::
@@ -355,7 +352,6 @@ class BeakerExecutor(Executor):
         priority: Optional[Union[str, Priority]] = None,
         allow_dirty: bool = False,
         scheduler: Optional[BeakerScheduler] = None,
-        run_local: Optional[Set[str]] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -405,7 +401,6 @@ class BeakerExecutor(Executor):
         self.venv_name = venv_name
         self.install_cmd = install_cmd
         self.allow_dirty = allow_dirty
-        self.run_local = run_local or set()
         self.scheduler: BeakerScheduler
         if scheduler is None:
             if clusters is None:
@@ -688,7 +683,7 @@ class BeakerExecutor(Executor):
             )
             return None
 
-        if any([fnmatch(step_name, pattern) for pattern in self.run_local]):
+        if step.resources.machine == "local":
             if step.cache_results:
                 step.ensure_result(self.workspace)
             else:
