@@ -102,8 +102,16 @@ def import_module_and_submodules(
     else:
         sys.path.insert(0, sys.path.pop(sys.path.index(str(base_path))))
 
+    # Certain packages might mess with sys.excepthook, which we don't want since
+    # we mess with sys.excepthook ourselves, so we reset it after importing.
+    excepthook = sys.excepthook
+
     # Import at top level
-    module = importlib.import_module(package_name)
+    try:
+        module = importlib.import_module(package_name)
+    finally:
+        sys.excepthook = excepthook
+
     path = getattr(module, "__path__", [])
     path_string = "" if not path else path[0]
 
