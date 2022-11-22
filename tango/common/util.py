@@ -102,15 +102,28 @@ def import_module_and_submodules(
     else:
         sys.path.insert(0, sys.path.pop(sys.path.index(str(base_path))))
 
-    # Certain packages might mess with sys.excepthook, which we don't want since
-    # we mess with sys.excepthook ourselves, so we reset it after importing.
+    # Certain packages might mess with sys.excepthook which we don't like since
+    # we mess with sys.excepthook ourselves. If it looks like the package is overriding
+    # the hook for a reason, we'll leave it be but also make sure our hook is still called.
     excepthook = sys.excepthook
 
     # Import at top level
     try:
         module = importlib.import_module(package_name)
     finally:
-        sys.excepthook = excepthook
+        if sys.excepthook != excepthook:
+            if sys.excepthook.__module__.startswith("rich"):
+                # We definitely don't want rich's traceback hook because that will mess
+                # with our exception handling.
+                sys.excepthook = excepthook
+            else:
+                new_hook = sys.excepthook
+
+                def excepthook_wrapper(exctype, value, traceback):
+                    excepthook(exctype, value, traceback)
+                    new_hook(exctype, value, traceback)
+
+                sys.excepthook = excepthook_wrapper
 
     path = getattr(module, "__path__", [])
     path_string = "" if not path else path[0]
