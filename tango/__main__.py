@@ -286,7 +286,7 @@ def cleanup(*args, **kwargs):
     help="""Specify the name for this run.""",
 )
 @click.option(
-    "-e",
+    "-D",
     "--ext-var",
     type=str,
     help="""JSONNET external variables to use when loading the experiment config.
