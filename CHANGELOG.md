@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `gpu_type` field to `StepResources`. The `BeakerExecutor` can use this to determine which clusters to a submit a step to.
 - Added `machine` field to `StepResources`. You can set this to "local" when using the `BeakerExecutor` to force it to run the step locally.
+- Added `--ext-var` argument to `tango run` for setting JSONNET external variables
+  when loading the experiment config.
 
 ### Removed
 
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed issue where Executor `parallelism` option in a Tango settings file would be ignored.
 - Fixed a bug where the unique ID of a step that depends on a key-value of the result of another step could change if the name of the other step changes.
+- Fixed a bug where importing certain libraries (like torchmetrics) would mess with our exception handling because they set `sys.excepthook` for some reason. Now we always reset `sys.excepthook` after importing.
 
 ## [v1.0.2](https://github.com/allenai/tango/releases/tag/v1.0.2) - 2022-11-14
 

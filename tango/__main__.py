@@ -80,7 +80,7 @@ import os
 import sys
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Union
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
@@ -285,6 +285,14 @@ def cleanup(*args, **kwargs):
     type=str,
     help="""Specify the name for this run.""",
 )
+@click.option(
+    "-D",
+    "--ext-var",
+    type=str,
+    help="""JSONNET external variables to use when loading the experiment config.
+    For example, --ext-var 'pretrained_model=gpt2'.""",
+    multiple=True,
+)
 @click.pass_obj
 def run(
     settings: TangoGlobalSettings,
@@ -297,6 +305,7 @@ def run(
     parallelism: Optional[int] = None,
     step_name: Optional[str] = None,
     name: Optional[str] = None,
+    ext_var: Optional[Sequence[str]] = None,
 ):
     """
     Run a tango experiment.
@@ -329,6 +338,7 @@ def run(
         step_name=step_name,
         name=name,
         called_by_executor=_CALLED_BY_EXECUTOR,
+        ext_var=ext_var,
     )
 
 
@@ -707,6 +717,7 @@ def _run(
     multicore: Optional[bool] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
+    ext_var: Optional[Sequence[str]] = None,
 ) -> str:
     from tango.executor import Executor
     from tango.executors import MulticoreExecutor
@@ -714,7 +725,14 @@ def _run(
     from tango.workspaces import MemoryWorkspace, default_workspace
 
     # Read params.
-    params = Params.from_file(experiment, params_overrides=overrides or "")
+    ext_vars: Dict[str, str] = {}
+    for var in ext_var or []:
+        try:
+            key, value = var.split("=")
+        except ValueError:
+            raise CliRunError(f"Invalid --ext-var '{var}'")
+        ext_vars[key] = value
+    params = Params.from_file(experiment, params_overrides=overrides or "", ext_vars=ext_vars)
 
     # Import included packages to find registered components.
     # NOTE: The Executor imports these as well because it's meant to be used
