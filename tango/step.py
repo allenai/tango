@@ -67,6 +67,14 @@ class StepResources(FromParams):
     step to run.
     """
 
+    machine: Optional[str] = None
+    """
+    This is an executor-dependent option.
+
+    With the Beaker executor, for example, you can set this to "local" to force
+    the executor to run the step locally instead of on Beaker.
+    """
+
     cpu_count: Optional[float] = None
     """
     Minimum number of logical CPU cores. It may be fractional.
@@ -77,6 +85,15 @@ class StepResources(FromParams):
     gpu_count: Optional[int] = None
     """
     Minimum number of GPUs. It must be non-negative.
+    """
+
+    gpu_type: Optional[str] = None
+    """
+    The type of GPU that the step requires.
+
+    The exact string you should use to define a GPU type depends on the executor.
+    With the Beaker executor, for example, you should use the same strings you
+    see in the Beaker UI, such as 'NVIDIA A100-SXM-80GB'.
     """
 
     memory: Optional[str] = None
@@ -722,7 +739,7 @@ class Step(Registrable, Generic[T]):
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
-class StepIndexer:
+class StepIndexer(CustomDetHash):
     def __init__(self, step: Step, key: Union[str, int]):
         self.step = step
         self.key = key
@@ -731,6 +748,9 @@ class StepIndexer:
         self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
     ) -> Any:
         return self.step.result(workspace=workspace, needed_by=needed_by)[self.key]
+
+    def det_hash_object(self) -> Any:
+        return self.step.unique_id, self.key
 
 
 class WithUnresolvedSteps(CustomDetHash):
