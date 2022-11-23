@@ -82,7 +82,7 @@ class FlaxTrainStep(Step):
         seed: int = 42,
         keep_checkpoints: int = 5,
         lr_scheduler: Optional[Lazy[LRScheduler]] = None,
-        train_split: Optional[str] = None,
+        train_split: str = "train",
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
         validation_split: Optional[str] = None,
         train_steps: Optional[int] = None,
@@ -202,7 +202,7 @@ class FlaxTrainStep(Step):
         seed: int = 42,
         keep_checkpoints: int = 5,
         lr_scheduler: Optional[Lazy[LRScheduler]],
-        train_split: Optional[str] = "train",
+        train_split: str = "train",
         validation_split: Optional[str] = None,
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
         train_steps: Optional[int] = None,
@@ -306,10 +306,8 @@ class FlaxTrainStep(Step):
 
         validation_dataloader = validation_dataloader_
 
-        train_dataset = dataset
-        if config.train_split is not None:
-            train_dataset = dataset[config.train_split]
-            train_dataset.set_format("numpy")  # type:ignore
+        train_dataset = dataset[config.train_split]
+        train_dataset.set_format("numpy")  # type:ignore
         train_dataloader: FlaxDataLoader = train_dataloader.construct(dataset=train_dataset)
 
         devices = self._get_devices()
