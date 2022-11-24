@@ -425,6 +425,7 @@ class BeakerExecutor(Executor):
         self._is_cancelled = threading.Event()
         self._logged_git_info = False
         self._last_resource_assignment_warning: Optional[float] = None
+        self._jobs = 0
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -522,6 +523,7 @@ class BeakerExecutor(Executor):
             def future_done_callback(future: concurrent.futures.Future):
                 nonlocal successful, failed, steps_left_to_run
 
+                self._jobs = max(0, self._jobs - 1)
                 step = step_graph[step_name]
 
                 try:
@@ -610,6 +612,7 @@ class BeakerExecutor(Executor):
                             self._execute_sub_graph_for_step, step_graph, step_name, True
                         )
                         future.add_done_callback(make_future_done_callback(step_name))
+                        self._jobs += 1
                         step_futures.append(future)
                         submitted_steps.add(step_name)
 
@@ -744,18 +747,19 @@ class BeakerExecutor(Executor):
         # Follow the experiment until it completes.
         try:
             while True:
+                poll_interval = min(60, 5 * self._jobs)
                 try:
                     self._check_if_cancelled()
                     self.beaker.experiment.wait_for(
                         experiment,
                         strict=True,
                         quiet=True,
-                        timeout=31,
-                        poll_interval=30,
+                        timeout=poll_interval + 2,
+                        poll_interval=poll_interval,
                     )
                     break
                 except JobTimeoutError:
-                    time.sleep(30)
+                    time.sleep(poll_interval)
                     continue
         except (JobFailedError, TaskStoppedError):
             cli_logger.error(
