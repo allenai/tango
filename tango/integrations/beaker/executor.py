@@ -392,7 +392,7 @@ class BeakerExecutor(Executor):
                 )
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
-
+        self.max_thread_workers = self.parallelism or min(32, (os.cpu_count() or 1) + 4)
         self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
@@ -604,7 +604,7 @@ class BeakerExecutor(Executor):
         update_steps_to_run()
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism) as pool:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_thread_workers) as pool:
                 while steps_left_to_run:
                     # Submit steps left to run.
                     for step_name in steps_to_run:
@@ -747,7 +747,7 @@ class BeakerExecutor(Executor):
         # Follow the experiment until it completes.
         try:
             while True:
-                poll_interval = min(60, 5 * self._jobs)
+                poll_interval = min(60, 5 * min(self._jobs, self.max_thread_workers))
                 try:
                     self._check_if_cancelled()
                     self.beaker.experiment.wait_for(
