@@ -16,8 +16,8 @@ from beaker import (
     ExperimentNotFound,
 )
 
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
-from tango.step_caches.remote_step_cache import RemoteConstants
 from tango.step_info import StepInfo
 from tango.version import VERSION
 

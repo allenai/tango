@@ -1,4 +1,4 @@
-import datetime
+# import datetime
 import os
 import warnings
 from dataclasses import dataclass
@@ -10,6 +10,14 @@ from google.cloud import storage
 
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
+from tango.common.remote_utils import (
+    RemoteClient,
+    RemoteDataset,
+    RemoteDatasetConflict,
+    RemoteDatasetNotFound,
+    RemoteFileInfo,
+)
+# from tango.common.util import utc_now_datetime
 
 _CREDENTIALS_WARNING_ISSUED = False
 
@@ -62,11 +70,11 @@ class CloudStorageWrapper:
         pass
 
 
-class GCSDatasetNotFound(TangoError):
+class GCSDatasetNotFound(RemoteDatasetNotFound):
     pass
 
 
-class GCSDatasetConflict(TangoError):
+class GCSDatasetConflict(RemoteDatasetConflict):
     pass
 
 
@@ -74,25 +82,29 @@ class GCSDatasetWriteError(TangoError):
     pass
 
 
-class GCSDataset:
-    # For the purpose of this, GCSDataset will be conceptually a folder.
-    def __init__(self, info: Dict):
-        # info here is just what gcs_fs returns.
-        self.info = info
-        self.committed = True  # TODO: Do some other check (maybe presence of a file?)
-        self.created = datetime.datetime.now()  # TODO: read the updated time from the object!
+# class GCSDataset(RemoteDataset):
+#     # For the purpose of this, GCSDataset will be conceptually a folder.
+#     def __init__(self, info: Dict, created=None):
+#         # info here is just what gcs_fs returns.
+#         self.info = info
+#         self.committed = True  # TODO: Do some other check (maybe presence of a file?)
+#         self.created = utc_now_datetime()  # TODO: read the updated time from the object!
+#
+#     def dataset_path(self):
+#         # Includes name of bucket.
+#         return self.info["name"]
+#
+#     @property
+#     def name(self):
+#         return self.info["name"].replace(self.info["bucket"] + "/", "")
 
-    def dataset_path(self):
-        # Includes name of bucket.
-        return self.info["name"]
 
-    @property
-    def name(self):
-        return self.info["name"].replace(self.info["bucket"] + "/", "")
+class GCSDataset(RemoteDataset):
+    pass
 
 
 @dataclass
-class FileInfo:
+class FileInfo(RemoteFileInfo):
     # TODO: this is just mirroring beaker right now. We may not need this level of abstraction.
     path: str
     digest: str
@@ -100,18 +112,37 @@ class FileInfo:
     size: int
 
 
-class GCSClient:
+class GCSClient(RemoteClient):
     """
     A client for interacting with Google Cloud Storage.
     """
 
     placeholder_file = ".placeholder"
+    uncommitted_file = ".uncommitted"
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
         # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
         # https://cloud.google.com/storage/docs/buckets. So, the project name does not matter. TODO: Confirm.
         self.gcs_fs = gcsfs.GCSFileSystem(token=token)
         self.bucket_name = bucket_name
+
+    @classmethod
+    def _convert_ls_info_to_dataset(cls, ls_info: List[Dict]) -> GCSDataset:
+        name: str
+        dataset_path: str
+        created: str  # TODO: Change to time
+        committed: bool = True
+
+        for info in ls_info:
+            if "kind" in info and info["name"].endswith(cls.placeholder_file):
+                created = info["timeCreated"]
+                dataset_path = info["name"].replace("/" + cls.placeholder_file, "")
+                name = dataset_path.replace(info["bucket"] + "/", "")
+            elif "kind" in info and info["name"].endswith(cls.uncommitted_file):
+                committed = False
+
+        assert name is not None, "Folder is not a GCSDataset, should not have happened."
+        return GCSDataset(name, dataset_path, created, committed)
 
     @classmethod
     def from_env(cls, bucket_name: str):
@@ -132,9 +163,9 @@ class GCSClient:
             path = os.path.join(self.bucket_name, dataset)
         else:
             # We have a dataset, and we recreate it with refreshed info.
-            path = dataset.dataset_path()
+            path = dataset.dataset_path
         try:
-            return GCSDataset(self.gcs_fs.info(path=path))
+            return self._convert_ls_info_to_dataset(self.gcs_fs.ls(path=path, detail=True))
         except FileNotFoundError:
             raise GCSDatasetNotFound()
 
@@ -151,21 +182,19 @@ class GCSClient:
                 # A file may still exist. Ideally, shouldn't happen.
                 raise FileNotFoundError
         except FileNotFoundError:
-            with self.gcs_fs.open(
-                os.path.join(folder_path, self.placeholder_file), "w"
-            ) as file_ref:
-                file_ref.write("placeholder")
+            self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
+            self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
 
-        return GCSDataset(self.gcs_fs.info(folder_path))
+        return self._convert_ls_info_to_dataset(self.gcs_fs.ls(folder_path, detail=True))
 
     def delete(self, dataset: GCSDataset):
-        self.gcs_fs.rm(dataset.dataset_path(), recursive=True)
+        self.gcs_fs.rm(dataset.dataset_path, recursive=True)
 
     def sync(self, dataset: Union[str, GCSDataset], objects_dir: Path):
         if isinstance(dataset, str):
             folder_path = os.path.join(self.bucket_name, dataset)
         else:
-            folder_path = dataset.dataset_path()
+            folder_path = dataset.dataset_path
         # Does not remove files that may have been present before, but aren't now.
         # TODO: potentially consider gsutil rsync with --delete --ignore-existing command
         # Using gsutil programmatically:
@@ -174,8 +203,17 @@ class GCSClient:
         self.gcs_fs.put(str(objects_dir), folder_path, recursive=True)
         return self.get(dataset)
 
+    def commit(self, dataset: Union[str, GCSDataset]):
+        if isinstance(dataset, str):
+            folder_path = os.path.join(self.bucket_name, dataset)
+        else:
+            folder_path = dataset.dataset_path
+        uncommitted = os.path.join(folder_path, self.uncommitted_file)
+        # TODO: only rm if it exists.
+        self.gcs_fs.rm_file(uncommitted)
+
     def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
-        file_path = os.path.join(dataset.dataset_path(), target)
+        file_path = os.path.join(dataset.dataset_path, target)
         with self.gcs_fs.open(file_path, "wb") as file_ref:
             file_ref.write(source)
 
@@ -183,13 +221,13 @@ class GCSClient:
         if isinstance(file_path, FileInfo):
             full_file_path = file_path.path
         else:
-            full_file_path = os.path.join(dataset.dataset_path(), file_path)
+            full_file_path = os.path.join(dataset.dataset_path, file_path)
         with self.gcs_fs.open(full_file_path, "r") as file_ref:
             file_contents = file_ref.read()
         return file_contents
 
     def file_info(self, dataset: GCSDataset, file_path: str) -> FileInfo:
-        full_file_path = os.path.join(dataset.dataset_path(), file_path)
+        full_file_path = os.path.join(dataset.dataset_path, file_path)
         info = self.gcs_fs.ls(full_file_path, detail=True)[0]  # TODO: add sanity checks
         # TODO: should digest be crc32c instead of md5Hash?
         return FileInfo(
@@ -198,18 +236,21 @@ class GCSClient:
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
         try:
-            self.gcs_fs.get(dataset.dataset_path(), target_dir)
+            self.gcs_fs.get(dataset.dataset_path, target_dir)
         except FileNotFoundError:
             raise GCSDatasetNotFound()
 
     def datasets(
-        self, match: str, uncommitted: bool = False, results: bool = False
+        self, match: str, uncommitted: bool = True, results: bool = False
     ) -> List[GCSDataset]:
         # TODO: do we need the concept of committed?
         # TODO: what do we do with results?
         list_of_datasets = []
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
-            info = self.gcs_fs.info(path=path)
-            if info["type"] == "directory":
-                list_of_datasets.append(GCSDataset(info))
+            info = self.gcs_fs.ls(path=path, detail=True)
+            dataset = self._convert_ls_info_to_dataset(info)
+            if not uncommitted:
+                if not dataset.committed:
+                    continue
+            list_of_datasets.append(dataset)
         return list_of_datasets

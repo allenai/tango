@@ -11,7 +11,7 @@ from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
-from .common import Constants, step_dataset_name
+from .common import Constants
 from .util import GCSClient, GCSDataset, GCSDatasetNotFound, GCSDatasetWriteError
 
 logger = logging.getLogger(__name__)
@@ -49,17 +49,17 @@ class GCSStepCache(RemoteStepCache):
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GCSDataset]:
         try:
-            dataset = self.client.get(step_dataset_name(step))
+            dataset = self.client.get(Constants.step_dataset_name(step))
             return dataset if dataset.committed is not None else None
         except GCSDatasetNotFound:
             return None
 
     def _sync_step_remote(self, step: Step, objects_dir: Path) -> storage.blob.Blob:
-        dataset_name = step_dataset_name(step)
+        dataset_name = Constants.step_dataset_name(step)
 
         try:
             dataset = self.client.sync(dataset_name, objects_dir)
-            # dataset = self.client.commit(dataset)
+            dataset = self.client.commit(dataset)
         except GCSDatasetWriteError:  # TODO: this doesn't happen yet.
             pass
 

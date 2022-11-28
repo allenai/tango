@@ -23,20 +23,6 @@ class RemoteNotFoundError(TangoError):
     """
 
 
-class RemoteConstants:
-    RUN_DATASET_PREFIX = "tango-run-"
-    RUN_DATA_FNAME = "run.json"
-    STEP_DATASET_PREFIX = "tango-step-"
-    STEP_INFO_FNAME = "step_info.json"
-    STEP_RESULT_DIR = "result"
-    STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
-    STEP_EXPERIMENT_PREFIX = "tango-step-"
-    STEP_GRAPH_FILENAME = "config.json"
-    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
-    RESULTS_DIR: str = "/tango/output"
-    INPUT_DIR: str = "/tango/input"
-
-
 # This class inherits from `LocalStepCache` to benefit from its in-memory "weak cache" and "strong cache",
 # but it handles saving artifacts to disk a little differently.
 class RemoteStepCache(LocalStepCache):
