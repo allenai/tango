@@ -392,7 +392,7 @@ class FlaxTrainStep(Step):
         if start_step > 0:
             with Tqdm.tqdm(
                 train_dataloader,
-                desc=f"Catching dataloader upto step {start_step}",
+                desc=f"Catching dataloader up to step {start_step}",
                 total=start_step - 1,
             ) as batch_iter:
                 for step, batch in enumerate(batch_iter):
