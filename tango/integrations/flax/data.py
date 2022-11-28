@@ -30,6 +30,11 @@ class FlaxDataLoader(DataLoader):
         self.dataset = dataset
         self.batch_size = batch_size
         self.drop_last = drop_last
+        if not drop_last:
+            raise NotImplementedError(
+                "With Jax you have to drop the last incomplete batch, because the batch size is compiled into the "
+                "model."
+            )
         self.shuffle = shuffle
         self.dataset_size = self._get_size()
 
