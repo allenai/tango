@@ -7,7 +7,7 @@ from tango import StepGraph
 from tango.common import Params, Registrable
 from tango.common.from_params import FromParams
 from tango.common.testing import TangoTestCase
-from tango.step import Step
+from tango.step import FunctionalStep, Step, step
 
 
 class TestStep(TangoTestCase):
@@ -134,3 +134,19 @@ class TestStep(TangoTestCase):
         }
         sg = StepGraph.from_params(config)
         assert len(sg["holder_consumer"].dependencies) > 0
+
+    def test_functional_step(self):
+        class Bar(FromParams):
+            def __init__(self, x: int):
+                self.x = x
+
+        @step(exist_ok=True)
+        def foo(bar: Bar) -> int:
+            return bar.x
+
+        assert issubclass(foo, FunctionalStep)
+        assert foo().run(Bar(x=1)) == 1
+
+        foo_step = Step.from_params({"type": "foo", "bar": {"x": 1}})
+        assert isinstance(foo_step, FunctionalStep)
+        assert isinstance(foo_step.kwargs["bar"], Bar)
