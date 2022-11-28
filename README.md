@@ -31,6 +31,19 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 - [Contributing](https://github.com/allenai/tango/blob/main/CONTRIBUTING.md)
 - [License](https://github.com/allenai/tango/blob/main/LICENSE)
 
+## In this README
+
+- [Quick start](#quick-start)
+- [Installation](#installation)
+  - [Installing with PIP](#installing-with-pip)
+  - [Installing with Conda](#installing-with-conda)
+  - [Installing from source](#installing-from-source)
+  - [Checking your installation](#checking-your-installation)
+  - [Docker image](#docker-image)
+- [FAQ](#faq)
+- [Team](#team)
+- [License](#license)
+
 ## Quick start
 
 Create a Tango step:
