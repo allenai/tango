@@ -11,8 +11,10 @@ __all__ = [
     "JsonFormatIterator",
     "SqliteDictFormat",
     "Step",
+    "step",
     "StepResources",
     "StepCache",
+    "StepGraph",
     "Workspace",
 ]
 
@@ -25,7 +27,7 @@ from tango.format import (
     JsonFormatIterator,
     SqliteDictFormat,
 )
-from tango.step import Step, StepResources
+from tango.step import Step, StepResources, step
 from tango.step_cache import StepCache
 from tango.step_graph import StepGraph
 from tango.workspace import Workspace
