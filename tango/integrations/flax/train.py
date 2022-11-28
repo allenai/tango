@@ -291,6 +291,12 @@ class FlaxTrainStep(Step):
         validation_dataloader: Optional[Lazy[FlaxDataLoader]] = None,
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
     ) -> PyTree:
+        if lr_scheduler is not None:
+            raise NotImplementedError(
+                "Learning rate scheduling is not supported by the flax trainer. "
+                "Please voice your support for this feature at "
+                "https://github.com/allenai/tango/issues/477."
+            )
 
         logger = logging.getLogger(FlaxTrainStep.__name__)
 
