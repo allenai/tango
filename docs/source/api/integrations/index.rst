@@ -12,6 +12,5 @@ Integrations
    datasets
    transformers
    wandb
-   pytorch_lightning
    beaker
    flax

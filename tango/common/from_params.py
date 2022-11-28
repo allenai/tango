@@ -112,7 +112,7 @@ def remove_optional(annotation: type):
 
 
 def infer_constructor_params(
-    cls: Type[T], constructor: Union[Callable[..., T], Callable[[T], None]] = None
+    cls: Type[T], constructor: Optional[Union[Callable[..., T], Callable[[T], None]]] = None
 ) -> Dict[str, inspect.Parameter]:
     if constructor is None:
         constructor = cls.__init__
@@ -387,7 +387,7 @@ def construct_arg(
     if popped_params is default:
         return popped_params
 
-    from tango.step import Step, StepIndexer, WithUnresolvedSteps
+    from tango.step import FunctionalStep, Step, StepIndexer, WithUnresolvedSteps
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
@@ -457,7 +457,10 @@ def construct_arg(
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
-                return_type = inspect.signature(result.run).return_annotation
+                if isinstance(result, FunctionalStep):
+                    return_type = inspect.signature(result.WRAPPED_FUNC).return_annotation
+                else:
+                    return_type = inspect.signature(result.run).return_annotation
                 if return_type == inspect.Signature.empty:
                     logger.warning(
                         "Step %s has no return type annotation. Those are really helpful when "
@@ -669,8 +672,8 @@ class FromParams(DetHashWithVersion):
     def from_params(
         cls: Type[T],
         params_: Union[Params, dict, str],
-        constructor_to_call: Callable[..., T] = None,
-        constructor_to_inspect: Union[Callable[..., T], Callable[[T], None]] = None,
+        constructor_to_call: Optional[Callable[..., T]] = None,
+        constructor_to_inspect: Optional[Union[Callable[..., T], Callable[[T], None]]] = None,
         **extras,
     ) -> T:
         """

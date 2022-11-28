@@ -11,7 +11,6 @@ from urllib.parse import ParseResult
 
 import petname
 from beaker import (
-    Beaker,
     Dataset,
     DatasetConflict,
     DatasetNotFound,
@@ -32,6 +31,7 @@ from .common import (
     BeakerStepLock,
     Constants,
     dataset_url,
+    get_client,
     run_dataset_name,
     step_dataset_name,
 )
@@ -56,7 +56,7 @@ class BeakerWorkspace(Workspace):
 
     def __init__(self, beaker_workspace: str, **kwargs):
         super().__init__()
-        self.beaker = Beaker.from_env(default_workspace=beaker_workspace, session=True, **kwargs)
+        self.beaker = get_client(beaker_workspace=beaker_workspace)
         self.cache = BeakerStepCache(beaker=self.beaker)
         self.steps_dir = tango_cache_dir() / "beaker_workspace"
         self.locks: Dict[Step, BeakerStepLock] = {}

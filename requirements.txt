@@ -13,7 +13,7 @@ click>=8.0,<9.0
 click-help-colors>=0.9.1,<0.10
 rich>=12.3,<13.0
 tqdm>=4.62,<5.0
-more-itertools>=8.0,<9.0
+more-itertools>=8.0,<10.0
 sqlitedict
 glob2>=0.7
 petname>=2.6,<3.0
@@ -25,16 +25,15 @@ pytz
 # NOTE: we use a special trailing comment on each line to denote which extras
 # each package is needed by. For example, PyTorch is needed by the 'torch' extra
 # that you install with 'pip install tango[torch]'.
-torch>=1.9,<1.13             # needed by: torch,pytorch_lightning,transformers,fairscale
-numpy                        # needed by: torch,pytorch_lightning,transformers,fairscale
+torch>=1.9,<1.14             # needed by: torch,transformers,fairscale
+numpy                        # needed by: torch,transformers,fairscale
 datasets>=1.12,<3.0          # needed by: datasets,transformers
 wandb>=0.12,<0.14            # needed by: wandb
 retry                        # needed by: wandb
-pytorch-lightning>=1.6,<1.8  # needed by: pytorch_lightning
 transformers>=4.12.3         # needed by: transformers
 sentencepiece==0.1.97        # needed by: transformers
 fairscale>=0.4.6,<0.5        # needed by: fairscale
-beaker-py>=1.11,<2.0         # needed by: beaker
+beaker-py>=1.11.6,<2.0       # needed by: beaker
 
 # sacremoses should be a dependency of transformers, but it is missing, so we add it manually.
 sacremoses                   # needed by: transformers

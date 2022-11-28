@@ -18,6 +18,7 @@ from beaker import (
 
 from tango.step import Step
 from tango.step_info import StepInfo
+from tango.version import VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,19 @@ class Constants:
     ENTRYPOINT_DIR: str = "/tango/entrypoint"
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
     INPUT_DIR: str = "/tango/input"
+
+
+def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
+    user_agent = f"tango v{VERSION}"
+    if beaker_workspace is not None:
+        return Beaker.from_env(
+            default_workspace=beaker_workspace,
+            session=True,
+            user_agent=user_agent,
+            **kwargs,
+        )
+    else:
+        return Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
 
 def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:
@@ -99,7 +113,7 @@ class BeakerStepLock:
         except (DatasetNotFound, FileNotFoundError):
             return None
 
-    def _acquiring_experiment_is_done(self) -> bool:
+    def _acquiring_job_is_done(self) -> bool:
         last_metadata = self._last_metadata()
         if last_metadata is None:
             return False
@@ -110,17 +124,21 @@ class BeakerStepLock:
 
         try:
             last_experiment = self._beaker.experiment.get(last_experiment_id)
-            job = self._beaker.experiment.latest_job(last_experiment)
+            if (
+                self._current_beaker_experiment is not None
+                and self._current_beaker_experiment.id == last_experiment_id
+            ):
+                # This means a previous job for this experiment was preempted and
+                # it didn't clean up after itself.
+                return True
+            else:
+                job = self._beaker.experiment.latest_job(last_experiment)
+                return False if job is None else job.is_done
         except ExperimentNotFound:
             # Experiment must have been deleted.
             return True
         except ValueError:
             return False
-
-        if job is None:
-            return False
-        else:
-            return job.is_done
 
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
         if self._lock_dataset is not None:
@@ -146,7 +164,7 @@ class BeakerStepLock:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.
-                if self._acquiring_experiment_is_done():
+                if self._acquiring_job_is_done():
                     self._beaker.dataset.delete(self._lock_dataset_name)
                     continue
 

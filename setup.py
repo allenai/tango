@@ -1,10 +1,13 @@
 from collections import defaultdict
 from pathlib import Path
+from typing import Optional
 
 from setuptools import find_packages, setup
 
 
-def parse_requirements_file(path, allowed_extras: set = None, include_all_extra: bool = True):
+def parse_requirements_file(
+    path, allowed_extras: Optional[set] = None, include_all_extra: bool = True
+):
     requirements = []
     extras = defaultdict(list)
     with open(path) as requirements_file:
@@ -100,7 +103,6 @@ setup(
         ],
     ),
     package_data={
-        "tango.server": ["*.svg", "*.css", "*.js", "*.html"],
         "tango.integrations.beaker": ["*.sh"],
         "tango": ["py.typed"],
     },
