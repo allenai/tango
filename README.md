@@ -31,6 +31,78 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 - [Contributing](https://github.com/allenai/tango/blob/main/CONTRIBUTING.md)
 - [License](https://github.com/allenai/tango/blob/main/LICENSE)
 
+## In this README
+
+- [Quick start](#quick-start)
+- [Installation](#installation)
+  - [Installing with PIP](#installing-with-pip)
+  - [Installing with Conda](#installing-with-conda)
+  - [Installing from source](#installing-from-source)
+  - [Checking your installation](#checking-your-installation)
+  - [Docker image](#docker-image)
+- [FAQ](#faq)
+- [Team](#team)
+- [License](#license)
+
+## Quick start
+
+Create a Tango step:
+
+```python
+# hello.py
+
+from tango import step
+
+@step()
+def hello(name: str) -> str:
+    message = f"Hello, {name}!"
+    print(message)
+    return message
+```
+
+And create a corresponding experiment configuration file:
+
+```jsonnet
+// hello.jsonnet
+
+{
+  steps: {
+    hello: {
+      type: "hello",
+      name: "World",
+    }
+  }
+}
+```
+
+Then run the experiment using a local workspace to cache the result:
+
+```bash
+tango run hello.jsonnet -w /tmp/workspace
+```
+
+You'll see something like this in the output:
+
+```
+Starting new run expert-llama
+● Starting step "hello"...
+Hello, World!
+✓ Finished step "hello"
+✓ Finished run expert-llama
+```
+
+If you run this a second time the output will now look like this:
+
+```
+Starting new run open-crab
+✓ Found output for step "hello" in cache...
+✓ Finished run open-crab
+```
+
+You won't see "Hello, World!" this time because the result of the step was found in the cache, so it wasn't run again.
+
+For a more detailed introduction check out the [First Steps](https://ai2-tango.readthedocs.io/en/latest/first_steps.html) walk-through.
+
 ## Installation
 
 <!-- start install -->

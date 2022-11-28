@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Dict,
     Generic,
     Iterable,
@@ -369,8 +370,11 @@ class Step(Registrable, Generic[T]):
                 f"Tried to make a Step of type {choice}, but ended up with a {subclass}."
             )
 
-        parameters = infer_method_params(subclass, subclass.run, infer_kwargs=False)
-        del parameters["self"]
+        if issubclass(subclass, FunctionalStep):
+            parameters = infer_method_params(subclass, subclass.WRAPPED_FUNC, infer_kwargs=False)
+        else:
+            parameters = infer_method_params(subclass, subclass.run, infer_kwargs=False)
+            del parameters["self"]
         init_parameters = infer_constructor_params(subclass)
         del init_parameters["self"]
         del init_parameters["kwargs"]
@@ -737,6 +741,63 @@ class Step(Registrable, Generic[T]):
         if exception is not None:
             log_exception(exception, logger=self.logger)
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
+
+
+class FunctionalStep(Step):
+    WRAPPED_FUNC: ClassVar[Callable]
+
+    def run(self, *args, **kwargs):
+        return self.__class__.WRAPPED_FUNC(*args, **kwargs)
+
+
+def step(
+    name: Optional[str] = None,
+    *,
+    exist_ok: bool = False,
+    deterministic: bool = True,
+    cacheable: Optional[bool] = None,
+    version: Optional[str] = None,
+    format: Format = DillFormat("gz"),
+    skip_id_arguments: Optional[Set[str]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+):
+    """
+    A decorator to create a :class:`Step` from a function.
+
+    :param name: A name to register the step under. By default the name of the function is used.
+    :param exist_ok:
+        If True, overwrites any existing step registered under the same ``name``. Else,
+        throws an error if a step is already registered under ``name``.
+
+    See the :class:`Step` class for an explanation of the other parameters.
+
+    Example
+    -------
+
+    .. testcode::
+
+        from tango import step
+
+        @step(version="001")
+        def add(a: int, b: int) -> int:
+            return a + b
+    """
+
+    def step_wrapper(step_func):
+        @Step.register(name or step_func.__name__, exist_ok=exist_ok)
+        class WrapperStep(FunctionalStep):
+            DETERMINISTIC = deterministic
+            CACHEABLE = cacheable
+            VERSION = version
+            FORMAT = format
+            SKIP_ID_ARGUMENTS = skip_id_arguments or set()
+            METADATA = metadata or {}
+
+            WRAPPED_FUNC = step_func
+
+        return WrapperStep
+
+    return step_wrapper
 
 
 class StepIndexer(CustomDetHash):
