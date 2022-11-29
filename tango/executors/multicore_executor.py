@@ -238,7 +238,6 @@ class MulticoreExecutor(Executor):
                     step_name,
                     "-w",
                     self.workspace.url,
-                    "--no-server",
                 ]
                 if self.include_package is not None:
                     for package in self.include_package:

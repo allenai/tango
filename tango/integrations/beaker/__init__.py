@@ -20,6 +20,7 @@ from .executor import (
     ResourceAssignment,
     ResourceAssignmentError,
     SimpleBeakerScheduler,
+    UnrecoverableResourceAssignmentError,
 )
 from .step_cache import BeakerStepCache
 from .workspace import BeakerWorkspace
@@ -32,4 +33,5 @@ __all__ = [
     "SimpleBeakerScheduler",
     "ResourceAssignment",
     "ResourceAssignmentError",
+    "UnrecoverableResourceAssignmentError",
 ]

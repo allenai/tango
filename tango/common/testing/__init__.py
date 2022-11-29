@@ -108,7 +108,6 @@ class TangoTestCase:
             workspace_url=workspace_url or "local://" + str(self.TEST_DIR / "workspace"),
             overrides=overrides,
             include_package=include_package,
-            start_server=False,
             step_name=step_name,
             parallelism=parallelism,
             multicore=multicore,
