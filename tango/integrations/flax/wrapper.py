@@ -8,15 +8,14 @@ class FlaxWrapper(Registrable):
     """
     A wrapper class which contains functions that need to be defined by the user
     for using the ``flax::train`` and ``flax::eval`` steps.
-
     """
 
-    @abstractmethod
     def train_metrics(self, state, batch, labels) -> Dict:
         """
         Returns the train metrics other than loss as Dict.
         """
-        raise NotImplementedError()
+        # return empty dict if no other metrics to compute
+        return {}
 
     @abstractmethod
     def train_loss(self, params, state, batch, dropout_rng, labels):
