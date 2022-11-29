@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--ext-var` argument to `tango run` for setting JSONNET external variables
   when loading the experiment config.
 - Added `@step()` decorator to create `Step` classes from functions.
+- Added the `transformers::with_soft_prompt` integration, to make soft-prompted prefix transformers easy.
 
 ### Removed
 
@@ -275,7 +276,6 @@ instead of `ModuleNotFound`.
 - Added the "-n/--name" option to `tango run`. This option allows the user to give the run an arbitrary name.
 - Added a convenience property `.workspace` to `Step` class that can be called from a step's `.run()` method to get the current `Workspace` being used.
 - Gave `FromParams` objects (which includes all `Registrable` objects) the ability to version themselves.
-- Added the `transformers::with_soft_prompt` integration, to make soft-prompted prefix transformers easy.
 - Added CLI option to run a single step in a config using `--step-name` or `-s`.
 - Added a `MultiCoreExecutor` that executes steps in parallel.
 - Added an `ExecutorOutput` dataclass that is returned by `Executor.execute_step_graph()`.
