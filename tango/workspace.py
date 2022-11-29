@@ -19,7 +19,11 @@ from typing import (
 )
 from urllib.parse import ParseResult, urlparse
 
+import pytz
+
 from .common import Registrable
+from .common.from_params import FromParams
+from .common.util import jsonify
 from .step import Step
 from .step_cache import StepCache
 from .step_info import StepInfo
@@ -30,7 +34,7 @@ T = TypeVar("T")
 
 
 @dataclass
-class Run:
+class Run(FromParams):
     """
     Stores information about a single Tango run.
     """
@@ -52,6 +56,18 @@ class Run:
     """
     The time at which the run was registered in the workspace.
     """
+
+    def to_json_dict(self) -> Dict[str, Any]:
+        return jsonify(self)
+
+    @classmethod
+    def from_json_dict(cls, json_dict: Dict[str, Any]) -> "Run":
+        params = {**json_dict}
+        params["start_date"] = datetime.strptime(params["start_date"], "%Y-%m-%dT%H:%M:%S").replace(
+            tzinfo=pytz.utc
+        )
+        params["steps"] = {k: StepInfo.from_json_dict(v) for k, v in params["steps"].items()}
+        return cls.from_params(params)
 
 
 class Workspace(Registrable):
