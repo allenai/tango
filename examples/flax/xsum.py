@@ -80,10 +80,6 @@ class PreProcessing(Step):
 
 @FlaxWrapper.register("xsum_wrapper")  # type: ignore
 class TransformerWrapper(FlaxWrapper):
-    def compute_metrics(self, state, batch, labels):
-        # return empty dict if no other metrics to compute
-        return {}
-
     def loss_helper(self, logits, labels, batch):
         label_smoothing_factor = 0
         padding_mask = batch["decoder_attention_mask"]

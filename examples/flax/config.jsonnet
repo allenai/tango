@@ -14,8 +14,8 @@
         "train": {
             "type": "flax::train",
             "model": {
-                "type" : "transformers::FlaxAutoModelForSeq2SeqLM::from_pretrained",
-                "pretrained_model_name_or_path" : "facebook/bart-base"
+                "type": "transformers::FlaxAutoModelForSeq2SeqLM::from_pretrained",
+                "pretrained_model_name_or_path": "facebook/bart-base"
             },
             "dataset": {
                 "type": "ref",
@@ -43,12 +43,10 @@
             "checkpoint_every": 1000,
             "log_every": 1000,
 
-            "callbacks" : [{
-                "type" : "wandb::log_flax"
-            },
-            {
-                "type": "flax::generate_step"
-            }]
+            "callbacks" : [
+                //{"type" : "wandb::log_flax"},
+                {"type": "flax::generate_step"}
+            ]
         },
         "eval": {
             "type": "flax::eval",
@@ -58,7 +56,7 @@
             },
             "dataset": {
                 "type": "ref",
-                "ref" : "tokenize"
+                "ref": "tokenize"
             },
             "dataloader": {
                 "batch_size": 16,

@@ -3,9 +3,9 @@ from typing import Generic, TypeVar
 
 import jax.random
 import numpy as np
+from datasets import Dataset
 from flax.training.common_utils import shard
 
-from tango.common.dataset_dict import DatasetDictBase
 from tango.common.registrable import Registrable
 
 T = TypeVar("T")
@@ -22,26 +22,23 @@ class DataLoader(Generic[T], Registrable):
 class FlaxDataLoader(DataLoader):
     def __init__(
         self,
-        dataset: DatasetDictBase,
+        dataset: Dataset,
         batch_size: int = 8,
         drop_last: bool = True,
         shuffle: bool = True,
     ):
         self.dataset = dataset
+        self.dataset_size = dataset.num_rows
         self.batch_size = batch_size
         self.drop_last = drop_last
+        if not drop_last:
+            raise NotImplementedError(
+                "With Jax you have to drop the last incomplete batch, because the batch size is compiled into the "
+                "model."
+            )
         self.shuffle = shuffle
-        self.dataset_size = self._get_size()
 
         self.logger = logging.getLogger(FlaxDataLoader.__name__)
-
-    def _get_size(self):
-        size = (
-            self.dataset["num_rows"]
-            if type(self.dataset) is dict
-            else self.dataset.num_rows  # type: ignore[attr-defined]
-        )
-        return size
 
     def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
         steps_per_epoch = self.dataset_size // self.batch_size

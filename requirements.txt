@@ -27,7 +27,7 @@ pytz
 # that you install with 'pip install tango[torch]'.
 torch>=1.9,<1.14             # needed by: torch,transformers,fairscale
 numpy                        # needed by: torch,transformers,fairscale
-datasets>=1.12,<3.0          # needed by: datasets,transformers
+datasets>=1.12,<3.0          # needed by: flax,datasets,transformers
 wandb>=0.12,<0.14            # needed by: wandb
 retry                        # needed by: wandb
 transformers>=4.12.3         # needed by: transformers
