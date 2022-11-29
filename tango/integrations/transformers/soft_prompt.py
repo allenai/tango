@@ -31,6 +31,7 @@ def add_soft_prompt(
     prompt_length: int,
     *,
     only_prompt_is_trainable: bool = True,
+    initialize_from_top_embeddings: Optional[int] = 5000,
     random_seed: int = 1940,
 ) -> None:
     """
@@ -53,6 +54,8 @@ def add_soft_prompt(
     :param model: the original huggingface transformer. This model is augmented in-place!
     :param prompt_length: the length of the soft prompt, in tokens
     :param only_prompt_is_trainable: freezes the original model's weights, leaving only the prompt trainable
+    :param initialize_from_top_embeddings: Prompt embeddings are initialized from a random selection of the top n
+                                           word piece embeddings from the original model. This is how you set n.
     :param random_seed: random seed used to initialize the prompt embeddings
 
     """
@@ -69,7 +72,9 @@ def add_soft_prompt(
         )
     )
     r = random.Random(random_seed)
-    indices = torch.tensor(r.sample(range(original_embedding.num_embeddings), prompt_length))
+    if initialize_from_top_embeddings is None:
+        initialize_from_top_embeddings = original_embedding.num_embeddings
+    indices = torch.tensor(r.sample(range(initialize_from_top_embeddings), prompt_length))
     with torch.no_grad():
         prompt_embedding.copy_(original_embedding(indices).unsqueeze(0))
 
