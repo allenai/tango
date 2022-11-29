@@ -69,7 +69,7 @@ def add_soft_prompt(
         )
     )
     r = random.Random(random_seed)
-    indices = torch.tensor(r.sample(range(5000), prompt_length))
+    indices = torch.tensor(r.sample(range(original_embedding.num_embeddings), prompt_length))
     with torch.no_grad():
         prompt_embedding.copy_(original_embedding(indices).unsqueeze(0))
 
