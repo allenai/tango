@@ -72,7 +72,7 @@ class WandbStepCache(LocalStepCache):
 
     def _step_artifact_name(self, step: Union[Step, StepInfo]) -> str:
         if isinstance(step, Step):
-            return step.__class__.__name__
+            return step.class_name
         else:
             return step.step_class_name
 

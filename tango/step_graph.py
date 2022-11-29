@@ -265,7 +265,7 @@ class StepGraph(Mapping[str, Step]):
                 step_dict[step_name] = {
                     key: _to_config(val) for key, val in step._to_params()["kwargs"].items()
                 }
-                step_dict[step_name]["type"] = step.__module__ + "." + step.__class__.__name__
+                step_dict[step_name]["type"] = step.__module__ + "." + step.class_name
 
                 # We only add cache_results and format to the config if the values are different from default.
                 if step.cache_results != step.CACHEABLE:
