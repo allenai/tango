@@ -283,6 +283,10 @@ class Step(Registrable, Generic[T]):
             self.metadata.update(step_metadata)
         self.extra_dependencies = set(step_extra_dependencies) if step_extra_dependencies else set()
 
+    @property
+    def class_name(self) -> str:
+        return self.__class__.__name__
+
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -526,7 +530,7 @@ class Step(Registrable, Generic[T]):
         Unique IDs are of the shape ``$class_name-$version-$hash``, where the hash is the hash of the
         inputs for deterministic steps, and a random string of characters for non-deterministic ones."""
         if self.unique_id_cache is None:
-            self.unique_id_cache = self.__class__.__name__
+            self.unique_id_cache = self.class_name
             if self.VERSION is not None:
                 self.unique_id_cache += "-"
                 self.unique_id_cache += self.VERSION
@@ -745,6 +749,10 @@ class Step(Registrable, Generic[T]):
 
 class FunctionalStep(Step):
     WRAPPED_FUNC: ClassVar[Callable]
+
+    @property
+    def class_name(self) -> str:
+        return self.WRAPPED_FUNC.__name__
 
     def run(self, *args, **kwargs):
         return self.__class__.WRAPPED_FUNC(*args, **kwargs)

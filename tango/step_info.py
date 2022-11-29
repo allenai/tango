@@ -324,7 +324,7 @@ class StepInfo(FromParams):
         return cls(
             unique_id=step.unique_id,
             step_name=step.name,
-            step_class_name=step.__class__.__name__,
+            step_class_name=step.class_name,
             version=step.VERSION,
             dependencies={dep.unique_id for dep in step.dependencies},
             cacheable=step.cache_results,
