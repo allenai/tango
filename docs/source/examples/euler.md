@@ -66,27 +66,11 @@ Use your workspace to get the cached result of a step, e.g.
 
 A few things are of note here:
  1. Tango assigns a name to your run. In this case, the name is "comic-heron".
- 2. Tango starts a web server while it runs. You can connect to this server to follow along with the progress.
- 3. In this configuration, the "print" step prints the output ("`0j`"). Most of the time though, you will look
+ 2. In this configuration, the "print" step prints the output ("`0j`"). Most of the time though, you will look
     for the output in the output directories that are given in the table.
- 4. You might notice that the "print" step produces no output. That's because it is uncacheable, and thus writes
+ 3. You might notice that the "print" step produces no output. That's because it is uncacheable, and thus writes
     out nothing.
 
-
-## Try the workspace UI
-
-You can visualize the workspace by running
-
-```bash
-tango server -w workspace
-```
-
-This command will start up a web server that visualizes workspace directories. It first presents you with a list
-of runs. Click through to your run, and you see a graph of the steps that you just ran:
-
-![Step Graph](/_static/step_graph.png)
-
-You can click on the arrow next to each step to see more information.
 
 ## Change a step
 
