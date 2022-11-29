@@ -225,4 +225,24 @@ def add_soft_prompt(
         model.generate = new_generate  # type: ignore
 
 
-Model.register("transformers::with_soft_prompt")(add_soft_prompt)  # type: ignore
+def _with_soft_prompt(
+    model: Model,
+    prompt_length: int,
+    *,
+    only_prompt_is_trainable: bool = True,
+    initialize_from_top_embeddings: Optional[int] = 5000,
+    random_seed: int = 1940,
+) -> Model:
+    """To initialize a soft-prompt model as a Registrable (i.e., to use it from a config file), we need a variant
+    of this function that returns the resulting model. This is that variant."""
+    add_soft_prompt(
+        model,
+        prompt_length,
+        only_prompt_is_trainable=only_prompt_is_trainable,
+        initialize_from_top_embeddings=initialize_from_top_embeddings,
+        random_seed=random_seed,
+    )
+    return model
+
+
+Model.register("transformers::with_soft_prompt")(_with_soft_prompt)  # type: ignore
