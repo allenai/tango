@@ -1,8 +1,8 @@
 from typing import Optional, Type
 
-from tango.common.exceptions import IntegrationMissingError
 from transformers.models.auto import modeling_auto
 
+from tango.common.exceptions import IntegrationMissingError
 from tango.integrations.torch.model import Model
 
 from .config import Config
