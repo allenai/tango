@@ -340,7 +340,7 @@ class BeakerWorkspace(Workspace):
             max_workers=self.max_workers, thread_name_prefix="BeakerWorkspace.registered_runs()-"
         ) as executor:
             run_futures = []
-            for dataset in self.beaker.workspace.datasets(
+            for dataset in self.beaker.workspace.iter_datasets(
                 match=Constants.RUN_DATASET_PREFIX, results=False
             ):
                 run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
