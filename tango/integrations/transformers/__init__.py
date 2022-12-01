@@ -194,6 +194,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::DataCollatorForWholeWordMask
             transformers::DataCollatorWithPadding
             transformers::DefaultDataCollator
+
 """
 
 from tango.common.exceptions import IntegrationMissingError
@@ -208,6 +209,7 @@ __all__ = [
     "RunGenerationDataset",
     "Tokenizer",
     "Config",
+    "add_soft_prompt",
     "FinetuneWrapper",
     "FinetuneStep",
     "TokenizeText2TextData",
@@ -219,4 +221,5 @@ from .finetune import FinetuneStep, FinetuneWrapper, TokenizeText2TextData
 from .model import *  # noqa: F403
 from .optim import *  # noqa: F403
 from .run_generation import RunGeneration, RunGenerationDataset
+from .soft_prompt import add_soft_prompt
 from .tokenizer import Tokenizer
