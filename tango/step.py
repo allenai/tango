@@ -545,8 +545,12 @@ class Step(Registrable, Generic[T]):
                 hash_kwargs = {
                     key: value
                     for key, value in self.kwargs.items()
-                    if (key not in self.SKIP_ID_ARGUMENTS) and (
-                        (key not in self.SKIP_DEFAULT_ARGUMENTS or self.SKIP_DEFAULT_ARGUMENTS[key] != value)
+                    if (key not in self.SKIP_ID_ARGUMENTS)
+                    and (
+                        (
+                            key not in self.SKIP_DEFAULT_ARGUMENTS
+                            or self.SKIP_DEFAULT_ARGUMENTS[key] != value
+                        )
                     )
                 }
                 self.unique_id_cache += det_hash(
