@@ -452,6 +452,7 @@ class Step(Registrable, Generic[T]):
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
         try:
+            self._replace_steps_with_results(self.extra_dependencies, workspace)
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
             self.log_starting(needed_by=needed_by)
             workspace.step_starting(self)

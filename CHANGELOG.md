@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The type hints for the flax trainer suggested that the training split is optional when in fact it's mandatory.
 - Made `BeakerWorkspace` / `BeakerStepLock` more robust when a job is preempted.
 - Minor performance improvements for the Beaker executor and workspace.
+- Fixed bug with `step_extra_dependencies` where uncacheable dependencies wouldn't be run.
 
 
 ## [v1.0.2](https://github.com/allenai/tango/releases/tag/v1.0.2) - 2022-11-14
