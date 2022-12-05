@@ -45,6 +45,23 @@ class TestStep(TangoTestCase):
         step2 = SkipArgStep(arg="bar")
         assert step1.unique_id == step2.unique_id
 
+    def test_skip_default_arguments(self):
+        class SkipArgStep(Step):
+            def run(self) -> int:  # type: ignore
+                return 5
+
+        old_hash = SkipArgStep().unique_id
+
+        class SkipArgStep(Step):
+            SKIP_DEFAULT_ARGUMENTS = {"arg": 5}
+
+            def run(self, arg: int = 5) -> int:  # type: ignore
+                return arg
+
+        assert SkipArgStep().unique_id == old_hash
+        assert SkipArgStep(arg=5).unique_id == old_hash
+        assert SkipArgStep(arg=6).unique_id != old_hash
+
     def test_massage_kwargs(self):
         class CountLettersStep(Step):
             @classmethod
