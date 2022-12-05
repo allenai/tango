@@ -180,6 +180,11 @@ class Step(Registrable, Generic[T]):
     the model output, not about how many outputs you can produce at the same time.
     """
 
+    SKIP_DEFAULT_ARGUMENTS: Dict[str, Any] = {}
+    """Sometimes, you want to add another argument to your :meth:`run()` method, but you don't want to
+    invalidate the cache when this new argument is set to its default value. If that is the case, add
+    the argument to this dictionary with the default value that should be ignored."""
+
     METADATA: Dict[str, Any] = {}
     """
     Arbitrary metadata about the step.
@@ -540,7 +545,13 @@ class Step(Registrable, Generic[T]):
                 hash_kwargs = {
                     key: value
                     for key, value in self.kwargs.items()
-                    if key not in self.SKIP_ID_ARGUMENTS
+                    if (key not in self.SKIP_ID_ARGUMENTS)
+                    and (
+                        (
+                            key not in self.SKIP_DEFAULT_ARGUMENTS
+                            or self.SKIP_DEFAULT_ARGUMENTS[key] != value
+                        )
+                    )
                 }
                 self.unique_id_cache += det_hash(
                     (
