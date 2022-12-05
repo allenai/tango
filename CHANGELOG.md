@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01
+
 ### Added
 
 - Added `gpu_type` field to `StepResources`. The `BeakerExecutor` can use this to determine which clusters to a submit a step to.
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--ext-var` argument to `tango run` for setting JSONNET external variables
   when loading the experiment config.
 - Added `@step()` decorator to create `Step` classes from functions.
+- Added the `transformers::with_soft_prompt` integration, to make soft-prompted prefix transformers easy.
 
 ### Removed
 

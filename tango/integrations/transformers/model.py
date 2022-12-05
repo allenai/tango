@@ -2,13 +2,7 @@ from typing import Optional, Type
 
 from transformers.models.auto import modeling_auto
 
-try:
-    from transformers.models.auto import modeling_flax_auto
-
-    from tango.integrations.flax.model import Model as FlaxModel
-except ModuleNotFoundError:
-    pass
-
+from tango.common.exceptions import IntegrationMissingError
 from tango.integrations.torch.model import Model
 
 from .config import Config
@@ -40,6 +34,9 @@ for name, cls in modeling_auto.__dict__.items():
         )
 
 try:
+    from transformers.models.auto import modeling_flax_auto
+
+    from tango.integrations.flax.model import Model as FlaxModel
 
     def flax_auto_model_wrapper_factory(cls: type) -> Type[FlaxModel]:
         class AutoModelWrapper(cls, FlaxModel):  # type: ignore
@@ -67,5 +64,7 @@ try:
                 "transformers::" + name + "::from_config", constructor="from_config"
             )(wrapped_cls_)
 
-except NameError:
+except ModuleNotFoundError:
+    pass
+except IntegrationMissingError:
     pass
