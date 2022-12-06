@@ -1,7 +1,7 @@
-# import datetime
 import os
 import warnings
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -17,6 +17,7 @@ from tango.common.remote_utils import (
     RemoteDatasetNotFound,
     RemoteFileInfo,
 )
+
 # from tango.common.util import utc_now_datetime
 
 _CREDENTIALS_WARNING_ISSUED = False
@@ -82,34 +83,13 @@ class GCSDatasetWriteError(TangoError):
     pass
 
 
-# class GCSDataset(RemoteDataset):
-#     # For the purpose of this, GCSDataset will be conceptually a folder.
-#     def __init__(self, info: Dict, created=None):
-#         # info here is just what gcs_fs returns.
-#         self.info = info
-#         self.committed = True  # TODO: Do some other check (maybe presence of a file?)
-#         self.created = utc_now_datetime()  # TODO: read the updated time from the object!
-#
-#     def dataset_path(self):
-#         # Includes name of bucket.
-#         return self.info["name"]
-#
-#     @property
-#     def name(self):
-#         return self.info["name"].replace(self.info["bucket"] + "/", "")
-
-
 class GCSDataset(RemoteDataset):
     pass
 
 
 @dataclass
 class FileInfo(RemoteFileInfo):
-    # TODO: this is just mirroring beaker right now. We may not need this level of abstraction.
-    path: str
-    digest: str
-    updated: str  # TODO: convert to datetime.
-    size: int
+    pass
 
 
 class GCSClient(RemoteClient):
@@ -130,12 +110,12 @@ class GCSClient(RemoteClient):
     def _convert_ls_info_to_dataset(cls, ls_info: List[Dict]) -> GCSDataset:
         name: str
         dataset_path: str
-        created: str  # TODO: Change to time
+        created: datetime
         committed: bool = True
 
         for info in ls_info:
             if "kind" in info and info["name"].endswith(cls.placeholder_file):
-                created = info["timeCreated"]
+                created = datetime.strptime(info["timeCreated"], "%Y-%m-%dT%H:%M:%S.%f%Z")
                 dataset_path = info["name"].replace("/" + cls.placeholder_file, "")
                 name = dataset_path.replace(info["bucket"] + "/", "")
             elif "kind" in info and info["name"].endswith(cls.uncommitted_file):
@@ -148,11 +128,12 @@ class GCSClient(RemoteClient):
     def from_env(cls, bucket_name: str):
         return cls(bucket_name, token="google_default")
 
-    def url(self, dataset: Optional[str] = None):
-        path = f"gs://{self.bucket_name}"
-        if dataset:
-            path = f"{path}/dataset"
-        return path
+    # TODO: remove
+    # def url(self, dataset: Optional[str] = None):
+    #     path = f"gs://{self.bucket_name}"
+    #     if dataset:
+    #         path = f"{path}/{dataset}"
+    #     return path
 
     @property
     def full_name(self):
@@ -231,7 +212,10 @@ class GCSClient(RemoteClient):
         info = self.gcs_fs.ls(full_file_path, detail=True)[0]  # TODO: add sanity checks
         # TODO: should digest be crc32c instead of md5Hash?
         return FileInfo(
-            path=full_file_path, digest=info["md5Hash"], updated=info["updated"], size=info["size"]
+            path=full_file_path,
+            digest=info["md5Hash"],
+            updated=datetime.strptime(info["updated"], "%Y-%m-%dT%H:%M:%S.%fZ"),
+            size=info["size"],
         )
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
@@ -243,7 +227,6 @@ class GCSClient(RemoteClient):
     def datasets(
         self, match: str, uncommitted: bool = True, results: bool = False
     ) -> List[GCSDataset]:
-        # TODO: do we need the concept of committed?
         # TODO: what do we do with results?
         list_of_datasets = []
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):

@@ -20,7 +20,7 @@ def test_from_params(beaker_workspace_name: str):
             github_token="FAKE_TOKEN",
             datasets=[{"source": {"beaker": "some-dataset"}, "mount_path": "/input"}],
         ),
-        workspace=BeakerWorkspace(beaker_workspace=beaker_workspace_name),
+        workspace=BeakerWorkspace(workspace=beaker_workspace_name),
         clusters=["fake-cluster"],
     )
     assert isinstance(executor, BeakerExecutor)
@@ -65,5 +65,5 @@ def test_beaker_executor(
         name=run_name,
         multicore=None,
     ):
-        workspace = BeakerWorkspace(beaker_workspace=beaker_workspace_name)
+        workspace = BeakerWorkspace(workspace=beaker_workspace_name)
         assert "hello" in workspace.registered_run(run_name).steps

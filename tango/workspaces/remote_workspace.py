@@ -6,16 +6,7 @@ import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import (
-    Dict,
-    Generator,
-    Iterable,
-    Iterator,
-    Optional,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname

@@ -9,7 +9,7 @@ def test_from_url(gcs_workspace: str):
     assert isinstance(workspace, GCSWorkspace)
 
 
-def test_direct_usage(gcs_workspace: str):
+def test_direct_usage(gcs_workspace: str = "allennlp-gcs-bucket-1"):
     workspace = GCSWorkspace(gcs_workspace)
 
     step = FloatStep(step_name="float", result=1.0)

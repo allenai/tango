@@ -86,7 +86,7 @@ class BeakerStepCache(RemoteStepCache):
         # but they never get committed.
         return sum(
             1
-            for ds in self.beaker.workspace.datasets(
+            for ds in self.beaker.workspace.iter_datasets(
                 uncommitted=False, match=Constants.STEP_DATASET_PREFIX
             )
             if ds.name is not None and ds.name.startswith(Constants.STEP_DATASET_PREFIX)

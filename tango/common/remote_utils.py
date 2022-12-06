@@ -1,4 +1,5 @@
 import atexit
+import datetime
 import json
 import logging
 import tempfile
@@ -45,29 +46,12 @@ class RemoteConstants:
 
 
 class RemoteDataset:
-    def __init__(self, name: str, dataset_path: str, created: str, committed: bool):
+    # TODO: dataclass?
+    def __init__(self, name: str, dataset_path: str, created: datetime.datetime, committed: bool):
         self.name = name
         self.dataset_path = dataset_path
         self.created = created
         self.committed = committed
-
-    # def __init__(self, *args, **kwargs):
-    #     pass
-    #
-    # def dataset_path(self):
-    #     raise NotImplementedError()
-    #
-    # @property
-    # def created(self):
-    #     return self._created
-    #
-    # @created.setter
-    # def created(self, created_time):
-    #     self._created = created_time
-    #
-    # @property
-    # def name(self):
-    #     raise NotImplementedError()
 
 
 @dataclass
@@ -75,7 +59,7 @@ class RemoteFileInfo:
     # TODO: this is just mirroring beaker right now. We may not need this level of abstraction.
     path: str
     digest: str
-    updated: str  # TODO: convert to datetime.
+    updated: datetime.datetime
     size: int
 
 
