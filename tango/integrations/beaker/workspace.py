@@ -10,7 +10,7 @@ from tango.step_info import StepInfo
 from tango.workspace import Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
-from .common import BeakerStepLock, dataset_url, get_client
+from .common import BeakerStepLock, get_client
 from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
@@ -81,6 +81,5 @@ class BeakerWorkspace(RemoteWorkspace):
             self.beaker, step, current_beaker_experiment=self.current_beaker_experiment
         )
 
-    @classmethod
-    def _dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
-        return dataset_url(workspace_url, dataset_name)
+    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+        return self.client.dataset_url(workspace_url, dataset_name)

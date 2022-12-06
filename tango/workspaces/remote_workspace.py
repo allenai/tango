@@ -103,8 +103,7 @@ class RemoteWorkspace(Workspace):
     def _remote_lock(self, step: Step) -> RemoteStepLock:
         raise NotImplementedError()
 
-    @classmethod
-    def _dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
+    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
         raise NotImplementedError()
 
     def step_starting(self, step: Step) -> None:
@@ -298,7 +297,6 @@ class RemoteWorkspace(Workspace):
             finally:
                 run_dataset = self.Constants.run_dataset_name(name)
                 self.client.sync(run_dataset, log_file)
-                # TODO: what should commit do?
                 self.client.commit(run_dataset)
 
     def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:
@@ -335,7 +333,6 @@ class RemoteWorkspace(Workspace):
 
         step_info_dataset: RemoteDataset
         try:
-            # TODO: commit doesnt do anything here
             step_info_dataset = self.client.create(dataset_name, commit=False)
         except RemoteDatasetConflict:
             step_info_dataset = self.client.get(dataset_name)

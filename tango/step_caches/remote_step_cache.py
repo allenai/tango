@@ -3,12 +3,13 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
 from tango.common.file_lock import FileLock
 from tango.common.params import Params
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
 from tango.step_cache import CacheMetadata
 from tango.step_caches.local_step_cache import LocalStepCache
@@ -52,6 +53,7 @@ class RemoteStepCache(LocalStepCache):
                 return False
 
             # TODO: beaker seems to not check locally. Should it?
+            # Updated TODO: does Pete's change does the same thing?
             key = step.unique_id
 
             # First check if we have a copy in memory.
@@ -71,11 +73,9 @@ class RemoteStepCache(LocalStepCache):
             return False
 
     def _step_results_dir(self) -> str:
-        # TODO: unnecessary. handle Constants better.
-        return "result"
+        return RemoteConstants.STEP_RESULT_DIR
 
-    # TODO: change output type
-    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Any]:
+    def _step_result_remote(self, step: Union[Step, StepInfo]):
         raise NotImplementedError()
 
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
@@ -126,8 +126,7 @@ class RemoteStepCache(LocalStepCache):
 
             return load_and_return()
 
-    # TODO: change output type
-    def _sync_step_remote(self, step: Step, objects_dir: Path) -> Any:
+    def _sync_step_remote(self, step: Step, objects_dir: Path):
         raise NotImplementedError()
 
     def __setitem__(self, step: Step, value: Any) -> None:

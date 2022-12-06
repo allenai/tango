@@ -1,3 +1,4 @@
+import urllib
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -52,6 +53,21 @@ class BeakerClient(RemoteClient):
     @property
     def full_name(self):
         return self.beaker.workspace.get().full_name
+
+    def url(self, dataset: Optional[str] = None):
+        return self.beaker.ur
+
+    def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+        return (
+            workspace_url
+            + "/datasets?"
+            + urllib.parse.urlencode(
+                {
+                    "text": dataset_name,
+                    "committed": "false",
+                }
+            )
+        )
 
     def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
         try:

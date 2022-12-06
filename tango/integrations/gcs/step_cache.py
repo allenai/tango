@@ -12,7 +12,13 @@ from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
 from .common import Constants
-from .util import GCSClient, GCSDataset, GCSDatasetNotFound, GCSDatasetWriteError
+from .util import (
+    GCSClient,
+    GCSDataset,
+    GCSDatasetConflict,
+    GCSDatasetNotFound,
+    GCSDatasetWriteError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +41,6 @@ class GCSStepCache(RemoteStepCache):
 
     def __init__(self, bucket_name: str, client: Optional[GCSClient] = None):
         if client is not None:
-            # TODO
             assert (
                 bucket_name == client.bucket_name
             ), "Assert that bucket name is same as client bucket until we do better"
@@ -58,9 +63,13 @@ class GCSStepCache(RemoteStepCache):
         dataset_name = Constants.step_dataset_name(step)
 
         try:
+            self.client.create(dataset_name, commit=False)
+        except GCSDatasetConflict:
+            pass
+        try:
             dataset = self.client.sync(dataset_name, objects_dir)
             dataset = self.client.commit(dataset)
-        except GCSDatasetWriteError:  # TODO: this doesn't happen yet.
+        except GCSDatasetWriteError:
             pass
 
         return dataset
@@ -74,7 +83,6 @@ class GCSStepCache(RemoteStepCache):
     def __len__(self):
         # NOTE: lock datasets should not count here. They start with the same prefix,
         # but they never get committed.
-        # TODO: check for lock files in a different way.
         return sum(
             1
             for ds in self.client.datasets(uncommitted=False, match=Constants.STEP_DATASET_PREFIX)

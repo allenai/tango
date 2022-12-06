@@ -62,6 +62,7 @@ def dataset_url(workspace_url: str, dataset_name: str) -> str:
 
 
 class BeakerStepLock:
+    # TODO: inherit from RemoteStepLock
     METADATA_FNAME = "metadata.json"
 
     def __init__(

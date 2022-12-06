@@ -12,11 +12,6 @@ from .step_cache import GCSStepCache
 T = TypeVar("T")
 
 
-def dataset_url(workspace_url: str, dataset_name: str) -> str:
-    # TODO: should be part of client.
-    return workspace_url + "/ " + dataset_name
-
-
 @Workspace.register("gs")
 class GCSWorkspace(RemoteWorkspace):
     Constants = Constants
@@ -38,6 +33,5 @@ class GCSWorkspace(RemoteWorkspace):
     def _remote_lock(self, step: Step) -> GCSStepLock:
         return GCSStepLock(self.client, step)
 
-    @classmethod
-    def _dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
-        return dataset_url(workspace_url, dataset_name)
+    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+        return self.client.dataset_url(workspace_url, dataset_name)

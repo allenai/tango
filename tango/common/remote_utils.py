@@ -45,13 +45,13 @@ class RemoteConstants:
         return f"{cls.RUN_DATASET_PREFIX}{name}"
 
 
+@dataclass
 class RemoteDataset:
-    # TODO: dataclass?
-    def __init__(self, name: str, dataset_path: str, created: datetime.datetime, committed: bool):
-        self.name = name
-        self.dataset_path = dataset_path
-        self.created = created
-        self.committed = committed
+
+    name: str
+    dataset_path: str
+    created: datetime.datetime
+    committed: bool
 
 
 @dataclass
@@ -80,6 +80,9 @@ class RemoteClient:
         pass
 
     def url(self, dataset: Optional[str] = None):
+        raise NotImplementedError()
+
+    def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
         raise NotImplementedError()
 
     @property
