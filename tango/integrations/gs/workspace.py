@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from typing import Dict, TypeVar
+from urllib.parse import ParseResult
 
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -25,6 +26,19 @@ class GCSWorkspace(RemoteWorkspace):
         locks: Dict[Step, GCSStepLock] = {}
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
         super().__init__(client, cache, "gs_workspace", locks)
+
+    @classmethod
+    def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
+        workspace: str
+        if parsed_url.netloc and parsed_url.path:
+            # e.g. "beaker://ai2/my-workspace"
+            workspace = parsed_url.netloc + parsed_url.path
+        elif parsed_url.netloc:
+            # e.g. "beaker://my-workspace"
+            workspace = parsed_url.netloc
+        else:
+            raise ValueError(f"Bad URL for GCS workspace '{parsed_url}'")
+        return cls(workspace)
 
     @property
     def url(self) -> str:

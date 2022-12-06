@@ -1,5 +1,5 @@
 from tango.common.testing.steps import FloatStep
-from tango.integrations.gcs.step_cache import GCSStepCache
+from tango.integrations.gs.step_cache import GCSStepCache
 
 
 def test_step_cache(bucket_name: str):

@@ -55,7 +55,7 @@ class GCSStepCache(RemoteStepCache):
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GCSDataset]:
         try:
             dataset = self.client.get(Constants.step_dataset_name(step))
-            return dataset if dataset.committed is not None else None
+            return dataset if dataset.committed else None
         except GCSDatasetNotFound:
             return None
 
