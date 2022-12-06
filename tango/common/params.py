@@ -191,7 +191,7 @@ def pop_choice(
 
 
 def _replace_none(params: Any) -> Any:
-    if params == "None":
+    if isinstance(params, str) and params == "None":
         return None
     elif isinstance(params, (dict, Params)):
         if isinstance(params, Params):
