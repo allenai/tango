@@ -11,8 +11,8 @@ from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
-from .common import Constants
-from .util import (
+from .common import (
+    Constants,
     GCSClient,
     GCSDataset,
     GCSDatasetConflict,
