@@ -12,7 +12,7 @@ from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
-from .common import Constants, get_client, step_dataset_name
+from .common import Constants, get_client
 
 logger = logging.getLogger(__name__)
 
@@ -52,13 +52,13 @@ class BeakerStepCache(RemoteStepCache):
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Dataset]:
         try:
-            dataset = self.beaker.dataset.get(step_dataset_name(step))
+            dataset = self.beaker.dataset.get(Constants.step_dataset_name(step))
             return dataset if dataset.committed is not None else None
         except DatasetNotFound:
             return None
 
     def _sync_step_remote(self, step: Step, objects_dir: Path) -> Dataset:
-        dataset_name = step_dataset_name(step)
+        dataset_name = Constants.step_dataset_name(step)
         try:
             dataset = self.beaker.dataset.create(dataset_name, commit=False)
         except DatasetConflict:

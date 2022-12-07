@@ -4,6 +4,7 @@ import json
 import logging
 import tempfile
 import time
+from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -79,43 +80,56 @@ class RemoteClient:
     def __init__(self, *args, **kwargs):
         pass
 
+    @abstractmethod
     def url(self, dataset: Optional[str] = None):
         raise NotImplementedError()
 
+    @abstractmethod
     def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
         raise NotImplementedError()
 
     @property
+    @abstractmethod
     def full_name(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def get(self, dataset) -> RemoteDataset:
         raise NotImplementedError()
 
+    @abstractmethod
     def create(self, dataset: str, commit: bool = False):
         raise NotImplementedError()
 
+    @abstractmethod
     def delete(self, dataset):
         raise NotImplementedError()
 
+    @abstractmethod
     def sync(self, dataset, objects_dir):
         raise NotImplementedError()
 
+    @abstractmethod
     def commit(self, dataset):
         raise NotImplementedError()
 
+    @abstractmethod
     def upload(self, dataset, source, target) -> None:
         raise NotImplementedError()
 
+    @abstractmethod
     def get_file(self, dataset, file_path):
         raise NotImplementedError()
 
+    @abstractmethod
     def file_info(self, dataset, file_path) -> RemoteFileInfo:
         raise NotImplementedError()
 
+    @abstractmethod
     def fetch(self, dataset, target_dir) -> RemoteDataset:
         raise NotImplementedError()
 
+    @abstractmethod
     def datasets(self, match: str, uncommitted: bool = False, results: bool = False):
         raise NotImplementedError()
 
@@ -132,12 +146,7 @@ class RemoteStepLock:
         self._step_id = step if isinstance(step, str) else step.unique_id
         self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
         self._lock_dataset: Optional[RemoteDataset] = None
-        self.lock_dataset_url = self._dataset_url(client.url(), self._lock_dataset_name)
-
-    @classmethod
-    def _dataset_url(cls, workspace_url: str, lock_dataset_name: str) -> str:
-        # TODO: this should be the client's method, change when Beaker is also a RemoteClient.
-        raise NotImplementedError()
+        self.lock_dataset_url = self._client.dataset_url(client.url(), self._lock_dataset_name)
 
     @property
     def metadata(self) -> Dict[str, Any]:

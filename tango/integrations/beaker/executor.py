@@ -361,7 +361,7 @@ class BeakerExecutor(Executor):
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
 
-        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
+        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs).beaker
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets

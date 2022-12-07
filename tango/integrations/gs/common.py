@@ -210,7 +210,3 @@ class Constants(RemoteConstants):
 class GCSStepLock(RemoteStepLock):
     def __init__(self, client, step: Union[str, StepInfo, Step]):
         super().__init__(client, step)
-
-    @classmethod
-    def _dataset_url(cls, workspace_url: str, lock_dataset_name: str) -> str:
-        return workspace_url + "/ " + lock_dataset_name

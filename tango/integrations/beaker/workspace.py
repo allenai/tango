@@ -1,6 +1,6 @@
 import os
 from collections import OrderedDict
-from typing import Dict, Optional, TypeVar
+from typing import Dict, Optional, TypeVar, cast
 from urllib.parse import ParseResult
 
 from beaker import Experiment, ExperimentNotFound
@@ -10,7 +10,7 @@ from tango.step_info import StepInfo
 from tango.workspace import Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
-from .common import BeakerStepLock, get_client
+from .common import BeakerClient, BeakerStepLock, get_client
 from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
@@ -77,8 +77,9 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def _remote_lock(self, step: Step) -> BeakerStepLock:  # type: ignore
         # TODO: deal with mypy remotesteplock
+        self.client = cast(BeakerClient, self.client)
         return BeakerStepLock(
-            self.beaker, step, current_beaker_experiment=self.current_beaker_experiment
+            self.client, step, current_beaker_experiment=self.current_beaker_experiment
         )
 
     def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:

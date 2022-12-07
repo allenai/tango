@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from beaker import Beaker
-from beaker import Dataset
 from beaker import Dataset as BeakerDataset
 from beaker import (
     DatasetConflict,
@@ -27,6 +26,7 @@ from tango.common.remote_utils import (
     RemoteConstants,
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
+    RemoteStepLock,
 )
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -53,8 +53,6 @@ class BeakerDatasetWriteError(TangoError):
 class BeakerClient(RemoteClient):
     """
     A client for interacting with beaker.
-    TODO: this may or may not be the best way of dealing with the remote client abstraction.
-    Feedback needed.
     """
 
     def __init__(self, beaker_workspace: Optional[str] = None, **kwargs):
@@ -74,7 +72,7 @@ class BeakerClient(RemoteClient):
         return self.beaker.workspace.get().full_name
 
     def url(self, dataset: Optional[str] = None):
-        return self.beaker.ur
+        return self.beaker.dataset.url(dataset)
 
     def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
         return (
@@ -149,51 +147,19 @@ class Constants(RemoteConstants):
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
 
 
-def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
+def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> BeakerClient:
     return BeakerClient(beaker_workspace, **kwargs)
 
 
-def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{Constants.STEP_DATASET_PREFIX}{step if isinstance(step, str) else step.unique_id}"
-
-
-def step_lock_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{step_dataset_name(step)}-lock"
-
-
-def run_dataset_name(name: str) -> str:
-    return f"{Constants.RUN_DATASET_PREFIX}{name}"
-
-
-def dataset_url(workspace_url: str, dataset_name: str) -> str:
-    return (
-        workspace_url
-        + "/datasets?"
-        + urllib.parse.urlencode(
-            {
-                "text": dataset_name,
-                "committed": "false",
-            }
-        )
-    )
-
-
-class BeakerStepLock:
-    # TODO: inherit from RemoteStepLock
-    METADATA_FNAME = "metadata.json"
-
+class BeakerStepLock(RemoteStepLock):
     def __init__(
         self,
-        beaker: Beaker,
+        client: BeakerClient,
         step: Union[str, StepInfo, Step],
         current_beaker_experiment: Optional[Experiment] = None,
     ):
-        self._beaker = beaker
-        self._step_id = step if isinstance(step, str) else step.unique_id
-        self._lock_dataset_name = step_lock_dataset_name(step)
-        self._lock_dataset: Optional[Dataset] = None
+        super().__init__(client, step)
         self._current_beaker_experiment = current_beaker_experiment
-        self.lock_dataset_url = dataset_url(beaker.workspace.url(), self._lock_dataset_name)
 
     @property
     def metadata(self) -> Dict[str, Any]:
@@ -205,12 +171,10 @@ class BeakerStepLock:
 
     def _last_metadata(self) -> Optional[Dict[str, Any]]:
         try:
-            metadata_bytes = self._beaker.dataset.get_file(
-                self._lock_dataset_name, self.METADATA_FNAME, quiet=True
-            )
+            metadata_bytes = self._client.get_file(self._lock_dataset_name, self.METADATA_FNAME)
             metadata = json.loads(metadata_bytes)
             return metadata
-        except (DatasetNotFound, FileNotFoundError):
+        except (BeakerDatasetNotFound, FileNotFoundError):
             return None
 
     def _acquiring_experiment_is_done(self) -> bool:
@@ -223,8 +187,8 @@ class BeakerStepLock:
             return False
 
         try:
-            last_experiment = self._beaker.experiment.get(last_experiment_id)
-            job = self._beaker.experiment.latest_job(last_experiment)
+            last_experiment = self._client.beaker.experiment.get(last_experiment_id)  # type: ignore
+            job = self._client.beaker.experiment.latest_job(last_experiment)  # type: ignore
         except ExperimentNotFound:
             # Experiment must have been deleted.
             return True
@@ -243,9 +207,7 @@ class BeakerStepLock:
         last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._beaker.dataset.create(
-                    self._lock_dataset_name, commit=False
-                )
+                self._lock_dataset = self._client.create(self._lock_dataset_name, commit=False)
 
                 atexit.register(self.release)
 
@@ -255,13 +217,13 @@ class BeakerStepLock:
                     metadata_path = tmp_dir / self.METADATA_FNAME
                     with open(metadata_path, "w") as f:
                         json.dump(self.metadata, f)
-                    self._beaker.dataset.sync(self._lock_dataset, metadata_path, quiet=True)
-            except DatasetConflict:
+                    self._client.sync(self._lock_dataset, metadata_path)
+            except BeakerDatasetConflict:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.
                 if self._acquiring_experiment_is_done():
-                    self._beaker.dataset.delete(self._lock_dataset_name)
+                    self._client.delete(self._lock_dataset_name)
                     continue
 
                 if last_logged is None or last_logged - start >= log_interval:
@@ -284,16 +246,3 @@ class BeakerStepLock:
                 f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
                 f"just delete the lock dataset."
             )
-
-    def release(self):
-        if self._lock_dataset is not None:
-            try:
-                self._beaker.dataset.delete(self._lock_dataset)
-            except DatasetNotFound:
-                # Dataset must have been manually deleted.
-                pass
-            self._lock_dataset = None
-            atexit.unregister(self.release)
-
-    def __del__(self):
-        self.release()
