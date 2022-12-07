@@ -3,6 +3,7 @@ import logging
 import random
 import tempfile
 import warnings
+from abc import abstractmethod
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
@@ -55,10 +56,12 @@ class RemoteWorkspace(Workspace):
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
 
     @property
+    @abstractmethod
     def url(self) -> str:
         raise NotImplementedError()
 
     @classmethod
+    @abstractmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
         raise NotImplementedError()
 
@@ -100,9 +103,11 @@ class RemoteWorkspace(Workspace):
             self._update_step_info(step_info)
             return step_info
 
+    @abstractmethod
     def _remote_lock(self, step: Step) -> RemoteStepLock:
         raise NotImplementedError()
 
+    @abstractmethod
     def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
         raise NotImplementedError()
 
