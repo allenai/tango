@@ -10,7 +10,7 @@ from tango.step_info import StepInfo
 from tango.workspace import Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
-from .common import BeakerClient, BeakerStepLock, get_client
+from .common import BeakerClient, BeakerStepLock, get_client, Constants
 from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
@@ -29,6 +29,7 @@ class BeakerWorkspace(RemoteWorkspace):
     """
 
     STEP_INFO_CACHE_SIZE = 512
+    Constants = Constants
 
     def __init__(self, workspace: str, **kwargs):
         client = get_client(workspace, **kwargs)
