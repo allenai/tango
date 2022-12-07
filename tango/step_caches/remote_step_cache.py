@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import tempfile
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Union
 
@@ -41,6 +42,28 @@ class RemoteStepCache(LocalStepCache):
     def __init__(self, local_dir: Path):
         super().__init__(local_dir)
 
+    @abstractmethod
+    def _step_result_remote(self, step: Union[Step, StepInfo]):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _sync_step_remote(self, step: Step, objects_dir: Path):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError()
+
+    def _step_results_dir(self) -> str:
+        return RemoteConstants.STEP_RESULT_DIR
+
+    def _raise_remote_not_found(self):
+        raise RemoteNotFoundError()
+
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
         return FileLock(
             self.step_dir(step).with_suffix(".lock"), read_only_ok=read_only_ok
@@ -71,18 +94,6 @@ class RemoteStepCache(LocalStepCache):
             return self._step_result_remote(step) is not None
         else:
             return False
-
-    def _step_results_dir(self) -> str:
-        return RemoteConstants.STEP_RESULT_DIR
-
-    def _step_result_remote(self, step: Union[Step, StepInfo]):
-        raise NotImplementedError()
-
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
-        raise NotImplementedError()
-
-    def _raise_remote_not_found(self):
-        raise RemoteNotFoundError()
 
     def __getitem__(self, step: Union[Step, StepInfo]) -> Any:
         key = step.unique_id
@@ -126,9 +137,6 @@ class RemoteStepCache(LocalStepCache):
 
             return load_and_return()
 
-    def _sync_step_remote(self, step: Step, objects_dir: Path):
-        raise NotImplementedError()
-
     def __setitem__(self, step: Step, value: Any) -> None:
         if not step.cache_results:
             logger.warning("Tried to cache step %s despite being marked as uncacheable.", step.name)
@@ -154,6 +162,3 @@ class RemoteStepCache(LocalStepCache):
 
         # Finally, add to in-memory caches.
         self._add_to_cache(step.unique_id, value)
-
-    def __len__(self):
-        raise NotImplementedError()
