@@ -117,7 +117,6 @@ class RemoteWorkspace(Workspace):
             return
 
         # Get local file lock + remote dataset lock.
-        # lock = GCSStepLock(self.client, step)
         lock = self._remote_lock(step)
         lock.acquire()
         self.locks[step] = lock
@@ -232,7 +231,7 @@ class RemoteWorkspace(Workspace):
 
         # Collect step info.
         with concurrent.futures.ThreadPoolExecutor(
-            thread_name_prefix="GCSWorkspace.register_run()-"
+            thread_name_prefix="RemoteWorkspace.register_run()-"
         ) as executor:
             step_info_futures = []
             for step in all_steps:
