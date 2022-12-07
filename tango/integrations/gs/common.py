@@ -12,13 +12,13 @@ from typing import Dict, List, Optional, Union
 import gcsfs
 
 from tango.common.aliases import PathOrStr
-from tango.common.exceptions import TangoError
 from tango.common.remote_utils import (
     RemoteClient,
     RemoteConstants,
     RemoteDataset,
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
+    RemoteDatasetWriteError,
     RemoteFileInfo,
     RemoteStepLock,
 )
@@ -26,18 +26,6 @@ from tango.step import Step
 from tango.step_info import StepInfo
 
 logger = logging.getLogger(__name__)
-
-
-class GCSDatasetNotFound(RemoteDatasetNotFound):
-    pass
-
-
-class GCSDatasetConflict(RemoteDatasetConflict):
-    pass
-
-
-class GCSDatasetWriteError(TangoError):
-    pass
 
 
 class GCSDataset(RemoteDataset):
@@ -107,7 +95,7 @@ class GCSClient(RemoteClient):
         try:
             return self._convert_ls_info_to_dataset(self.gcs_fs.ls(path=path, detail=True))
         except FileNotFoundError:
-            raise GCSDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def create(self, dataset: str, commit: bool = False):
         # since empty folders cannot exist by themselves.
@@ -115,7 +103,7 @@ class GCSClient(RemoteClient):
         try:
             info = self.gcs_fs.info(folder_path)
             if info["type"] == "directory":
-                raise GCSDatasetConflict(f"{folder_path} already exists!")
+                raise RemoteDatasetConflict(f"{folder_path} already exists!")
             else:
                 # Hack. Technically, this means that a folder of the name doesn't exist.
                 # A file may still exist. Ideally, shouldn't happen.
@@ -141,7 +129,7 @@ class GCSClient(RemoteClient):
         try:
             self.gcs_fs.put(str(objects_dir), folder_path, recursive=True)
         except Exception:
-            raise GCSDatasetWriteError()
+            raise RemoteDatasetWriteError()
         return self.get(dataset)
 
     def commit(self, dataset: Union[str, GCSDataset]):
@@ -182,7 +170,7 @@ class GCSClient(RemoteClient):
         try:
             self.gcs_fs.get(dataset.dataset_path, target_dir)
         except FileNotFoundError:
-            raise GCSDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def datasets(
         self, match: str, uncommitted: bool = True, results: bool = False

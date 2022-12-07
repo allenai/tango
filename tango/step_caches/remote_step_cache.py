@@ -108,7 +108,6 @@ class RemoteStepCache(LocalStepCache):
 
         def load_and_return():
             metadata = CacheMetadata.from_params(Params.from_file(self._metadata_path(step)))
-            # TODO: note that this is slightly different for beaker and wandb
             result = metadata.format.read(self.step_dir(step) / self._step_results_dir())
             self._add_to_cache(key, result)
             return result

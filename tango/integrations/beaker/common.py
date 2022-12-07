@@ -20,12 +20,12 @@ from beaker import (
 )
 
 from tango.common.aliases import PathOrStr
-from tango.common.exceptions import TangoError
 from tango.common.remote_utils import (
     RemoteClient,
     RemoteConstants,
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
+    RemoteDatasetWriteError,
     RemoteStepLock,
 )
 from tango.step import Step
@@ -35,19 +35,6 @@ from tango.version import VERSION
 # from tango.common.util import utc_now_datetime
 
 logger = logging.getLogger(__name__)
-
-
-class BeakerDatasetNotFound(RemoteDatasetNotFound):
-    # TODO: we likely don't need this empty abstraction. Can just raise RemoteDatasetNotFound.
-    pass
-
-
-class BeakerDatasetConflict(RemoteDatasetConflict):
-    pass
-
-
-class BeakerDatasetWriteError(TangoError):
-    pass
 
 
 class BeakerClient(RemoteClient):
@@ -91,13 +78,13 @@ class BeakerClient(RemoteClient):
             return self.beaker.dataset.get(dataset)
         except DatasetConflict:
             # We do this so that remote_workspace gets errors of the type RemoteDatasetNotFound.
-            raise BeakerDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def create(self, dataset: str, commit: bool = False):
         try:
             self.beaker.dataset.create(dataset, commit=commit)
         except DatasetConflict:
-            raise BeakerDatasetConflict()
+            raise RemoteDatasetConflict()
 
     def delete(self, dataset: BeakerDataset):
         self.beaker.dataset.delete(dataset)
@@ -106,7 +93,7 @@ class BeakerClient(RemoteClient):
         try:
             self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
         except DatasetWriteError:
-            raise BeakerDatasetWriteError()
+            raise RemoteDatasetWriteError()
 
     def commit(self, dataset: Union[str, BeakerDataset]):
         self.beaker.dataset.commit(dataset)
@@ -118,19 +105,19 @@ class BeakerClient(RemoteClient):
         try:
             self.beaker.dataset.get_file(dataset, file_path, quiet=True)
         except DatasetNotFound:
-            raise BeakerDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def file_info(self, dataset: BeakerDataset, file_path: str) -> FileInfo:
         try:
             return self.beaker.dataset.file_info(dataset, file_path)
         except DatasetNotFound:
-            raise BeakerDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def fetch(self, dataset: BeakerDataset, target_dir: PathOrStr):
         try:
             self.beaker.dataset.fetch(dataset, target_dir, quiet=True)
         except DatasetNotFound:
-            raise BeakerDatasetNotFound()
+            raise RemoteDatasetNotFound()
 
     def datasets(
         self, match: str, uncommitted: bool = True, results: bool = False
@@ -174,7 +161,7 @@ class BeakerStepLock(RemoteStepLock):
             metadata_bytes = self._client.get_file(self._lock_dataset_name, self.METADATA_FNAME)
             metadata = json.loads(metadata_bytes)
             return metadata
-        except (BeakerDatasetNotFound, FileNotFoundError):
+        except (RemoteDatasetNotFound, FileNotFoundError):
             return None
 
     def _acquiring_experiment_is_done(self) -> bool:
@@ -218,7 +205,7 @@ class BeakerStepLock(RemoteStepLock):
                     with open(metadata_path, "w") as f:
                         json.dump(self.metadata, f)
                     self._client.sync(self._lock_dataset, metadata_path)
-            except BeakerDatasetConflict:
+            except RemoteDatasetConflict:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.

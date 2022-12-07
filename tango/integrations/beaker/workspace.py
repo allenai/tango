@@ -75,8 +75,7 @@ class BeakerWorkspace(RemoteWorkspace):
         else:
             return None
 
-    def _remote_lock(self, step: Step) -> BeakerStepLock:  # type: ignore
-        # TODO: deal with mypy remotesteplock
+    def _remote_lock(self, step: Step) -> BeakerStepLock:
         self.client = cast(BeakerClient, self.client)
         return BeakerStepLock(
             self.client, step, current_beaker_experiment=self.current_beaker_experiment

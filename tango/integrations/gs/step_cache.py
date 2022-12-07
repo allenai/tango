@@ -5,20 +5,18 @@ from typing import Optional, Union
 from google.cloud import storage
 
 from tango.common.aliases import PathOrStr
+from tango.common.remote_utils import (
+    RemoteDatasetConflict,
+    RemoteDatasetNotFound,
+    RemoteDatasetWriteError,
+)
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
 from tango.step_info import StepInfo
 
-from .common import (
-    Constants,
-    GCSClient,
-    GCSDataset,
-    GCSDatasetConflict,
-    GCSDatasetNotFound,
-    GCSDatasetWriteError,
-)
+from .common import Constants, GCSClient, GCSDataset
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,7 @@ class GCSStepCache(RemoteStepCache):
         try:
             dataset = self.client.get(Constants.step_dataset_name(step))
             return dataset if dataset.committed else None
-        except GCSDatasetNotFound:
+        except RemoteDatasetNotFound:
             return None
 
     def _sync_step_remote(self, step: Step, objects_dir: Path) -> storage.blob.Blob:
@@ -64,12 +62,12 @@ class GCSStepCache(RemoteStepCache):
 
         try:
             self.client.create(dataset_name, commit=False)
-        except GCSDatasetConflict:
+        except RemoteDatasetConflict:
             pass
         try:
             dataset = self.client.sync(dataset_name, objects_dir)
             dataset = self.client.commit(dataset)
-        except GCSDatasetWriteError:
+        except RemoteDatasetWriteError:
             pass
 
         return dataset
@@ -77,7 +75,7 @@ class GCSStepCache(RemoteStepCache):
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
         try:
             self.client.fetch(step_result, target_dir)
-        except GCSDatasetNotFound:
+        except RemoteDatasetNotFound:
             self._raise_remote_not_found()
 
     def __len__(self):

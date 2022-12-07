@@ -72,6 +72,10 @@ class RemoteDatasetNotFound(TangoError):
     pass
 
 
+class RemoteDatasetWriteError(TangoError):
+    pass
+
+
 class RemoteClient:
     """
     A client for interacting with remote storage.
