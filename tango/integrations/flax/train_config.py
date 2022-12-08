@@ -25,7 +25,7 @@ class TrainConfig:
     The name of the current step.
     """
 
-    train_split: Optional[str] = "train"
+    train_split: str = "train"
     """
     The name of the training split.
     """

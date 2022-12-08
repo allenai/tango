@@ -23,7 +23,11 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
         super().__init__(str(lock_file), timeout=timeout)
         self._read_only_ok = read_only_ok
 
-    def acquire(self, timeout=None, poll_interval=0.05) -> AcquireReturnProxy:
+    def acquire(  # type: ignore[override]
+        self,
+        timeout: Optional[float] = None,
+        poll_interval: float = 0.05,
+    ) -> AcquireReturnProxy:
         try:
             return super().acquire(timeout=timeout, poll_interval=poll_interval)
         except OSError as err:

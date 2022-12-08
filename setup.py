@@ -64,7 +64,7 @@ assert "all" in extras
 assert "dev" in extras
 assert "examples" in extras
 for integration in integrations:
-    assert integration in extras
+    assert integration in extras, f"Integration {integration} is missing from extras in setup.py."
 
 # version.py defines the VERSION and VERSION_SHORT variables.
 # We use exec here so we don't import `cached_path` whilst setting up.
@@ -103,7 +103,6 @@ setup(
         ],
     ),
     package_data={
-        "tango.server": ["*.svg", "*.css", "*.js", "*.html"],
         "tango.integrations.beaker": ["*.sh"],
         "tango": ["py.typed"],
     },

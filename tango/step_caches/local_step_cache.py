@@ -163,7 +163,7 @@ class LocalStepCache(StepCache):
             )
             if not cacheable:
                 class_name = (
-                    step_or_unique_id.__class__.__name__
+                    step_or_unique_id.class_name
                     if isinstance(step_or_unique_id, Step)
                     else step_or_unique_id.step_class_name
                 )

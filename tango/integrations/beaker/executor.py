@@ -21,6 +21,7 @@ from beaker import (
     ExperimentSpec,
     JobFailedError,
     JobTimeoutError,
+    NodeResources,
     Priority,
     TaskResources,
     TaskSpec,
@@ -57,6 +58,13 @@ class StepFailedError(ExecutorError):
 class ResourceAssignmentError(ExecutorError):
     """
     Raised when a scheduler can't find enough free resources at the moment to run a step.
+    """
+
+
+class UnrecoverableResourceAssignmentError(ExecutorError):
+    """
+    An unrecoverable version of :class:`ResourceAssignmentError`. Raises this
+    from a :class:`BeakerScheduler` will cause the executor to fail.
     """
 
 
@@ -127,8 +135,21 @@ class SimpleBeakerScheduler(BeakerScheduler):
         super().__init__()
         self.clusters = clusters
         self.priority = priority
+        self._node_resources: Optional[Dict[str, List[NodeResources]]] = None
         if not self.clusters:
             raise ConfigurationError("At least one cluster is required in 'clusters'")
+
+    @property
+    def node_resources(self) -> Dict[str, List[NodeResources]]:
+        if self._node_resources is None:
+            node_resources = {
+                cluster: [node.limits for node in self.beaker.cluster.nodes(cluster)]
+                for cluster in self.clusters
+            }
+            self._node_resources = node_resources
+            return node_resources
+        else:
+            return self._node_resources
 
     def schedule(self, step: Step) -> ResourceAssignment:
         step_resources = step.resources
@@ -138,8 +159,19 @@ class SimpleBeakerScheduler(BeakerScheduler):
             memory=step_resources.memory,
             shared_memory=step_resources.shared_memory,
         )
+        clusters = self.clusters
+        if step_resources.gpu_type is not None:
+            clusters = [
+                cluster
+                for cluster, nodes in self.node_resources.items()
+                if all([node.gpu_type == step_resources.gpu_type for node in nodes])
+            ]
+            if not clusters:
+                raise UnrecoverableResourceAssignmentError(
+                    f"Could not find cluster with nodes that have GPU type '{step_resources.gpu_type}'"
+                )
         return ResourceAssignment(
-            cluster=self.clusters, resources=task_resources, priority=self.priority
+            cluster=clusters, resources=task_resources, priority=self.priority
         )
 
 
@@ -361,6 +393,7 @@ class BeakerExecutor(Executor):
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
 
+        self.max_thread_workers = self.parallelism or min(32, (os.cpu_count() or 1) + 4)
         self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs).beaker
         self.beaker_image = beaker_image
         self.docker_image = docker_image
@@ -393,6 +426,7 @@ class BeakerExecutor(Executor):
         self._is_cancelled = threading.Event()
         self._logged_git_info = False
         self._last_resource_assignment_warning: Optional[float] = None
+        self._jobs = 0
 
         try:
             self.github_token: str = github_token or os.environ["GITHUB_TOKEN"]
@@ -490,6 +524,7 @@ class BeakerExecutor(Executor):
             def future_done_callback(future: concurrent.futures.Future):
                 nonlocal successful, failed, steps_left_to_run
 
+                self._jobs = max(0, self._jobs - 1)
                 step = step_graph[step_name]
 
                 try:
@@ -570,7 +605,7 @@ class BeakerExecutor(Executor):
         update_steps_to_run()
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.parallelism) as pool:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_thread_workers) as pool:
                 while steps_left_to_run:
                     # Submit steps left to run.
                     for step_name in steps_to_run:
@@ -578,6 +613,7 @@ class BeakerExecutor(Executor):
                             self._execute_sub_graph_for_step, step_graph, step_name, True
                         )
                         future.add_done_callback(make_future_done_callback(step_name))
+                        self._jobs += 1
                         step_futures.append(future)
                         submitted_steps.add(step_name)
 
@@ -651,8 +687,20 @@ class BeakerExecutor(Executor):
             )
             return None
 
+        if step.resources.machine == "local":
+            if step.cache_results:
+                step.ensure_result(self.workspace)
+            else:
+                result = step.result(self.workspace)
+                if hasattr(result, "__next__"):
+                    from collections import deque
+
+                    deque(result, maxlen=0)
+            return None
+
         experiment: Optional[Experiment] = None
         experiment_url: Optional[str] = None
+        ephemeral_datasets: List[Dataset] = []
 
         # Try to find any existing experiments for this step that are still running.
         if step.cache_results:
@@ -678,7 +726,9 @@ class BeakerExecutor(Executor):
         # Otherwise we submit a new experiment...
         if experiment is None:
             # Initialize experiment and task spec.
-            experiment_name, spec = self._build_experiment_spec(step_graph, step_name)
+            experiment_name, spec, ephemeral_datasets = self._build_experiment_spec(
+                step_graph, step_name
+            )
             self._check_if_cancelled()
 
             step.log_starting()
@@ -698,18 +748,19 @@ class BeakerExecutor(Executor):
         # Follow the experiment until it completes.
         try:
             while True:
+                poll_interval = min(60, 5 * min(self._jobs, self.max_thread_workers))
                 try:
                     self._check_if_cancelled()
                     self.beaker.experiment.wait_for(
                         experiment,
                         strict=True,
                         quiet=True,
-                        timeout=31,
-                        poll_interval=30,
+                        timeout=poll_interval + 2,
+                        poll_interval=poll_interval,
                     )
                     break
                 except JobTimeoutError:
-                    time.sleep(30)
+                    time.sleep(poll_interval)
                     continue
         except (JobFailedError, TaskStoppedError):
             cli_logger.error(
@@ -733,7 +784,18 @@ class BeakerExecutor(Executor):
             raise
         else:
             step.log_finished()
-            return experiment_url
+        finally:
+            # Remove ephemeral datasets.
+            result_dataset = self.beaker.experiment.results(experiment)
+            if result_dataset is not None:
+                ephemeral_datasets.append(result_dataset)
+            for dataset in ephemeral_datasets:
+                try:
+                    self.beaker.dataset.delete(dataset)
+                except DatasetNotFound:
+                    pass
+
+        return experiment_url
 
     @staticmethod
     def _parse_git_remote(url: str) -> Tuple[str, str]:
@@ -823,7 +885,7 @@ class BeakerExecutor(Executor):
 
     def _build_experiment_spec(
         self, step_graph: StepGraph, step_name: str
-    ) -> Tuple[str, ExperimentSpec]:
+    ) -> Tuple[str, ExperimentSpec, List[Dataset]]:
         from tango.common.logging import TANGO_LOG_LEVEL
 
         step = step_graph[step_name]
@@ -935,6 +997,10 @@ class BeakerExecutor(Executor):
         if self.install_cmd is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=self.install_cmd)
 
-        return experiment_name, ExperimentSpec(
-            tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+        return (
+            experiment_name,
+            ExperimentSpec(
+                tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+            ),
+            [step_graph_dataset],
         )

@@ -387,7 +387,7 @@ def construct_arg(
     if popped_params is default:
         return popped_params
 
-    from tango.step import Step, StepIndexer, WithUnresolvedSteps
+    from tango.step import FunctionalStep, Step, StepIndexer, WithUnresolvedSteps
 
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", [])
@@ -457,7 +457,10 @@ def construct_arg(
 
             if isinstance(result, Step):
                 expected_return_type = args[0]
-                return_type = inspect.signature(result.run).return_annotation
+                if isinstance(result, FunctionalStep):
+                    return_type = inspect.signature(result.WRAPPED_FUNC).return_annotation
+                else:
+                    return_type = inspect.signature(result.run).return_annotation
                 if return_type == inspect.Signature.empty:
                     logger.warning(
                         "Step %s has no return type annotation. Those are really helpful when "

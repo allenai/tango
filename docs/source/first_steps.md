@@ -120,6 +120,28 @@ and warn you when the types don't match up.
 So as long as Tango is able to import this module (`components.py`) these step implementations will be added to the registry
 and Tango will know how to instantiate and run them.
 
+There's also a short-hand way of implementing steps, using the {func}`@step() <tango.step.step>` function decorator:
+
+```python
+from tango import step
+
+@step(deterministic=False)
+def random_choice(choices: List[str]) -> str:
+    return random.choice(choices)
+
+@step()
+def concat_strings(string1: str, string2: str) -> str:
+    return string1 + string2
+```
+
+This will register these steps under the name of the corresponding function, i.e. "random_choice" and "concat_strings", by default, though that can be overridden by specifying the "name" parameter to the decorator:
+
+```python
+@step(name="random-string", deterministic=False)
+def random_choice(choices: List[str]) -> str:
+    return random.choice(choices)
+```
+
 ## Executing an experiment
 
 At this point we've implemented our custom steps (`components.py`) and created our configuration

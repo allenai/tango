@@ -7,13 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- You can now add arguments to steps without invalidating the cache. See `Step.SKIP_DEFAULT_ARGUMENTS`.
+
+
+## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01
+
+### Added
+
+- Added `gpu_type` field to `StepResources`. The `BeakerExecutor` can use this to determine which clusters to a submit a step to.
+- Added `machine` field to `StepResources`. You can set this to "local" when using the `BeakerExecutor` to force it to run the step locally.
+- Added `--ext-var` argument to `tango run` for setting JSONNET external variables
+  when loading the experiment config.
+- Added `@step()` decorator to create `Step` classes from functions.
+- Added the `transformers::with_soft_prompt` integration, to make soft-prompted prefix transformers easy.
+
 ### Removed
 
 - Removed PyTorch Lightning integration.
+- Removed `tango server` command and `--serve/--no-serve` option for `tango run`.
+- Removed `source_release.py`, which was checked in by accident.
 
 ### Fixed
 
 - Fixed issue where Executor `parallelism` option in a Tango settings file would be ignored.
+- Fixed a bug where the unique ID of a step that depends on a key-value of the result of another step could change if the name of the other step changes.
+- Fixed a bug where importing certain libraries (like torchmetrics) would mess with our exception handling because they set `sys.excepthook` for some reason. Now we always reset `sys.excepthook` after importing.
+- The type hints for the flax trainer suggested that the training split is optional when in fact it's mandatory.
+- Made `BeakerWorkspace` / `BeakerStepLock` more robust when a job is preempted.
+- Minor performance improvements for the Beaker executor and workspace.
+- Fixed bug with `step_extra_dependencies` where uncacheable dependencies wouldn't be run.
+
 
 ## [v1.0.2](https://github.com/allenai/tango/releases/tag/v1.0.2) - 2022-11-14
 

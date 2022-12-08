@@ -13,6 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    ClassVar,
     Dict,
     Generic,
     Iterable,
@@ -67,6 +68,14 @@ class StepResources(FromParams):
     step to run.
     """
 
+    machine: Optional[str] = None
+    """
+    This is an executor-dependent option.
+
+    With the Beaker executor, for example, you can set this to "local" to force
+    the executor to run the step locally instead of on Beaker.
+    """
+
     cpu_count: Optional[float] = None
     """
     Minimum number of logical CPU cores. It may be fractional.
@@ -77,6 +86,15 @@ class StepResources(FromParams):
     gpu_count: Optional[int] = None
     """
     Minimum number of GPUs. It must be non-negative.
+    """
+
+    gpu_type: Optional[str] = None
+    """
+    The type of GPU that the step requires.
+
+    The exact string you should use to define a GPU type depends on the executor.
+    With the Beaker executor, for example, you should use the same strings you
+    see in the Beaker UI, such as 'NVIDIA A100-SXM-80GB'.
     """
 
     memory: Optional[str] = None
@@ -161,6 +179,11 @@ class Step(Registrable, Generic[T]):
     For example, you might use this for the batch size in an inference step, where you only care about
     the model output, not about how many outputs you can produce at the same time.
     """
+
+    SKIP_DEFAULT_ARGUMENTS: Dict[str, Any] = {}
+    """Sometimes, you want to add another argument to your :meth:`run()` method, but you don't want to
+    invalidate the cache when this new argument is set to its default value. If that is the case, add
+    the argument to this dictionary with the default value that should be ignored."""
 
     METADATA: Dict[str, Any] = {}
     """
@@ -265,6 +288,10 @@ class Step(Registrable, Generic[T]):
             self.metadata.update(step_metadata)
         self.extra_dependencies = set(step_extra_dependencies) if step_extra_dependencies else set()
 
+    @property
+    def class_name(self) -> str:
+        return self.__class__.__name__
+
     @classmethod
     def massage_kwargs(cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -352,8 +379,11 @@ class Step(Registrable, Generic[T]):
                 f"Tried to make a Step of type {choice}, but ended up with a {subclass}."
             )
 
-        parameters = infer_method_params(subclass, subclass.run, infer_kwargs=False)
-        del parameters["self"]
+        if issubclass(subclass, FunctionalStep):
+            parameters = infer_method_params(subclass, subclass.WRAPPED_FUNC, infer_kwargs=False)
+        else:
+            parameters = infer_method_params(subclass, subclass.run, infer_kwargs=False)
+            del parameters["self"]
         init_parameters = infer_constructor_params(subclass)
         del init_parameters["self"]
         del init_parameters["kwargs"]
@@ -422,6 +452,7 @@ class Step(Registrable, Generic[T]):
             self.work_dir_for_run = Path(dir_for_cleanup.name)
 
         try:
+            self._replace_steps_with_results(self.extra_dependencies, workspace)
             kwargs = self._replace_steps_with_results(self.kwargs, workspace)
             self.log_starting(needed_by=needed_by)
             workspace.step_starting(self)
@@ -505,7 +536,7 @@ class Step(Registrable, Generic[T]):
         Unique IDs are of the shape ``$class_name-$version-$hash``, where the hash is the hash of the
         inputs for deterministic steps, and a random string of characters for non-deterministic ones."""
         if self.unique_id_cache is None:
-            self.unique_id_cache = self.__class__.__name__
+            self.unique_id_cache = self.class_name
             if self.VERSION is not None:
                 self.unique_id_cache += "-"
                 self.unique_id_cache += self.VERSION
@@ -515,7 +546,13 @@ class Step(Registrable, Generic[T]):
                 hash_kwargs = {
                     key: value
                     for key, value in self.kwargs.items()
-                    if key not in self.SKIP_ID_ARGUMENTS
+                    if (key not in self.SKIP_ID_ARGUMENTS)
+                    and (
+                        (
+                            key not in self.SKIP_DEFAULT_ARGUMENTS
+                            or self.SKIP_DEFAULT_ARGUMENTS[key] != value
+                        )
+                    )
                 }
                 self.unique_id_cache += det_hash(
                     (
@@ -722,7 +759,68 @@ class Step(Registrable, Generic[T]):
         cli_logger.error('[red]\N{ballot x} Step [bold]"%s"[/] failed[/]', self.name)
 
 
-class StepIndexer:
+class FunctionalStep(Step):
+    WRAPPED_FUNC: ClassVar[Callable]
+
+    @property
+    def class_name(self) -> str:
+        return self.WRAPPED_FUNC.__name__
+
+    def run(self, *args, **kwargs):
+        return self.__class__.WRAPPED_FUNC(*args, **kwargs)
+
+
+def step(
+    name: Optional[str] = None,
+    *,
+    exist_ok: bool = False,
+    deterministic: bool = True,
+    cacheable: Optional[bool] = None,
+    version: Optional[str] = None,
+    format: Format = DillFormat("gz"),
+    skip_id_arguments: Optional[Set[str]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+):
+    """
+    A decorator to create a :class:`Step` from a function.
+
+    :param name: A name to register the step under. By default the name of the function is used.
+    :param exist_ok:
+        If True, overwrites any existing step registered under the same ``name``. Else,
+        throws an error if a step is already registered under ``name``.
+
+    See the :class:`Step` class for an explanation of the other parameters.
+
+    Example
+    -------
+
+    .. testcode::
+
+        from tango import step
+
+        @step(version="001")
+        def add(a: int, b: int) -> int:
+            return a + b
+    """
+
+    def step_wrapper(step_func):
+        @Step.register(name or step_func.__name__, exist_ok=exist_ok)
+        class WrapperStep(FunctionalStep):
+            DETERMINISTIC = deterministic
+            CACHEABLE = cacheable
+            VERSION = version
+            FORMAT = format
+            SKIP_ID_ARGUMENTS = skip_id_arguments or set()
+            METADATA = metadata or {}
+
+            WRAPPED_FUNC = step_func
+
+        return WrapperStep
+
+    return step_wrapper
+
+
+class StepIndexer(CustomDetHash):
     def __init__(self, step: Step, key: Union[str, int]):
         self.step = step
         self.key = key
@@ -731,6 +829,9 @@ class StepIndexer:
         self, workspace: Optional["Workspace"] = None, needed_by: Optional["Step"] = None
     ) -> Any:
         return self.step.result(workspace=workspace, needed_by=needed_by)[self.key]
+
+    def det_hash_object(self) -> Any:
+        return self.step.unique_id, self.key
 
 
 class WithUnresolvedSteps(CustomDetHash):

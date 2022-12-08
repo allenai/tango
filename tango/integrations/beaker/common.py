@@ -164,7 +164,7 @@ class BeakerStepLock(RemoteStepLock):
         except (RemoteDatasetNotFound, FileNotFoundError):
             return None
 
-    def _acquiring_experiment_is_done(self) -> bool:
+    def _acquiring_job_is_done(self) -> bool:
         last_metadata = self._last_metadata()
         if last_metadata is None:
             return False
@@ -175,17 +175,21 @@ class BeakerStepLock(RemoteStepLock):
 
         try:
             last_experiment = self._client.beaker.experiment.get(last_experiment_id)  # type: ignore
-            job = self._client.beaker.experiment.latest_job(last_experiment)  # type: ignore
+            if (
+                self._current_beaker_experiment is not None
+                and self._current_beaker_experiment.id == last_experiment_id
+            ):
+                # This means a previous job for this experiment was preempted and
+                # it didn't clean up after itself.
+                return True
+            else:
+                job = self._client.beaker.experiment.latest_job(last_experiment)  # type: ignore
+                return False if job is None else job.is_done
         except ExperimentNotFound:
             # Experiment must have been deleted.
             return True
         except ValueError:
             return False
-
-        if job is None:
-            return False
-        else:
-            return job.is_done
 
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
         if self._lock_dataset is not None:
@@ -209,7 +213,7 @@ class BeakerStepLock(RemoteStepLock):
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.
-                if self._acquiring_experiment_is_done():
+                if self._acquiring_job_is_done():
                     self._client.delete(self._lock_dataset_name)
                     continue
 
