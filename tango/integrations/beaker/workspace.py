@@ -54,6 +54,7 @@ class BeakerWorkspace(RemoteWorkspace):
     @property
     def beaker(self):
         # TODO: for the time being.
+        self.client = cast(BeakerClient, self.client)
         return self.client.beaker
 
     @property
