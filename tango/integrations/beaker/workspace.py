@@ -35,9 +35,7 @@ class BeakerWorkspace(RemoteWorkspace):
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
     """
 
-    # TODO: merge mem_cache and step_info_cache size use.
     STEP_INFO_CACHE_SIZE = 512
-    MEM_CACHE_SIZE = 512
     Constants = Constants
 
     def __init__(self, workspace: str, max_workers: Optional[int] = None, **kwargs):
@@ -120,7 +118,7 @@ class BeakerWorkspace(RemoteWorkspace):
                 return None
             # Add to in-memory cache.
             self._mem_cache[digest] = cached
-            while len(self._mem_cache) > self.MEM_CACHE_SIZE:
+            while len(self._mem_cache) > self.STEP_INFO_CACHE_SIZE:
                 self._mem_cache.popitem(last=False)
             return cached  # type: ignore
         else:
@@ -132,7 +130,7 @@ class BeakerWorkspace(RemoteWorkspace):
         self._mem_cache[digest] = o
         with cache_path.open("w+t") as f:
             json.dump(o.to_json_dict(), f)
-        while len(self._mem_cache) > self.MEM_CACHE_SIZE:
+        while len(self._mem_cache) > self.STEP_INFO_CACHE_SIZE:
             self._mem_cache.popitem(last=False)
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
