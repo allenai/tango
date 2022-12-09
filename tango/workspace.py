@@ -76,9 +76,9 @@ class WorkspaceSort(StrEnum):
     NAME = "name"
 
 
-class WorkspaceStepInfoSort(StrEnum):
+class StepInfoSort(StrEnum):
     START_TIME = "start_time"
-    END_TIME = "end_time"
+    UNIQUE_ID = "unique_id"
 
 
 class Workspace(Registrable):
@@ -189,7 +189,7 @@ class Workspace(Registrable):
     def search_step_info(
         self,
         *,
-        sort_by: WorkspaceStepInfoSort = WorkspaceStepInfoSort.START_TIME,
+        sort_by: StepInfoSort = StepInfoSort.START_TIME,
         sort_descending: bool = True,
         match: Optional[str] = None,
         limit: Optional[int] = None,

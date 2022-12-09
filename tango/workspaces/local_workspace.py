@@ -2,8 +2,9 @@ import json
 import logging
 import os
 from datetime import datetime
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Dict, Generator, Iterable, Iterator, Optional, Set, TypeVar, Union
 from urllib.parse import ParseResult
 
 import dill
@@ -19,7 +20,7 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import LocalStepCache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, Workspace
+from tango.workspace import Run, StepInfoSort, Workspace, WorkspaceSort
 
 logger = logging.getLogger(__name__)
 
@@ -355,12 +356,61 @@ class LocalWorkspace(Workspace):
 
         return self.registered_run(name)
 
-    def registered_runs(self) -> Dict[str, Run]:
-        return {
-            str(run_dir.name): self.registered_run(run_dir.name)
-            for run_dir in self.runs_dir.iterdir()
-            if run_dir.is_dir()
-        }
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: WorkspaceSort = WorkspaceSort.START_DATE,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[Run, None, None]:
+        runs = [
+            self.registered_run(dir.name)
+            for dir in self.runs_dir.iterdir()
+            if dir.is_dir() and (match is None or fnmatch(dir.name, match))
+        ]
+
+        if sort_by == WorkspaceSort.START_DATE:
+            runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
+        elif sort_by == WorkspaceSort.NAME:
+            runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
+        else:
+            raise NotImplementedError
+
+        if cursor is not None:
+            runs = runs[cursor:]
+        if limit:
+            runs = runs[:limit]
+
+        yield from runs
+
+    def search_step_info(
+        self,
+        *,
+        sort_by: StepInfoSort = StepInfoSort.START_TIME,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[StepInfo, None, None]:
+        with SqliteDict(self.step_info_file, flag="r") as d:
+            steps = [step for step in d.values() if match is None or fnmatch(step.unique_id, match)]
+
+        if sort_by == StepInfoSort.START_TIME:
+            now = utc_now_datetime()
+            steps = sorted(steps, key=lambda step: step.start_time or now, reverse=sort_descending)
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
+        else:
+            raise NotImplementedError
+
+        if cursor is not None:
+            steps = steps[cursor:]
+        if limit:
+            steps = steps[:limit]
+
+        yield from steps
 
     def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name
