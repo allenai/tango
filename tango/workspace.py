@@ -13,6 +13,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Type,
     TypeVar,
     Union,
     cast,
@@ -23,10 +24,10 @@ import pytz
 
 from .common import Registrable
 from .common.from_params import FromParams
-from .common.util import jsonify
+from .common.util import StrEnum, jsonify
 from .step import Step
 from .step_cache import StepCache
-from .step_info import StepInfo
+from .step_info import StepInfo, StepState
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,16 @@ class Run(FromParams):
         )
         params["steps"] = {k: StepInfo.from_json_dict(v) for k, v in params["steps"].items()}
         return cls.from_params(params)
+
+
+class WorkspaceSort(StrEnum):
+    START_DATE = "start_date"
+    NAME = "name"
+
+
+class WorkspaceStepInfoSort(StrEnum):
+    START_TIME = "start_time"
+    END_TIME = "end_time"
 
 
 class Workspace(Registrable):
@@ -175,6 +186,28 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
+    def search_step_info(
+        self,
+        *,
+        sort_by: WorkspaceStepInfoSort = WorkspaceStepInfoSort.START_TIME,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[StepInfo, None, None]:
+        """
+        Search through steps in the workspace.
+
+        :param sort_by: The field to sort the results by.
+        :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
+        :param match: Only return results with a unique ID matching this string.
+        :param limit: Limit the number of results returned.
+        :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
+            to paginate the results.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def step_starting(self, step: Step) -> None:
         """
         The :class:`.Step` class calls this when a step is about to start running.
@@ -226,13 +259,35 @@ class Workspace(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: WorkspaceSort = WorkspaceSort.START_DATE,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[Run, None, None]:
+        """
+        Search through registered runs in the workspace.
+
+        :param sort_by: The field to sort the results by.
+        :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
+        :param match: Only return results with a name matching this string.
+        :param limit: Limit the number of results returned.
+        :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
+            to paginate the results.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:
         """
         Returns all runs in the workspace
 
         :return: A dictionary mapping run names to :class:`Run` objects
         """
-        raise NotImplementedError()
+        return {run.name: run for run in self.search_registered_runs()}
 
     @abstractmethod
     def registered_run(self, name: str) -> Run:
