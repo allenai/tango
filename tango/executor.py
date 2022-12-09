@@ -45,6 +45,57 @@ class ExecutorOutput:
 
     not_run: Dict[str, ExecutionMetadata] = field(default_factory=dict)
     """Steps that were ignored (usually because of failed dependencies)."""
+    
+    def display(self):
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(caption_style="")
+        table.add_column("Step Name", justify="left", style="cyan")
+        table.add_column("Status", justify="left")
+        table.add_column("Results", justify="left")
+        last_cached_step: Optional[str] = None
+        all_steps = dict(self.successful)
+        all_steps.update(self.failed)
+        all_steps.update(self.not_run)
+        for step_name in sorted(all_steps):
+            status_str: str
+            result_str: str = "[grey62]N/A[/]"
+            if step_name in self.failed:
+                status_str = "[red]\N{ballot x} failed[/]"
+                execution_metadata = self.failed[step_name]
+                if execution_metadata.logs_location is not None:
+                    result_str = f"[cyan]{execution_metadata.logs_location}[/]"
+            elif step_name in self.not_run:
+                status_str = "[yellow]- not run[/]"
+            elif step_name in self.successful:
+                status_str = "[green]\N{check mark} succeeded[/]"
+                execution_metadata = self.successful[step_name]
+                if execution_metadata.result_location is not None:
+                    result_str = f"[cyan]{execution_metadata.result_location}[/]"
+                    last_cached_step = step_name
+                elif execution_metadata.logs_location is not None:
+                    result_str = f"[cyan]{execution_metadata.logs_location}[/]"
+            else:
+                continue
+
+            table.add_row(step_name, status_str, result_str)
+        
+        caption_parts: List[str] = []
+        if self.failed:
+            caption_parts.append(
+                f"[red]\N{ballot x}[/] [italic]{len(self.failed)} failed[/]"
+            )
+        if self.successful:
+            caption_parts.append(
+                f"[green]\N{check mark}[/] [italic]{len(self.successful)} succeeded[/]"
+            )
+        if self.not_run:
+            caption_parts.append(f"[italic]{len(self.not_run)} not run[/]")
+        table.caption = ", ".join(caption_parts)
+
+        console = Console()
+        console.print(table)
 
 
 class Executor(Registrable):
