@@ -1,5 +1,4 @@
 import copy
-from fnmatch import fnmatch
 from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union
 from urllib.parse import ParseResult
 
@@ -114,7 +113,7 @@ class MemoryWorkspace(Workspace):
     def search_step_info(
         self,
         *,
-        sort_by: StepInfoSort = StepInfoSort.START_TIME,
+        sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
         limit: Optional[int] = None,
@@ -123,12 +122,16 @@ class MemoryWorkspace(Workspace):
         steps = [
             step
             for step in self.unique_id_to_info.values()
-            if match is None or fnmatch(step.unique_id, match)
+            if match is None or match in step.unique_id
         ]
 
-        if sort_by == StepInfoSort.START_TIME:
+        if sort_by == StepInfoSort.CREATED:
             now = utc_now_datetime()
-            steps = sorted(steps, key=lambda step: step.start_time or now, reverse=sort_descending)
+            steps = sorted(
+                steps,
+                key=lambda step: step.start_time or now,
+                reverse=sort_descending,
+            )
         elif sort_by == StepInfoSort.UNIQUE_ID:
             steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
         else:
@@ -150,10 +153,7 @@ class MemoryWorkspace(Workspace):
         limit: Optional[int] = None,
         cursor: Optional[int] = None,
     ) -> Generator[Run, None, None]:
-        if match is not None:
-            runs = [run for run in self.runs.values() if fnmatch(run.name, match)]
-        else:
-            runs = list(self.runs.values())
+        runs = [run for run in self.runs.values() if match is None or match in run.name]
 
         if sort_by == WorkspaceSort.START_DATE:
             runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)

@@ -25,6 +25,7 @@ from beaker import (
     Dataset,
     DatasetConflict,
     DatasetNotFound,
+    DatasetSort,
     Digest,
     Experiment,
     ExperimentNotFound,
@@ -41,7 +42,7 @@ from tango.common.util import (
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, Workspace
+from tango.workspace import Run, StepInfoSort, Workspace, WorkspaceSort
 
 from .common import (
     BeakerStepLock,
@@ -171,22 +172,25 @@ class BeakerWorkspace(Workspace):
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
             dataset = self.beaker.dataset.get(step_dataset_name(step_or_unique_id))
-            file_info = self.beaker.dataset.file_info(dataset, Constants.STEP_INFO_FNAME)
-            step_info: StepInfo
-            cached = self._get_object_from_cache(file_info.digest, StepInfo)
-            if cached is not None:
-                step_info = cached
-            else:
-                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
-                step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-                self._add_object_to_cache(file_info.digest, step_info)
-            return step_info
+            return self._get_step_info_from_dataset(dataset)
         except (DatasetNotFound, FileNotFoundError):
             if not isinstance(step_or_unique_id, Step):
                 raise KeyError(step_or_unique_id)
             step_info = StepInfo.new_from_step(step_or_unique_id)
             self._update_step_info(step_info)
             return step_info
+
+    def _get_step_info_from_dataset(self, dataset: Dataset) -> StepInfo:
+        file_info = self.beaker.dataset.file_info(dataset, Constants.STEP_INFO_FNAME)
+        step_info: StepInfo
+        cached = self._get_object_from_cache(file_info.digest, StepInfo)
+        if cached is not None:
+            step_info = cached
+        else:
+            step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
+            step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
+            self._add_object_to_cache(file_info.digest, step_info)
+        return step_info
 
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
@@ -331,25 +335,70 @@ class BeakerWorkspace(Workspace):
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
 
-    def registered_runs(self) -> Dict[str, Run]:
-        import concurrent.futures
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: WorkspaceSort = WorkspaceSort.START_DATE,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[Run, None, None]:
+        if match is None:
+            match = Constants.RUN_DATASET_PREFIX
+        else:
+            match = Constants.RUN_DATASET_PREFIX + match
+        if sort_by == WorkspaceSort.START_DATE:
+            sort = DatasetSort.created
+        elif sort_by == WorkspaceSort.NAME:
+            sort = DatasetSort.dataset_name
+        else:
+            raise NotImplementedError
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+            cursor=cursor or 0,
+            limit=limit,
+            sort_by=sort,
+            descending=sort_descending,
+        ):
+            run = self._get_run_from_dataset(dataset)
+            if run is not None:
+                yield run
 
-        runs: Dict[str, Run] = {}
+    def search_step_info(
+        self,
+        *,
+        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        limit: Optional[int] = None,
+        cursor: Optional[int] = None,
+    ) -> Generator[StepInfo, None, None]:
+        if match is None:
+            match = Constants.STEP_DATASET_PREFIX
+        else:
+            match = Constants.STEP_DATASET_PREFIX + match
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers, thread_name_prefix="BeakerWorkspace.registered_runs()-"
-        ) as executor:
-            run_futures = []
-            for dataset in self.beaker.workspace.iter_datasets(
-                match=Constants.RUN_DATASET_PREFIX, results=False
-            ):
-                run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
-            for future in concurrent.futures.as_completed(run_futures):
-                run = future.result()
-                if run is not None:
-                    runs[run.name] = run
+        if sort_by == StepInfoSort.CREATED:
+            sort = DatasetSort.created
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            sort = DatasetSort.dataset_name
+        else:
+            raise NotImplementedError
 
-        return runs
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+            cursor=cursor or 0,
+            limit=limit,
+            sort_by=sort,
+            descending=sort_descending,
+        ):
+            try:
+                yield self._get_step_info_from_dataset(dataset)
+            except (DatasetNotFound, FileNotFoundError):
+                continue
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
