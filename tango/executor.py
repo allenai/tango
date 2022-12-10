@@ -1,7 +1,10 @@
 import logging
 import warnings
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional, Sequence, TypeVar
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TypeVar
+
+from rich.console import Console
+from rich.table import Table
 
 from .common.logging import log_exception
 from .common.registrable import Registrable
@@ -45,16 +48,12 @@ class ExecutorOutput:
 
     not_run: Dict[str, ExecutionMetadata] = field(default_factory=dict)
     """Steps that were ignored (usually because of failed dependencies)."""
-    
-    def display(self):
-        from rich.console import Console
-        from rich.table import Table
 
+    def display(self) -> None:
         table = Table(caption_style="")
         table.add_column("Step Name", justify="left", style="cyan")
         table.add_column("Status", justify="left")
         table.add_column("Results", justify="left")
-        last_cached_step: Optional[str] = None
         all_steps = dict(self.successful)
         all_steps.update(self.failed)
         all_steps.update(self.not_run)
@@ -73,19 +72,16 @@ class ExecutorOutput:
                 execution_metadata = self.successful[step_name]
                 if execution_metadata.result_location is not None:
                     result_str = f"[cyan]{execution_metadata.result_location}[/]"
-                    last_cached_step = step_name
                 elif execution_metadata.logs_location is not None:
                     result_str = f"[cyan]{execution_metadata.logs_location}[/]"
             else:
                 continue
 
             table.add_row(step_name, status_str, result_str)
-        
+
         caption_parts: List[str] = []
         if self.failed:
-            caption_parts.append(
-                f"[red]\N{ballot x}[/] [italic]{len(self.failed)} failed[/]"
-            )
+            caption_parts.append(f"[red]\N{ballot x}[/] [italic]{len(self.failed)} failed[/]")
         if self.successful:
             caption_parts.append(
                 f"[green]\N{check mark}[/] [italic]{len(self.successful)} succeeded[/]"
