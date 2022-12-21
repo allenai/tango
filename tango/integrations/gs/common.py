@@ -83,7 +83,8 @@ class GCSClient(RemoteClient):
     def full_name(self):
         return self.bucket_name
 
-    def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+    @classmethod
+    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
         return os.path.join(workspace_url, dataset_name)
 
     def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:

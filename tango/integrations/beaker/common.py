@@ -61,7 +61,8 @@ class BeakerClient(RemoteClient):
     def url(self, dataset: Optional[str] = None):
         return self.beaker.dataset.url(dataset)
 
-    def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+    @classmethod
+    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
         return (
             workspace_url
             + "/datasets?"

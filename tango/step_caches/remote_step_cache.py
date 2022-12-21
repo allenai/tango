@@ -44,6 +44,7 @@ class RemoteStepCache(LocalStepCache):
 
     @abstractmethod
     def _step_result_remote(self, step: Union[Step, StepInfo]):
+        """ """
         raise NotImplementedError()
 
     @abstractmethod
@@ -75,8 +76,7 @@ class RemoteStepCache(LocalStepCache):
             if not cacheable:
                 return False
 
-            # TODO: beaker seems to not check locally. Should it?
-            # Updated TODO: does Pete's change does the same thing?
+            # TODO: old beaker step cache seems to not check locally. Should it?
             key = step.unique_id
 
             # First check if we have a copy in memory.

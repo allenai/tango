@@ -7,8 +7,9 @@ import time
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
+from tango.common import PathOrStr
 from tango.common.exceptions import TangoError
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -48,97 +49,188 @@ class RemoteConstants:
 
 @dataclass
 class RemoteDataset:
+    """
+    Abstraction for all objects in remote workspaces. Conceptually, this can be thought of as a folder.
+    """
 
     name: str
+    """
+    Name of the dataset.
+    """
     dataset_path: str
+    """
+    Remote location url for the dataset.
+    """
     created: datetime.datetime
+    """
+    Time of creation.
+    """
     committed: bool
+    """
+    If set to True, no further changes to the dataset are allowed.
+    """
 
 
 @dataclass
 class RemoteFileInfo:
-    # TODO: this is just mirroring beaker right now. We may not need this level of abstraction.
+    """
+    Abstraction for file objects in remote workspaces.
+
+    Note: this is just mirroring beaker right now. We may not need this level of abstraction.
+    """
+
     path: str
+    """
+    Remote location url for the file.
+    """
     digest: str
+    """
+    Hash string representing the file.
+    """
     updated: datetime.datetime
+    """
+    Last update time of the file.
+    """
     size: int
+    """
+    Size of the file.
+    """
 
 
 class RemoteDatasetConflict(TangoError):
+    """
+    Error denoting that the remote dataset already exists.
+    """
+
     pass
 
 
 class RemoteDatasetNotFound(TangoError):
+    """
+    Error denoting that the remote dataset does not exist.
+    """
+
     pass
 
 
 class RemoteDatasetWriteError(TangoError):
+    """
+    Error denoting that there was an issue writing the dataset to its remote location.
+    """
+
     pass
 
 
 class RemoteClient:
     """
-    A client for interacting with remote storage.
+    A client for interacting with remote storage. All remote clients inherit from this.
     """
 
     def __init__(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def url(self, dataset: Optional[str] = None):
+    def url(self, dataset: Optional[str] = None) -> str:
+        """
+        Returns the remote url of the `dataset`.
+        """
         raise NotImplementedError()
 
+    @classmethod
     @abstractmethod
-    def dataset_url(self, workspace_url: str, dataset_name: str) -> str:
+    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
+        """
+        Returns the url of the dataset within the workspace.
+        """
         raise NotImplementedError()
 
     @property
     @abstractmethod
-    def full_name(self):
+    def full_name(self) -> str:
+        """
+        Returns the name of the workspace attached to the client.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def get(self, dataset) -> RemoteDataset:
+        """
+        Returns a `RemoteDataset` object created by fetching the dataset's information
+        from remote location.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def create(self, dataset: str, commit: bool = False):
+        """
+        Creates a new dataset in the remote location. By default, it is uncommitted.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def delete(self, dataset):
+        """
+        Removes a dataset from the remote location.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def sync(self, dataset, objects_dir):
+        """
+        Writes the contents of objects_dir to the remote dataset location.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def commit(self, dataset):
+        """
+        Marks the dataset as committed. No further changes to the dataset are allowed.
+        """
         raise NotImplementedError()
 
     @abstractmethod
-    def upload(self, dataset, source, target) -> None:
+    def upload(self, dataset, source: bytes, target: PathOrStr) -> None:
+        """
+        Uploads the `source` contents to the `target` file within the remote dataset.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def get_file(self, dataset, file_path):
+        """
+        Returns the file contents at the `file_path` within the remote dataset.
+        """
         raise NotImplementedError()
 
     @abstractmethod
     def file_info(self, dataset, file_path) -> RemoteFileInfo:
+        """
+        Returns a `RemoteFileInfo` object constructed from `file_path` within the remote dataset location.
+        """
         raise NotImplementedError()
 
     @abstractmethod
-    def fetch(self, dataset, target_dir) -> RemoteDataset:
+    def fetch(self, dataset, target_dir: PathOrStr) -> RemoteDataset:
+        """
+        Writes the contents of the remote dataset to the `target_dir`.
+        """
         raise NotImplementedError()
 
     @abstractmethod
-    def datasets(self, match: str, uncommitted: bool = False, results: bool = False):
+    def datasets(self, match: str, uncommitted: bool = False, results: bool = False) -> List:
+        """
+        Lists the dataset within the workspace attached to the client, based on `match`
+        and `uncommitted` criteria.
+        """
         raise NotImplementedError()
 
 
 class RemoteStepLock:
+    """
+    Utility class for handling locking mechanism for :class:`~tango.step.Step` object stored at a
+    remote location as a `RemoteDataset`.
+    """
+
     METADATA_FNAME = "metadata.json"
 
     def __init__(
