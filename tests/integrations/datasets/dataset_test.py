@@ -27,7 +27,9 @@ class TestDatasets(TangoTestCase):
 
     def test_convert_to_tango_iterable_dataset_dict(self):
         hf_dataset_dict = datasets.IterableDatasetDict(
-            train=datasets.iterable_dataset.iterable_dataset(({"x": x} for x in range(100)))
+            train=datasets.iterable_dataset.IterableDataset.from_generator(
+                ({"x": x} for x in range(100))
+            )
         )
         dataset_dict1 = convert_to_tango_dataset_dict(hf_dataset_dict)
         assert "train" in dataset_dict1.splits
