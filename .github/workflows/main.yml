@@ -194,7 +194,8 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
         run: |
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
-          
+
+      # Reference: https://github.com/marketplace/actions/authenticate-to-google-cloud#setup
       - name: Authenticate to Google Cloud
         uses: 'google-github-actions/auth@v1'
         with:
