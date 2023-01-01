@@ -28,6 +28,17 @@ from tango.step_info import StepInfo
 logger = logging.getLogger(__name__)
 
 
+def empty_bucket(bucket_name: str, token: str = "google_default"):
+    """
+    Utility function for testing.
+    """
+    fs = gcsfs.GCSFileSystem(token=token)
+    try:
+        fs.rm(f"{bucket_name}/tango-*", recursive=True)
+    except FileNotFoundError:
+        pass
+
+
 class GCSDataset(RemoteDataset):
     pass
 
