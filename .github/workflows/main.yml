@@ -129,10 +129,6 @@ jobs:
           - name: GS integration
             extras: dev,gs
             requires_torch: false
-            uses: 'google-github-actions/auth@v1'
-            with:
-              workload_identity_provider: 'projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider'
-              service_account: 'tango-service@ai2-allennlp.iam.gserviceaccount.com'
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/gs tests/integrations/gs
 
@@ -155,6 +151,7 @@ jobs:
             python: '3.10'
 
     steps:
+      - uses: 'actions/checkout@v3'
       - name: Checkout
         if: github.event_name != 'pull_request'
         uses: actions/checkout@v3
@@ -197,6 +194,12 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
         run: |
           test -d .venv || virtualenv -p $(which python) --copies --reset-app-data .venv
+          
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: 'projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider'
+          service_account: 'tango-service@ai2-allennlp.iam.gserviceaccount.com'
 
       - name: Pre-install torch
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
