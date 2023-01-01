@@ -441,6 +441,11 @@ class BeakerExecutor(Executor):
             )
 
         self.google_token = google_token or os.environ.get("GOOGLE_TOKEN")
+        # TODO: temporary hack to test if it works
+        if self.google_token is not None and self.google_token.endswith(".json"):
+            from tango.integrations.gs import GSWorkspace
+            assert isinstance(workspace, GSWorkspace)
+            self.google_token = workspace.client.gcs_fs.credentials.credentials
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
