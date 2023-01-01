@@ -123,6 +123,16 @@ jobs:
               cd examples/train_lm
               pytest -v --color=yes test.py
 
+          - name: GS integration
+            extras: dev,gs
+            requires_torch: false
+            uses: 'google-github-actions/auth@v1'
+            with:
+              workload_identity_provider: 'projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider'
+              service_account: 'tango-service@ai2-allennlp.iam.gserviceaccount.com'
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/gs tests/integrations/gs
+
         include:
           # Run the core tests on other Python versions as well.
           - task:
