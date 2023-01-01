@@ -219,6 +219,8 @@ class BeakerExecutor(Executor):
     :param beaker_workspace: The name or ID of the Beaker workspace to use.
     :param github_token: You can use this parameter to set a GitHub personal access token instead of using
         the ``GITHUB_TOKEN`` environment variable.
+    :param google_token: You can use this parameter to set a Google Cloud token instead of using
+        the ``GOOGLE_TOKEN`` environment variable.
     :param beaker_image: The name or ID of a Beaker image to use for running steps on Beaker.
         The image must come with bash and `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
@@ -342,6 +344,7 @@ class BeakerExecutor(Executor):
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
+        google_token: Optional[str] = None,
         beaker_image: Optional[str] = None,
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
@@ -437,6 +440,7 @@ class BeakerExecutor(Executor):
                 "or as the environment variable 'GITHUB_TOKEN'."
             )
 
+        self.google_token = google_token or os.environ.get("GOOGLE_TOKEN")
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
@@ -943,6 +947,10 @@ class BeakerExecutor(Executor):
         self.beaker.secret.write(Constants.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
         self._check_if_cancelled()
 
+        # Write the Google Cloud token secret.
+        self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
+        self._check_if_cancelled()
+
         # Build Tango command to run.
         command = [
             "tango",
@@ -983,6 +991,7 @@ class BeakerExecutor(Executor):
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
             .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
+            .with_env_var(name="GOOGLE_TOKEN", secret=Constants.GOOGLE_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)

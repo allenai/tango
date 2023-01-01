@@ -202,8 +202,10 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
-def get_client(gcs_workspace: str, **kwargs) -> GCSClient:
-    return GCSClient(gcs_workspace, **kwargs)
+def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
+    # BeakerExecutor will use GOOGLE_TOKEN
+    token = os.environ.get("GOOGLE_TOKEN", token)
+    return GCSClient(gcs_workspace, token=token, **kwargs)
 
 
 class Constants(RemoteConstants):

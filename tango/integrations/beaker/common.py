@@ -131,6 +131,7 @@ class BeakerClient(RemoteClient):
 class Constants(RemoteConstants):
     ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
     BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
+    GOOGLE_TOKEN_SECRET_NAME: str = "GOOGLE_TOKEN"
     ENTRYPOINT_DIR: str = "/tango/entrypoint"
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
 
