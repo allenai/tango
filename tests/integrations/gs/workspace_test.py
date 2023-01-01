@@ -1,16 +1,16 @@
 from tango.common.testing.steps import FloatStep
-from tango.integrations.gs.workspace import GCSWorkspace
+from tango.integrations.gs.workspace import GSWorkspace
 from tango.step_info import StepState
 from tango.workspace import Workspace
 
 
-def test_from_url(gcs_workspace: str = "allennlp-gcs-bucket-1"):
+def test_from_url(gcs_workspace: str):
     workspace = Workspace.from_url(f"gs://{gcs_workspace}")
-    assert isinstance(workspace, GCSWorkspace)
+    assert isinstance(workspace, GSWorkspace)
 
 
-def test_direct_usage(gcs_workspace: str = "allennlp-gcs-bucket-1"):
-    workspace = GCSWorkspace(gcs_workspace)
+def test_direct_usage(gcs_workspace: str):
+    workspace = GSWorkspace(gcs_workspace)
 
     step = FloatStep(step_name="float", result=1.0)
     run = workspace.register_run([step])

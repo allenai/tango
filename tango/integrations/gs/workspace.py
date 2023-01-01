@@ -8,13 +8,13 @@ from tango.workspace import Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
 from .common import Constants, GCSStepLock, get_client
-from .step_cache import GCSStepCache
+from .step_cache import GSStepCache
 
 T = TypeVar("T")
 
 
 @Workspace.register("gs")
-class GCSWorkspace(RemoteWorkspace):
+class GSWorkspace(RemoteWorkspace):
     Constants = Constants
     """
     Assumes that you have run `gcloud auth application-default login`
@@ -22,7 +22,7 @@ class GCSWorkspace(RemoteWorkspace):
 
     def __init__(self, workspace: str, **kwargs):
         client = get_client(gcs_workspace=workspace, **kwargs)
-        cache = GCSStepCache(workspace, client=client)
+        cache = GSStepCache(workspace, client=client)
         locks: Dict[Step, GCSStepLock] = {}
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
         super().__init__(client, cache, "gs_workspace", locks)

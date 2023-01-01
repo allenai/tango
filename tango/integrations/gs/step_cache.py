@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 @StepCache.register("gs")
-class GCSStepCache(RemoteStepCache):
+class GSStepCache(RemoteStepCache):
     """
     This is a :class:`~tango.step_cache.StepCache` that's used by :class:`GCSWorkspace`.
     It stores the results of steps on Google cloud buckets as blobs.
