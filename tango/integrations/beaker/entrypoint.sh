@@ -35,7 +35,8 @@ echo "
 "
 
 # Clone the repo and checkout the target commit.
-gh repo clone "$GITHUB_REPO" .
+gh repo clone "$GITHUB_REPO" src
+cd src
 git checkout "$GIT_REF"
 
 echo "
