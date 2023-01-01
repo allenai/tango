@@ -41,7 +41,8 @@ class BeakerStepCache(RemoteStepCache):
                 self.beaker.config.default_workspace = beaker_workspace
                 self.beaker.workspace.ensure(beaker_workspace)
         else:
-            self.beaker = get_client(beaker_workspace=beaker_workspace)
+            # TODO: for the time being
+            self.beaker = get_client(beaker_workspace=beaker_workspace).beaker
         if self.beaker.config.default_workspace is None:
             raise ConfigurationError("Beaker default workspace must be set")
         super().__init__(
