@@ -1,16 +1,21 @@
+import os
+
 from tango.common.testing.steps import FloatStep
 from tango.integrations.gs.workspace import GSWorkspace
 from tango.step_info import StepState
 from tango.workspace import Workspace
 
+GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
 
-def test_from_url(gcs_workspace: str):
-    workspace = Workspace.from_url(f"gs://{gcs_workspace}")
+
+def test_from_url():
+    workspace = Workspace.from_url(f"gs://{GS_BUCKET_NAME}")
     assert isinstance(workspace, GSWorkspace)
 
 
-def test_direct_usage(gcs_workspace: str):
-    workspace = GSWorkspace(gcs_workspace)
+def test_direct_usage():
+    # TODO: add gs bucket cleanup to tests, to avoid storing all those runs.
+    workspace = GSWorkspace(GS_BUCKET_NAME)
 
     step = FloatStep(step_name="float", result=1.0)
     run = workspace.register_run([step])
