@@ -205,6 +205,10 @@ class GCSClient(RemoteClient):
 def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
     # BeakerExecutor will use GOOGLE_TOKEN
     token = os.environ.get("GOOGLE_TOKEN", token)
+    # TODO: hacky hacks
+    if "{" in token:
+        import json
+        token = json.loads(token)
     return GCSClient(gcs_workspace, token=token, **kwargs)
 
 
