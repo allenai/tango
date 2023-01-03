@@ -377,11 +377,13 @@ def beaker_executor_run(
     # NOTE: We use the default executor here because we're just running the step
     # locally in the main process.
     workspace = Workspace.from_url(workspace_url)
+    print(workspace_url)
     executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize logging.
     initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
 
+    assert False
     # Run step.
     executor.execute_step(step)
 
@@ -675,6 +677,7 @@ def _run(
     for package_name in include_package:
         import_extra_module(package_name)
 
+    print(settings.workspace)
     # Prepare workspace.
     workspace: Workspace
     if workspace_url is not None:
