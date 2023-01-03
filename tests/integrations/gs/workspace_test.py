@@ -10,7 +10,7 @@ from tango.workspace import Workspace
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
 
 
-class TestGSStepCache(TangoTestCase):
+class TestGSWorkspace(TangoTestCase):
     def setup_method(self):
         super().setup_method()
 
@@ -20,6 +20,10 @@ class TestGSStepCache(TangoTestCase):
 
     def test_from_url(self):
         workspace = Workspace.from_url(f"gs://{GS_BUCKET_NAME}")
+        assert isinstance(workspace, GSWorkspace)
+
+    def test_from_params(self):
+        workspace = Workspace.from_params({"type": "gs", "workspace": GS_BUCKET_NAME})
         assert isinstance(workspace, GSWorkspace)
 
     def test_direct_usage(self):

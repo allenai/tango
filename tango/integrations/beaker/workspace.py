@@ -39,20 +39,36 @@ class BeakerWorkspace(RemoteWorkspace):
     Constants = Constants
 
     def __init__(self, workspace: str, max_workers: Optional[int] = None, **kwargs):
-        client = get_client(workspace, **kwargs)
+        self._client = get_client(workspace, **kwargs)
         # TODO: for the time being
-        cache = BeakerStepCache(workspace, beaker=client.beaker)
-        locks: Dict[Step, BeakerStepLock] = {}
+        self._cache = BeakerStepCache(workspace, beaker=self._client.beaker)
+        self._locks: Dict[Step, BeakerStepLock] = {}
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
-        super().__init__(client, cache, "beaker_workspace", locks)
+        super().__init__()
         self.max_workers = max_workers
         self._disk_cache_dir = tango_cache_dir() / "beaker_cache" / "_objects"
         self._mem_cache: "OrderedDict[Digest, Union[StepInfo, Run]]" = OrderedDict()
 
     @property
+    def client(self):
+        return self._client
+
+    @property
+    def cache(self):
+        return self._cache
+
+    @property
+    def locks(self):
+        return self._locks
+
+    @property
+    def steps_dir_name(self):
+        return "beaker_workspace"
+
+    @property
     def beaker(self):
         # TODO: for the time being.
-        self.client = cast(BeakerClient, self.client)
+        self.client = cast(BeakerClient, self.client)  # type: ignore
         return self.client.beaker
 
     @property
@@ -88,7 +104,7 @@ class BeakerWorkspace(RemoteWorkspace):
             return None
 
     def _remote_lock(self, step: Step) -> BeakerStepLock:
-        self.client = cast(BeakerClient, self.client)
+        self.client = cast(BeakerClient, self.client)  # type: ignore
         return BeakerStepLock(
             self.client, step, current_beaker_experiment=self.current_beaker_experiment
         )

@@ -14,6 +14,8 @@ from tango.common.exceptions import TangoError
 from tango.step import Step
 from tango.step_info import StepInfo
 
+from .registrable import Registrable
+
 logger = logging.getLogger(__name__)
 
 
@@ -121,7 +123,7 @@ class RemoteDatasetWriteError(TangoError):
     pass
 
 
-class RemoteClient:
+class RemoteClient(Registrable):
     """
     A client for interacting with remote storage. All remote clients inherit from this.
     """

@@ -21,11 +21,28 @@ class GSWorkspace(RemoteWorkspace):
     """
 
     def __init__(self, workspace: str, **kwargs):
-        client = get_client(gcs_workspace=workspace, **kwargs)
-        cache = GSStepCache(workspace, client=client)
-        locks: Dict[Step, GCSStepLock] = {}
+        self._client = get_client(gcs_workspace=workspace, **kwargs)
+        self._cache = GSStepCache(workspace, client=self._client)
+        self._locks: Dict[Step, GCSStepLock] = {}
+
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
-        super().__init__(client, cache, "gs_workspace", locks)
+        super().__init__()
+
+    @property
+    def client(self):
+        return self._client
+
+    @property
+    def cache(self):
+        return self._cache
+
+    @property
+    def locks(self):
+        return self._locks
+
+    @property
+    def steps_dir_name(self):
+        return "gs_workspace"
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
