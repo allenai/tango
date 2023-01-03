@@ -2,8 +2,6 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
-from google.cloud import storage
-
 from tango.common.aliases import PathOrStr
 from tango.common.remote_utils import (
     RemoteDatasetConflict,
