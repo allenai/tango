@@ -441,7 +441,8 @@ class BeakerExecutor(Executor):
             )
 
         self.google_token = google_token or os.environ.get("GOOGLE_TOKEN")
-        # TODO: temporary hack to test if it works
+        # If the user passes file path instead of actual credentials dict, load the credentials
+        # so that they can be used in beaker.
         if self.google_token is not None and self.google_token.endswith(".json"):
             from tango.integrations.gs import GSWorkspace
 

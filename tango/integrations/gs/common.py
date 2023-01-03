@@ -2,6 +2,8 @@
 Classes and utility functions for GCSWorkspace and GCSStepCache.
 """
 
+import glob
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -142,8 +144,6 @@ class GCSClient(RemoteClient):
             source = str(objects_dir)
             if objects_dir.is_dir():
                 source += "/*"
-            import glob
-
             for path in glob.glob(source):
                 basepath = os.path.basename(path)
                 self.gcs_fs.put(path, os.path.join(folder_path, basepath), recursive=True)
@@ -212,13 +212,14 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
+def _is_json_str(string: str) -> bool:
+    return "{" in string
+
+
 def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
     # BeakerExecutor will use GOOGLE_TOKEN
     token = os.environ.get("GOOGLE_TOKEN", token)
-    # TODO: hacky hacks
-    if "{" in token:
-        import json
-
+    if _is_json_str(token):
         token = json.loads(token)
     return GCSClient(gcs_workspace, token=token, **kwargs)
 
