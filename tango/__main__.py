@@ -377,7 +377,6 @@ def beaker_executor_run(
     # NOTE: We use the default executor here because we're just running the step
     # locally in the main process.
     workspace = Workspace.from_url(workspace_url)
-    print(workspace_url)
     executor = Executor(workspace=workspace, include_package=include_package)
 
     # Initialize logging.
