@@ -34,26 +34,19 @@ class BeakerStepCache(RemoteStepCache):
     """
 
     def __init__(self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None):
-        self.beaker: Beaker
-        if beaker is not None:
-            self.beaker = beaker
-            if beaker_workspace is not None:
-                self.beaker.config.default_workspace = beaker_workspace
-                self.beaker.workspace.ensure(beaker_workspace)
-        else:
-            # TODO: for the time being
-            self.beaker = get_client(beaker_workspace=beaker_workspace).beaker
-        if self.beaker.config.default_workspace is None:
+        self.client = get_client(beaker_workspace=beaker_workspace, beaker=beaker)
+        if self.client.beaker.config.default_workspace is None:
             raise ConfigurationError("Beaker default workspace must be set")
         super().__init__(
             tango_cache_dir()
             / "beaker_cache"
-            / make_safe_filename(self.beaker.config.default_workspace)
+            / make_safe_filename(self.client.beaker.config.default_workspace)
         )
 
+    # TODO: test and then move to remote_step_cache.py
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Dataset]:
         try:
-            dataset = self.beaker.dataset.get(Constants.step_dataset_name(step))
+            dataset = self.client.get(Constants.step_dataset_name(step))
             return dataset if dataset.committed is not None else None
         except DatasetNotFound:
             return None
@@ -61,13 +54,13 @@ class BeakerStepCache(RemoteStepCache):
     def _sync_step_remote(self, step: Step, objects_dir: Path) -> Dataset:
         dataset_name = Constants.step_dataset_name(step)
         try:
-            dataset = self.beaker.dataset.create(dataset_name, commit=False)
+            dataset = self.client.create(dataset_name, commit=False)
         except DatasetConflict:
-            dataset = self.beaker.dataset.get(dataset_name)
+            dataset = self.client.get(dataset_name)
 
         try:
-            self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
-            dataset = self.beaker.dataset.commit(dataset)
+            self.client.sync(dataset, objects_dir)
+            dataset = self.client.commit(dataset)
         except DatasetWriteError:
             pass
 
@@ -75,7 +68,7 @@ class BeakerStepCache(RemoteStepCache):
 
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
         try:
-            self.beaker.dataset.fetch(step_result, target=target_dir, quiet=True)
+            self.client.fetch(step_result, target_dir)
         except DatasetNotFound:
             self._raise_remote_not_found()
 
@@ -87,8 +80,6 @@ class BeakerStepCache(RemoteStepCache):
         # but they never get committed.
         return sum(
             1
-            for ds in self.beaker.workspace.iter_datasets(
-                uncommitted=False, match=Constants.STEP_DATASET_PREFIX
-            )
+            for ds in self.client.datasets(uncommitted=False, match=Constants.STEP_DATASET_PREFIX)
             if ds.name is not None and ds.name.startswith(Constants.STEP_DATASET_PREFIX)
         )

@@ -40,7 +40,6 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def __init__(self, workspace: str, max_workers: Optional[int] = None, **kwargs):
         self._client = get_client(workspace, **kwargs)
-        # TODO: for the time being
         self._cache = BeakerStepCache(workspace, beaker=self._client.beaker)
         self._locks: Dict[Step, BeakerStepLock] = {}
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
@@ -67,7 +66,6 @@ class BeakerWorkspace(RemoteWorkspace):
 
     @property
     def beaker(self):
-        # TODO: for the time being.
         self.client = cast(BeakerClient, self.client)  # type: ignore
         return self.client.beaker
 

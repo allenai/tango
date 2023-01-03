@@ -42,17 +42,26 @@ class BeakerClient(RemoteClient):
     A client for interacting with beaker.
     """
 
-    def __init__(self, beaker_workspace: Optional[str] = None, **kwargs):
+    def __init__(
+        self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None, **kwargs
+    ):
         user_agent = f"tango v{VERSION}"
-        if beaker_workspace is not None:
-            self.beaker = Beaker.from_env(
-                default_workspace=beaker_workspace,
-                session=True,
-                user_agent=user_agent,
-                **kwargs,
-            )
+        self.beaker: Beaker
+        if beaker is not None:
+            self.beaker = beaker
+            if beaker_workspace is not None:
+                self.beaker.config.default_workspace = beaker_workspace
+                self.beaker.workspace.ensure(beaker_workspace)
         else:
-            self.beaker = Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
+            if beaker_workspace is not None:
+                self.beaker = Beaker.from_env(
+                    default_workspace=beaker_workspace,
+                    session=True,
+                    user_agent=user_agent,
+                    **kwargs,
+                )
+            else:
+                self.beaker = Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
     @property
     def full_name(self):
@@ -136,8 +145,10 @@ class Constants(RemoteConstants):
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
 
 
-def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> BeakerClient:
-    return BeakerClient(beaker_workspace, **kwargs)
+def get_client(
+    beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None, **kwargs
+) -> BeakerClient:
+    return BeakerClient(beaker_workspace, beaker, **kwargs)
 
 
 class BeakerStepLock(RemoteStepLock):

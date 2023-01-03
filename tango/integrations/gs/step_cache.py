@@ -57,7 +57,7 @@ class GSStepCache(RemoteStepCache):
         except RemoteDatasetNotFound:
             return None
 
-    def _sync_step_remote(self, step: Step, objects_dir: Path) -> storage.blob.Blob:
+    def _sync_step_remote(self, step: Step, objects_dir: Path) -> GCSDataset:
         dataset_name = Constants.step_dataset_name(step)
 
         try:
