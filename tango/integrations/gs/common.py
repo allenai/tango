@@ -143,8 +143,11 @@ class GCSClient(RemoteClient):
             if objects_dir.is_dir():
                 source += "/*"
             import glob
-            for file_path in glob.glob(source):
-                self.gcs_fs.put(file_path, folder_path + "/", recursive=True)
+            for path in glob.glob(source):
+                if Path(path).is_dir():
+                    self.gcs_fs.put(path, folder_path, recursive=True)
+                else:
+                    self.gcs_fs.put_file(path, folder_path + "/")
             # The put command below seems to have inconsistent results at the top level.
             # TODO: debug later.
             # self.gcs_fs.put(source, folder_path, recursive=True)
