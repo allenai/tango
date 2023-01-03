@@ -383,7 +383,6 @@ def beaker_executor_run(
     # Initialize logging.
     initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
 
-    assert False
     # Run step.
     executor.execute_step(step)
 
