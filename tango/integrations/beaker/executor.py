@@ -444,6 +444,7 @@ class BeakerExecutor(Executor):
         # TODO: temporary hack to test if it works
         if self.google_token is not None and self.google_token.endswith(".json"):
             from tango.integrations.gs import GSWorkspace
+
             if isinstance(workspace, GSWorkspace):
                 with open(self.google_token) as f:
                     self.google_token = f.read()

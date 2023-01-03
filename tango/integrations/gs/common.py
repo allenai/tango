@@ -143,6 +143,7 @@ class GCSClient(RemoteClient):
             if objects_dir.is_dir():
                 source += "/*"
             import glob
+
             for path in glob.glob(source):
                 basepath = os.path.basename(path)
                 self.gcs_fs.put(path, os.path.join(folder_path, basepath), recursive=True)
@@ -217,6 +218,7 @@ def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> G
     # TODO: hacky hacks
     if "{" in token:
         import json
+
         token = json.loads(token)
     return GCSClient(gcs_workspace, token=token, **kwargs)
 
