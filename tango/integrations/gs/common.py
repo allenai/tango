@@ -139,7 +139,7 @@ class GCSClient(RemoteClient):
         # Using gsutil programmatically:
         # https://github.com/GoogleCloudPlatform/gsutil/blob/84aa9af730fe3fa1307acc1ab95aec684d127152/gslib/tests/test_rsync.py
         try:
-            self.gcs_fs.put(str(objects_dir), folder_path, recursive=True)
+            self.gcs_fs.put(str(objects_dir) + "/", folder_path, recursive=True)
         except Exception:
             raise RemoteDatasetWriteError()
         return self.get(dataset)
@@ -183,7 +183,7 @@ class GCSClient(RemoteClient):
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
         try:
-            self.gcs_fs.get(dataset.dataset_path, target_dir)
+            self.gcs_fs.get(dataset.dataset_path, target_dir, recursive=True)
         except FileNotFoundError:
             raise RemoteDatasetNotFound()
 
