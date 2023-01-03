@@ -675,7 +675,6 @@ def _run(
     for package_name in include_package:
         import_extra_module(package_name)
 
-    print(settings.workspace)
     # Prepare workspace.
     workspace: Workspace
     if workspace_url is not None:
