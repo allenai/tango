@@ -141,8 +141,13 @@ class GCSClient(RemoteClient):
         try:
             source = str(objects_dir)
             if objects_dir.is_dir():
-                source += "/"
-            self.gcs_fs.put(source, folder_path + "/", recursive=True)
+                source += "/*"
+            import glob
+            for file_path in glob.glob(source):
+                self.gcs_fs.put(file_path, folder_path + "/", recursive=True)
+            # The put command below seems to have inconsistent results at the top level.
+            # TODO: debug later.
+            # self.gcs_fs.put(source, folder_path, recursive=True)
         except Exception:
             raise RemoteDatasetWriteError()
         return self.get(dataset)
