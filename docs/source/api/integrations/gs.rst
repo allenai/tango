@@ -1,5 +1,5 @@
 ☁️ Google Cloud Storage
-=========
+======================
 
 .. automodule:: tango.integrations.gs
 
