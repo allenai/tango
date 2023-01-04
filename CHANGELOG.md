@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - You can now add arguments to steps without invalidating the cache. See `Step.SKIP_DEFAULT_ARGUMENTS`.
+- Added `Workspace.registered_run_names()` method.
 
 
 ## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01

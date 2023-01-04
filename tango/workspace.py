@@ -234,6 +234,17 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
+    def registered_run_names(self) -> List[str]:
+        """
+        Returns a list of all runs in the workspace, ideally sorted by creation time, newest first.
+        """
+        return [
+            run.name
+            for run in sorted(
+                self.registered_runs().values(), key=lambda run: run.start_date, reverse=True
+            )
+        ]
+
     @abstractmethod
     def registered_run(self, name: str) -> Run:
         """

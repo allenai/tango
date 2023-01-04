@@ -12,6 +12,7 @@ from typing import (
     Generator,
     Iterable,
     Iterator,
+    List,
     Optional,
     Type,
     TypeVar,
@@ -25,6 +26,7 @@ from beaker import (
     Dataset,
     DatasetConflict,
     DatasetNotFound,
+    DatasetSort,
     Digest,
     Experiment,
     ExperimentNotFound,
@@ -355,6 +357,19 @@ class BeakerWorkspace(Workspace):
                     runs[run.name] = run
 
         return runs
+
+    def registered_run_names(self) -> List[str]:
+        run_names = []
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=Constants.RUN_DATASET_PREFIX,
+            results=False,
+            sort_by=DatasetSort.created,
+            descending=True,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
+                run_name = dataset.name[len(Constants.RUN_DATASET_PREFIX) :]
+                run_names.append(run_name)
+        return run_names
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
