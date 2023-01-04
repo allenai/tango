@@ -68,7 +68,9 @@ class BeakerClient(RemoteClient):
         return self.beaker.workspace.get().full_name
 
     def url(self, dataset: Optional[str] = None):
-        return self.beaker.dataset.url(dataset)
+        if dataset is not None:
+            return self.beaker.dataset.url(dataset)
+        return self.beaker.workspace.url()
 
     @classmethod
     def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
@@ -86,13 +88,13 @@ class BeakerClient(RemoteClient):
     def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
         try:
             return self.beaker.dataset.get(dataset)
-        except DatasetConflict:
+        except (DatasetConflict, DatasetNotFound):
             # We do this so that remote_workspace gets errors of the type RemoteDatasetNotFound.
             raise RemoteDatasetNotFound()
 
     def create(self, dataset: str, commit: bool = False):
         try:
-            self.beaker.dataset.create(dataset, commit=commit)
+            return self.beaker.dataset.create(dataset, commit=commit)
         except DatasetConflict:
             raise RemoteDatasetConflict()
 
@@ -109,11 +111,11 @@ class BeakerClient(RemoteClient):
         self.beaker.dataset.commit(dataset)
 
     def upload(self, dataset: BeakerDataset, source: bytes, target: PathOrStr) -> None:
-        self.beaker.dataset.upload(dataset, source, target)
+        self.beaker.dataset.upload(dataset, source, target, quiet=True)
 
     def get_file(self, dataset: BeakerDataset, file_path: Union[str, FileInfo]):
         try:
-            self.beaker.dataset.get_file(dataset, file_path, quiet=True)
+            return self.beaker.dataset.get_file(dataset, file_path, quiet=True)
         except DatasetNotFound:
             raise RemoteDatasetNotFound()
 

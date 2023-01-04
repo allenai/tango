@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections import OrderedDict
-from typing import Dict, Optional, Type, TypeVar, Union, cast
+from typing import Dict, Optional, Type, TypeVar, Union
 from urllib.parse import ParseResult
 
 from beaker import Digest, Experiment, ExperimentNotFound
@@ -14,7 +14,7 @@ from tango.workspace import Run, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
 from ...common.remote_utils import RemoteDatasetNotFound
-from .common import BeakerClient, BeakerStepLock, Constants, get_client
+from .common import BeakerStepLock, Constants, get_client
 from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
@@ -66,7 +66,6 @@ class BeakerWorkspace(RemoteWorkspace):
 
     @property
     def beaker(self):
-        self.client = cast(BeakerClient, self.client)  # type: ignore
         return self.client.beaker
 
     @property
@@ -102,7 +101,6 @@ class BeakerWorkspace(RemoteWorkspace):
             return None
 
     def _remote_lock(self, step: Step) -> BeakerStepLock:
-        self.client = cast(BeakerClient, self.client)  # type: ignore
         return BeakerStepLock(
             self.client, step, current_beaker_experiment=self.current_beaker_experiment
         )

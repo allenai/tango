@@ -379,9 +379,10 @@ class RemoteWorkspace(Workspace):
 
         step_info_dataset: RemoteDataset
         try:
-            step_info_dataset = self.client.create(dataset_name, commit=False)
+            self.client.create(dataset_name, commit=False)
         except RemoteDatasetConflict:
-            step_info_dataset = self.client.get(dataset_name)
+            pass
+        step_info_dataset = self.client.get(dataset_name)
 
         self.client.upload(
             step_info_dataset,  # folder name
