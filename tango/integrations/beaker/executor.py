@@ -954,8 +954,9 @@ class BeakerExecutor(Executor):
         self._check_if_cancelled()
 
         # Write the Google Cloud token secret.
-        self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
-        self._check_if_cancelled()
+        if self.google_token:
+            self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
+            self._check_if_cancelled()
 
         # Build Tango command to run.
         command = [
