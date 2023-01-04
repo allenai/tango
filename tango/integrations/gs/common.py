@@ -152,7 +152,6 @@ class GCSClient(RemoteClient):
             # self.gcs_fs.put(source, folder_path, recursive=True)
         except Exception:
             raise RemoteDatasetWriteError()
-        return self.get(dataset)
 
     def commit(self, dataset: Union[str, GCSDataset]):
         if isinstance(dataset, str):

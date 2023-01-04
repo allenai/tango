@@ -63,12 +63,12 @@ class GSStepCache(RemoteStepCache):
         except RemoteDatasetConflict:
             pass
         try:
-            dataset = self.client.sync(dataset_name, objects_dir)
-            dataset = self.client.commit(dataset)
+            self.client.sync(dataset_name, objects_dir)
+            self.client.commit(dataset_name)
         except RemoteDatasetWriteError:
             pass
 
-        return dataset
+        return self.client.get(dataset_name)
 
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
         try:
