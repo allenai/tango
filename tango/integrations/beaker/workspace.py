@@ -31,7 +31,7 @@ class BeakerWorkspace(RemoteWorkspace):
     .. tip::
         Registered as a :class:`~tango.workspace.Workspace` under the name "beaker".
 
-    :param beaker_workspace: The name or ID of the Beaker workspace to use.
+    :param workspace: The name or ID of the Beaker workspace to use.
     :param kwargs: Additional keyword arguments passed to :meth:`Beaker.from_env() <beaker.Beaker.from_env()>`.
     """
 

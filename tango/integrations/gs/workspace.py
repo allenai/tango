@@ -15,10 +15,21 @@ T = TypeVar("T")
 
 @Workspace.register("gs")
 class GSWorkspace(RemoteWorkspace):
+    """
+    This is a :class:`~tango.workspace.Workspace` that stores step artifacts on `Google Cloud Storage`_.
+
+    .. tip::
+        Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
+
+    :param workspace: The name or ID of the Beaker workspace to use.
+    :param kwargs: Additional keyword arguments passed to :meth:`GCSFileSystem() <gcsfs.GCSFileSystem()>`.
+
+    .. important::
+        You can use your default google cloud credentials by running `gcloud auth application-default login`.
+        Otherwise, you can specify the credentials using `token` keyword argument.
+    """
+
     Constants = Constants
-    """
-    Assumes that you have run `gcloud auth application-default login`
-    """
 
     def __init__(self, workspace: str, **kwargs):
         self._client = get_client(gcs_workspace=workspace, **kwargs)

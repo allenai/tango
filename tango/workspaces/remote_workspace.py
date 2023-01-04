@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 class RemoteWorkspace(Workspace):
     """
     This is a :class:`~tango.workspace.Workspace` that stores step artifacts on some remote storage location.
+
+    .. tip::
+        All remote workspaces inherit from this.
     """
 
     Constants = RemoteConstants
