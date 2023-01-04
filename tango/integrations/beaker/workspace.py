@@ -150,13 +150,18 @@ class BeakerWorkspace(RemoteWorkspace):
             dataset = self.client.get(self.Constants.step_dataset_name(step_or_unique_id))
             file_info = self.client.file_info(dataset, self.Constants.STEP_INFO_FNAME)
             step_info: StepInfo
-            cached = self._get_object_from_cache(file_info.digest, StepInfo)
+            cached = (
+                None
+                if file_info.digest is None
+                else self._get_object_from_cache(file_info.digest, StepInfo)
+            )
             if cached is not None:
                 step_info = cached
             else:
                 step_info_bytes = self.client.get_file(dataset, file_info)
                 step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-                self._add_object_to_cache(file_info.digest, step_info)
+                if file_info.digest is not None:
+                    self._add_object_to_cache(file_info.digest, step_info)
             return step_info
         except (RemoteDatasetNotFound, FileNotFoundError):
             if not isinstance(step_or_unique_id, Step):
