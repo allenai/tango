@@ -449,6 +449,8 @@ class BeakerExecutor(Executor):
             if isinstance(workspace, GSWorkspace):
                 with open(self.google_token) as f:
                     self.google_token = f.read()
+        else:
+            self.google_token = ""  # empty string so it can be encoded
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
@@ -954,9 +956,8 @@ class BeakerExecutor(Executor):
         self._check_if_cancelled()
 
         # Write the Google Cloud token secret.
-        if self.google_token:
-            self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
-            self._check_if_cancelled()
+        self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
+        self._check_if_cancelled()
 
         # Build Tango command to run.
         command = [
