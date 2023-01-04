@@ -871,10 +871,8 @@ class BeakerExecutor(Executor):
             f"If you're sure no one has tampered with it, you can delete the dataset from "
             f"the Beaker dashboard and try again."
         )
-        ds_files = list(self.beaker.dataset.ls(entrypoint_dataset))
-        if len(ds_files) != 1:
-            raise ExecutorError(err_msg)
-        if ds_files[0].digest != Digest(sha256_hash.digest()):
+        file_info = self.beaker.dataset.file_info(entrypoint_dataset, Constants.ENTRYPOINT_FILENAME)
+        if file_info.digest is not None and file_info.digest != Digest(sha256_hash.digest()):
             raise ExecutorError(err_msg)
 
         return entrypoint_dataset
