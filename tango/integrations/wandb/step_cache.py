@@ -49,6 +49,13 @@ class WandbStepCache(RemoteStepCache):
         return wandb.Api(overrides={"entity": self.entity, "project": self.project})
 
     @property
+    def client(self):
+        """
+        To maintain compatibility
+        """
+        return self.wandb_client
+
+    @property
     def wandb_project_url(self) -> str:
         """
         The URL of the W&B project this workspace uses.

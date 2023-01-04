@@ -1,22 +1,13 @@
 import logging
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
-from beaker import Beaker, Dataset
+from beaker import Beaker
 
-from tango.common.aliases import PathOrStr
 from tango.common.exceptions import ConfigurationError
 from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
-from tango.step_info import StepInfo
 
-from ...common.remote_utils import (
-    RemoteDatasetConflict,
-    RemoteDatasetNotFound,
-    RemoteDatasetWriteError,
-)
 from .common import Constants, get_client
 
 logger = logging.getLogger(__name__)
@@ -38,52 +29,18 @@ class BeakerStepCache(RemoteStepCache):
     :param beaker: The Beaker client to use.
     """
 
+    Constants = Constants
+
     def __init__(self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None):
-        self.client = get_client(beaker_workspace=beaker_workspace, beaker=beaker)
-        if self.client.beaker.config.default_workspace is None:
+        self._client = get_client(beaker_workspace=beaker_workspace, beaker=beaker)
+        if self._client.beaker.config.default_workspace is None:
             raise ConfigurationError("Beaker default workspace must be set")
         super().__init__(
             tango_cache_dir()
             / "beaker_cache"
-            / make_safe_filename(self.client.beaker.config.default_workspace)
+            / make_safe_filename(self._client.beaker.config.default_workspace)
         )
 
-    # TODO: test and then move to remote_step_cache.py
-    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[Dataset]:
-        try:
-            dataset = self.client.get(Constants.step_dataset_name(step))
-            return dataset if dataset.committed is not None else None
-        except RemoteDatasetNotFound:
-            return None
-
-    def _sync_step_remote(self, step: Step, objects_dir: Path) -> Dataset:
-        dataset_name = Constants.step_dataset_name(step)
-        try:
-            self.client.create(dataset_name, commit=False)
-        except RemoteDatasetConflict:
-            pass
-        try:
-            self.client.sync(dataset_name, objects_dir)
-            self.client.commit(dataset_name)
-        except RemoteDatasetWriteError:
-            pass
-
-        return self.client.get(dataset_name)
-
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
-        try:
-            self.client.fetch(step_result, target_dir)
-        except RemoteDatasetNotFound:
-            self._raise_remote_not_found()
-
-    def _step_results_dir(self) -> str:
-        return Constants.STEP_RESULT_DIR
-
-    def __len__(self) -> int:
-        # NOTE: lock datasets should not count here. They start with the same prefix,
-        # but they never get committed.
-        return sum(
-            1
-            for ds in self.client.datasets(uncommitted=False, match=Constants.STEP_DATASET_PREFIX)
-            if ds.name is not None and ds.name.startswith(Constants.STEP_DATASET_PREFIX)
-        )
+    @property
+    def client(self):
+        return self._client

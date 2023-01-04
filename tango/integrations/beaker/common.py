@@ -32,8 +32,6 @@ from tango.step import Step
 from tango.step_info import StepInfo
 from tango.version import VERSION
 
-# from tango.common.util import utc_now_datetime
-
 logger = logging.getLogger(__name__)
 
 

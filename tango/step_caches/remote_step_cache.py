@@ -10,7 +10,13 @@ from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
 from tango.common.file_lock import FileLock
 from tango.common.params import Params
-from tango.common.remote_utils import RemoteConstants
+from tango.common.remote_utils import (
+    RemoteClient,
+    RemoteConstants,
+    RemoteDatasetConflict,
+    RemoteDatasetNotFound,
+    RemoteDatasetWriteError,
+)
 from tango.step import Step
 from tango.step_cache import CacheMetadata
 from tango.step_caches.local_step_cache import LocalStepCache
@@ -39,28 +45,57 @@ class RemoteStepCache(LocalStepCache):
         All remote step caches inherit from this.
     """
 
+    Constants = RemoteConstants
+
     def __init__(self, local_dir: Path):
         super().__init__(local_dir)
 
+    @property
     @abstractmethod
+    def client(self) -> RemoteClient:
+        raise NotImplementedError()
+
     def _step_result_remote(self, step: Union[Step, StepInfo]):
         """ """
-        raise NotImplementedError()
+        try:
+            dataset = self.client.get(self.Constants.step_dataset_name(step))
+            return dataset if dataset.committed is not None else None
+        except RemoteDatasetNotFound:
+            return None
 
-    @abstractmethod
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
-        raise NotImplementedError()
-
-    @abstractmethod
     def _sync_step_remote(self, step: Step, objects_dir: Path):
-        raise NotImplementedError()
+        dataset_name = self.Constants.step_dataset_name(step)
+        try:
+            self.client.create(dataset_name, commit=False)
+        except RemoteDatasetConflict:
+            pass
+        try:
+            self.client.sync(dataset_name, objects_dir)
+            self.client.commit(dataset_name)
+        except RemoteDatasetWriteError:
+            pass
 
-    @abstractmethod
+        return self.client.get(dataset_name)
+
+    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
+        try:
+            self.client.fetch(step_result, target_dir)
+        except RemoteDatasetNotFound:
+            self._raise_remote_not_found()
+
     def __len__(self):
-        raise NotImplementedError()
+        # NOTE: lock datasets should not count here. They start with the same prefix,
+        # but they never get committed.
+        return sum(
+            1
+            for ds in self.client.datasets(
+                uncommitted=False, match=self.Constants.STEP_DATASET_PREFIX
+            )
+            if ds.name is not None and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
+        )
 
     def _step_results_dir(self) -> str:
-        return RemoteConstants.STEP_RESULT_DIR
+        return self.Constants.STEP_RESULT_DIR
 
     def _raise_remote_not_found(self):
         raise RemoteNotFoundError()
