@@ -70,7 +70,7 @@ class WandbStepCache(RemoteStepCache):
         else:
             return step.step_class_name
 
-    def _step_result_remote(
+    def _step_result_remote(  # type: ignore
         self, step: Union[Step, StepInfo]
     ) -> Optional[wandb.apis.public.Artifact]:
         artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)

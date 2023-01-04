@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
@@ -13,6 +13,7 @@ from tango.common.params import Params
 from tango.common.remote_utils import (
     RemoteClient,
     RemoteConstants,
+    RemoteDataset,
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
     RemoteDatasetWriteError,
@@ -55,7 +56,7 @@ class RemoteStepCache(LocalStepCache):
     def client(self) -> RemoteClient:
         raise NotImplementedError()
 
-    def _step_result_remote(self, step: Union[Step, StepInfo]):
+    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
         """ """
         try:
             dataset = self.client.get(self.Constants.step_dataset_name(step))
@@ -63,7 +64,7 @@ class RemoteStepCache(LocalStepCache):
         except RemoteDatasetNotFound:
             return None
 
-    def _sync_step_remote(self, step: Step, objects_dir: Path):
+    def _sync_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
         dataset_name = self.Constants.step_dataset_name(step)
         try:
             self.client.create(dataset_name, commit=False)
@@ -77,7 +78,7 @@ class RemoteStepCache(LocalStepCache):
 
         return self.client.get(dataset_name)
 
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
+    def _fetch_step_remote(self, step_result, target_dir: PathOrStr) -> None:
         try:
             self.client.fetch(step_result, target_dir)
         except RemoteDatasetNotFound:
