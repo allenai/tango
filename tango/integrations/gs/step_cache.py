@@ -13,17 +13,17 @@ logger = logging.getLogger(__name__)
 @StepCache.register("gs")
 class GSStepCache(RemoteStepCache):
     """
-    This is a :class:`~tango.step_cache.StepCache` that's used by :class:`GCSWorkspace`.
+    This is a :class:`~tango.step_cache.StepCache` that's used by :class:`GSWorkspace`.
     It stores the results of steps on Google cloud buckets as blobs.
 
     It also keeps a limited in-memory cache as well as a local backup on disk, so fetching a
     step's resulting subsequent times should be fast.
 
     .. tip::
-        Registered as a :class:`~tango.step_cache.StepCache` under the name "gcs".
+        Registered as a :class:`~tango.step_cache.StepCache` under the name "gs".
 
     :param bucket_name: The name of the google cloud bucket to use.
-    :param storage_client: The google cloud storage client to use.
+    :param client: The google cloud storage client to use.
     """
 
     Constants = Constants

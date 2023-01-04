@@ -16,7 +16,7 @@ T = TypeVar("T")
 @Workspace.register("gs")
 class GSWorkspace(RemoteWorkspace):
     """
-    This is a :class:`~tango.workspace.Workspace` that stores step artifacts on `Google Cloud Storage`_.
+    This is a :class:`~tango.workspace.Workspace` that stores step artifacts on Google Cloud Storage.
 
     .. tip::
         Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
