@@ -59,7 +59,7 @@ class RemoteStepCache(LocalStepCache):
         """ """
         try:
             dataset = self.client.get(self.Constants.step_dataset_name(step))
-            return dataset if dataset.committed is not None else None
+            return dataset if dataset.committed else None
         except RemoteDatasetNotFound:
             return None
 
