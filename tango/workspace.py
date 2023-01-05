@@ -236,7 +236,7 @@ class Workspace(Registrable):
 
     def registered_run_names(self) -> List[str]:
         """
-        Returns a list of all runs in the workspace, ideally sorted by creation time, newest first.
+        Returns a list of all runs in the workspace, sorted by creation time, newest first.
         """
         return [
             run.name
@@ -255,6 +255,25 @@ class Workspace(Registrable):
         :raises KeyError: If there is no run with the given name.
         """
         raise NotImplementedError()
+
+    def registered_step_ids(self) -> List[str]:
+        """
+        Returns a list of unique IDs for all registered steps in the workspace, sorted
+        by the time they were last updated, latest first.
+        """
+        steps = []
+        for run in self.registered_runs().values():
+            for step_info in run.steps.values():
+                updated: datetime
+                if step_info.end_time is not None:
+                    updated = step_info.end_time
+                elif step_info.start_time is not None:
+                    updated = step_info.start_time
+                else:
+                    updated = run.start_date
+                steps.append((step_info.unique_id, updated))
+        steps.sort(key=lambda x: x[1], reverse=True)
+        return [step_id for step_id, _ in steps]
 
     def step_result_for_run(self, run_name: str, step_name: str) -> Any:
         """

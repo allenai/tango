@@ -388,6 +388,19 @@ class BeakerWorkspace(Workspace):
         else:
             return run
 
+    def registered_step_ids(self) -> List[str]:
+        steps = []
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=Constants.STEP_DATASET_PREFIX,
+            results=False,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.STEP_DATASET_PREFIX):
+                step_id = dataset.name[len(Constants.STEP_DATASET_PREFIX) :]
+                updated = dataset.committed or dataset.created
+                steps.append((step_id, updated))
+        steps.sort(key=lambda x: x[1], reverse=True)
+        return [step_id for step_id, _ in steps]
+
     @contextmanager
     def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
