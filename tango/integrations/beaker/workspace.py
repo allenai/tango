@@ -183,13 +183,18 @@ class BeakerWorkspace(Workspace):
     def _get_step_info_from_dataset(self, dataset: Dataset) -> StepInfo:
         file_info = self.beaker.dataset.file_info(dataset, Constants.STEP_INFO_FNAME)
         step_info: StepInfo
-        cached = self._get_object_from_cache(file_info.digest, StepInfo)
+        cached = (
+            None
+            if file_info.digest is None
+            else self._get_object_from_cache(file_info.digest, StepInfo)
+        )
         if cached is not None:
             step_info = cached
         else:
             step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
             step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-            self._add_object_to_cache(file_info.digest, step_info)
+            if file_info.digest is not None:
+                self._add_object_to_cache(file_info.digest, step_info)
         return step_info
 
     def step_starting(self, step: Step) -> None:
@@ -439,7 +444,11 @@ class BeakerWorkspace(Workspace):
 
         try:
             file_info = self.beaker.dataset.file_info(dataset, Constants.RUN_DATA_FNAME)
-            cached = self._get_object_from_cache(file_info.digest, Run)
+            cached = (
+                None
+                if file_info.digest is None
+                else self._get_object_from_cache(file_info.digest, Run)
+            )
             if cached is not None:
                 return cached
 
@@ -464,7 +473,8 @@ class BeakerWorkspace(Workspace):
                 steps[step_info.step_name] = step_info
 
         run = Run(name=run_name, start_date=dataset.created, steps=steps)
-        self._add_object_to_cache(file_info.digest, run)
+        if file_info.digest is not None:
+            self._add_object_to_cache(file_info.digest, run)
         return run
 
     def _update_step_info(self, step_info: StepInfo):
