@@ -191,8 +191,8 @@ class Workspace(Registrable):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
         """
         Search through steps in the workspace.
@@ -204,9 +204,8 @@ class Workspace(Registrable):
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
         :param match: Only return results with a unique ID matching this string.
-        :param limit: Limit the number of results returned.
-        :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
-            to paginate the results.
+        :param start: Start from a certain index in the results.
+        :param stop: Stop at a certain index in the results.
 
         :raises NotImplementedError: If a workspace doesn't support an efficient implementation
             for the given sorting criteria.
@@ -230,12 +229,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        if cursor is not None:
-            steps = steps[cursor:]
-        if limit:
-            steps = steps[:limit]
-
-        yield from steps
+        yield from steps[slice(start, stop)]
 
     @abstractmethod
     def step_starting(self, step: Step) -> None:
@@ -294,8 +288,8 @@ class Workspace(Registrable):
         sort_by: RunSort = RunSort.START_DATE,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[Run, None, None]:
         """
         Search through registered runs in the workspace.
@@ -307,9 +301,8 @@ class Workspace(Registrable):
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
         :param match: Only return results with a name matching this string.
-        :param limit: Limit the number of results returned.
-        :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
-            to paginate the results.
+        :param start: Start from a certain index in the results.
+        :param stop: Stop at a certain index in the results.
 
         :raises NotImplementedError: If a workspace doesn't support an efficient implementation
             for the given sorting criteria.
@@ -325,12 +318,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        if cursor is not None:
-            runs = runs[cursor:]
-        if limit:
-            runs = runs[:limit]
-
-        yield from runs
+        yield from runs[slice(start, stop)]
 
     @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:

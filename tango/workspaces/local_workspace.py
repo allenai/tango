@@ -368,8 +368,8 @@ class LocalWorkspace(Workspace):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
         with SqliteDict(self.step_info_file, flag="r") as d:
             steps = [step for step in d.values() if match is None or match in step.unique_id]
@@ -386,12 +386,7 @@ class LocalWorkspace(Workspace):
         else:
             raise NotImplementedError
 
-        if cursor is not None:
-            steps = steps[cursor:]
-        if limit:
-            steps = steps[:limit]
-
-        yield from steps
+        yield from steps[slice(start, stop)]
 
     def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name

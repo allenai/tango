@@ -346,8 +346,8 @@ class BeakerWorkspace(Workspace):
         sort_by: RunSort = RunSort.START_DATE,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
+        start: Optional[int] = None,
+        stop: Optional[int] = None,
     ) -> Generator[Run, None, None]:
         if match is None:
             match = Constants.RUN_DATASET_PREFIX
@@ -362,8 +362,8 @@ class BeakerWorkspace(Workspace):
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
-            cursor=cursor or 0,
-            limit=limit,
+            cursor=start or 0,
+            limit=None if stop is None else stop - (start or 0),
             sort_by=sort,
             descending=sort_descending,
         ):
@@ -377,8 +377,8 @@ class BeakerWorkspace(Workspace):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
         if match is None:
             match = Constants.STEP_DATASET_PREFIX
@@ -395,8 +395,8 @@ class BeakerWorkspace(Workspace):
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
-            cursor=cursor or 0,
-            limit=limit,
+            cursor=start or 0,
+            limit=None if stop is None else stop - (start or 0),
             sort_by=sort,
             descending=sort_descending,
         ):
