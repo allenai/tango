@@ -437,6 +437,26 @@ class BeakerWorkspace(Workspace):
         else:
             return run
 
+    def registered_runs(self) -> Dict[str, Run]:
+        import concurrent.futures
+
+        runs: Dict[str, Run] = {}
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.max_workers, thread_name_prefix="BeakerWorkspace.registered_runs()-"
+        ) as executor:
+            run_futures = []
+            for dataset in self.beaker.workspace.iter_datasets(
+                match=Constants.RUN_DATASET_PREFIX, results=False
+            ):
+                run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
+            for future in concurrent.futures.as_completed(run_futures):
+                run = future.result()
+                if run is not None:
+                    runs[run.name] = run
+
+        return runs
+
     @contextmanager
     def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
