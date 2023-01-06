@@ -232,6 +232,15 @@ class Workspace(Registrable):
 
         return steps[slice(start, stop)]
 
+    def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
+        """
+        Get the total number of registered steps.
+
+        :param match: Only count steps with a unique ID matching this string.
+        :param state: Only count steps that are in the given state.
+        """
+        return len(self.search_step_info(match=match, state=state))
+
     @abstractmethod
     def step_starting(self, step: Step) -> None:
         """
@@ -320,6 +329,14 @@ class Workspace(Registrable):
             raise NotImplementedError
 
         return runs[slice(start, stop)]
+
+    def num_registered_runs(self, *, match: Optional[str] = None) -> int:
+        """
+        Get the number of registered runs.
+
+        :param match: Only count runs with a name matching this string.
+        """
+        return len(self.search_registered_runs(match=match))
 
     @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:

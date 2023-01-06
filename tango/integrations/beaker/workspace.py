@@ -397,6 +397,22 @@ class BeakerWorkspace(Workspace):
 
         return runs
 
+    def num_registered_runs(self, *, match: Optional[str] = None) -> int:
+        if match is None:
+            match = Constants.RUN_DATASET_PREFIX
+        else:
+            match = Constants.RUN_DATASET_PREFIX + match
+
+        count = 0
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
+                count += 1
+
+        return count
+
     def search_step_info(
         self,
         *,
@@ -439,6 +455,27 @@ class BeakerWorkspace(Workspace):
                 continue
 
         return steps
+
+    def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
+        if state is not None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} cannot filter steps efficiently by state"
+            )
+
+        if match is None:
+            match = Constants.STEP_DATASET_PREFIX
+        else:
+            match = Constants.STEP_DATASET_PREFIX + match
+
+        count = 0
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.STEP_DATASET_PREFIX):
+                count += 1
+
+        return count
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
