@@ -124,7 +124,8 @@ class GCSClient(RemoteClient):
                 raise FileNotFoundError
         except FileNotFoundError:
             self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
-            self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
+            if not commit:
+                self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
 
         return self._convert_ls_info_to_dataset(self.gcs_fs.ls(folder_path, detail=True))
 
