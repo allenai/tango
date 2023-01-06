@@ -368,11 +368,17 @@ class LocalWorkspace(Workspace):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
+        state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
         with SqliteDict(self.step_info_file, flag="r") as d:
-            steps = [step for step in d.values() if match is None or match in step.unique_id]
+            steps = [
+                step
+                for step in d.values()
+                if (match is None or match in step.unique_id)
+                and (state is None or step.state == state)
+            ]
 
         if sort_by == StepInfoSort.CREATED:
             now = utc_now_datetime()

@@ -13,7 +13,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Type,
     TypeVar,
     Union,
     cast,
@@ -191,6 +190,7 @@ class Workspace(Registrable):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
+        state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
@@ -203,7 +203,8 @@ class Workspace(Registrable):
 
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
-        :param match: Only return results with a unique ID matching this string.
+        :param match: Only return steps with a unique ID matching this string.
+        :param state: Only return steps that are in the given state.
         :param start: Start from a certain index in the results.
         :param stop: Stop at a certain index in the results.
 
@@ -214,7 +215,7 @@ class Workspace(Registrable):
             step
             for run in self.registered_runs().values()
             for step in run.steps.values()
-            if match is None or match in step.unique_id
+            if (match is None or match in step.unique_id) and (state is None or step.state == state)
         ]
 
         if sort_by == StepInfoSort.CREATED:

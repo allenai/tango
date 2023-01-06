@@ -377,9 +377,15 @@ class BeakerWorkspace(Workspace):
         sort_by: StepInfoSort = StepInfoSort.CREATED,
         sort_descending: bool = True,
         match: Optional[str] = None,
+        state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
     ) -> Generator[StepInfo, None, None]:
+        if state is not None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} cannot filter steps efficiently by state"
+            )
+
         if match is None:
             match = Constants.STEP_DATASET_PREFIX
         else:
