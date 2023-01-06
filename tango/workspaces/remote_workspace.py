@@ -307,9 +307,7 @@ class RemoteWorkspace(Workspace):
             max_workers=9, thread_name_prefix="RemoteWorkspace.registered_runs()-"
         ) as executor:
             run_futures = []
-            for dataset in self.client.datasets(
-                match=self.Constants.RUN_DATASET_PREFIX, results=False  # TODO: results?
-            ):
+            for dataset in self.client.datasets(match=self.Constants.RUN_DATASET_PREFIX):
                 run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
             for future in concurrent.futures.as_completed(run_futures):
                 run = future.result()

@@ -129,11 +129,9 @@ class BeakerClient(RemoteClient):
         except DatasetNotFound:
             raise RemoteDatasetNotFound()
 
-    def datasets(
-        self, match: str, uncommitted: bool = True, results: bool = False
-    ) -> List[BeakerDataset]:
+    def datasets(self, match: str, uncommitted: bool = True) -> List[BeakerDataset]:
         return self.beaker.workspace.iter_datasets(
-            match=match, uncommitted=uncommitted, results=results
+            match=match, uncommitted=uncommitted, results=False
         )
 
 

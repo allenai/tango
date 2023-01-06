@@ -219,7 +219,7 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def datasets(self, match: str, uncommitted: bool = False, results: bool = False) -> List:
+    def datasets(self, match: str, uncommitted: bool = False) -> List:
         """
         Lists the dataset within the workspace attached to the client, based on `match`
         and `uncommitted` criteria.

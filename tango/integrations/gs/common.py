@@ -197,10 +197,7 @@ class GCSClient(RemoteClient):
         except FileNotFoundError:
             raise RemoteDatasetNotFound()
 
-    def datasets(
-        self, match: str, uncommitted: bool = True, results: bool = False
-    ) -> List[GCSDataset]:
-        # TODO: remove "results", it's meant to be beaker-specific?
+    def datasets(self, match: str, uncommitted: bool = True) -> List[GCSDataset]:
         list_of_datasets = []
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
             info = self.gcs_fs.ls(path=path, detail=True)
