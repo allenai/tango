@@ -10,7 +10,7 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import default_step_cache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, StepInfoSort, Workspace, WorkspaceSort
+from tango.workspace import Run, RunSort, StepInfoSort, Workspace
 
 T = TypeVar("T")
 
@@ -147,7 +147,7 @@ class MemoryWorkspace(Workspace):
     def search_registered_runs(
         self,
         *,
-        sort_by: WorkspaceSort = WorkspaceSort.START_DATE,
+        sort_by: RunSort = RunSort.START_DATE,
         sort_descending: bool = True,
         match: Optional[str] = None,
         limit: Optional[int] = None,
@@ -155,9 +155,9 @@ class MemoryWorkspace(Workspace):
     ) -> Generator[Run, None, None]:
         runs = [run for run in self.runs.values() if match is None or match in run.name]
 
-        if sort_by == WorkspaceSort.START_DATE:
+        if sort_by == RunSort.START_DATE:
             runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
-        elif sort_by == WorkspaceSort.NAME:
+        elif sort_by == RunSort.NAME:
             runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
         else:
             raise NotImplementedError

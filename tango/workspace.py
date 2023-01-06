@@ -71,7 +71,7 @@ class Run(FromParams):
         return cls.from_params(params)
 
 
-class WorkspaceSort(StrEnum):
+class RunSort(StrEnum):
     START_DATE = "start_date"
     NAME = "name"
 
@@ -262,7 +262,7 @@ class Workspace(Registrable):
     def search_registered_runs(
         self,
         *,
-        sort_by: WorkspaceSort = WorkspaceSort.START_DATE,
+        sort_by: RunSort = RunSort.START_DATE,
         sort_descending: bool = True,
         match: Optional[str] = None,
         limit: Optional[int] = None,
