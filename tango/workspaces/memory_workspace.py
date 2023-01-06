@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Generator, Iterable, Iterator, Optional, TypeVar, Union
+from typing import Dict, Iterable, Iterator, Optional, TypeVar, Union
 from urllib.parse import ParseResult
 
 import petname
@@ -10,7 +10,7 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import default_step_cache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, RunSort, StepInfoSort, Workspace
+from tango.workspace import Run, Workspace
 
 T = TypeVar("T")
 
@@ -110,64 +110,8 @@ class MemoryWorkspace(Workspace):
         self.runs[name] = run
         return run
 
-    def search_step_info(
-        self,
-        *,
-        sort_by: StepInfoSort = StepInfoSort.CREATED,
-        sort_descending: bool = True,
-        match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
-    ) -> Generator[StepInfo, None, None]:
-        steps = [
-            step
-            for step in self.unique_id_to_info.values()
-            if match is None or match in step.unique_id
-        ]
-
-        if sort_by == StepInfoSort.CREATED:
-            now = utc_now_datetime()
-            steps = sorted(
-                steps,
-                key=lambda step: step.start_time or now,
-                reverse=sort_descending,
-            )
-        elif sort_by == StepInfoSort.UNIQUE_ID:
-            steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
-        else:
-            raise NotImplementedError
-
-        if cursor is not None:
-            steps = steps[cursor:]
-        if limit:
-            steps = steps[:limit]
-
-        yield from steps
-
-    def search_registered_runs(
-        self,
-        *,
-        sort_by: RunSort = RunSort.START_DATE,
-        sort_descending: bool = True,
-        match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
-    ) -> Generator[Run, None, None]:
-        runs = [run for run in self.runs.values() if match is None or match in run.name]
-
-        if sort_by == RunSort.START_DATE:
-            runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
-        elif sort_by == RunSort.NAME:
-            runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
-        else:
-            raise NotImplementedError
-
-        if cursor is not None:
-            runs = runs[cursor:]
-        if limit:
-            runs = runs[:limit]
-
-        yield from runs
+    def registered_runs(self) -> Dict[str, Run]:
+        return copy.deepcopy(self.runs)
 
     def registered_run(self, name: str) -> Run:
         return copy.deepcopy(self.runs[name])

@@ -24,7 +24,7 @@ import pytz
 
 from .common import Registrable
 from .common.from_params import FromParams
-from .common.util import StrEnum, jsonify
+from .common.util import StrEnum, jsonify, utc_now_datetime
 from .step import Step
 from .step_cache import StepCache
 from .step_info import StepInfo, StepState
@@ -185,7 +185,6 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def search_step_info(
         self,
         *,
@@ -198,14 +197,45 @@ class Workspace(Registrable):
         """
         Search through steps in the workspace.
 
+        This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
+        need to implement all `sort_by` operations. They should only implement those
+        that can done efficiently.
+
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
         :param match: Only return results with a unique ID matching this string.
         :param limit: Limit the number of results returned.
         :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
             to paginate the results.
+
+        :raises NotImplementedError: If a workspace doesn't support an efficient implementation
+            for the given sorting criteria.
         """
-        raise NotImplementedError()
+        steps = [
+            step
+            for run in self.registered_runs().values()
+            for step in run.steps.values()
+            if match is None or match in step.unique_id
+        ]
+
+        if sort_by == StepInfoSort.CREATED:
+            now = utc_now_datetime()
+            steps = sorted(
+                steps,
+                key=lambda step: step.start_time or now,
+                reverse=sort_descending,
+            )
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
+        else:
+            raise NotImplementedError
+
+        if cursor is not None:
+            steps = steps[cursor:]
+        if limit:
+            steps = steps[:limit]
+
+        yield from steps
 
     @abstractmethod
     def step_starting(self, step: Step) -> None:
@@ -258,7 +288,6 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def search_registered_runs(
         self,
         *,
@@ -271,14 +300,37 @@ class Workspace(Registrable):
         """
         Search through registered runs in the workspace.
 
+        This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
+        need to implement all `sort_by` operations. They should only implement those
+        that can done efficiently.
+
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
         :param match: Only return results with a name matching this string.
         :param limit: Limit the number of results returned.
         :param cursor: Start from a certain cursor. You can use this with the ``limit`` option
             to paginate the results.
+
+        :raises NotImplementedError: If a workspace doesn't support an efficient implementation
+            for the given sorting criteria.
         """
-        raise NotImplementedError()
+        runs = [
+            run for run in self.registered_runs().values() if match is None or match in run.name
+        ]
+
+        if sort_by == RunSort.START_DATE:
+            runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
+        elif sort_by == RunSort.NAME:
+            runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
+        else:
+            raise NotImplementedError
+
+        if cursor is not None:
+            runs = runs[cursor:]
+        if limit:
+            runs = runs[:limit]
+
+        yield from runs
 
     @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:
@@ -287,7 +339,7 @@ class Workspace(Registrable):
 
         :return: A dictionary mapping run names to :class:`Run` objects
         """
-        return {run.name: run for run in self.search_registered_runs()}
+        raise NotImplementedError
 
     @abstractmethod
     def registered_run(self, name: str) -> Run:

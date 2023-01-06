@@ -19,7 +19,7 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import LocalStepCache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, RunSort, StepInfoSort, Workspace
+from tango.workspace import Run, StepInfoSort, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -355,34 +355,12 @@ class LocalWorkspace(Workspace):
 
         return self.registered_run(name)
 
-    def search_registered_runs(
-        self,
-        *,
-        sort_by: RunSort = RunSort.START_DATE,
-        sort_descending: bool = True,
-        match: Optional[str] = None,
-        limit: Optional[int] = None,
-        cursor: Optional[int] = None,
-    ) -> Generator[Run, None, None]:
-        runs = [
-            self.registered_run(dir.name)
-            for dir in self.runs_dir.iterdir()
-            if dir.is_dir() and (match is None or match in dir.name)
-        ]
-
-        if sort_by == RunSort.START_DATE:
-            runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
-        elif sort_by == RunSort.NAME:
-            runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
-        else:
-            raise NotImplementedError
-
-        if cursor is not None:
-            runs = runs[cursor:]
-        if limit:
-            runs = runs[:limit]
-
-        yield from runs
+    def registered_runs(self) -> Dict[str, Run]:
+        return {
+            str(run_dir.name): self.registered_run(run_dir.name)
+            for run_dir in self.runs_dir.iterdir()
+            if run_dir.is_dir()
+        }
 
     def search_step_info(
         self,
