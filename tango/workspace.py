@@ -198,8 +198,8 @@ class Workspace(Registrable):
         Search through steps in the workspace.
 
         This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
-        need to implement all `sort_by` operations. They should only implement those
-        that can done efficiently.
+        need to implement all `sort_by` or filter operations. They should only implement those
+        that can be done efficiently.
 
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
@@ -209,7 +209,7 @@ class Workspace(Registrable):
         :param stop: Stop at a certain index in the results.
 
         :raises NotImplementedError: If a workspace doesn't support an efficient implementation
-            for the given sorting criteria.
+            for the given sorting/filtering criteria.
         """
         steps = [
             step
@@ -305,8 +305,8 @@ class Workspace(Registrable):
         Search through registered runs in the workspace.
 
         This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
-        need to implement all `sort_by` operations. They should only implement those
-        that can done efficiently.
+        need to implement all `sort_by` or filter operations. They should only implement those
+        that can be done efficiently.
 
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
@@ -315,7 +315,7 @@ class Workspace(Registrable):
         :param stop: Stop at a certain index in the results.
 
         :raises NotImplementedError: If a workspace doesn't support an efficient implementation
-            for the given sorting criteria.
+            for the given sorting/filtering criteria.
         """
         runs = [
             run for run in self.registered_runs().values() if match is None or match in run.name
