@@ -12,6 +12,7 @@ from typing import (
     Generator,
     Iterable,
     Iterator,
+    List,
     Optional,
     Type,
     TypeVar,
@@ -348,17 +349,20 @@ class BeakerWorkspace(Workspace):
         match: Optional[str] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> Generator[Run, None, None]:
+    ) -> List[Run]:
         if match is None:
             match = Constants.RUN_DATASET_PREFIX
         else:
             match = Constants.RUN_DATASET_PREFIX + match
+
         if sort_by == RunSort.START_DATE:
             sort = DatasetSort.created
         elif sort_by == RunSort.NAME:
             sort = DatasetSort.dataset_name
         else:
             raise NotImplementedError
+
+        runs = []
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
@@ -369,7 +373,9 @@ class BeakerWorkspace(Workspace):
         ):
             run = self._get_run_from_dataset(dataset)
             if run is not None:
-                yield run
+                runs.append(run)
+
+        return runs
 
     def search_step_info(
         self,
@@ -380,7 +386,7 @@ class BeakerWorkspace(Workspace):
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> Generator[StepInfo, None, None]:
+    ) -> List[StepInfo]:
         if state is not None:
             raise NotImplementedError(
                 f"{self.__class__.__name__} cannot filter steps efficiently by state"
@@ -398,6 +404,7 @@ class BeakerWorkspace(Workspace):
         else:
             raise NotImplementedError
 
+        steps = []
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
@@ -407,9 +414,11 @@ class BeakerWorkspace(Workspace):
             descending=sort_descending,
         ):
             try:
-                yield self._get_step_info_from_dataset(dataset)
+                steps.append(self._get_step_info_from_dataset(dataset))
             except (DatasetNotFound, FileNotFoundError):
                 continue
+
+        return steps
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"

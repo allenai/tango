@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator, Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
 from urllib.parse import ParseResult
 
 import dill
@@ -371,7 +371,7 @@ class LocalWorkspace(Workspace):
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> Generator[StepInfo, None, None]:
+    ) -> List[StepInfo]:
         with SqliteDict(self.step_info_file, flag="r") as d:
             steps = [
                 step
@@ -392,7 +392,7 @@ class LocalWorkspace(Workspace):
         else:
             raise NotImplementedError
 
-        yield from steps[slice(start, stop)]
+        return steps[slice(start, stop)]
 
     def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name

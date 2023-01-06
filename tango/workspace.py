@@ -193,7 +193,7 @@ class Workspace(Registrable):
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> Generator[StepInfo, None, None]:
+    ) -> List[StepInfo]:
         """
         Search through steps in the workspace.
 
@@ -230,7 +230,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        yield from steps[slice(start, stop)]
+        return steps[slice(start, stop)]
 
     @abstractmethod
     def step_starting(self, step: Step) -> None:
@@ -291,7 +291,7 @@ class Workspace(Registrable):
         match: Optional[str] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> Generator[Run, None, None]:
+    ) -> List[Run]:
         """
         Search through registered runs in the workspace.
 
@@ -319,7 +319,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        yield from runs[slice(start, stop)]
+        return runs[slice(start, stop)]
 
     @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:
