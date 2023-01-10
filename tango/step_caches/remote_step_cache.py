@@ -82,7 +82,7 @@ class RemoteStepCache(LocalStepCache):
         try:
             self.client.fetch(step_result, target_dir)
         except RemoteDatasetNotFound:
-            self._raise_remote_not_found()
+            raise RemoteNotFoundError()
 
     def __len__(self):
         # NOTE: lock datasets should not count here. They start with the same prefix,
@@ -94,12 +94,6 @@ class RemoteStepCache(LocalStepCache):
             )
             if ds.name is not None and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
         )
-
-    def _step_results_dir(self) -> str:
-        return self.Constants.STEP_RESULT_DIR
-
-    def _raise_remote_not_found(self):
-        raise RemoteNotFoundError()
 
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
         return FileLock(
@@ -144,7 +138,7 @@ class RemoteStepCache(LocalStepCache):
 
         def load_and_return():
             metadata = CacheMetadata.from_params(Params.from_file(self._metadata_path(step)))
-            result = metadata.format.read(self.step_dir(step) / self._step_results_dir())
+            result = metadata.format.read(self.step_dir(step) / self.Constants.STEP_RESULT_DIR)
             self._add_to_cache(key, result)
             return result
 
@@ -181,9 +175,9 @@ class RemoteStepCache(LocalStepCache):
             # We'll write the step's results to temporary directory first, and try to upload to
             # remote workspace from there in case anything goes wrong.
             temp_dir = Path(tempfile.mkdtemp(dir=self.dir, prefix=step.unique_id))
-            (temp_dir / self._step_results_dir()).mkdir()
+            (temp_dir / self.Constants.STEP_RESULT_DIR).mkdir()
             try:
-                step.format.write(value, temp_dir / self._step_results_dir())
+                step.format.write(value, temp_dir / self.Constants.STEP_RESULT_DIR)
                 metadata = CacheMetadata(step=step.unique_id, format=step.format)
                 metadata.to_params().to_file(temp_dir / self.METADATA_FILE_NAME)
                 # Create the dataset and upload serialized result to it.

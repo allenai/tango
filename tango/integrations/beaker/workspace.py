@@ -37,6 +37,7 @@ class BeakerWorkspace(RemoteWorkspace):
 
     STEP_INFO_CACHE_SIZE = 512
     Constants = Constants
+    NUM_CONCURRENT_WORKERS = 9
 
     def __init__(self, workspace: str, max_workers: Optional[int] = None, **kwargs):
         self._client = get_client(workspace, **kwargs)
@@ -104,9 +105,6 @@ class BeakerWorkspace(RemoteWorkspace):
         return BeakerStepLock(
             self.client, step, current_beaker_experiment=self.current_beaker_experiment
         )
-
-    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
-        return self.client.dataset_url(workspace_url, dataset_name)
 
     # TODO: make generic.
     def _get_object_from_cache(self, digest: Digest, o_type: Type[U]) -> Optional[U]:

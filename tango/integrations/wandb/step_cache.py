@@ -9,7 +9,7 @@ from tango.common.aliases import PathOrStr
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_cache import StepCache
-from tango.step_caches.remote_step_cache import RemoteStepCache
+from tango.step_caches.remote_step_cache import RemoteNotFoundError, RemoteStepCache
 from tango.step_info import StepInfo
 
 from .util import ArtifactKind, check_environment, is_missing_artifact_error
@@ -147,7 +147,7 @@ class WandbStepCache(RemoteStepCache):
             step_result.download(root=target_dir, recursive=True)
         except:  # noqa: E722
             # TODO: what error does this raise?
-            self._raise_remote_not_found()
+            raise RemoteNotFoundError()
 
     def __len__(self) -> int:
         completed_cacheable_step_runs = self.wandb_client.runs(

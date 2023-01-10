@@ -30,6 +30,7 @@ class GSWorkspace(RemoteWorkspace):
     """
 
     Constants = Constants
+    NUM_CONCURRENT_WORKERS = 9  # TODO: increase and check
 
     def __init__(self, workspace: str, **kwargs):
         self._client = get_client(gcs_workspace=workspace, **kwargs)
@@ -59,13 +60,13 @@ class GSWorkspace(RemoteWorkspace):
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
         workspace: str
         if parsed_url.netloc and parsed_url.path:
-            # e.g. "beaker://ai2/my-workspace"
+            # e.g. "gs://ai2/my-workspace"
             workspace = parsed_url.netloc + parsed_url.path
         elif parsed_url.netloc:
-            # e.g. "beaker://my-workspace"
+            # e.g. "gs://my-workspace"
             workspace = parsed_url.netloc
         else:
-            raise ValueError(f"Bad URL for GCS workspace '{parsed_url}'")
+            raise ValueError(f"Bad URL for GS workspace '{parsed_url}'")
         return cls(workspace)
 
     @property
@@ -74,6 +75,3 @@ class GSWorkspace(RemoteWorkspace):
 
     def _remote_lock(self, step: Step) -> GCSStepLock:
         return GCSStepLock(self.client, step)
-
-    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
-        return self.client.dataset_url(workspace_url, dataset_name)
