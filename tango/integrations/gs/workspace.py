@@ -2,13 +2,12 @@ from collections import OrderedDict
 from typing import Dict, TypeVar
 from urllib.parse import ParseResult
 
+from tango.integrations.gs.common import Constants, GCSStepLock, get_client
+from tango.integrations.gs.step_cache import GSStepCache
 from tango.step import Step
 from tango.step_info import StepInfo
 from tango.workspace import Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
-
-from .common import Constants, GCSStepLock, get_client
-from .step_cache import GSStepCache
 
 T = TypeVar("T")
 

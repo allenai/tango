@@ -42,7 +42,8 @@ class RemoteWorkspace(Workspace):
     """
 
     Constants = RemoteConstants
-    STEP_INFO_CACHE_SIZE = 512
+    STEP_INFO_CACHE_SIZE: int = 512
+    NUM_CONCURRENT_WORKERS: int = 9
 
     def __init__(self):
         super().__init__()
@@ -152,10 +153,6 @@ class RemoteWorkspace(Workspace):
     def _remote_lock(self, step: Step) -> RemoteStepLock:
         raise NotImplementedError()
 
-    @abstractmethod
-    def _dataset_url(self, workspace_url: str, dataset_name: str) -> str:
-        raise NotImplementedError()
-
     def step_starting(self, step: Step) -> None:
         # We don't do anything with uncacheable steps.
         if not step.cache_results:
@@ -181,7 +178,7 @@ class RemoteWorkspace(Workspace):
                 step,
                 step_info.state,
                 context=f"If you are certain the step is not running somewhere else, delete the step "
-                f"datasets at {self._dataset_url(self.client.url(), self.Constants.step_dataset_name(step))}",
+                f"datasets at {self.client.url(self.Constants.step_dataset_name(step))}",
             )
 
         if step_info.state == StepState.FAILED:
@@ -304,7 +301,8 @@ class RemoteWorkspace(Workspace):
         runs: Dict[str, Run] = {}
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=9, thread_name_prefix="RemoteWorkspace.registered_runs()-"
+            max_workers=self.NUM_CONCURRENT_WORKERS,
+            thread_name_prefix="RemoteWorkspace.registered_runs()-",
         ) as executor:
             run_futures = []
             for dataset in self.client.datasets(match=self.Constants.RUN_DATASET_PREFIX):
@@ -363,7 +361,8 @@ class RemoteWorkspace(Workspace):
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=9, thread_name_prefix="RemoteWorkspace._get_run_from_dataset()-"
+            max_workers=self.NUM_CONCURRENT_WORKERS,
+            thread_name_prefix="RemoteWorkspace._get_run_from_dataset()-",
         ) as executor:
             step_info_futures = []
             for unique_id in steps_info.values():
