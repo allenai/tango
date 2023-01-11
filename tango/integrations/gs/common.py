@@ -209,15 +209,14 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
-def _is_json_str(string: str) -> bool:
-    return "{" in string
-
-
 def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
     # BeakerExecutor will use GOOGLE_TOKEN
     token = os.environ.get("GOOGLE_TOKEN", token)
-    if _is_json_str(token):
+    try:
+        # If credentials dict has been passed as the token
         token = json.loads(token)
+    except json.decoder.JSONDecodeError:
+        pass  # It is not a json string.
     return GCSClient(gcs_workspace, token=token, **kwargs)
 
 
