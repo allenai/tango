@@ -119,6 +119,10 @@ class GCSClient(RemoteClient):
                 # A file may still exist. Ideally, shouldn't happen.
                 raise FileNotFoundError
         except FileNotFoundError:
+            # Additional check for safety
+            self.gcs_fs.invalidate_cache(folder_path)
+            if self.gcs_fs.exists(os.path.join(folder_path, self.placeholder_file)):
+                raise RemoteDatasetConflict(f"{folder_path} already exists!")
             self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
             if not commit:
                 self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
