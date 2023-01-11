@@ -421,7 +421,7 @@ def info(settings: TangoGlobalSettings):
         name = integration.split(".")[-1]
         is_installed = True
         try:
-            import_module_and_submodules(integration)
+            import_module_and_submodules(integration, recursive=False)
         except (IntegrationMissingError, ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
