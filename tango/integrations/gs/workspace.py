@@ -70,7 +70,7 @@ class GSWorkspace(RemoteWorkspace):
 
     @property
     def url(self) -> str:
-        return f"gs://{self.client.full_name}"
+        return self.client.url()
 
     def _remote_lock(self, step: Step) -> GCSStepLock:
         return GCSStepLock(self.client, step)
