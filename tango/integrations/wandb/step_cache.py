@@ -145,8 +145,7 @@ class WandbStepCache(RemoteStepCache):
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
         try:
             step_result.download(root=target_dir, recursive=True)
-        except:  # noqa: E722
-            # TODO: what error does this raise?
+        except (WandbError, ValueError):
             raise RemoteNotFoundError()
 
     def __len__(self) -> int:
