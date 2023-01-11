@@ -146,14 +146,6 @@ class RemoteClient(Registrable):
         """
         raise NotImplementedError()
 
-    @property
-    @abstractmethod
-    def full_name(self) -> str:
-        """
-        Returns the name of the workspace attached to the client.
-        """
-        raise NotImplementedError()
-
     @abstractmethod
     def get(self, dataset) -> RemoteDataset:
         """

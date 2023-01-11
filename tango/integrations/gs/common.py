@@ -71,6 +71,10 @@ class GCSClient(RemoteClient):
         return path
 
     @classmethod
+    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
+        return os.path.join(workspace_url, dataset_name)
+
+    @classmethod
     def _convert_ls_info_to_dataset(cls, ls_info: List[Dict]) -> GCSDataset:
         name: str
         dataset_path: str
@@ -91,14 +95,6 @@ class GCSClient(RemoteClient):
     @classmethod
     def from_env(cls, bucket_name: str):
         return cls(bucket_name, token="google_default")
-
-    @property
-    def full_name(self):
-        return self.bucket_name
-
-    @classmethod
-    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
-        return os.path.join(workspace_url, dataset_name)
 
     def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:
         if isinstance(dataset, str):
@@ -183,7 +179,6 @@ class GCSClient(RemoteClient):
     def file_info(self, dataset: GCSDataset, file_path: str) -> FileInfo:
         full_file_path = os.path.join(dataset.dataset_path, file_path)
         info = self.gcs_fs.ls(full_file_path, detail=True)[0]
-        # TODO: should digest be crc32c instead of md5Hash?
         return FileInfo(
             path=full_file_path,
             digest=info["md5Hash"],
@@ -226,5 +221,10 @@ class Constants(RemoteConstants):
 
 
 class GCSStepLock(RemoteStepLock):
+    """
+    Google Cloud offers consistency https://cloud.google.com/storage/docs/consistency,
+    so we can use lock files.
+    """
+
     def __init__(self, client, step: Union[str, StepInfo, Step]):
         super().__init__(client, step)

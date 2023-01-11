@@ -61,17 +61,16 @@ class BeakerClient(RemoteClient):
             else:
                 self.beaker = Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
-    @property
-    def full_name(self):
-        return self.beaker.workspace.get().full_name
-
     def url(self, dataset: Optional[str] = None):
+        # if dataset, this returns only if path exists.
+        # if workspace doesnt exist, it is created.
         if dataset is not None:
             return self.beaker.dataset.url(dataset)
         return self.beaker.workspace.url()
 
     @classmethod
     def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
+        # this just creates a string url.
         return (
             workspace_url
             + "/datasets?"
