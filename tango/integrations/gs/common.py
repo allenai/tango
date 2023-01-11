@@ -163,8 +163,9 @@ class GCSClient(RemoteClient):
         try:
             self.gcs_fs.rm_file(uncommitted)
         except FileNotFoundError:
-            # Already committed. No change.
-            pass
+            if not self.gcs_fs.isdir(folder_path):
+                raise RemoteDatasetNotFound()
+            # Otherwise, already committed. No change.
 
     def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
         file_path = os.path.join(dataset.dataset_path, target)
