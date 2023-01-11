@@ -13,10 +13,10 @@ GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
 class TestGSWorkspace(TangoTestCase):
     def setup_method(self):
         super().setup_method()
+        empty_bucket(GS_BUCKET_NAME)
 
     def teardown_method(self):
         super().teardown_method()
-        empty_bucket(GS_BUCKET_NAME)
 
     def test_from_url(self):
         workspace = Workspace.from_url(f"gs://{GS_BUCKET_NAME}")

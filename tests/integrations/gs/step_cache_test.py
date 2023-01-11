@@ -11,10 +11,10 @@ GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
 class TestGSStepCache(TangoTestCase):
     def setup_method(self):
         super().setup_method()
+        empty_bucket(GS_BUCKET_NAME)
 
     def teardown_method(self):
         super().teardown_method()
-        empty_bucket(GS_BUCKET_NAME)
 
     def test_step_cache(self):
         cache = GSStepCache(bucket_name=GS_BUCKET_NAME)
