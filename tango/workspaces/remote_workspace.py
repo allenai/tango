@@ -47,34 +47,6 @@ class RemoteWorkspace(Workspace):
 
     def __init__(self):
         super().__init__()
-
-        # TODO: remove after conferring.
-        # We make all this into properties because FromParams cannot handle the following construct.
-        #         class BaseClass(Registrable):
-        #             def __init__(self):
-        #                 pass
-        #
-        #         @BaseClass.register("a")
-        #         class A(BaseClass):
-        #             def __init__(self, a: int):
-        #                 super().__init__()
-        #                 self.a = a
-        #
-        #         @BaseClass.register("b")
-        #         class B(A):
-        #             def __init__(self, b: int, **kwargs):  # NOTE: kwargs is what confuses FromParams.
-        #                 self.b = b
-        #                 self.kwargs = kwargs # do something with kwargs
-        #                 super().__init__(self.b*2)
-        #
-        #         params = Params({"type": "b", "b": 23})
-        #         # The param `a` should not be required as it is being passed in the super call.
-        #         instance = BaseClass.from_params(params)
-        # self.client = client
-        # self.cache = cache
-        # self.steps_dir = tango_cache_dir() / steps_dir_name
-        # self.locks = locks
-
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
 
     @property
