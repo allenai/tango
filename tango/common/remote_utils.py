@@ -138,14 +138,6 @@ class RemoteClient(Registrable):
         """
         raise NotImplementedError()
 
-    @classmethod
-    @abstractmethod
-    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
-        """
-        Returns the url of the dataset within the workspace.
-        """
-        raise NotImplementedError()
-
     @abstractmethod
     def get(self, dataset) -> RemoteDataset:
         """
@@ -236,9 +228,7 @@ class RemoteStepLock:
         self._step_id = step if isinstance(step, str) else step.unique_id
         self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
         self._lock_dataset: Optional[RemoteDataset] = None
-        self.lock_dataset_url = self._client.dataset_url(
-            self._client.url(), self._lock_dataset_name
-        )
+        self.lock_dataset_url = self._client.url(self._lock_dataset_name)
 
     @property
     def metadata(self) -> Dict[str, Any]:

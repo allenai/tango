@@ -61,26 +61,21 @@ class BeakerClient(RemoteClient):
             else:
                 self.beaker = Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
-    def url(self, dataset: Optional[str] = None):
-        # if dataset, this returns only if path exists.
-        # if workspace doesnt exist, it is created.
-        if dataset is not None:
-            return self.beaker.dataset.url(dataset)
-        return self.beaker.workspace.url()
-
-    @classmethod
-    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
+    def url(self, dataset: Optional[str] = None) -> str:
         # this just creates a string url.
-        return (
-            workspace_url
-            + "/datasets?"
-            + urllib.parse.urlencode(
-                {
-                    "text": dataset_name,
-                    "committed": "false",
-                }
+        workspace_url = self.beaker.workspace.url()
+        if dataset:
+            return (
+                workspace_url
+                + "/datasets?"
+                + urllib.parse.urlencode(
+                    {
+                        "text": dataset,
+                        "committed": "false",
+                    }
+                )
             )
-        )
+        return workspace_url
 
     def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
         try:

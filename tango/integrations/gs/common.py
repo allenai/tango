@@ -71,10 +71,6 @@ class GCSClient(RemoteClient):
         return path
 
     @classmethod
-    def dataset_url(cls, workspace_url: str, dataset_name: str) -> str:
-        return os.path.join(workspace_url, dataset_name)
-
-    @classmethod
     def _convert_ls_info_to_dataset(cls, ls_info: List[Dict]) -> GCSDataset:
         name: str
         dataset_path: str
