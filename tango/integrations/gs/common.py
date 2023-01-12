@@ -2,7 +2,6 @@
 Classes and utility functions for GCSWorkspace and GCSStepCache.
 """
 
-import glob
 import json
 import logging
 import os
@@ -137,20 +136,15 @@ class GCSClient(RemoteClient):
             folder_path = os.path.join(self.bucket_name, dataset)
         else:
             folder_path = dataset.dataset_path
-        # Does not remove files that may have been present before, but aren't now.
-        # TODO: potentially consider gsutil rsync with --delete --ignore-existing command
-        # Using gsutil programmatically:
-        # https://github.com/GoogleCloudPlatform/gsutil/blob/84aa9af730fe3fa1307acc1ab95aec684d127152/gslib/tests/test_rsync.py
         try:
             source = str(objects_dir)
+            self.gcs_fs.put(source, folder_path, recursive=True)
             if objects_dir.is_dir():
-                source += "/*"
-            for path in glob.glob(source):
-                basepath = os.path.basename(path)
-                self.gcs_fs.put(path, os.path.join(folder_path, basepath), recursive=True)
-            # The put command below seems to have inconsistent results at the top level.
-            # TODO: debug later.
-            # self.gcs_fs.put(source, folder_path, recursive=True)
+                self.gcs_fs.mv(
+                    os.path.join(folder_path, os.path.basename(source)) + "/*",
+                    folder_path,
+                    recursive=True,
+                )
         except Exception:
             raise RemoteDatasetWriteError()
 
