@@ -57,12 +57,22 @@ class GCSClient(RemoteClient):
 
     placeholder_file = ".placeholder"
     uncommitted_file = ".uncommitted"
+    settings_file = "settings.json"
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
         # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
         # https://cloud.google.com/storage/docs/buckets. So, the project name does not matter.
         self.gcs_fs = gcsfs.GCSFileSystem(token=token)
         self.bucket_name = bucket_name
+
+        settings_path = self.url(self.settings_file)
+        try:
+            with self.gcs_fs.open(settings_path, "r") as file_ref:
+                json.load(file_ref)
+        except FileNotFoundError:
+            settings = {"version": 1}
+            with self.gcs_fs.open(settings_path, "w") as file_ref:
+                json.dump(settings, file_ref)
 
     def url(self, dataset: Optional[str] = None):
         path = f"gs://{self.bucket_name}"
