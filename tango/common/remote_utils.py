@@ -35,6 +35,7 @@ class RemoteConstants:
     GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
     RESULTS_DIR: str = "/tango/output"
     INPUT_DIR: str = "/tango/input"
+    LOCK_DATASET_SUFFIX: str = "-lock"
 
     @classmethod
     def step_dataset_name(cls, step: Union[str, StepInfo, Step]) -> str:
@@ -42,7 +43,7 @@ class RemoteConstants:
 
     @classmethod
     def step_lock_dataset_name(cls, step: Union[str, StepInfo, Step]) -> str:
-        return f"{cls.step_dataset_name(step)}-lock"
+        return f"{cls.step_dataset_name(step)}{cls.LOCK_DATASET_SUFFIX}"
 
     @classmethod
     def run_dataset_name(cls, name: str) -> str:
@@ -66,10 +67,6 @@ class RemoteDataset:
     created: datetime.datetime
     """
     Time of creation.
-    """
-    committed: bool
-    """
-    If set to True, no further changes to the dataset are allowed.
     """
 
 
@@ -147,9 +144,9 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def create(self, dataset: str, commit: bool = False):
+    def create(self, dataset: str):
         """
-        Creates a new dataset in the remote location. By default, it is uncommitted.
+        Creates a new dataset in the remote location.
         """
         raise NotImplementedError()
 
@@ -164,13 +161,6 @@ class RemoteClient(Registrable):
     def sync(self, dataset, objects_dir):
         """
         Writes the contents of objects_dir to the remote dataset location.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def commit(self, dataset):
-        """
-        Marks the dataset as committed. No further changes to the dataset are allowed.
         """
         raise NotImplementedError()
 
@@ -203,10 +193,10 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def datasets(self, match: str, uncommitted: bool = False) -> List:
+    def datasets(self, match: str) -> List:
         """
         Lists the dataset within the workspace attached to the client, based on `match`
-        and `uncommitted` criteria.
+        criteria.
         """
         raise NotImplementedError()
 
@@ -245,7 +235,7 @@ class RemoteStepLock:
         last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._client.create(self._lock_dataset_name, commit=False)
+                self._lock_dataset = self._client.create(self._lock_dataset_name)
 
                 atexit.register(self.release)
 

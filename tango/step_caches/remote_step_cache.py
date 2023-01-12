@@ -59,20 +59,18 @@ class RemoteStepCache(LocalStepCache):
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
         """ """
         try:
-            dataset = self.client.get(self.Constants.step_dataset_name(step))
-            return dataset if dataset.committed else None
+            return self.client.get(self.Constants.step_dataset_name(step))
         except RemoteDatasetNotFound:
             return None
 
     def _sync_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
         dataset_name = self.Constants.step_dataset_name(step)
         try:
-            self.client.create(dataset_name, commit=False)
+            self.client.create(dataset_name)
         except RemoteDatasetConflict:
             pass
         try:
             self.client.sync(dataset_name, objects_dir)
-            self.client.commit(dataset_name)
         except RemoteDatasetWriteError:
             pass
 
@@ -85,14 +83,13 @@ class RemoteStepCache(LocalStepCache):
             raise RemoteNotFoundError()
 
     def __len__(self):
-        # NOTE: lock datasets should not count here. They start with the same prefix,
-        # but they never get committed.
+        # NOTE: lock datasets should not count here.
         return sum(
             1
-            for ds in self.client.datasets(
-                uncommitted=False, match=self.Constants.STEP_DATASET_PREFIX
-            )
-            if ds.name is not None and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
+            for ds in self.client.datasets(match=self.Constants.STEP_DATASET_PREFIX)
+            if ds.name is not None
+            and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
+            and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)
         )
 
     def _acquire_step_lock_file(self, step: Union[Step, StepInfo], read_only_ok: bool = False):
@@ -106,7 +103,6 @@ class RemoteStepCache(LocalStepCache):
             if not cacheable:
                 return False
 
-            # TODO: old beaker step cache seems to not check locally. Should it?
             key = step.unique_id
 
             # First check if we have a copy in memory.

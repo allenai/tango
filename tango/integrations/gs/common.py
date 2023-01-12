@@ -56,7 +56,6 @@ class GCSClient(RemoteClient):
     """
 
     placeholder_file = ".placeholder"
-    uncommitted_file = ".uncommitted"
     settings_file = "settings.json"
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
@@ -85,18 +84,15 @@ class GCSClient(RemoteClient):
         name: str
         dataset_path: str
         created: datetime
-        committed: bool = True
 
         for info in ls_info:
             if "kind" in info and info["name"].endswith(cls.placeholder_file):
                 created = datetime.strptime(info["timeCreated"], "%Y-%m-%dT%H:%M:%S.%fZ")
                 dataset_path = info["name"].replace("/" + cls.placeholder_file, "")
                 name = dataset_path.replace(info["bucket"] + "/", "")
-            elif "kind" in info and info["name"].endswith(cls.uncommitted_file):
-                committed = False
 
         assert name is not None, "Folder is not a GCSDataset, should not have happened."
-        return GCSDataset(name, dataset_path, created, committed)
+        return GCSDataset(name, dataset_path, created)
 
     @classmethod
     def from_env(cls, bucket_name: str):
@@ -113,7 +109,7 @@ class GCSClient(RemoteClient):
         except FileNotFoundError:
             raise RemoteDatasetNotFound()
 
-    def create(self, dataset: str, commit: bool = False):
+    def create(self, dataset: str):
         # since empty folders cannot exist by themselves.
         folder_path = os.path.join(self.bucket_name, dataset)
         try:
@@ -130,8 +126,6 @@ class GCSClient(RemoteClient):
             if self.gcs_fs.exists(os.path.join(folder_path, self.placeholder_file)):
                 raise RemoteDatasetConflict(f"{folder_path} already exists!")
             self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
-            if not commit:
-                self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
 
         return self._convert_ls_info_to_dataset(self.gcs_fs.ls(folder_path, detail=True))
 
@@ -159,19 +153,6 @@ class GCSClient(RemoteClient):
             # self.gcs_fs.put(source, folder_path, recursive=True)
         except Exception:
             raise RemoteDatasetWriteError()
-
-    def commit(self, dataset: Union[str, GCSDataset]):
-        if isinstance(dataset, str):
-            folder_path = os.path.join(self.bucket_name, dataset)
-        else:
-            folder_path = dataset.dataset_path
-        uncommitted = os.path.join(folder_path, self.uncommitted_file)
-        try:
-            self.gcs_fs.rm_file(uncommitted)
-        except FileNotFoundError:
-            if not self.gcs_fs.isdir(folder_path):
-                raise RemoteDatasetNotFound()
-            # Otherwise, already committed. No change.
 
     def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
         file_path = os.path.join(dataset.dataset_path, target)
@@ -208,9 +189,6 @@ class GCSClient(RemoteClient):
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
             info = self.gcs_fs.ls(path=path, detail=True)
             dataset = self._convert_ls_info_to_dataset(info)
-            if not uncommitted:
-                if not dataset.committed:
-                    continue
             list_of_datasets.append(dataset)
         return list_of_datasets
 

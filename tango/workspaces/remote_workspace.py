@@ -226,7 +226,7 @@ class RemoteWorkspace(Workspace):
                 name = petname.generate() + str(random.randint(0, 100))
                 try:
                     run_dataset = self.client.create(
-                        self.Constants.run_dataset_name(cast(str, name)), commit=False
+                        self.Constants.run_dataset_name(cast(str, name))
                     )
                 except RemoteDatasetConflict:
                     continue
@@ -234,9 +234,7 @@ class RemoteWorkspace(Workspace):
                     break
         else:
             try:
-                run_dataset = self.client.create(
-                    self.Constants.run_dataset_name(name), commit=False
-                )
+                run_dataset = self.client.create(self.Constants.run_dataset_name(name))
             except RemoteDatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
 
@@ -314,7 +312,6 @@ class RemoteWorkspace(Workspace):
             finally:
                 run_dataset = self.Constants.run_dataset_name(name)
                 self.client.sync(run_dataset, log_file)
-                self.client.commit(run_dataset)
 
     def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:
         if dataset.name is None:
@@ -351,7 +348,7 @@ class RemoteWorkspace(Workspace):
 
         step_info_dataset: RemoteDataset
         try:
-            self.client.create(dataset_name, commit=False)
+            self.client.create(dataset_name)
         except RemoteDatasetConflict:
             pass
         step_info_dataset = self.client.get(dataset_name)

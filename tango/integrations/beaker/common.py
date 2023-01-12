@@ -79,14 +79,17 @@ class BeakerClient(RemoteClient):
 
     def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
         try:
-            return self.beaker.dataset.get(dataset)
+            dataset = self.beaker.dataset.get(dataset)
+            if not dataset.committed:
+                raise RemoteDatasetNotFound()
+            return dataset
         except (DatasetConflict, DatasetNotFound):
             # We do this so that remote_workspace gets errors of the type RemoteDatasetNotFound.
             raise RemoteDatasetNotFound()
 
-    def create(self, dataset: str, commit: bool = False):
+    def create(self, dataset: str):
         try:
-            return self.beaker.dataset.create(dataset, commit=commit)
+            return self.beaker.dataset.create(dataset, commit=False)
         except DatasetConflict:
             raise RemoteDatasetConflict()
 
@@ -96,11 +99,9 @@ class BeakerClient(RemoteClient):
     def sync(self, dataset: Union[str, BeakerDataset], objects_dir: Path):
         try:
             self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
+            self.beaker.dataset.commit(dataset)
         except DatasetWriteError:
             raise RemoteDatasetWriteError()
-
-    def commit(self, dataset: Union[str, BeakerDataset]):
-        self.beaker.dataset.commit(dataset)
 
     def upload(self, dataset: BeakerDataset, source: bytes, target: PathOrStr) -> None:
         self.beaker.dataset.upload(dataset, source, target, quiet=True)
@@ -123,10 +124,8 @@ class BeakerClient(RemoteClient):
         except DatasetNotFound:
             raise RemoteDatasetNotFound()
 
-    def datasets(self, match: str, uncommitted: bool = True) -> List[BeakerDataset]:
-        return self.beaker.workspace.iter_datasets(
-            match=match, uncommitted=uncommitted, results=False
-        )
+    def datasets(self, match: str) -> List[BeakerDataset]:
+        return self.beaker.workspace.iter_datasets(match=match, uncommitted=False, results=False)
 
 
 class Constants(RemoteConstants):
@@ -203,7 +202,7 @@ class BeakerStepLock(RemoteStepLock):
         last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._client.create(self._lock_dataset_name, commit=False)
+                self._lock_dataset = self._client.create(self._lock_dataset_name)
 
                 atexit.register(self.release)
 
