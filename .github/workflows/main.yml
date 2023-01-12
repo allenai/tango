@@ -119,18 +119,18 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/flax tests/integrations/flax
 
+          - name: GS integration
+            extras: dev,gs
+            requires_torch: false
+            run: |
+              pytest -v --color=yes --doctest-modules tango/integrations/gs tests/integrations/gs
+
           - name: Example - train_lm
             extras: dev,all
             requires_torch: true
             run: |
               cd examples/train_lm
               pytest -v --color=yes test.py
-
-          - name: GS integration
-            extras: dev,gs
-            requires_torch: false
-            run: |
-              pytest -v --color=yes --doctest-modules tango/integrations/gs tests/integrations/gs
 
         include:
           # Run the core tests on other Python versions as well.
