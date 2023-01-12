@@ -193,9 +193,17 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def datasets(self, match: str) -> List:
+    def list_steps(self, match: str) -> List:
         """
-        Lists the dataset within the workspace attached to the client, based on `match`
+        Lists the steps within the workspace attached to the client, based on `match`
+        criteria.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def list_runs(self, match: str) -> List:
+        """
+        Lists the runs within the workspace attached to the client, based on `match`
         criteria.
         """
         raise NotImplementedError()

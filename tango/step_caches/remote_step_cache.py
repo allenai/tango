@@ -57,7 +57,6 @@ class RemoteStepCache(LocalStepCache):
         raise NotImplementedError()
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
-        """ """
         try:
             return self.client.get(self.Constants.step_dataset_name(step))
         except RemoteDatasetNotFound:
@@ -86,7 +85,7 @@ class RemoteStepCache(LocalStepCache):
         # NOTE: lock datasets should not count here.
         return sum(
             1
-            for ds in self.client.datasets(match=self.Constants.STEP_DATASET_PREFIX)
+            for ds in self.client.list_steps(match=self.Constants.STEP_DATASET_PREFIX)
             if ds.name is not None
             and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
             and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)

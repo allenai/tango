@@ -184,13 +184,19 @@ class GCSClient(RemoteClient):
         except FileNotFoundError:
             raise RemoteDatasetNotFound()
 
-    def datasets(self, match: str, uncommitted: bool = True) -> List[GCSDataset]:
+    def _datasets(self, match: str) -> List[GCSDataset]:
         list_of_datasets = []
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
             info = self.gcs_fs.ls(path=path, detail=True)
             dataset = self._convert_ls_info_to_dataset(info)
             list_of_datasets.append(dataset)
         return list_of_datasets
+
+    def list_steps(self, match: str) -> List[GCSDataset]:
+        return self._datasets(match)
+
+    def list_runs(self, match: str) -> List[GCSDataset]:
+        return self._datasets(match)
 
 
 def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
