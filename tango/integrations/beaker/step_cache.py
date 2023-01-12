@@ -1,14 +1,16 @@
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from beaker import Beaker
 
 from tango.common.exceptions import ConfigurationError
+from tango.common.remote_utils import RemoteDatasetNotFound
 from tango.common.util import make_safe_filename, tango_cache_dir
+from tango.integrations.beaker.common import Constants, get_client
+from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteStepCache
-
-from .common import Constants, get_client
+from tango.step_info import StepInfo
 
 logger = logging.getLogger(__name__)
 
@@ -44,3 +46,10 @@ class BeakerStepCache(RemoteStepCache):
     @property
     def client(self):
         return self._client
+
+    def _step_result_remote(self, step: Union[Step, StepInfo]):
+        try:
+            dataset = self.client.get(self.Constants.step_dataset_name(step))
+            return dataset if dataset.committed else None
+        except RemoteDatasetNotFound:
+            return None

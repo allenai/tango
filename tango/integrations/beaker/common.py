@@ -79,10 +79,7 @@ class BeakerClient(RemoteClient):
 
     def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
         try:
-            dataset = self.beaker.dataset.get(dataset)
-            if not dataset.committed:
-                raise RemoteDatasetNotFound()
-            return dataset
+            return self.beaker.dataset.get(dataset)
         except (DatasetConflict, DatasetNotFound):
             # We do this so that remote_workspace gets errors of the type RemoteDatasetNotFound.
             raise RemoteDatasetNotFound()
