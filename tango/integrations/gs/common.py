@@ -68,6 +68,9 @@ class GCSClient(RemoteClient):
     """
 
     settings_file = "settings.json"
+    """
+    This file is for storing metadata like version information, etc.
+    """
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
         # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
