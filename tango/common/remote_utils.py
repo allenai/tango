@@ -7,7 +7,7 @@ import time
 from abc import abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from tango.common import PathOrStr
 from tango.common.exceptions import TangoError
@@ -205,18 +205,10 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def list_steps(self, match: str) -> List:
+    def datasets(self, match: str, uncommitted: bool = True):
         """
-        Lists the steps within the workspace attached to the client, based on `match`
-        criteria.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def list_runs(self, match: str) -> List:
-        """
-        Lists the runs within the workspace attached to the client, based on `match`
-        criteria.
+        Lists all the datasets within the remote storage, based on
+        `match` and `uncommitted` criteria. These can include steps and runs.
         """
         raise NotImplementedError()
 

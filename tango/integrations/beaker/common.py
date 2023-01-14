@@ -6,7 +6,7 @@ import time
 import urllib
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from beaker import Beaker
 from beaker import Dataset as BeakerDataset
@@ -123,11 +123,8 @@ class BeakerClient(RemoteClient):
         except DatasetNotFound:
             raise RemoteDatasetNotFound()
 
-    def list_steps(self, match: str) -> List[BeakerDataset]:
-        return self.beaker.workspace.iter_datasets(match=match, uncommitted=False, results=False)
-
-    def list_runs(self, match: str) -> List[BeakerDataset]:
-        return self.beaker.workspace.iter_datasets(match=match, uncommitted=True, results=False)
+    def datasets(self, match: str, uncommitted: bool = True):
+        self.beaker.workspace.iter_datasets(match=match, uncommitted=uncommitted, results=False)
 
 
 class Constants(RemoteConstants):

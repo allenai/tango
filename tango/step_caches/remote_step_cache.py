@@ -87,7 +87,9 @@ class RemoteStepCache(LocalStepCache):
         # NOTE: lock datasets should not count here.
         return sum(
             1
-            for ds in self.client.list_steps(match=self.Constants.STEP_DATASET_PREFIX)
+            for ds in self.client.datasets(
+                match=self.Constants.STEP_DATASET_PREFIX, uncommitted=False
+            )
             if ds.name is not None
             and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
             and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)
