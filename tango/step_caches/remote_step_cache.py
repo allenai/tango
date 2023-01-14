@@ -58,7 +58,8 @@ class RemoteStepCache(LocalStepCache):
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
         try:
-            return self.client.get(self.Constants.step_dataset_name(step))
+            dataset = self.client.get(self.Constants.step_dataset_name(step))
+            return dataset if dataset.committed else None
         except RemoteDatasetNotFound:
             return None
 
@@ -70,6 +71,7 @@ class RemoteStepCache(LocalStepCache):
             pass
         try:
             self.client.sync(dataset_name, objects_dir)
+            self.client.commit(dataset_name)
         except RemoteDatasetWriteError:
             pass
 
@@ -106,13 +108,16 @@ class RemoteStepCache(LocalStepCache):
 
             # First check if we have a copy in memory.
             if key in self.strong_cache:
+                print("found in strong!!!")
                 return True
             if key in self.weak_cache:
+                print("found in weak!!!")
                 return True
 
             # Then check if we have a copy on disk in our cache directory.
             with self._acquire_step_lock_file(step, read_only_ok=True):
                 if self.step_dir(step).is_dir():
+                    print("found copy on disk!!!")
                     return True
 
             # If not, check the remote location.

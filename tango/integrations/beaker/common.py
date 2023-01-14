@@ -96,9 +96,11 @@ class BeakerClient(RemoteClient):
     def sync(self, dataset: Union[str, BeakerDataset], objects_dir: Path):
         try:
             self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
-            self.beaker.dataset.commit(dataset)
         except DatasetWriteError:
             raise RemoteDatasetWriteError()
+
+    def commit(self, dataset: Union[str, BeakerDataset]):
+        self.beaker.dataset.commit(dataset)
 
     def upload(self, dataset: BeakerDataset, source: bytes, target: PathOrStr) -> None:
         self.beaker.dataset.upload(dataset, source, target, quiet=True)

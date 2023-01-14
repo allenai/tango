@@ -68,6 +68,11 @@ class RemoteDataset:
     """
     Time of creation.
     """
+    committed: bool
+    """
+    If set to True, no further changes to the dataset are allowed.
+    If set to False, it means that the dataset is under construction.
+    """
 
 
 @dataclass
@@ -146,7 +151,7 @@ class RemoteClient(Registrable):
     @abstractmethod
     def create(self, dataset: str):
         """
-        Creates a new dataset in the remote location.
+        Creates a new dataset in the remote location. By default, it is uncommitted.
         """
         raise NotImplementedError()
 
@@ -161,6 +166,13 @@ class RemoteClient(Registrable):
     def sync(self, dataset, objects_dir):
         """
         Writes the contents of objects_dir to the remote dataset location.
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def commit(self, dataset):
+        """
+        Marks the dataset as committed. No further changes to the dataset are allowed.
         """
         raise NotImplementedError()
 

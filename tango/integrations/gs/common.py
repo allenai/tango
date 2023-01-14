@@ -55,6 +55,18 @@ class GCSClient(RemoteClient):
     """
 
     placeholder_file = ".placeholder"
+    """
+    The placeholder file is used for creation of a folder in the cloud bucket,
+    as empty folders are not allowed. It is also used as a marker for the creation
+    time of the folder, hence we use a separate file to mark the dataset as
+    uncommitted.
+    """
+
+    uncommitted_file = ".uncommitted"
+    """
+    The uncommitted file is used to denote a dataset under construction.
+    """
+
     settings_file = "settings.json"
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
@@ -83,15 +95,18 @@ class GCSClient(RemoteClient):
         name: str
         dataset_path: str
         created: datetime
+        committed: bool = True
 
         for info in ls_info:
             if "kind" in info and info["name"].endswith(cls.placeholder_file):
                 created = datetime.strptime(info["timeCreated"], "%Y-%m-%dT%H:%M:%S.%fZ")
                 dataset_path = info["name"].replace("/" + cls.placeholder_file, "")
                 name = dataset_path.replace(info["bucket"] + "/", "")
+            elif "kind" in info and info["name"].endswith(cls.uncommitted_file):
+                committed = False
 
         assert name is not None, "Folder is not a GCSDataset, should not have happened."
-        return GCSDataset(name, dataset_path, created)
+        return GCSDataset(name, dataset_path, created, committed)
 
     @classmethod
     def from_env(cls, bucket_name: str):
@@ -125,6 +140,7 @@ class GCSClient(RemoteClient):
             if self.gcs_fs.exists(os.path.join(folder_path, self.placeholder_file)):
                 raise RemoteDatasetConflict(f"{folder_path} already exists!")
             self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
+            self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
 
         return self._convert_ls_info_to_dataset(self.gcs_fs.ls(folder_path, detail=True))
 
@@ -147,6 +163,19 @@ class GCSClient(RemoteClient):
                 )
         except Exception:
             raise RemoteDatasetWriteError()
+
+    def commit(self, dataset: Union[str, GCSDataset]):
+        if isinstance(dataset, str):
+            folder_path = os.path.join(self.bucket_name, dataset)
+        else:
+            folder_path = dataset.dataset_path
+        uncommitted = os.path.join(folder_path, self.uncommitted_file)
+        try:
+            self.gcs_fs.rm_file(uncommitted)
+        except FileNotFoundError:
+            if not self.gcs_fs.isdir(folder_path):
+                raise RemoteDatasetNotFound()
+            # Otherwise, already committed. No change.
 
     def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
         file_path = os.path.join(dataset.dataset_path, target)
@@ -178,19 +207,22 @@ class GCSClient(RemoteClient):
         except FileNotFoundError:
             raise RemoteDatasetNotFound()
 
-    def _datasets(self, match: str) -> List[GCSDataset]:
+    def _datasets(self, match: str, committed: bool = False) -> List[GCSDataset]:
         list_of_datasets = []
         for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
             info = self.gcs_fs.ls(path=path, detail=True)
             dataset = self._convert_ls_info_to_dataset(info)
+            if committed:
+                if not dataset.committed:
+                    continue
             list_of_datasets.append(dataset)
         return list_of_datasets
 
     def list_steps(self, match: str) -> List[GCSDataset]:
-        return self._datasets(match)
+        return self._datasets(match, committed=True)
 
     def list_runs(self, match: str) -> List[GCSDataset]:
-        return self._datasets(match)
+        return self._datasets(match, committed=False)
 
 
 def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
