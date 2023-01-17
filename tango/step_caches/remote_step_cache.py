@@ -110,16 +110,13 @@ class RemoteStepCache(LocalStepCache):
 
             # First check if we have a copy in memory.
             if key in self.strong_cache:
-                print("found in strong!!!")
                 return True
             if key in self.weak_cache:
-                print("found in weak!!!")
                 return True
 
             # Then check if we have a copy on disk in our cache directory.
             with self._acquire_step_lock_file(step, read_only_ok=True):
                 if self.step_dir(step).is_dir():
-                    print("found copy on disk!!!")
                     return True
 
             # If not, check the remote location.
