@@ -859,7 +859,9 @@ class BeakerExecutor(Executor):
             f"the Beaker dashboard and try again."
         )
         file_info = self.beaker.dataset.file_info(entrypoint_dataset, Constants.ENTRYPOINT_FILENAME)
-        if file_info.digest is not None and file_info.digest != Digest(sha256_hash.digest()):
+        if file_info.digest is not None and file_info.digest != Digest.from_decoded(
+            sha256_hash.digest(), "SHA256"
+        ):
             raise ExecutorError(err_msg)
 
         return entrypoint_dataset
