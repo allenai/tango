@@ -484,6 +484,8 @@ class Params(MutableMapping):
         from cached_path import cached_path
 
         params_file: Path = Path(cached_path(params_file))
+        if not params_file.is_file():
+            raise FileNotFoundError(params_file)
 
         file_dict: Dict[str, Any]
         if params_file.suffix in {".yml", ".yaml"}:
@@ -492,9 +494,13 @@ class Params(MutableMapping):
         else:
             # Fall back to JSON/Jsonnet.
             ext_vars = {**_environment_variables(), **ext_vars}
-            file_dict = json.loads(
-                evaluate_file(params_file.name, str(params_file.parent), ext_vars=ext_vars)
-            )
+            try:
+                json_str = evaluate_file(
+                    params_file.name, str(params_file.parent), ext_vars=ext_vars
+                )
+            except BaseException as exc:
+                raise RuntimeError(f"Error evaluating jsonnet at {params_file} - {str(exc)}")
+            file_dict = json.loads(json_str)
 
         if isinstance(params_overrides, dict):
             params_overrides = json.dumps(params_overrides)
