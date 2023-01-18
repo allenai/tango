@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - You can now add arguments to steps without invalidating the cache. See `Step.SKIP_DEFAULT_ARGUMENTS`.
 - Fixed integration status messages in `tango info` command.
 
+### Fixed
+
+- Warnings about locks are now reliably printed every 30 seconds
+
 
 ## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01
 
