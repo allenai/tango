@@ -494,7 +494,6 @@ class Params(MutableMapping):
         else:
             # Fall back to JSON/Jsonnet.
             ext_vars = {**_environment_variables(), **ext_vars}
-            print(ext_vars)
             try:
                 json_str = evaluate_file(
                     params_file.name, str(params_file.parent), ext_vars=ext_vars
