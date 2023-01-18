@@ -51,7 +51,7 @@ sphinx-copybutton==0.5.1
 sphinx-autobuild==2021.3.14
 
 # Automatically adds types to docs
-sphinx-autodoc-typehints
+sphinx-autodoc-typehints<=1.21.3
 
 # For working with version numbers.
 packaging
