@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Warnings about locks are now reliably printed every 30 seconds
+- We now make sure Beaker jobs have the latest version of beaker-py, so that we're compatible with the latest API changes.
 
 ### Changed
 
