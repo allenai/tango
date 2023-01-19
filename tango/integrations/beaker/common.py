@@ -168,7 +168,8 @@ class BeakerStepLock:
                     self._beaker.dataset.delete(self._lock_dataset_name)
                     continue
 
-                if last_logged is None or last_logged - start >= log_interval:
+                now = time.monotonic()
+                if last_logged is None or now - last_logged >= log_interval:
                     logger.warning(
                         "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
                         "This probably means the step is being run elsewhere, but if you're sure it isn't "
@@ -176,7 +177,7 @@ class BeakerStepLock:
                         self._step_id,
                         self.lock_dataset_url,
                     )
-                    last_logged = time.monotonic()
+                    last_logged = now
                 time.sleep(poll_interval)
                 continue
             else:

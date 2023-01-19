@@ -14,7 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Jsonnet parsing is now much faster.
+- Jsonnet parsing is now much faster and works on Windows.
+- Warnings about locks are now reliably printed every 30 seconds
+
+### Changed
+
+- The default log level for Tango is now `warning`.
 
 
 ## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01
