@@ -30,10 +30,6 @@ fi
 # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
 gh auth setup-git
 
-# Every time Beaker changes their APIs, we need to upgrade beaker-py. This happens all the
-# time, so we make sure we have the latest.
-pip install --upgrade beaker-py
-
 echo "
 [TANGO] [2/3] Cloning source code from '$GITHUB_REPO'...
 "
@@ -83,6 +79,12 @@ else
     fi
     conda activate "$VENV_NAME"
 fi
+
+# Every time Beaker changes their APIs, we need to upgrade beaker-py. This happens all the
+# time, so we make sure we have the latest.
+# We do this when the conda environment is up, but before the requirements, so that
+# requirements can request a particular beaker-py version if they want.
+pip install --upgrade beaker-py
 
 if [[ -z "$INSTALL_CMD" ]]; then
     # Check for a 'requirements.txt' and/or 'setup.py' file.
