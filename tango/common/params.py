@@ -494,12 +494,7 @@ class Params(MutableMapping):
         else:
             # Fall back to JSON/Jsonnet.
             ext_vars = {**_environment_variables(), **ext_vars}
-            try:
-                json_str = evaluate_file(
-                    params_file.name, str(params_file.parent), ext_vars=ext_vars
-                )
-            except BaseException as exc:
-                raise RuntimeError(f"Error evaluating jsonnet at {params_file} - {str(exc)}")
+            json_str = evaluate_file(params_file.name, str(params_file.parent), ext_vars=ext_vars)
             file_dict = json.loads(json_str)
 
         if isinstance(params_overrides, dict):
