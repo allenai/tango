@@ -30,6 +30,10 @@ fi
 # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
 gh auth setup-git
 
+# Every time Beaker changes their APIs, we need to upgrade beaker-py. This happens all the
+# time, so we make sure we have the latest.
+pip install --upgrade beaker-py
+
 echo "
 [TANGO] [2/3] Cloning source code from '$GITHUB_REPO'...
 "
