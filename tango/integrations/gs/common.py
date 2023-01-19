@@ -1,16 +1,16 @@
 """
 Classes and utility functions for GCSWorkspace and GCSStepCache.
 """
-
 import json
 import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
-import gcsfs
+from google.api_core import exceptions
+from google.cloud import storage
 
 from tango.common.aliases import PathOrStr
 from tango.common.remote_utils import (
@@ -33,10 +33,11 @@ def empty_bucket(bucket_name: str, token: str = "google_default"):
     """
     Utility function for testing.
     """
-    fs = gcsfs.GCSFileSystem(token=token)
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
     try:
-        fs.rm(f"{bucket_name}/tango-*", recursive=True)
-    except FileNotFoundError:
+        bucket.delete_blobs(list(bucket.list_blobs(prefix="tango-")))
+    except exceptions.NotFound:
         pass
 
 
@@ -73,18 +74,18 @@ class GCSClient(RemoteClient):
     """
 
     def __init__(self, bucket_name: str, token: str = "google_default"):
-        # "Bucket names reside in a single namespace that is shared by all Cloud Storage users" from
-        # https://cloud.google.com/storage/docs/buckets. So, the project name does not matter.
-        self.gcs_fs = gcsfs.GCSFileSystem(token=token)
+        # https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files
+        # https://googleapis.dev/python/google-api-core/latest/auth.html
+        self.storage = storage.Client()  # TODO: use oauth2 credentials.
         self.bucket_name = bucket_name
 
-        settings_path = self.url(self.settings_file)
+        blob = self.storage.bucket(bucket_name).blob(self.settings_file)  # no HTTP request yet
         try:
-            with self.gcs_fs.open(settings_path, "r") as file_ref:
+            with blob.open("r") as file_ref:
                 json.load(file_ref)
-        except FileNotFoundError:
+        except exceptions.NotFound:
             settings = {"version": 1}
-            with self.gcs_fs.open(settings_path, "w") as file_ref:
+            with blob.open("w") as file_ref:
                 json.dump(settings, file_ref)
 
     def url(self, dataset: Optional[str] = None):
@@ -94,18 +95,18 @@ class GCSClient(RemoteClient):
         return path
 
     @classmethod
-    def _convert_ls_info_to_dataset(cls, ls_info: List[Dict]) -> GCSDataset:
+    def _convert_blobs_to_dataset(cls, blobs: List[storage.Blob]) -> GCSDataset:
         name: str
         dataset_path: str
         created: datetime
         committed: bool = True
 
-        for info in ls_info:
-            if "kind" in info and info["name"].endswith(cls.placeholder_file):
-                created = datetime.strptime(info["timeCreated"], "%Y-%m-%dT%H:%M:%S.%fZ")
-                dataset_path = info["name"].replace("/" + cls.placeholder_file, "")
-                name = dataset_path.replace(info["bucket"] + "/", "")
-            elif "kind" in info and info["name"].endswith(cls.uncommitted_file):
+        for blob in blobs:
+            if blob.name.endswith(cls.placeholder_file):
+                created = blob.time_created
+                name = blob.name.replace("/" + cls.placeholder_file, "")
+                dataset_path = name  # does not contain bucket info here.
+            elif blob.name.endswith(cls.uncommitted_file):
                 committed = False
 
         assert name is not None, "Folder is not a GCSDataset, should not have happened."
@@ -117,72 +118,72 @@ class GCSClient(RemoteClient):
 
     def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:
         if isinstance(dataset, str):
-            path = os.path.join(self.bucket_name, dataset)
+            path = dataset
         else:
             # We have a dataset, and we recreate it with refreshed info.
             path = dataset.dataset_path
-        try:
-            return self._convert_ls_info_to_dataset(self.gcs_fs.ls(path=path, detail=True))
-        except FileNotFoundError:
+
+        blobs = list(self.storage.bucket(self.bucket_name).list_blobs(prefix=path))
+        if len(blobs) > 0:
+            return self._convert_blobs_to_dataset(blobs)
+        else:
             raise RemoteDatasetNotFound()
 
     def create(self, dataset: str):
-        # since empty folders cannot exist by themselves.
-        folder_path = os.path.join(self.bucket_name, dataset)
-        try:
-            info = self.gcs_fs.info(folder_path)
-            if info["type"] == "directory":
-                raise RemoteDatasetConflict(f"{folder_path} already exists!")
-            else:
-                # Hack. Technically, this means that a folder of the name doesn't exist.
-                # A file may still exist. Ideally, shouldn't happen.
-                raise FileNotFoundError
-        except FileNotFoundError:
-            # Additional check for safety
-            self.gcs_fs.invalidate_cache(folder_path)
-            if self.gcs_fs.exists(os.path.join(folder_path, self.placeholder_file)):
-                raise RemoteDatasetConflict(f"{folder_path} already exists!")
-            self.gcs_fs.touch(os.path.join(folder_path, self.placeholder_file), truncate=False)
-            self.gcs_fs.touch(os.path.join(folder_path, self.uncommitted_file), truncate=False)
-
-        return self._convert_ls_info_to_dataset(self.gcs_fs.ls(folder_path, detail=True))
+        bucket = self.storage.bucket(self.bucket_name)
+        # gives refreshed information
+        if bucket.blob(os.path.join(dataset, self.placeholder_file)).exists():
+            raise RemoteDatasetConflict(f"{dataset} already exists!")
+        else:
+            # Additional safety check
+            if bucket.blob(os.path.join(dataset, self.uncommitted_file)).exists():
+                raise RemoteDatasetConflict(f"{dataset} already exists!")
+            bucket.blob(os.path.join(dataset, self.placeholder_file)).upload_from_string("")
+            bucket.blob(os.path.join(dataset, self.uncommitted_file)).upload_from_string("")
+        return self._convert_blobs_to_dataset(list(bucket.list_blobs(prefix=dataset)))
 
     def delete(self, dataset: GCSDataset):
-        self.gcs_fs.rm(dataset.dataset_path, recursive=True)
+        bucket = self.storage.bucket(self.bucket_name)
+        blobs = list(bucket.list_blobs(prefix=dataset.dataset_path))
+        bucket.delete_blobs(blobs)
 
     def sync(self, dataset: Union[str, GCSDataset], objects_dir: Path):
         if isinstance(dataset, str):
-            folder_path = os.path.join(self.bucket_name, dataset)
+            folder_path = dataset
         else:
             folder_path = dataset.dataset_path
+
+        source_path = str(objects_dir)
+        # TODO: this is copying one file at a time, may want to parallelize.
         try:
-            source = str(objects_dir)
-            self.gcs_fs.put(source, folder_path, recursive=True)
-            if objects_dir.is_dir():
-                self.gcs_fs.mv(
-                    os.path.join(folder_path, os.path.basename(source)) + "/*",
-                    folder_path,
-                    recursive=True,
-                )
+            for dirpath, _, filenames in os.walk(source_path):
+                for filename in filenames:
+                    source_file_path = os.path.join(dirpath, filename)
+                    target_file_path = os.path.join(
+                        folder_path, source_file_path.replace(source_path + "/", "")
+                    )
+                    blob = self.storage.bucket(self.bucket_name).blob(target_file_path)
+                    blob.upload_from_filename(source_file_path)
         except Exception:
             raise RemoteDatasetWriteError()
 
     def commit(self, dataset: Union[str, GCSDataset]):
         if isinstance(dataset, str):
-            folder_path = os.path.join(self.bucket_name, dataset)
+            folder_path = dataset
         else:
             folder_path = dataset.dataset_path
-        uncommitted = os.path.join(folder_path, self.uncommitted_file)
+        bucket = self.storage.bucket(self.bucket_name)
         try:
-            self.gcs_fs.rm_file(uncommitted)
-        except FileNotFoundError:
-            if not self.gcs_fs.isdir(folder_path):
+            bucket.delete_blob(os.path.join(folder_path, self.uncommitted_file))
+        except exceptions.NotFound:
+            if not bucket.blob(os.path.join(folder_path, self.placeholder_file)).exists():
                 raise RemoteDatasetNotFound()
             # Otherwise, already committed. No change.
 
     def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
         file_path = os.path.join(dataset.dataset_path, target)
-        with self.gcs_fs.open(file_path, "wb") as file_ref:
+        blob = self.storage.bucket(self.bucket_name).blob(file_path)
+        with blob.open("wb") as file_ref:
             file_ref.write(source)
 
     def get_file(self, dataset: GCSDataset, file_path: Union[str, FileInfo]):
@@ -190,31 +191,49 @@ class GCSClient(RemoteClient):
             full_file_path = file_path.path
         else:
             full_file_path = os.path.join(dataset.dataset_path, file_path)
-        with self.gcs_fs.open(full_file_path, "r") as file_ref:
+        blob = self.storage.bucket(self.bucket_name).blob(full_file_path)
+        with blob.open("r") as file_ref:
             file_contents = file_ref.read()
         return file_contents
 
     def file_info(self, dataset: GCSDataset, file_path: str) -> FileInfo:
         full_file_path = os.path.join(dataset.dataset_path, file_path)
-        info = self.gcs_fs.ls(full_file_path, detail=True)[0]
+        blob = self.storage.bucket(self.bucket_name).get_blob(
+            full_file_path
+        )  # get_blob makes a request
         return FileInfo(
             path=full_file_path,
-            digest=info["md5Hash"],
-            updated=datetime.strptime(info["updated"], "%Y-%m-%dT%H:%M:%S.%fZ"),
-            size=info["size"],
+            digest=blob.md5_hash,
+            updated=blob.updated,
+            size=blob.size,
         )
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
+        assert (
+            self.storage.bucket(self.bucket_name)
+            .blob(os.path.join(dataset.dataset_path, self.placeholder_file))
+            .exists()
+        )
+        # TODO: this is copying one file at a time, may want to parallelize.
         try:
-            self.gcs_fs.get(dataset.dataset_path, target_dir, recursive=True)
-        except FileNotFoundError:
-            raise RemoteDatasetNotFound()
+            for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
+                blob.update()  # fetches updated information.
+                source_path = blob.name.replace(dataset.dataset_path + "/", "")
+                target_path = os.path.join(target_dir, source_path)
+                if not os.path.exists(os.path.dirname(target_path)):
+                    os.mkdir(os.path.dirname(target_path))
+                blob.download_to_filename(target_path)
+        except exceptions.NotFound:
+            raise RemoteDatasetWriteError()
 
     def datasets(self, match: str, uncommitted: bool = True) -> List[GCSDataset]:
         list_of_datasets = []
-        for path in self.gcs_fs.glob(os.path.join(self.bucket_name, match) + "*"):
-            info = self.gcs_fs.ls(path=path, detail=True)
-            dataset = self._convert_ls_info_to_dataset(info)
+        for folder_name in self.storage.list_blobs(
+            self.bucket_name, prefix=match, delimiter="/"
+        )._get_next_page_response()["prefixes"]:
+            dataset = self._convert_blobs_to_dataset(
+                list(self.storage.list_blobs(self.bucket_name, prefix=folder_name))
+            )
             if not uncommitted:
                 if not dataset.committed:
                     continue
