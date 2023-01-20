@@ -5,9 +5,11 @@ import pytest
 
 from tango import StepGraph
 from tango.common import Params, Registrable
+from tango.common.exceptions import ConfigurationError
 from tango.common.from_params import FromParams
 from tango.common.testing import TangoTestCase
 from tango.step import FunctionalStep, Step, step
+from tango.workspaces import MemoryWorkspace
 
 
 class TestStep(TangoTestCase):
@@ -167,3 +169,32 @@ class TestStep(TangoTestCase):
         foo_step = Step.from_params({"type": "foo", "bar": {"x": 1}})
         assert isinstance(foo_step, FunctionalStep)
         assert isinstance(foo_step.kwargs["bar"], Bar)
+
+    def test_bound_functional_step(self):
+        class Bar(FromParams):
+            def __init__(self, x: int):
+                self.x = x
+
+        @step(exist_ok=True, bind=True)
+        def foo(self, bar: Bar) -> int:
+            assert self.work_dir.is_dir()
+            return bar.x
+
+        foo_step = Step.from_params({"type": "foo", "bar": {"x": 1}})
+        assert isinstance(foo_step, FunctionalStep)
+        assert foo_step.result(MemoryWorkspace()) == 1
+
+    def test_bound_functional_step_missing_self(self):
+        @step(exist_ok=True, bind=True)
+        def foo(x: int) -> int:
+            return x
+
+        with pytest.raises(ConfigurationError):
+            Step.from_params({"type": "foo", "x": 1})
+
+        @step(exist_ok=True, bind=True)
+        def bar(s, x: int) -> int:
+            return x
+
+        with pytest.raises(ConfigurationError):
+            Step.from_params({"type": "bar", "x": 1})
