@@ -9,8 +9,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
 
+import google.auth
 from google.api_core import exceptions
 from google.cloud import storage
+from google.oauth2.credentials import Credentials
 
 from tango.common.aliases import PathOrStr
 from tango.common.remote_utils import (
@@ -73,10 +75,12 @@ class GCSClient(RemoteClient):
     This file is for storing metadata like version information, etc.
     """
 
-    def __init__(self, bucket_name: str, token: str = "google_default"):
+    def __init__(self, bucket_name: str, credentials: Optional[Credentials] = None, project: Optional[str] = None):
         # https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files
         # https://googleapis.dev/python/google-api-core/latest/auth.html
-        self.storage = storage.Client()  # TODO: use oauth2 credentials.
+        if not credentials:
+            credentials, project = google.auth.default()
+        self.storage = storage.Client(project=project, credentials=credentials)
         self.bucket_name = bucket_name
 
         blob = self.storage.bucket(bucket_name).blob(self.settings_file)  # no HTTP request yet
@@ -241,15 +245,20 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
-def get_client(gcs_workspace: str, token: str = "google_default", **kwargs) -> GCSClient:
+def get_client(gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs) -> GCSClient:
     # BeakerExecutor will use GOOGLE_TOKEN
-    token = os.environ.get("GOOGLE_TOKEN", token)
-    try:
-        # If credentials dict has been passed as the token
-        token = json.loads(token)
-    except json.decoder.JSONDecodeError:
-        pass  # It is not a json string.
-    return GCSClient(gcs_workspace, token=token, **kwargs)
+    credentials = os.environ.get("GOOGLE_TOKEN", credentials)
+    if credentials is not None:
+        try:
+            # If credentials dict has been passed as a json string
+            credentials_dict = json.loads(credentials)
+            credentials_dict.pop("type", None)
+            # sometimes the credentials dict may not contain `token` key, but `Credentials()` needs the parameter.
+            token = credentials_dict.pop("token", None)
+            credentials = Credentials(token=token, **credentials_dict)
+        except json.decoder.JSONDecodeError:
+            pass  # It is not a json string.
+    return GCSClient(gcs_workspace, credentials=credentials, **kwargs)
 
 
 class Constants(RemoteConstants):
