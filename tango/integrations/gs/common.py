@@ -1,5 +1,5 @@
 """
-Classes and utility functions for GCSWorkspace and GCSStepCache.
+Classes and utility functions for GSWorkspace and GSStepCache.
 """
 import json
 import logging
@@ -31,11 +31,12 @@ from tango.step_info import StepInfo
 logger = logging.getLogger(__name__)
 
 
-def empty_bucket(bucket_name: str, token: str = "google_default"):
+def empty_bucket(bucket_name: str):
     """
     Utility function for testing.
     """
-    client = storage.Client()
+    credentials, project = google.auth.default()
+    client = storage.Client(project=project, credentials=credentials)
     bucket = client.bucket(bucket_name)
     try:
         bucket.delete_blobs(list(bucket.list_blobs(prefix="tango-")))
@@ -44,8 +45,20 @@ def empty_bucket(bucket_name: str, token: str = "google_default"):
 
 
 class GCSDataset(RemoteDataset):
+    """
+    A GCSDataset object is used for representing storage objects in google cloud storage.
+    Currently, it can be either a cached Step, or a Run.
+    """
     pass
 
+
+class GSStep(GCSDataset):
+    pass
+
+
+@dataclass
+class GSRun:
+    name: str
 
 @dataclass
 class FileInfo(RemoteFileInfo):
@@ -80,6 +93,8 @@ class GCSClient(RemoteClient):
         # https://googleapis.dev/python/google-api-core/latest/auth.html
         if not credentials:
             credentials, project = google.auth.default()
+
+        print(credentials)
         self.storage = storage.Client(project=project, credentials=credentials)
         self.bucket_name = bucket_name
 
@@ -249,15 +264,21 @@ def get_client(gcs_workspace: str, credentials: Optional[Union[str, Credentials]
     # BeakerExecutor will use GOOGLE_TOKEN
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
     if credentials is not None:
+        if isinstance(credentials, str) and credentials.endswith(".json"):
+            with open(credentials) as file_ref:
+                credentials = file_ref.read()
         try:
             # If credentials dict has been passed as a json string
             credentials_dict = json.loads(credentials)
             credentials_dict.pop("type", None)
             # sometimes the credentials dict may not contain `token` key, but `Credentials()` needs the parameter.
             token = credentials_dict.pop("token", None)
-            credentials = Credentials(token=token, **credentials_dict)
+            token_uri = credentials_dict.pop("token_uri", "https://oauth2.googleapis.com/token")
+            credentials = Credentials(token=token, token_uri=token_uri, **credentials_dict)
         except json.decoder.JSONDecodeError:
-            pass  # It is not a json string.
+            # It is not a json string.
+            pass
+
     return GCSClient(gcs_workspace, credentials=credentials, **kwargs)
 
 
