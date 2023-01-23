@@ -181,7 +181,7 @@ class GCSClient(RemoteClient):
 
         source_path = str(objects_dir)
 
-        def _sync_blob(filename: str):
+        def _sync_blob(dirpath: str, filename: str):
             source_file_path = os.path.join(dirpath, filename)
             target_file_path = os.path.join(
                 folder_path, source_file_path.replace(source_path + "/", "")
@@ -197,7 +197,7 @@ class GCSClient(RemoteClient):
                 blob_futures = []
                 for dirpath, _, filenames in os.walk(source_path):
                     for filename in filenames:
-                        blob_futures.append(executor.submit(_sync_blob, filename))
+                        blob_futures.append(executor.submit(_sync_blob, dirpath, filename))
                 for future in concurrent.futures.as_completed(blob_futures):
                     future.result()
         except Exception:
