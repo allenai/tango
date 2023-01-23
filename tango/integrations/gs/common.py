@@ -1,7 +1,6 @@
 """
 Classes and utility functions for GSWorkspace and GSStepCache.
 """
-import concurrent
 import json
 import logging
 import os
@@ -190,16 +189,10 @@ class GCSClient(RemoteClient):
             blob.upload_from_filename(source_file_path)
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=None,  # TODO: use variable
-                thread_name_prefix="GSClient.sync()-",
-            ) as executor:
-                blob_futures = []
-                for dirpath, _, filenames in os.walk(source_path):
-                    for filename in filenames:
-                        blob_futures.append(executor.submit(_sync_blob, dirpath, filename))
-                for future in concurrent.futures.as_completed(blob_futures):
-                    future.result()
+            for dirpath, _, filenames in os.walk(source_path):
+                for filename in filenames:
+                    _sync_blob(dirpath, filename)
+
         except Exception:
             raise RemoteDatasetWriteError()
 
@@ -260,15 +253,8 @@ class GCSClient(RemoteClient):
             blob.download_to_filename(target_path)
 
         try:
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=None,  # TODO: use variable
-                thread_name_prefix="GSClient.fetch()-",
-            ) as executor:
-                blob_futures = []
-                for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
-                    blob_futures.append(executor.submit(_fetch_blob, blob))
-                for future in concurrent.futures.as_completed(blob_futures):
-                    future.result()
+            for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
+                _fetch_blob(blob)
         except exceptions.NotFound:
             raise RemoteDatasetWriteError()
 
