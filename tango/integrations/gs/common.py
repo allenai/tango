@@ -306,7 +306,9 @@ def get_client(
             credentials = Credentials(token=token, token_uri=token_uri, **credentials_dict)
         except json.decoder.JSONDecodeError:
             # It is not a json string.
-            pass
+            # We do this because BeakerExecutor cannot write a None secret.
+            if credentials == "default":
+                credentials = None
 
     return GCSClient(gcs_workspace, credentials=credentials, **kwargs)
 
