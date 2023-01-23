@@ -10,9 +10,9 @@ Components for Tango integration with `GS <https://cloud.google.com/storage/>`_.
 from tango.common.exceptions import IntegrationMissingError
 
 try:
-    import gcsfs
+    from google.cloud import storage
 except (ModuleNotFoundError, ImportError):
-    raise IntegrationMissingError("gs", dependencies={"gcsfs"})
+    raise IntegrationMissingError("gs", dependencies={"google-cloud-storage"})
 
 from .step_cache import GSStepCache
 from .workspace import GSWorkspace
