@@ -94,7 +94,6 @@ class GCSClient(RemoteClient):
         if not credentials:
             credentials, project = google.auth.default()
 
-        print(credentials)
         self.storage = storage.Client(project=project, credentials=credentials)
         self.bucket_name = bucket_name
 

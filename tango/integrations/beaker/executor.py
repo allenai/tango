@@ -450,9 +450,7 @@ class BeakerExecutor(Executor):
                 with open(self.google_token) as f:
                     self.google_token = f.read()
         else:
-            # import google.auth
-            # self.google_token, _ = google.auth.default()
-            self.google_token = None  # pass
+            self.google_token = None
 
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
