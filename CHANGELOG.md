@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added abstractions for `RemoteClient`, `RemoteStepCache`, and `RemoteWorkspace`.
 - Added a GS integration that comes with `GSWorkspace`, a remote `Workspace` implementation that uses google cloud storage.
 
+### Fixed
+
+- Jsonnet parsing is now much faster and works on Windows.
+- Warnings about locks are now reliably printed every 30 seconds
+- We now make sure Beaker jobs have the latest version of beaker-py, so that we're compatible with the latest API changes.
+
+### Changed
+
+- The default log level for Tango is now `warning`.
+
+
 ## [v1.1.0](https://github.com/allenai/tango/releases/tag/v1.1.0) - 2022-12-01
 
 ### Added
