@@ -1,6 +1,7 @@
 """
 Classes and utility functions for GSWorkspace and GSStepCache.
 """
+import concurrent
 import json
 import logging
 import os
@@ -49,6 +50,7 @@ class GCSDataset(RemoteDataset):
     A GCSDataset object is used for representing storage objects in google cloud storage.
     Currently, it can be either a cached Step, or a Run.
     """
+
     pass
 
 
@@ -59,6 +61,7 @@ class GSStep(GCSDataset):
 @dataclass
 class GSRun:
     name: str
+
 
 @dataclass
 class FileInfo(RemoteFileInfo):
@@ -88,7 +91,12 @@ class GCSClient(RemoteClient):
     This file is for storing metadata like version information, etc.
     """
 
-    def __init__(self, bucket_name: str, credentials: Optional[Credentials] = None, project: Optional[str] = None):
+    def __init__(
+        self,
+        bucket_name: str,
+        credentials: Optional[Credentials] = None,
+        project: Optional[str] = None,
+    ):
         # https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files
         # https://googleapis.dev/python/google-api-core/latest/auth.html
         if not credentials:
@@ -132,7 +140,7 @@ class GCSClient(RemoteClient):
 
     @classmethod
     def from_env(cls, bucket_name: str):
-        return cls(bucket_name, token="google_default")
+        return cls(bucket_name)
 
     def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:
         if isinstance(dataset, str):
@@ -172,16 +180,26 @@ class GCSClient(RemoteClient):
             folder_path = dataset.dataset_path
 
         source_path = str(objects_dir)
-        # TODO: this is copying one file at a time, may want to parallelize.
+
+        def _sync_blob(filename: str):
+            source_file_path = os.path.join(dirpath, filename)
+            target_file_path = os.path.join(
+                folder_path, source_file_path.replace(source_path + "/", "")
+            )
+            blob = self.storage.bucket(self.bucket_name).blob(target_file_path)
+            blob.upload_from_filename(source_file_path)
+
         try:
-            for dirpath, _, filenames in os.walk(source_path):
-                for filename in filenames:
-                    source_file_path = os.path.join(dirpath, filename)
-                    target_file_path = os.path.join(
-                        folder_path, source_file_path.replace(source_path + "/", "")
-                    )
-                    blob = self.storage.bucket(self.bucket_name).blob(target_file_path)
-                    blob.upload_from_filename(source_file_path)
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=None,  # TODO: use variable
+                thread_name_prefix="GSClient.sync()-",
+            ) as executor:
+                blob_futures = []
+                for dirpath, _, filenames in os.walk(source_path):
+                    for filename in filenames:
+                        blob_futures.append(executor.submit(_sync_blob, filename))
+                for future in concurrent.futures.as_completed(blob_futures):
+                    future.result()
         except Exception:
             raise RemoteDatasetWriteError()
 
@@ -232,15 +250,25 @@ class GCSClient(RemoteClient):
             .blob(os.path.join(dataset.dataset_path, self.placeholder_file))
             .exists()
         )
-        # TODO: this is copying one file at a time, may want to parallelize.
+
+        def _fetch_blob(blob: storage.Blob):
+            blob.update()  # fetches updated information.
+            source_path = blob.name.replace(dataset.dataset_path + "/", "")
+            target_path = os.path.join(target_dir, source_path)
+            if not os.path.exists(os.path.dirname(target_path)):
+                os.mkdir(os.path.dirname(target_path))
+            blob.download_to_filename(target_path)
+
         try:
-            for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
-                blob.update()  # fetches updated information.
-                source_path = blob.name.replace(dataset.dataset_path + "/", "")
-                target_path = os.path.join(target_dir, source_path)
-                if not os.path.exists(os.path.dirname(target_path)):
-                    os.mkdir(os.path.dirname(target_path))
-                blob.download_to_filename(target_path)
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=None,  # TODO: use variable
+                thread_name_prefix="GSClient.fetch()-",
+            ) as executor:
+                blob_futures = []
+                for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
+                    blob_futures.append(executor.submit(_fetch_blob, blob))
+                for future in concurrent.futures.as_completed(blob_futures):
+                    future.result()
         except exceptions.NotFound:
             raise RemoteDatasetWriteError()
 
@@ -259,7 +287,9 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
-def get_client(gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs) -> GCSClient:
+def get_client(
+    gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs
+) -> GCSClient:
     # BeakerExecutor will use GOOGLE_TOKEN
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
     if credentials is not None:
