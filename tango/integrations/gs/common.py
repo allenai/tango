@@ -291,9 +291,7 @@ class GCSClient(RemoteClient):
         return list_of_datasets
 
 
-def get_client(
-    gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs
-) -> GCSClient:
+def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
     # BeakerExecutor will use GOOGLE_TOKEN
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
     if credentials is not None:
@@ -313,7 +311,13 @@ def get_client(
             # We do this because BeakerExecutor cannot write a None secret.
             if credentials == "default":
                 credentials = None
+    return credentials
 
+
+def get_client(
+    gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs
+) -> GCSClient:
+    credentials = get_credentials(credentials)
     return GCSClient(gcs_workspace, credentials=credentials, **kwargs)
 
 

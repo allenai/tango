@@ -5,15 +5,19 @@ import tempfile
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Iterable, Optional, TypeVar, cast, Union, Generator
+from typing import Dict, Generator, Iterable, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
 from google.cloud import datastore
 
 from tango.common.logging import file_handler
-from tango.common.remote_utils import RemoteDataset, RemoteDatasetConflict
-from tango.integrations.gs.common import Constants, GCSStepLock, get_client
+from tango.integrations.gs.common import (
+    Constants,
+    GCSStepLock,
+    get_client,
+    get_credentials,
+)
 from tango.integrations.gs.step_cache import GSStepCache
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -51,8 +55,10 @@ class GSWorkspace(RemoteWorkspace):
         super().__init__()
 
         # TODO: Ugly. Fix.
+        # TODO: also update the docstring.
+        credentials = get_credentials()
         self._ds = datastore.Client(
-            namespace=workspace, project=self._client.storage.project, credentials=self._client.storage._credentials
+            namespace=workspace, project=self._client.storage.project, credentials=credentials
         )
 
     @property
@@ -190,7 +196,9 @@ class GSWorkspace(RemoteWorkspace):
             return run
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        unique_id = step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
+        unique_id = (
+            step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
+        )
         step_info_entity = self._ds.get(key=self._ds.key("stepinfo", unique_id))
         if step_info_entity:
             # TODO: not using self._step_info_cache yet.
@@ -207,7 +215,10 @@ class GSWorkspace(RemoteWorkspace):
 
     def _update_step_info(self, step_info: StepInfo):
 
-        step_info_entity = self._ds.entity(key=self._ds.key("stepinfo", step_info.unique_id), exclude_from_indexes=("step_info_dict",))
+        step_info_entity = self._ds.entity(
+            key=self._ds.key("stepinfo", step_info.unique_id),
+            exclude_from_indexes=("step_info_dict",),
+        )
 
         # We can store each key separately, but we only index things that are useful for querying.
         # TODO: do we want to index any other step_info keys?
