@@ -2,7 +2,7 @@ import datetime
 import json
 import random
 from collections import OrderedDict
-from typing import Dict, Iterable, Optional, TypeVar, cast
+from typing import Dict, Iterable, Optional, TypeVar, cast, Union
 from urllib.parse import ParseResult
 
 import petname
@@ -185,34 +185,51 @@ class GSWorkspace(RemoteWorkspace):
         else:
             return run
 
+    def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
+        unique_id = step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
+        step_info_entity = self._ds.get(key=self._ds.key("stepinfo", unique_id))
+        if step_info_entity:
+            # TODO: not using self._step_info_cache yet.
+            # TODO: why does it use digest rather than unique id?
+            step_info_bytes = step_info_entity["step_info_dict"]
+            step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
+            return step_info
+        else:
+            if not isinstance(step_or_unique_id, Step):
+                raise KeyError(step_or_unique_id)
+            step_info = StepInfo.new_from_step(step_or_unique_id)
+            self._update_step_info(step_info)
+            return step_info
+
     def _update_step_info(self, step_info: StepInfo):
 
-        # TODO: this method needs to be atomic. we are updating two different places.
+        step_info_entity = self._ds.entity(key=self._ds.key("stepinfo", step_info.unique_id), exclude_from_indexes=("step_info_dict",))
 
-        step_info_entity = self._ds.entity(key=self._ds.key("stepinfo", step_info.unique_id))
-
-        # We can store each key separately, but we only store things that are useful for querying.
-        # TODO: do we want any other step_info keys?
+        # We can store each key separately, but we only index things that are useful for querying.
+        # TODO: do we want to index any other step_info keys?
 
         step_info_entity["step_name"] = step_info.step_name
         step_info_entity["start_time"] = step_info.start_time
         step_info_entity["end_time"] = step_info.end_time
         step_info_entity["result_location"] = step_info.result_location
+        step_info_entity["step_info_dict"] = json.dumps(step_info.to_json_dict()).encode()
 
         self._ds.put(step_info_entity)
 
-        # The value of any property in datastore cannot be longer than 1500 bytes so we dump
-        # the rest of the contents into the step_info.json file.
-        dataset_name = self.Constants.step_dataset_name(step_info)
-        step_info_dataset: RemoteDataset
-        try:
-            self.client.create(dataset_name)
-        except RemoteDatasetConflict:
-            pass
-
-        step_info_dataset = self.client.get(dataset_name)
-        self.client.upload(
-            step_info_dataset,  # folder name
-            json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
-            self.Constants.STEP_INFO_FNAME,  # step info filename
-        )
+        # # The value of any property in datastore cannot be longer than 1500 bytes so we dump
+        # # the rest of the contents into the step_info.json file.
+        # # TODO: should be fixed with using exclude_from_indexes.
+        # # TODO: then, can change step_info() to only rely on this.
+        # dataset_name = self.Constants.step_dataset_name(step_info)
+        # step_info_dataset: RemoteDataset
+        # try:
+        #     self.client.create(dataset_name)
+        # except RemoteDatasetConflict:
+        #     pass
+        #
+        # step_info_dataset = self.client.get(dataset_name)
+        # self.client.upload(
+        #     step_info_dataset,  # folder name
+        #     json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
+        #     self.Constants.STEP_INFO_FNAME,  # step info filename
+        # )
