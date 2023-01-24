@@ -47,9 +47,7 @@ class GSWorkspace(RemoteWorkspace):
     NUM_CONCURRENT_WORKERS = 9  # TODO: increase and check
 
     def __init__(self, workspace: str, project: Optional[str] = None, **kwargs):
-        credentials = get_credentials()
-        print("Credentials", credentials)
-        print("Project", project, credentials.quota_project_id)
+
         self._client = get_client(gcs_workspace=workspace, project=project, **kwargs)
         self._cache = GSStepCache(workspace, client=self._client)
         self._locks: Dict[Step, GCSStepLock] = {}
@@ -57,15 +55,10 @@ class GSWorkspace(RemoteWorkspace):
         self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
         super().__init__()
 
-        print("Storage client")
-        print("Credentials", self._client.storage._credentials)
-        print("Project", self._client.storage._credentials.quota_project_id)
-
         # TODO: Ugly. Fix.
         # TODO: also update the docstring.
         credentials = get_credentials()
-        print("Credentials", credentials)
-        print("Project", project, credentials.quota_project_id)
+        project = project or credentials.quota_project_id
         self._ds = datastore.Client(namespace=workspace, project=project, credentials=credentials)
 
     @property
