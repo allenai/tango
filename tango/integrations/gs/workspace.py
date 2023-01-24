@@ -52,7 +52,7 @@ class GSWorkspace(RemoteWorkspace):
 
         # TODO: Ugly. Fix.
         self._ds = datastore.Client(
-            namespace=workspace, credentials=self._client.storage._credentials
+            namespace=workspace, project=self._client.storage.project, credentials=self._client.storage._credentials
         )
 
     @property
