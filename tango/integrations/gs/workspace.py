@@ -241,6 +241,9 @@ class GSWorkspace(RemoteWorkspace):
             finally:
                 run_dataset = self.Constants.run_dataset_name(name)
                 self.client.sync(run_dataset, log_file)
+                print("Captured logs for GS workspace!")
+                print(run_dataset)
+                print(log_file)
                 # TODO: temp for testing
                 # Not committing since Run datasets now different.
                 # self.client.commit(run_dataset)
