@@ -44,6 +44,23 @@ def empty_bucket(bucket_name: str):
         pass
 
 
+def empty_datastore(namespace: str):
+    """
+    Utility funtion for testing.
+    """
+    from google.cloud import datastore
+
+    credentials, project = google.auth.default()
+    client = datastore.Client(project=project, credentials=credentials, namespace=namespace)
+    run_query = client.query(kind="run")
+    run_query.keys_only()
+    keys = [entity.key for entity in run_query.fetch()]
+    stepinfo_query = client.query(kind="stepinfo")
+    stepinfo_query.keys_only()
+    keys += [entity.key for entity in stepinfo_query.fetch()]
+    client.delete_multi(keys)
+
+
 class GCSDataset(RemoteDataset):
     """
     A GCSDataset object is used for representing storage objects in google cloud storage.
@@ -191,6 +208,7 @@ class GCSClient(RemoteClient):
         try:
             for dirpath, _, filenames in os.walk(source_path):
                 for filename in filenames:
+                    # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
                     _sync_blob(dirpath, filename)
 
         except Exception:
