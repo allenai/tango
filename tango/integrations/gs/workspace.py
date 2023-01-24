@@ -1,13 +1,17 @@
 import datetime
 import json
 import random
+import tempfile
 from collections import OrderedDict
-from typing import Dict, Iterable, Optional, TypeVar, cast, Union
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Dict, Iterable, Optional, TypeVar, cast, Union, Generator
 from urllib.parse import ParseResult
 
 import petname
 from google.cloud import datastore
 
+from tango.common.logging import file_handler
 from tango.common.remote_utils import RemoteDataset, RemoteDatasetConflict
 from tango.integrations.gs.common import Constants, GCSStepLock, get_client
 from tango.integrations.gs.step_cache import GSStepCache
@@ -216,20 +220,16 @@ class GSWorkspace(RemoteWorkspace):
 
         self._ds.put(step_info_entity)
 
-        # # The value of any property in datastore cannot be longer than 1500 bytes so we dump
-        # # the rest of the contents into the step_info.json file.
-        # # TODO: should be fixed with using exclude_from_indexes.
-        # # TODO: then, can change step_info() to only rely on this.
-        # dataset_name = self.Constants.step_dataset_name(step_info)
-        # step_info_dataset: RemoteDataset
-        # try:
-        #     self.client.create(dataset_name)
-        # except RemoteDatasetConflict:
-        #     pass
-        #
-        # step_info_dataset = self.client.get(dataset_name)
-        # self.client.upload(
-        #     step_info_dataset,  # folder name
-        #     json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
-        #     self.Constants.STEP_INFO_FNAME,  # step info filename
-        # )
+    @contextmanager
+    def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            log_file = Path(tmp_dir_name) / "out.log"
+            try:
+                with file_handler(log_file):
+                    yield None
+            finally:
+                run_dataset = self.Constants.run_dataset_name(name)
+                self.client.sync(run_dataset, log_file)
+                # TODO: temp for testing
+                # Not committing since Run datasets now different.
+                # self.client.commit(run_dataset)
