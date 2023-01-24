@@ -49,7 +49,7 @@ class GSWorkspace(RemoteWorkspace):
     def __init__(self, workspace: str, project: Optional[str] = None, **kwargs):
         credentials = get_credentials()
         print("Credentials", credentials)
-        print("Project", project)
+        print("Project", project, credentials.quota_project_id)
         self._client = get_client(gcs_workspace=workspace, project=project, **kwargs)
         self._cache = GSStepCache(workspace, client=self._client)
         self._locks: Dict[Step, GCSStepLock] = {}
@@ -59,13 +59,13 @@ class GSWorkspace(RemoteWorkspace):
 
         print("Storage client")
         print("Credentials", self._client.storage._credentials)
-        print("Project", self._client.storage.project)
+        print("Project", self._client.storage._credentials.quota_project_id)
 
         # TODO: Ugly. Fix.
         # TODO: also update the docstring.
         credentials = get_credentials()
         print("Credentials", credentials)
-        print("Project", project)
+        print("Project", project, credentials.quota_project_id)
         self._ds = datastore.Client(namespace=workspace, project=project, credentials=credentials)
 
     @property
