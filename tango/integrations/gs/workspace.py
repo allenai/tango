@@ -46,8 +46,8 @@ class GSWorkspace(RemoteWorkspace):
     Constants = Constants
     NUM_CONCURRENT_WORKERS = 9  # TODO: increase and check
 
-    def __init__(self, workspace: str, **kwargs):
-        self._client = get_client(gcs_workspace=workspace, **kwargs)
+    def __init__(self, workspace: str, project: Optional[str] = None, **kwargs):
+        self._client = get_client(gcs_workspace=workspace, project=project, **kwargs)
         self._cache = GSStepCache(workspace, client=self._client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
@@ -58,7 +58,7 @@ class GSWorkspace(RemoteWorkspace):
         # TODO: also update the docstring.
         credentials = get_credentials()
         self._ds = datastore.Client(
-            namespace=workspace, project=self._client.storage.project, credentials=credentials
+            namespace=workspace, project=project, credentials=credentials
         )
 
     @property
