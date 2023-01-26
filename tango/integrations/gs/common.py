@@ -197,19 +197,24 @@ class GCSClient(RemoteClient):
 
         source_path = str(objects_dir)
 
-        def _sync_blob(dirpath: str, filename: str):
-            source_file_path = os.path.join(dirpath, filename)
-            target_file_path = os.path.join(
-                folder_path, source_file_path.replace(source_path + "/", "")
-            )
+        def _sync_blob(source_file_path: str, target_file_path: str):
             blob = self.storage.bucket(self.bucket_name).blob(target_file_path)
             blob.upload_from_filename(source_file_path)
 
         try:
-            for dirpath, _, filenames in os.walk(source_path):
-                for filename in filenames:
-                    # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
-                    _sync_blob(dirpath, filename)
+            if os.path.isdir(source_path):
+                for dirpath, _, filenames in os.walk(source_path):
+                    for filename in filenames:
+                        # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
+                        source_file_path = os.path.join(dirpath, filename)
+                        target_file_path = os.path.join(
+                            folder_path, source_file_path.replace(source_path + "/", "")
+                        )
+                        _sync_blob(source_file_path, target_file_path)
+            else:
+                source_file_path = source_path
+                target_file_path = os.path.join(folder_path, os.path.basename(source_file_path))
+                _sync_blob(source_file_path, target_file_path)
 
         except Exception:
             raise RemoteDatasetWriteError()
@@ -311,6 +316,8 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
             # We do this because BeakerExecutor cannot write a None secret.
             if credentials == "default":
                 credentials = None
+    if not credentials:
+        credentials, _ = google.auth.default()
     return credentials
 
 

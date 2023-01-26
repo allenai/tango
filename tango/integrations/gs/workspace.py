@@ -233,6 +233,10 @@ class GSWorkspace(RemoteWorkspace):
 
     @contextmanager
     def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
+        """
+        The logs are stored in the bucket. The Run object details are stored in
+        the remote database.
+        """
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             log_file = Path(tmp_dir_name) / "out.log"
             try:
@@ -241,9 +245,6 @@ class GSWorkspace(RemoteWorkspace):
             finally:
                 run_dataset = self.Constants.run_dataset_name(name)
                 self.client.sync(run_dataset, log_file)
-                print("Captured logs for GS workspace!")
-                print(run_dataset)
-                print(log_file)
                 # TODO: temp for testing
                 # Not committing since Run datasets now different.
                 # self.client.commit(run_dataset)
