@@ -1,13 +1,20 @@
 import json
 import logging
 import os
+import random
 from collections import OrderedDict
-from typing import Dict, Optional, Type, TypeVar, Union
+from pathlib import Path
+from typing import Dict, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
+import petname
 from beaker import Digest, Experiment, ExperimentNotFound
 
-from tango.common.remote_utils import RemoteDatasetNotFound
+from tango.common.remote_utils import (
+    RemoteDataset,
+    RemoteDatasetConflict,
+    RemoteDatasetNotFound,
+)
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.integrations.beaker.common import BeakerStepLock, Constants, get_client
 from tango.integrations.beaker.step_cache import BeakerStepCache
@@ -167,3 +174,123 @@ class BeakerWorkspace(RemoteWorkspace):
             step_info = StepInfo.new_from_step(step_or_unique_id)
             self._update_step_info(step_info)
             return step_info
+
+    def _save_run(
+        self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
+    ) -> Run:
+        # Create a remote dataset that represents this run. The dataset which just contain
+        # a JSON file that maps step names to step unique IDs.
+        run_dataset: RemoteDataset
+        if name is None:
+            # Find a unique name to use.
+            while True:
+                name = petname.generate() + str(random.randint(0, 100))
+                try:
+                    run_dataset = self.client.create(
+                        self.Constants.run_dataset_name(cast(str, name))
+                    )
+                except RemoteDatasetConflict:
+                    continue
+                else:
+                    break
+        else:
+            try:
+                run_dataset = self.client.create(self.Constants.run_dataset_name(name))
+            except RemoteDatasetConflict:
+                raise ValueError(f"Run name '{name}' is already in use")
+
+        # Upload run data to dataset.
+        # NOTE: We don't commit the dataset here since we'll need to upload the logs file
+        # after the run.
+        self.client.upload(
+            run_dataset, json.dumps(run_data).encode(), self.Constants.RUN_DATA_FNAME
+        )
+
+        return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
+
+    def registered_runs(self) -> Dict[str, Run]:
+        import concurrent.futures
+
+        runs: Dict[str, Run] = {}
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.NUM_CONCURRENT_WORKERS,
+            thread_name_prefix="BeakerWorkspace.registered_runs()-",
+        ) as executor:
+            run_futures = []
+            for dataset in self.client.datasets(match=self.Constants.RUN_DATASET_PREFIX):
+                run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
+            for future in concurrent.futures.as_completed(run_futures):
+                run = future.result()
+                if run is not None:
+                    runs[run.name] = run
+
+        return runs
+
+    def registered_run(self, name: str) -> Run:
+        err_msg = f"Run '{name}' not found in workspace"
+
+        try:
+            dataset_for_run = self.client.get(self.Constants.run_dataset_name(name))
+            # Make sure the run is in our workspace.
+            if dataset_for_run.workspace_ref.id != self.beaker.workspace.get().id:  # type: ignore # TODO
+                raise RemoteDatasetNotFound
+        except RemoteDatasetNotFound:
+            raise KeyError(err_msg)
+
+        run = self._get_run_from_dataset(dataset_for_run)
+        if run is None:
+            raise KeyError(err_msg)
+        else:
+            return run
+
+    def _save_run_log(self, name: str, log_file: Path):
+        run_dataset = self.Constants.run_dataset_name(name)
+        self.client.sync(run_dataset, log_file)
+        self.client.commit(run_dataset)
+
+    def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:
+        if dataset.name is None:
+            return None
+        if not dataset.name.startswith(self.Constants.RUN_DATASET_PREFIX):
+            return None
+
+        try:
+            run_name = dataset.name[len(self.Constants.RUN_DATASET_PREFIX) :]
+            steps_info_bytes = self.client.get_file(dataset, self.Constants.RUN_DATA_FNAME)
+            steps_info = json.loads(steps_info_bytes)
+        except (RemoteDatasetNotFound, FileNotFoundError):
+            return None
+
+        steps: Dict[str, StepInfo] = {}
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.NUM_CONCURRENT_WORKERS,
+            thread_name_prefix="BeakerWorkspace._get_run_from_dataset()-",
+        ) as executor:
+            step_info_futures = []
+            for unique_id in steps_info.values():
+                step_info_futures.append(executor.submit(self.step_info, unique_id))
+            for future in concurrent.futures.as_completed(step_info_futures):
+                step_info = future.result()
+                assert step_info.step_name is not None
+                steps[step_info.step_name] = step_info
+
+        return Run(name=run_name, start_date=dataset.created, steps=steps)
+
+    def _update_step_info(self, step_info: StepInfo):
+        dataset_name = self.Constants.step_dataset_name(step_info)
+
+        step_info_dataset: RemoteDataset
+        try:
+            self.client.create(dataset_name)
+        except RemoteDatasetConflict:
+            pass
+        step_info_dataset = self.client.get(dataset_name)
+
+        self.client.upload(
+            step_info_dataset,  # folder name
+            json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
+            self.Constants.STEP_INFO_FNAME,  # step info filename
+        )

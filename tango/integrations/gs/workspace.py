@@ -1,17 +1,13 @@
 import datetime
 import json
 import random
-import tempfile
-from collections import OrderedDict
-from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Generator, Iterable, Optional, TypeVar, Union, cast
+from typing import Dict, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
 from google.cloud import datastore
 
-from tango.common.logging import file_handler
 from tango.integrations.gs.common import (
     Constants,
     GCSStepLock,
@@ -99,32 +95,9 @@ class GSWorkspace(RemoteWorkspace):
     def _step_location(self, step: Step) -> str:
         return self.client.url(self.Constants.step_dataset_name(step))
 
-    def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
-        import concurrent.futures
-
-        all_steps = set(targets)
-        for step in targets:
-            all_steps |= step.recursive_dependencies
-
-        steps: Dict[str, StepInfo] = {}
-        run_data: Dict[str, str] = {}
-
-        # Collect step info.
-        with concurrent.futures.ThreadPoolExecutor(
-            thread_name_prefix="GSWorkspace.register_run()-"
-        ) as executor:
-            step_info_futures = []
-            # TODO: explore getting all step_info objects at once
-            for step in all_steps:
-                if step.name is None:
-                    continue
-                step_info_futures.append(executor.submit(self.step_info, step))
-            for future in concurrent.futures.as_completed(step_info_futures):
-                step_info = future.result()
-                assert step_info.step_name is not None
-                steps[step_info.step_name] = step_info
-                run_data[step_info.step_name] = step_info.unique_id
-
+    def _save_run(
+        self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
+    ) -> Run:
         if name is None:
             while True:
                 name = petname.generate() + str(random.randint(0, 100))
@@ -231,20 +204,10 @@ class GSWorkspace(RemoteWorkspace):
 
         self._ds.put(step_info_entity)
 
-    @contextmanager
-    def capture_logs_for_run(self, name: str) -> Generator[None, None, None]:
+    def _save_run_log(self, name: str, log_file: Path):
         """
         The logs are stored in the bucket. The Run object details are stored in
         the remote database.
         """
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            log_file = Path(tmp_dir_name) / "out.log"
-            try:
-                with file_handler(log_file):
-                    yield None
-            finally:
-                run_dataset = self.Constants.run_dataset_name(name)
-                self.client.sync(run_dataset, log_file)
-                # TODO: temp for testing
-                # Not committing since Run datasets now different.
-                # self.client.commit(run_dataset)
+        run_dataset = self.Constants.run_dataset_name(name)
+        self.client.sync(run_dataset, log_file)
