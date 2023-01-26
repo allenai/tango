@@ -52,7 +52,6 @@ class GSWorkspace(RemoteWorkspace):
         self._cache = GSStepCache(workspace, client=self._client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
-        self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
         super().__init__()
 
         # TODO: Ugly. Fix.
@@ -96,6 +95,9 @@ class GSWorkspace(RemoteWorkspace):
 
     def _remote_lock(self, step: Step) -> GCSStepLock:
         return GCSStepLock(self.client, step)
+
+    def _step_location(self, step: Step) -> str:
+        return self.client.url(self.Constants.step_dataset_name(step))
 
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         import concurrent.futures
@@ -201,8 +203,6 @@ class GSWorkspace(RemoteWorkspace):
         )
         step_info_entity = self._ds.get(key=self._ds.key("stepinfo", unique_id))
         if step_info_entity:
-            # TODO: not using self._step_info_cache yet.
-            # TODO: why does it use digest rather than unique id?
             step_info_bytes = step_info_entity["step_info_dict"]
             step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
             return step_info

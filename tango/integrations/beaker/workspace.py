@@ -42,7 +42,6 @@ class BeakerWorkspace(RemoteWorkspace):
         self._client = get_client(workspace, **kwargs)
         self._cache = BeakerStepCache(workspace, beaker=self._client.beaker)
         self._locks: Dict[Step, BeakerStepLock] = {}
-        self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
         super().__init__()
         self.max_workers = max_workers
         self._disk_cache_dir = tango_cache_dir() / "beaker_cache" / "_objects"
@@ -71,6 +70,9 @@ class BeakerWorkspace(RemoteWorkspace):
     @property
     def url(self) -> str:
         return f"beaker://{self.beaker.workspace.get().full_name}"
+
+    def _step_location(self, step: Step) -> str:
+        return self.client.url(self.Constants.step_dataset_name(step))
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
@@ -105,7 +107,6 @@ class BeakerWorkspace(RemoteWorkspace):
             self.client, step, current_beaker_experiment=self.current_beaker_experiment
         )
 
-    # TODO: make generic.
     def _get_object_from_cache(self, digest: Digest, o_type: Type[U]) -> Optional[U]:
         cache_path = self._disk_cache_dir / make_safe_filename(str(digest))
         if digest in self._mem_cache:

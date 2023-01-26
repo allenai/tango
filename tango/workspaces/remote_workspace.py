@@ -47,7 +47,6 @@ class RemoteWorkspace(Workspace):
 
     def __init__(self):
         super().__init__()
-        self._step_info_cache: "OrderedDict[str, StepInfo]" = OrderedDict()
 
     @property
     @abstractmethod
@@ -101,28 +100,14 @@ class RemoteWorkspace(Workspace):
         return path
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
-        try:
-            dataset = self.client.get(self.Constants.step_dataset_name(step_or_unique_id))
-            file_info = self.client.file_info(dataset, self.Constants.STEP_INFO_FNAME)
-            step_info: StepInfo
-            if file_info.digest in self._step_info_cache:
-                step_info = self._step_info_cache.pop(file_info.digest)
-            else:
-                step_info_bytes = self.client.get_file(dataset, file_info)
-                step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-            self._step_info_cache[file_info.digest] = step_info
-            while len(self._step_info_cache) > self.STEP_INFO_CACHE_SIZE:
-                self._step_info_cache.popitem(last=False)
-            return step_info
-        except (RemoteDatasetNotFound, FileNotFoundError):
-            if not isinstance(step_or_unique_id, Step):
-                raise KeyError(step_or_unique_id)
-            step_info = StepInfo.new_from_step(step_or_unique_id)
-            self._update_step_info(step_info)
-            return step_info
+        raise NotImplementedError()
 
     @abstractmethod
     def _remote_lock(self, step: Step) -> RemoteStepLock:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _step_location(self, step: Step) -> str:
         raise NotImplementedError()
 
     def step_starting(self, step: Step) -> None:
@@ -150,7 +135,7 @@ class RemoteWorkspace(Workspace):
                 step,
                 step_info.state,
                 context=f"If you are certain the step is not running somewhere else, delete the step "
-                f"datasets at {self.client.url(self.Constants.step_dataset_name(step))}",
+                f"datasets at {self._step_location(step)}",
             )
 
         if step_info.state == StepState.FAILED:
@@ -181,7 +166,7 @@ class RemoteWorkspace(Workspace):
         # This needs to be done *before* adding the result to the cache, since adding
         # the result to the cache will commit the step dataset, making it immutable.
         step_info.end_time = utc_now_datetime()
-        step_info.result_location = self.client.url(self.Constants.step_dataset_name(step))
+        step_info.result_location = self._step_location(step)
         self._update_step_info(step_info)
 
         self.cache[step] = result
