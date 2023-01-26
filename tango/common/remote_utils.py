@@ -137,7 +137,7 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def sync(self, dataset, objects_dir):
+    def upload(self, dataset, objects_dir):
         """
         Writes the contents of objects_dir to the remote dataset location.
         """
@@ -151,7 +151,7 @@ class RemoteClient(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def fetch(self, dataset, target_dir: PathOrStr) -> RemoteDataset:
+    def download(self, dataset, target_dir: PathOrStr) -> RemoteDataset:
         """
         Writes the contents of the remote dataset to the `target_dir`.
         """
@@ -210,7 +210,7 @@ class RemoteStepLock:
                     metadata_path = tmp_dir / self.METADATA_FNAME
                     with open(metadata_path, "w") as f:
                         json.dump(self.metadata, f)
-                    self._client.sync(self._lock_dataset, metadata_path)  # type: ignore
+                    self._client.upload(self._lock_dataset, metadata_path)  # type: ignore
             except RemoteDatasetConflict:
 
                 if last_logged is None or last_logged - start >= log_interval:

@@ -210,4 +210,4 @@ class GSWorkspace(RemoteWorkspace):
         the remote database.
         """
         run_dataset = self.Constants.run_dataset_name(name)
-        self.client.sync(run_dataset, log_file)
+        self.client.upload(run_dataset, log_file)

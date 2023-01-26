@@ -246,7 +246,7 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def _save_run_log(self, name: str, log_file: Path):
         run_dataset = self.Constants.run_dataset_name(name)
-        self.client.sync(run_dataset, log_file)
+        self.client.upload(run_dataset, log_file)
         self.client.commit(run_dataset)
 
     def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:

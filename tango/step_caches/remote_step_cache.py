@@ -73,7 +73,7 @@ class RemoteStepCache(LocalStepCache):
         except RemoteDatasetConflict:
             pass
         try:
-            self.client.sync(dataset_name, objects_dir)
+            self.client.upload(dataset_name, objects_dir)
             self.client.commit(dataset_name)
         except RemoteDatasetWriteError:
             pass
@@ -82,7 +82,7 @@ class RemoteStepCache(LocalStepCache):
 
     def _fetch_step_remote(self, step_result, target_dir: PathOrStr) -> None:
         try:
-            self.client.fetch(step_result, target_dir)
+            self.client.download(step_result, target_dir)
         except RemoteDatasetNotFound:
             raise RemoteNotFoundError()
 

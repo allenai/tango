@@ -177,7 +177,7 @@ class GCSClient(RemoteClient):
         blobs = list(bucket.list_blobs(prefix=dataset.dataset_path))
         bucket.delete_blobs(blobs)
 
-    def sync(self, dataset: Union[str, GCSDataset], objects_dir: Path):
+    def upload(self, dataset: Union[str, GCSDataset], objects_dir: Path):
         if isinstance(dataset, str):
             folder_path = dataset
         else:
@@ -220,7 +220,7 @@ class GCSClient(RemoteClient):
                 raise RemoteDatasetNotFound()
             # Otherwise, already committed. No change.
 
-    def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
+    def download(self, dataset: GCSDataset, target_dir: PathOrStr):
         assert (
             self.storage.bucket(self.bucket_name)
             .blob(os.path.join(dataset.dataset_path, self.placeholder_file))

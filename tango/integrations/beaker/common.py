@@ -92,7 +92,7 @@ class BeakerClient(RemoteClient):
     def delete(self, dataset: BeakerDataset):
         self.beaker.dataset.delete(dataset)
 
-    def sync(self, dataset: Union[str, BeakerDataset], objects_dir: Path):
+    def upload(self, dataset: Union[str, BeakerDataset], objects_dir: Path):
         try:
             self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
         except DatasetWriteError:
@@ -101,7 +101,7 @@ class BeakerClient(RemoteClient):
     def commit(self, dataset: Union[str, BeakerDataset]):
         self.beaker.dataset.commit(dataset)
 
-    def fetch(self, dataset: BeakerDataset, target_dir: PathOrStr):
+    def download(self, dataset: BeakerDataset, target_dir: PathOrStr):
         try:
             self.beaker.dataset.fetch(dataset, target_dir, quiet=True)
         except DatasetNotFound:
@@ -199,7 +199,7 @@ class BeakerStepLock(RemoteStepLock):
                     metadata_path = tmp_dir / self.METADATA_FNAME
                     with open(metadata_path, "w") as f:
                         json.dump(self.metadata, f)
-                    self._client.sync(self._lock_dataset, metadata_path)
+                    self._client.upload(self._lock_dataset, metadata_path)
             except RemoteDatasetConflict:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
