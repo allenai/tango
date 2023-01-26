@@ -66,7 +66,7 @@ class RemoteStepCache(LocalStepCache):
         except RemoteDatasetNotFound:
             return None
 
-    def _sync_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
+    def _upload_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
         dataset_name = self.Constants.step_dataset_name(step)
         try:
             self.client.create(dataset_name)
@@ -80,7 +80,7 @@ class RemoteStepCache(LocalStepCache):
 
         return self.client.get(dataset_name)
 
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr) -> None:
+    def _download_step_remote(self, step_result, target_dir: PathOrStr) -> None:
         try:
             self.client.download(step_result, target_dir)
         except RemoteDatasetNotFound:
@@ -158,7 +158,7 @@ class RemoteStepCache(LocalStepCache):
             # We'll download the dataset to a temporary directory first, in case something goes wrong.
             temp_dir = tempfile.mkdtemp(dir=self.dir, prefix=key)
             try:
-                self._fetch_step_remote(step_result, target_dir=temp_dir)
+                self._download_step_remote(step_result, target_dir=temp_dir)
                 # Download and extraction was successful, rename temp directory to final step result directory.
                 os.replace(temp_dir, self.step_dir(step))
             except RemoteNotFoundError:
@@ -183,7 +183,7 @@ class RemoteStepCache(LocalStepCache):
                 metadata = CacheMetadata(step=step.unique_id, format=step.format)
                 metadata.to_params().to_file(temp_dir / self.METADATA_FILE_NAME)
                 # Create the dataset and upload serialized result to it.
-                self._sync_step_remote(step, temp_dir)
+                self._upload_step_remote(step, temp_dir)
                 # Upload successful, rename temp directory to the final step result directory.
                 if self.step_dir(step).is_dir():
                     shutil.rmtree(self.step_dir(step), ignore_errors=True)

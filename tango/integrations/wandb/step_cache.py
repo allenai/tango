@@ -86,7 +86,7 @@ class WandbStepCache(RemoteStepCache):
                 raise
 
     def create_step_result_artifact(self, step: Step, objects_dir: Optional[PathOrStr] = None):
-        self._sync_step_remote(step, objects_dir)
+        self._upload_step_remote(step, objects_dir)
 
     def get_step_result_artifact(
         self, step: Union[Step, StepInfo]
@@ -103,7 +103,7 @@ class WandbStepCache(RemoteStepCache):
             else:
                 raise
 
-    def _sync_step_remote(self, step: Step, objects_dir: Optional[PathOrStr] = None) -> Any:
+    def _upload_step_remote(self, step: Step, objects_dir: Optional[PathOrStr] = None) -> Any:
         """
         Create an artifact for the result of a step.
         """
@@ -142,7 +142,7 @@ class WandbStepCache(RemoteStepCache):
             f"{self.entity}/{self.project}/{self._step_artifact_name(step)}:{step.unique_id}"
         )
 
-    def _fetch_step_remote(self, step_result, target_dir: PathOrStr):
+    def _download_step_remote(self, step_result, target_dir: PathOrStr):
         try:
             step_result.download(root=target_dir, recursive=True)
         except (WandbError, ValueError):
