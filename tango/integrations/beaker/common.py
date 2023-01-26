@@ -25,7 +25,6 @@ from tango.common.remote_utils import (
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
     RemoteDatasetWriteError,
-    RemoteStepLock,
 )
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -127,15 +126,38 @@ def get_client(
     return BeakerClient(beaker_workspace, beaker, **kwargs)
 
 
-class BeakerStepLock(RemoteStepLock):
+def dataset_url(beaker: Beaker, dataset: Optional[str] = None) -> str:
+    # this just creates a string url.
+    workspace_url = beaker.workspace.url()
+    if dataset:
+        return (
+            workspace_url
+            + "/datasets?"
+            + urllib.parse.urlencode(
+                {
+                    "text": dataset,
+                    "committed": "false",
+                }
+            )
+        )
+    return workspace_url
+
+
+class BeakerStepLock:
+    METADATA_FNAME = "metadata.json"
+
     def __init__(
         self,
-        client: BeakerClient,
+        beaker: Beaker,
         step: Union[str, StepInfo, Step],
         current_beaker_experiment: Optional[Experiment] = None,
     ):
-        super().__init__(client, step)
+        self._beaker = beaker
+        self._step_id = step if isinstance(step, str) else step.unique_id
+        self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
+        self._lock_dataset: Optional[BeakerDataset] = None
         self._current_beaker_experiment = current_beaker_experiment
+        self.lock_dataset_url = dataset_url(beaker, self._lock_dataset_name)
 
     @property
     def metadata(self) -> Dict[str, Any]:
@@ -147,12 +169,12 @@ class BeakerStepLock(RemoteStepLock):
 
     def _last_metadata(self) -> Optional[Dict[str, Any]]:
         try:
-            metadata_bytes = self._client.beaker.dataset.get_file(  # type: ignore  # TODO
+            metadata_bytes = self._beaker.dataset.get_file(
                 self._lock_dataset_name, self.METADATA_FNAME, quiet=True
             )
             metadata = json.loads(metadata_bytes)
             return metadata
-        except (RemoteDatasetNotFound, FileNotFoundError):
+        except (DatasetNotFound, FileNotFoundError):
             return None
 
     def _acquiring_job_is_done(self) -> bool:
@@ -165,7 +187,7 @@ class BeakerStepLock(RemoteStepLock):
             return False
 
         try:
-            last_experiment = self._client.beaker.experiment.get(last_experiment_id)  # type: ignore
+            last_experiment = self._beaker.experiment.get(last_experiment_id)
             if (
                 self._current_beaker_experiment is not None
                 and self._current_beaker_experiment.id == last_experiment_id
@@ -174,7 +196,7 @@ class BeakerStepLock(RemoteStepLock):
                 # it didn't clean up after itself.
                 return True
             else:
-                job = self._client.beaker.experiment.latest_job(last_experiment)  # type: ignore
+                job = self._beaker.experiment.latest_job(last_experiment)
                 return False if job is None else job.is_done
         except ExperimentNotFound:
             # Experiment must have been deleted.
@@ -189,7 +211,9 @@ class BeakerStepLock(RemoteStepLock):
         last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._client.create(self._lock_dataset_name)
+                self._lock_dataset = self._beaker.dataset.create(
+                    self._lock_dataset_name, commit=False
+                )
 
                 atexit.register(self.release)
 
@@ -199,13 +223,13 @@ class BeakerStepLock(RemoteStepLock):
                     metadata_path = tmp_dir / self.METADATA_FNAME
                     with open(metadata_path, "w") as f:
                         json.dump(self.metadata, f)
-                    self._client.upload(self._lock_dataset, metadata_path)
-            except RemoteDatasetConflict:
+                    self._beaker.dataset.sync(self._lock_dataset, metadata_path, quiet=True)
+            except DatasetConflict:
                 # Check if existing lock was created from a Beaker experiment.
                 # If it was, and the experiment is no-longer running, we can safely
                 # delete it.
                 if self._acquiring_job_is_done():
-                    self._client.delete(self._lock_dataset_name)
+                    self._beaker.dataset.delete(self._lock_dataset_name)
                     continue
 
                 now = time.monotonic()
@@ -229,3 +253,16 @@ class BeakerStepLock(RemoteStepLock):
                 f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
                 f"just delete the lock dataset."
             )
+
+    def release(self):
+        if self._lock_dataset is not None:
+            try:
+                self._beaker.dataset.delete(self._lock_dataset)
+            except DatasetNotFound:
+                # Dataset must have been manually deleted.
+                pass
+            self._lock_dataset = None
+            atexit.unregister(self.release)
+
+    def __del__(self):
+        self.release()

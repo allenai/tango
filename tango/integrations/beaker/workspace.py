@@ -111,7 +111,7 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def _remote_lock(self, step: Step) -> BeakerStepLock:
         return BeakerStepLock(
-            self.client, step, current_beaker_experiment=self.current_beaker_experiment
+            self.beaker, step, current_beaker_experiment=self.current_beaker_experiment
         )
 
     def _get_object_from_cache(self, digest: Digest, o_type: Type[U]) -> Optional[U]:
@@ -218,7 +218,9 @@ class BeakerWorkspace(RemoteWorkspace):
             thread_name_prefix="BeakerWorkspace.registered_runs()-",
         ) as executor:
             run_futures = []
-            for dataset in self.client.datasets(match=self.Constants.RUN_DATASET_PREFIX):
+            for dataset in self.beaker.workspace.iter_datasets(
+                match=self.Constants.RUN_DATASET_PREFIX, uncommitted=True, results=False
+            ):
                 run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
             for future in concurrent.futures.as_completed(run_futures):
                 run = future.result()

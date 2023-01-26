@@ -9,7 +9,7 @@ from urllib.parse import ParseResult
 
 from tango.common.exceptions import StepStateError
 from tango.common.logging import file_handler
-from tango.common.remote_utils import RemoteClient, RemoteConstants, RemoteStepLock
+from tango.common.remote_utils import RemoteClient, RemoteConstants
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
 from tango.step_caches.remote_step_cache import RemoteStepCache
@@ -87,7 +87,7 @@ class RemoteWorkspace(Workspace):
         raise NotImplementedError()
 
     @abstractmethod
-    def _remote_lock(self, step: Step) -> RemoteStepLock:
+    def _remote_lock(self, step: Step):
         raise NotImplementedError()
 
     @abstractmethod

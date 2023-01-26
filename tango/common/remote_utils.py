@@ -1,13 +1,8 @@
-import atexit
 import datetime
-import json
 import logging
-import tempfile
-import time
 from abc import abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from tango.common import PathOrStr
 from tango.common.exceptions import TangoError
@@ -164,85 +159,3 @@ class RemoteClient(Registrable):
         `match` and `uncommitted` criteria. These can include steps and runs.
         """
         raise NotImplementedError()
-
-
-class RemoteStepLock:
-    """
-    Utility class for handling locking mechanism for :class:`~tango.step.Step` object stored at a
-    remote location as a `RemoteDataset`.
-    """
-
-    METADATA_FNAME = "metadata.json"
-
-    def __init__(
-        self,
-        client: RemoteClient,
-        step: Union[str, StepInfo, Step],
-    ):
-        self._client = client
-        self._step_id = step if isinstance(step, str) else step.unique_id
-        self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
-        self._lock_dataset: Optional[RemoteDataset] = None
-        self.lock_dataset_url = self._client.url(self._lock_dataset_name)
-
-    @property
-    def metadata(self) -> Dict[str, Any]:
-        """
-        Currently, this is used for the Beaker implementation mostly, to record Beaker's experiment name.
-        In the future, we can add other relevant metadata.
-        """
-        return {}
-
-    def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
-        if self._lock_dataset is not None:
-            return
-        start = time.monotonic()
-        last_logged = None
-        while timeout is None or (time.monotonic() - start < timeout):
-            try:
-                self._lock_dataset = self._client.create(self._lock_dataset_name)
-
-                atexit.register(self.release)
-
-                # Write metadata.
-                with tempfile.TemporaryDirectory() as tmp_dir_name:
-                    tmp_dir = Path(tmp_dir_name)
-                    metadata_path = tmp_dir / self.METADATA_FNAME
-                    with open(metadata_path, "w") as f:
-                        json.dump(self.metadata, f)
-                    self._client.upload(self._lock_dataset, metadata_path)  # type: ignore
-            except RemoteDatasetConflict:
-
-                if last_logged is None or last_logged - start >= log_interval:
-                    logger.warning(
-                        "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
-                        "This probably means the step is being run elsewhere, but if you're sure it isn't "
-                        "you can just delete the lock dataset.",
-                        self._step_id,
-                        self.lock_dataset_url,
-                    )
-                    last_logged = time.monotonic()
-                time.sleep(poll_interval)
-                continue
-            else:
-                break
-        else:
-            raise TimeoutError(
-                f"Timeout error occurred while waiting to acquire dataset lock for step '{self._step_id}':\n\n"
-                f"{self.lock_dataset_url}\n\n"
-                f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
-                f"just delete the lock dataset."
-            )
-
-    def release(self):
-        if self._lock_dataset is not None:
-            try:
-                self._client.delete(self._lock_dataset)
-            except RemoteDatasetNotFound:
-                # Dataset must have been manually deleted.
-                pass
-            self._lock_dataset = None
-            atexit.unregister(self.release)
-
-    def __del__(self):
-        self.release()

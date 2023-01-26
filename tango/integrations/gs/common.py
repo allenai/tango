@@ -1,9 +1,11 @@
 """
 Classes and utility functions for GSWorkspace and GSStepCache.
 """
+import atexit
 import json
 import logging
 import os
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
@@ -21,7 +23,6 @@ from tango.common.remote_utils import (
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
     RemoteDatasetWriteError,
-    RemoteStepLock,
 )
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -62,7 +63,6 @@ def empty_datastore(namespace: str):
 class GCSDataset(RemoteDataset):
     """
     A GCSDataset object is used for representing storage objects in google cloud storage.
-    Currently, it can be either a cached Step, or a Run.
     """
 
     pass
@@ -292,11 +292,65 @@ class Constants(RemoteConstants):
     pass
 
 
-class GCSStepLock(RemoteStepLock):
+class GCSStepLock:
     """
     Google Cloud offers consistency https://cloud.google.com/storage/docs/consistency,
     so we can use lock files.
     """
 
-    def __init__(self, client, step: Union[str, StepInfo, Step]):
-        super().__init__(client, step)
+    def __init__(
+        self,
+        client: GCSClient,
+        step: Union[str, StepInfo, Step],
+    ):
+        self._client = client
+        self._step_id = step if isinstance(step, str) else step.unique_id
+        self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
+        self._lock_dataset: Optional[GCSDataset] = None
+        self.lock_dataset_url = self._client.url(self._lock_dataset_name)
+
+    def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
+        if self._lock_dataset is not None:
+            return
+        start = time.monotonic()
+        last_logged = None
+        while timeout is None or (time.monotonic() - start < timeout):
+            try:
+                self._lock_dataset = self._client.create(self._lock_dataset_name)
+                atexit.register(self.release)
+
+            except RemoteDatasetConflict:
+
+                if last_logged is None or last_logged - start >= log_interval:
+                    logger.warning(
+                        "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
+                        "This probably means the step is being run elsewhere, but if you're sure it isn't "
+                        "you can just delete the lock dataset.",
+                        self._step_id,
+                        self.lock_dataset_url,
+                    )
+                    last_logged = time.monotonic()
+                time.sleep(poll_interval)
+                continue
+            else:
+                break
+        else:
+            raise TimeoutError(
+                f"Timeout error occurred while waiting to acquire dataset lock for step '{self._step_id}':\n\n"
+                f"{self.lock_dataset_url}\n\n"
+                f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
+                f"just delete the lock dataset."
+            )
+
+    def release(self):
+        if self._lock_dataset is not None:
+            try:
+                self._client.delete(self._lock_dataset)
+            except RemoteDatasetNotFound:
+                # Dataset must have been manually deleted.
+                pass
+            self._lock_dataset = None
+            atexit.unregister(self.release)
+
+    def __del__(self):
+        self.release()
