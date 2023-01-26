@@ -4,7 +4,6 @@ Classes and utility functions for GSWorkspace and GSStepCache.
 import json
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Union
@@ -22,7 +21,6 @@ from tango.common.remote_utils import (
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
     RemoteDatasetWriteError,
-    RemoteFileInfo,
     RemoteStepLock,
 )
 from tango.step import Step
@@ -71,16 +69,6 @@ class GCSDataset(RemoteDataset):
 
 
 class GSStep(GCSDataset):
-    pass
-
-
-@dataclass
-class GSRun:
-    name: str
-
-
-@dataclass
-class FileInfo(RemoteFileInfo):
     pass
 
 
@@ -231,34 +219,6 @@ class GCSClient(RemoteClient):
             if not bucket.blob(os.path.join(folder_path, self.placeholder_file)).exists():
                 raise RemoteDatasetNotFound()
             # Otherwise, already committed. No change.
-
-    def upload(self, dataset: GCSDataset, source: bytes, target: PathOrStr) -> None:
-        file_path = os.path.join(dataset.dataset_path, target)
-        blob = self.storage.bucket(self.bucket_name).blob(file_path)
-        with blob.open("wb") as file_ref:
-            file_ref.write(source)
-
-    def get_file(self, dataset: GCSDataset, file_path: Union[str, FileInfo]):
-        if isinstance(file_path, FileInfo):
-            full_file_path = file_path.path
-        else:
-            full_file_path = os.path.join(dataset.dataset_path, file_path)
-        blob = self.storage.bucket(self.bucket_name).blob(full_file_path)
-        with blob.open("r") as file_ref:
-            file_contents = file_ref.read()
-        return file_contents
-
-    def file_info(self, dataset: GCSDataset, file_path: str) -> FileInfo:
-        full_file_path = os.path.join(dataset.dataset_path, file_path)
-        blob = self.storage.bucket(self.bucket_name).get_blob(
-            full_file_path
-        )  # get_blob makes a request
-        return FileInfo(
-            path=full_file_path,
-            digest=blob.md5_hash,
-            updated=blob.updated,
-            size=blob.size,
-        )
 
     def fetch(self, dataset: GCSDataset, target_dir: PathOrStr):
         assert (

@@ -8,7 +8,7 @@ from typing import Dict, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
-from beaker import Digest, Experiment, ExperimentNotFound
+from beaker import DatasetNotFound, Digest, Experiment, ExperimentNotFound
 
 from tango.common.remote_utils import (
     RemoteDataset,
@@ -152,8 +152,8 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
-            dataset = self.client.get(self.Constants.step_dataset_name(step_or_unique_id))
-            file_info = self.client.file_info(dataset, self.Constants.STEP_INFO_FNAME)
+            dataset = self.beaker.dataset.get(self.Constants.step_dataset_name(step_or_unique_id))
+            file_info = self.beaker.dataset.file_info(dataset, self.Constants.STEP_INFO_FNAME)
             step_info: StepInfo
             cached = (
                 None
@@ -163,12 +163,12 @@ class BeakerWorkspace(RemoteWorkspace):
             if cached is not None:
                 step_info = cached
             else:
-                step_info_bytes = self.client.get_file(dataset, file_info)
+                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info)
                 step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
                 if file_info.digest is not None:
                     self._add_object_to_cache(file_info.digest, step_info)
             return step_info
-        except (RemoteDatasetNotFound, FileNotFoundError):
+        except (DatasetNotFound, FileNotFoundError):
             if not isinstance(step_or_unique_id, Step):
                 raise KeyError(step_or_unique_id)
             step_info = StepInfo.new_from_step(step_or_unique_id)
@@ -202,8 +202,8 @@ class BeakerWorkspace(RemoteWorkspace):
         # Upload run data to dataset.
         # NOTE: We don't commit the dataset here since we'll need to upload the logs file
         # after the run.
-        self.client.upload(
-            run_dataset, json.dumps(run_data).encode(), self.Constants.RUN_DATA_FNAME
+        self.beaker.dataset.upload(
+            run_dataset, json.dumps(run_data).encode(), self.Constants.RUN_DATA_FNAME, quiet=True
         )
 
         return Run(name=cast(str, name), steps=steps, start_date=run_dataset.created)
@@ -257,9 +257,11 @@ class BeakerWorkspace(RemoteWorkspace):
 
         try:
             run_name = dataset.name[len(self.Constants.RUN_DATASET_PREFIX) :]
-            steps_info_bytes = self.client.get_file(dataset, self.Constants.RUN_DATA_FNAME)
+            steps_info_bytes = self.beaker.dataset.get_file(
+                dataset, self.Constants.RUN_DATA_FNAME, quiet=True
+            )
             steps_info = json.loads(steps_info_bytes)
-        except (RemoteDatasetNotFound, FileNotFoundError):
+        except (DatasetNotFound, FileNotFoundError):
             return None
 
         steps: Dict[str, StepInfo] = {}
@@ -289,7 +291,7 @@ class BeakerWorkspace(RemoteWorkspace):
             pass
         step_info_dataset = self.client.get(dataset_name)
 
-        self.client.upload(
+        self.beaker.dataset.upload(
             step_info_dataset,  # folder name
             json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
             self.Constants.STEP_INFO_FNAME,  # step info filename

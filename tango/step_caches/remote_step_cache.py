@@ -57,6 +57,9 @@ class RemoteStepCache(LocalStepCache):
         raise NotImplementedError()
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
+        """
+        Returns a `RemoteDataset` object containing the details of the step.
+        """
         try:
             dataset = self.client.get(self.Constants.step_dataset_name(step))
             return dataset if dataset.committed else None

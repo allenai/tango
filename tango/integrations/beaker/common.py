@@ -16,7 +16,6 @@ from beaker import (
     DatasetWriteError,
     Experiment,
     ExperimentNotFound,
-    FileInfo,
 )
 
 from tango.common.aliases import PathOrStr
@@ -102,21 +101,6 @@ class BeakerClient(RemoteClient):
     def commit(self, dataset: Union[str, BeakerDataset]):
         self.beaker.dataset.commit(dataset)
 
-    def upload(self, dataset: BeakerDataset, source: bytes, target: PathOrStr) -> None:
-        self.beaker.dataset.upload(dataset, source, target, quiet=True)
-
-    def get_file(self, dataset: BeakerDataset, file_path: Union[str, FileInfo]):
-        try:
-            return self.beaker.dataset.get_file(dataset, file_path, quiet=True)
-        except DatasetNotFound:
-            raise RemoteDatasetNotFound()
-
-    def file_info(self, dataset: BeakerDataset, file_path: str) -> FileInfo:
-        try:
-            return self.beaker.dataset.file_info(dataset, file_path)
-        except DatasetNotFound:
-            raise RemoteDatasetNotFound()
-
     def fetch(self, dataset: BeakerDataset, target_dir: PathOrStr):
         try:
             self.beaker.dataset.fetch(dataset, target_dir, quiet=True)
@@ -163,7 +147,9 @@ class BeakerStepLock(RemoteStepLock):
 
     def _last_metadata(self) -> Optional[Dict[str, Any]]:
         try:
-            metadata_bytes = self._client.get_file(self._lock_dataset_name, self.METADATA_FNAME)
+            metadata_bytes = self._client.beaker.dataset.get_file(  # type: ignore  # TODO
+                self._lock_dataset_name, self.METADATA_FNAME, quiet=True
+            )
             metadata = json.loads(metadata_bytes)
             return metadata
         except (RemoteDatasetNotFound, FileNotFoundError):

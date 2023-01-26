@@ -36,7 +36,7 @@ class GSWorkspace(RemoteWorkspace):
 
     .. important::
         You can use your default google cloud credentials by running `gcloud auth application-default login`.
-        Otherwise, you can specify the credentials using `token` keyword argument.
+        Otherwise, you can specify the credentials using the `credentials` keyword argument.
     """
 
     Constants = Constants

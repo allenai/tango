@@ -4,25 +4,12 @@ import warnings
 from abc import abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from typing import (
-    Dict,
-    Generator,
-    Iterable,
-    Iterator,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Dict, Generator, Iterable, Iterator, Optional, Tuple, TypeVar, Union
 from urllib.parse import ParseResult
 
 from tango.common.exceptions import StepStateError
 from tango.common.logging import file_handler
-from tango.common.remote_utils import (
-    RemoteClient,
-    RemoteConstants,
-    RemoteStepLock,
-)
+from tango.common.remote_utils import RemoteClient, RemoteConstants, RemoteStepLock
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
 from tango.step_caches.remote_step_cache import RemoteStepCache
@@ -43,7 +30,6 @@ class RemoteWorkspace(Workspace):
     """
 
     Constants = RemoteConstants
-    STEP_INFO_CACHE_SIZE: int = 512
     NUM_CONCURRENT_WORKERS: int = 9
 
     @property

@@ -53,7 +53,7 @@ class RemoteConstants:
 @dataclass
 class RemoteDataset:
     """
-    Abstraction for all objects in remote workspaces. Conceptually, this can be thought of as a folder.
+    Abstraction for all objects in remote storage locations. Conceptually, this can be thought of as a folder.
     """
 
     name: str
@@ -72,32 +72,6 @@ class RemoteDataset:
     """
     If set to True, no further changes to the dataset are allowed.
     If set to False, it means that the dataset is under construction.
-    """
-
-
-@dataclass
-class RemoteFileInfo:
-    """
-    Abstraction for file objects in remote workspaces.
-
-    Note: this is just mirroring beaker right now. We may not need this level of abstraction.
-    """
-
-    path: str
-    """
-    Remote location url for the file.
-    """
-    digest: str
-    """
-    Hash string representing the file.
-    """
-    updated: datetime.datetime
-    """
-    Last update time of the file.
-    """
-    size: int
-    """
-    Size of the file.
     """
 
 
@@ -173,27 +147,6 @@ class RemoteClient(Registrable):
     def commit(self, dataset):
         """
         Marks the dataset as committed. No further changes to the dataset are allowed.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def upload(self, dataset, source: bytes, target: PathOrStr) -> None:
-        """
-        Uploads the `source` contents to the `target` file within the remote dataset.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def get_file(self, dataset, file_path):
-        """
-        Returns the file contents at the `file_path` within the remote dataset.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def file_info(self, dataset, file_path) -> RemoteFileInfo:
-        """
-        Returns a `RemoteFileInfo` object constructed from `file_path` within the remote dataset location.
         """
         raise NotImplementedError()
 
