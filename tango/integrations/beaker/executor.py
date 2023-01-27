@@ -470,8 +470,8 @@ class BeakerExecutor(Executor):
     ) -> ExecutorOutput:
         import concurrent.futures
 
+        del run_name
         self.check_repo_state()
-
         self._is_cancelled.clear()
 
         # These will hold the final results which we'll update along the way.
@@ -608,8 +608,13 @@ class BeakerExecutor(Executor):
                 while steps_left_to_run:
                     # Submit steps left to run.
                     for step_name in steps_to_run:
+                        resource_assignment = self.scheduler.schedule(step_graph[step_name])
                         future = pool.submit(
-                            self._execute_sub_graph_for_step, step_graph, step_name, True
+                            self._execute_sub_graph_for_steps,
+                            step_graph,
+                            resource_assignment,
+                            step_name,
+                            in_thread=True,
                         )
                         future.add_done_callback(make_future_done_callback(step_name))
                         self._jobs += 1
@@ -666,10 +671,11 @@ class BeakerExecutor(Executor):
         if self._is_cancelled.is_set():
             raise RunCancelled
 
-    def _execute_sub_graph_for_step(
+    def _execute_sub_graph_for_steps(
         self,
         step_graph: StepGraph,
-        step_name: str,
+        resource_assignment: ResourceAssignment,
+        *step_names: str,
         in_thread: bool = False,
     ) -> Optional[str]:
         if not in_thread:
@@ -677,74 +683,77 @@ class BeakerExecutor(Executor):
         else:
             self._check_if_cancelled()
 
-        step = step_graph[step_name]
+        steps: List[Step] = []
+        for step_name in step_names:
+            step = step_graph[step_name]
+            if step.cache_results and step in self.workspace.step_cache:
+                cli_logger.info(
+                    '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
+                    step_name,
+                )
+            elif step.resources.machine == "local":
+                if step.cache_results:
+                    step.ensure_result(self.workspace)
+                else:
+                    result = step.result(self.workspace)
+                    if hasattr(result, "__next__"):
+                        from collections import deque
 
-        if step.cache_results and step in self.workspace.step_cache:
-            cli_logger.info(
-                '[green]\N{check mark} Found output for step [bold]"%s"[/] in cache...[/]',
-                step_name,
-            )
-            return None
-
-        if step.resources.machine == "local":
-            if step.cache_results:
-                step.ensure_result(self.workspace)
+                        deque(result, maxlen=0)
             else:
-                result = step.result(self.workspace)
-                if hasattr(result, "__next__"):
-                    from collections import deque
+                steps.append(step)
 
-                    deque(result, maxlen=0)
-            return None
+        step_names: List[str] = [step.name for step in steps]
 
+        # Try to find any existing experiments for each step that are still running.
+        existing_experiments: List[Experiment] = []
+        for step in steps:
+            if not step.cache_results:
+                continue
+            for exp in self.beaker.workspace.experiments(match=f"-{step.unique_id}-"):
+                if (
+                    exp.name is not None
+                    and exp.name.startswith(Constants.STEP_EXPERIMENT_PREFIX)
+                    and step.unique_id in exp.name
+                ):
+                    self._check_if_cancelled()
+                    try:
+                        latest_job = self.beaker.experiment.latest_job(exp)
+                    except (ValueError, ExperimentNotFound):
+                        continue
+                    if latest_job is not None and not latest_job.is_done:
+                        cli_logger.info(
+                            "[blue]\N{black rightwards arrow} Found existing Beaker experiment [b]%s[/] for "
+                            'step [b]"%s"[/] that is still running...[/]',
+                            self.beaker.experiment.url(exp),
+                            step.name,
+                        )
+                        existing_experiments.append(exp)
+                        break
         experiment: Optional[Experiment] = None
         experiment_url: Optional[str] = None
         ephemeral_datasets: List[Dataset] = []
 
-        # Try to find any existing experiments for this step that are still running.
-        if step.cache_results:
-            for exp in self.beaker.workspace.experiments(
-                match=f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-"
-            ):
-                self._check_if_cancelled()
-                try:
-                    latest_job = self.beaker.experiment.latest_job(exp)
-                except (ValueError, ExperimentNotFound):
-                    continue
-                if latest_job is not None and not latest_job.is_done:
-                    experiment = exp
-                    experiment_url = self.beaker.experiment.url(exp)
-                    cli_logger.info(
-                        "[blue]\N{black rightwards arrow} Found existing Beaker experiment [b]%s[/] for "
-                        'step [b]"%s"[/] that is still running...[/]',
-                        experiment_url,
-                        step_name,
-                    )
-                    break
-
         # Otherwise we submit a new experiment...
-        if experiment is None:
+        if not existing_experiments:
             # Initialize experiment and task spec.
             experiment_name, spec, ephemeral_datasets = self._build_experiment_spec(
-                step_graph, step_name
+                step_graph, resource_assignment, *step_names
             )
             self._check_if_cancelled()
 
-            step.log_starting()
+            steps[0].log_starting()
 
             # Create experiment.
             experiment = self.beaker.experiment.create(experiment_name, spec)
             experiment_url = self.beaker.experiment.url(experiment)
             cli_logger.info(
-                '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for step [b]"%s"[/]...[/]',
+                '[blue]\N{black rightwards arrow} Submitted Beaker experiment [b]%s[/] for steps "%s"...[/]',
                 experiment_url,
-                step_name,
+                ", ".join(step_names),
             )
 
-        assert experiment is not None
-        assert experiment_url is not None
-
-        # Follow the experiment until it completes.
+        # Follow the experiment(s) until they complete.
         try:
             while True:
                 poll_interval = min(60, 5 * min(self._jobs, self.max_thread_workers))
@@ -774,7 +783,7 @@ class BeakerExecutor(Executor):
             )
         except (KeyboardInterrupt, CancellationError):
             cli_logger.warning(
-                'Stopping Beaker experiment [cyan]%s[/] for step [b]"%s"[/] (%s)',
+                'Stopping Beaker experiment [cyan]%s[/] for steps [b]"%s"[/] (%s)',
                 experiment_url,
                 step_name,
                 step.unique_id,
@@ -883,16 +892,20 @@ class BeakerExecutor(Executor):
         return dataset
 
     def _build_experiment_spec(
-        self, step_graph: StepGraph, step_name: str
+        self,
+        step_graph: StepGraph,
+        resource_assignment: ResourceAssignment,
+        *step_names: str,
     ) -> Tuple[str, ExperimentSpec, List[Dataset]]:
         from tango.common.logging import TANGO_LOG_LEVEL
 
-        step = step_graph[step_name]
-        sub_graph = step_graph.sub_graph(step_name)
-        step_info = self.workspace.step_info(step)
-        experiment_name = (
-            f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
-        )
+        assert step_names
+
+        sub_graph = step_graph.sub_graph(*step_names)
+        steps = [step_graph[step_name] for step_name in step_names]
+        step_infos = [self.workspace.step_info(step) for step in steps]
+
+        experiment_name = f"{Constants.STEP_EXPERIMENT_PREFIX}{'-'.join([step.unique_id for step in steps])}-{str(uuid.uuid4())[:8]}"
 
         # Ensure we're working in a GitHub repository.
         git = GitMetadata.check_for_repo()
@@ -903,7 +916,7 @@ class BeakerExecutor(Executor):
             or "github.com" not in git.remote
         ):
             raise ExecutorError(
-                f"Missing git data for step '{step.unique_id}'. "
+                f"Missing git data for step '{steps[0].unique_id}'. "
                 f"BeakerExecutor requires a git repository with a GitHub remote."
             )
         try:
@@ -923,7 +936,7 @@ class BeakerExecutor(Executor):
             )
 
         # Get cluster, resources, and priority to use.
-        clusters, task_resources, priority = self.scheduler.schedule(step)
+        clusters, task_resources, priority = resource_assignment
         self._check_if_cancelled()
 
         # Ensure dataset with the entrypoint script exists and get it.
@@ -949,7 +962,7 @@ class BeakerExecutor(Executor):
             "debug",
             "--called-by-executor",
             "beaker-executor-run",
-            step.name,
+            *list(step_names),
             "--experiment",
             Constants.INPUT_DIR + "/" + Constants.STEP_GRAPH_FILENAME,
             "--workspace-url",
@@ -963,13 +976,13 @@ class BeakerExecutor(Executor):
 
         # Ignore the patch version.
         # E.g. '3.9.7' -> '3.9'
-        python_version = step_info.environment.python
+        python_version = step_infos[0].environment.python
         python_version = python_version[: python_version.find(".", python_version.find(".") + 1)]
 
         # Build task spec.
         task_spec = (
             TaskSpec.new(
-                step.unique_id,
+                "run",
                 beaker_image=self.beaker_image,
                 docker_image=self.docker_image,
                 result_path=Constants.RESULTS_DIR,
@@ -1001,7 +1014,9 @@ class BeakerExecutor(Executor):
         return (
             experiment_name,
             ExperimentSpec(
-                tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+                tasks=[task_spec],
+                description="Tango steps "
+                + ", ".join([f'"{step.name}" ({step.unique_id})' for step in steps]),
             ),
             [step_graph_dataset],
         )
