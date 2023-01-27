@@ -1,11 +1,20 @@
 import logging
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step_cache import StepCache
-from tango.step_caches.remote_step_cache import RemoteStepCache
+from tango.step_caches.remote_step_cache import RemoteNotFoundError, RemoteStepCache
 
-from .common import Constants, GCSClient
+from ... import Step
+from ...common import PathOrStr
+from ...common.remote_utils import (
+    RemoteDatasetConflict,
+    RemoteDatasetNotFound,
+    RemoteDatasetWriteError,
+)
+from ...step_info import StepInfo
+from .common import Constants, GCSClient, GCSDataset
 
 logger = logging.getLogger(__name__)
 
@@ -44,3 +53,55 @@ class GSStepCache(RemoteStepCache):
     @property
     def client(self):
         return self._client
+
+    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GCSDataset]:
+        """
+        Returns a `RemoteDataset` object containing the details of the step.
+        This only returns if the step has been finalized (committed).
+        """
+        try:
+            dataset = self.client.get(self.Constants.step_dataset_name(step))
+            return dataset if dataset.committed else None
+        except RemoteDatasetNotFound:
+            return None
+
+    def _upload_step_remote(self, step: Step, objects_dir: Path) -> GCSDataset:
+        """
+        Uploads the step's output to remote location.
+        """
+        dataset_name = self.Constants.step_dataset_name(step)
+        try:
+            self.client.create(dataset_name)
+        except RemoteDatasetConflict:
+            pass
+        try:
+            self.client.upload(dataset_name, objects_dir)
+            self.client.commit(dataset_name)
+        except RemoteDatasetWriteError:
+            pass
+
+        return self.client.get(dataset_name)
+
+    def _download_step_remote(self, step_result, target_dir: PathOrStr) -> None:
+        """
+        Downloads the step's output from remote location.
+        """
+        try:
+            self.client.download(step_result, target_dir)
+        except RemoteDatasetNotFound:
+            raise RemoteNotFoundError()
+
+    def __len__(self):
+        """
+        Returns the number of committed step outputs present in the remote location.
+        """
+        # NOTE: lock datasets should not count here.
+        return sum(
+            1
+            for ds in self.client.datasets(
+                match=self.Constants.STEP_DATASET_PREFIX, uncommitted=False
+            )
+            if ds.name is not None
+            and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
+            and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)
+        )

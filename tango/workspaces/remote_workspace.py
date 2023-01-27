@@ -9,7 +9,7 @@ from urllib.parse import ParseResult
 
 from tango.common.exceptions import StepStateError
 from tango.common.logging import file_handler
-from tango.common.remote_utils import RemoteClient, RemoteConstants
+from tango.common.remote_utils import RemoteConstants
 from tango.common.util import exception_to_string, tango_cache_dir, utc_now_datetime
 from tango.step import Step
 from tango.step_caches.remote_step_cache import RemoteStepCache
@@ -31,11 +31,6 @@ class RemoteWorkspace(Workspace):
 
     Constants = RemoteConstants
     NUM_CONCURRENT_WORKERS: int = 9
-
-    @property
-    @abstractmethod
-    def client(self) -> RemoteClient:
-        raise NotImplementedError()
 
     @property
     @abstractmethod

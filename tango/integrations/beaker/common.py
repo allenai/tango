@@ -10,106 +10,14 @@ from typing import Any, Dict, List, Optional, Union
 
 from beaker import Beaker
 from beaker import Dataset as BeakerDataset
-from beaker import (
-    DatasetConflict,
-    DatasetNotFound,
-    DatasetWriteError,
-    Experiment,
-    ExperimentNotFound,
-)
+from beaker import DatasetConflict, DatasetNotFound, Experiment, ExperimentNotFound
 
-from tango.common.aliases import PathOrStr
-from tango.common.remote_utils import (
-    RemoteClient,
-    RemoteConstants,
-    RemoteDatasetConflict,
-    RemoteDatasetNotFound,
-    RemoteDatasetWriteError,
-)
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
 from tango.step_info import StepInfo
 from tango.version import VERSION
 
 logger = logging.getLogger(__name__)
-
-
-class BeakerClient(RemoteClient):
-    """
-    A client for interacting with beaker.
-    """
-
-    def __init__(
-        self, beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None, **kwargs
-    ):
-        user_agent = f"tango v{VERSION}"
-        self.beaker: Beaker
-        if beaker is not None:
-            self.beaker = beaker
-            if beaker_workspace is not None:
-                self.beaker.config.default_workspace = beaker_workspace
-                self.beaker.workspace.ensure(beaker_workspace)
-        else:
-            if beaker_workspace is not None:
-                self.beaker = Beaker.from_env(
-                    default_workspace=beaker_workspace,
-                    session=True,
-                    user_agent=user_agent,
-                    **kwargs,
-                )
-            else:
-                self.beaker = Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
-
-    def url(self, dataset: Optional[str] = None) -> str:
-        # this just creates a string url.
-        workspace_url = self.beaker.workspace.url()
-        if dataset:
-            return (
-                workspace_url
-                + "/datasets?"
-                + urllib.parse.urlencode(
-                    {
-                        "text": dataset,
-                        "committed": "false",
-                    }
-                )
-            )
-        return workspace_url
-
-    def get(self, dataset: Union[str, BeakerDataset]) -> BeakerDataset:
-        try:
-            return self.beaker.dataset.get(dataset)
-        except (DatasetConflict, DatasetNotFound):
-            # We do this so that remote_workspace gets errors of the type RemoteDatasetNotFound.
-            raise RemoteDatasetNotFound()
-
-    def create(self, dataset: str):
-        try:
-            return self.beaker.dataset.create(dataset, commit=False)
-        except DatasetConflict:
-            raise RemoteDatasetConflict()
-
-    def delete(self, dataset: BeakerDataset):
-        self.beaker.dataset.delete(dataset)
-
-    def upload(self, dataset: Union[str, BeakerDataset], objects_dir: Path):
-        try:
-            self.beaker.dataset.sync(dataset, objects_dir, quiet=True)
-        except DatasetWriteError:
-            raise RemoteDatasetWriteError()
-
-    def commit(self, dataset: Union[str, BeakerDataset]):
-        self.beaker.dataset.commit(dataset)
-
-    def download(self, dataset: BeakerDataset, target_dir: PathOrStr):
-        try:
-            self.beaker.dataset.fetch(dataset, target_dir, quiet=True)
-        except DatasetNotFound:
-            raise RemoteDatasetNotFound()
-
-    def datasets(self, match: str, uncommitted: bool = True) -> List[BeakerDataset]:
-        return self.beaker.workspace.iter_datasets(
-            match=match, uncommitted=uncommitted, results=False
-        )
 
 
 class Constants(RemoteConstants):
@@ -120,10 +28,17 @@ class Constants(RemoteConstants):
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
 
 
-def get_client(
-    beaker_workspace: Optional[str] = None, beaker: Optional[Beaker] = None, **kwargs
-) -> BeakerClient:
-    return BeakerClient(beaker_workspace, beaker, **kwargs)
+def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
+    user_agent = f"tango v{VERSION}"
+    if beaker_workspace is not None:
+        return Beaker.from_env(
+            default_workspace=beaker_workspace,
+            session=True,
+            user_agent=user_agent,
+            **kwargs,
+        )
+    else:
+        return Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
 
 def dataset_url(beaker: Beaker, dataset: Optional[str] = None) -> str:

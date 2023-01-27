@@ -397,7 +397,7 @@ class BeakerExecutor(Executor):
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
 
         self.max_thread_workers = self.parallelism or min(32, (os.cpu_count() or 1) + 4)
-        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs).beaker
+        self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
         self.beaker_image = beaker_image
         self.docker_image = docker_image
         self.datasets = datasets

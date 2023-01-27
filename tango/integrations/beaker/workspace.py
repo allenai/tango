@@ -8,15 +8,22 @@ from typing import Dict, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
-from beaker import DatasetNotFound, Digest, Experiment, ExperimentNotFound
-
-from tango.common.remote_utils import (
-    RemoteDataset,
-    RemoteDatasetConflict,
-    RemoteDatasetNotFound,
+from beaker import (
+    DatasetConflict,
+    DatasetNotFound,
+    Digest,
+    Experiment,
+    ExperimentNotFound,
 )
+
+from tango.common.remote_utils import RemoteDataset
 from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.integrations.beaker.common import BeakerStepLock, Constants, get_client
+from tango.integrations.beaker.common import (
+    BeakerStepLock,
+    Constants,
+    dataset_url,
+    get_client,
+)
 from tango.integrations.beaker.step_cache import BeakerStepCache
 from tango.step import Step
 from tango.step_info import StepInfo
@@ -46,17 +53,13 @@ class BeakerWorkspace(RemoteWorkspace):
     NUM_CONCURRENT_WORKERS = 9
 
     def __init__(self, workspace: str, max_workers: Optional[int] = None, **kwargs):
-        self._client = get_client(workspace, **kwargs)
-        self._cache = BeakerStepCache(workspace, beaker=self._client.beaker)
+        self.beaker = get_client(beaker_workspace=workspace, **kwargs)
+        self._cache = BeakerStepCache(beaker=self.beaker)
         self._locks: Dict[Step, BeakerStepLock] = {}
         super().__init__()
         self.max_workers = max_workers
         self._disk_cache_dir = tango_cache_dir() / "beaker_cache" / "_objects"
         self._mem_cache: "OrderedDict[Digest, Union[StepInfo, Run]]" = OrderedDict()
-
-    @property
-    def client(self):
-        return self._client
 
     @property
     def cache(self):
@@ -71,15 +74,11 @@ class BeakerWorkspace(RemoteWorkspace):
         return "beaker_workspace"
 
     @property
-    def beaker(self):
-        return self.client.beaker
-
-    @property
     def url(self) -> str:
         return f"beaker://{self.beaker.workspace.get().full_name}"
 
     def _step_location(self, step: Step) -> str:
-        return self.client.url(self.Constants.step_dataset_name(step))
+        return dataset_url(self.beaker, self.Constants.step_dataset_name(step))
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
@@ -186,17 +185,19 @@ class BeakerWorkspace(RemoteWorkspace):
             while True:
                 name = petname.generate() + str(random.randint(0, 100))
                 try:
-                    run_dataset = self.client.create(
-                        self.Constants.run_dataset_name(cast(str, name))
+                    run_dataset = self.beaker.dataset.create(
+                        self.Constants.run_dataset_name(cast(str, name)), commit=False
                     )
-                except RemoteDatasetConflict:
+                except DatasetConflict:
                     continue
                 else:
                     break
         else:
             try:
-                run_dataset = self.client.create(self.Constants.run_dataset_name(name))
-            except RemoteDatasetConflict:
+                run_dataset = self.beaker.dataset.create(
+                    self.Constants.run_dataset_name(name), commit=False
+                )
+            except DatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
 
         # Upload run data to dataset.
@@ -233,11 +234,11 @@ class BeakerWorkspace(RemoteWorkspace):
         err_msg = f"Run '{name}' not found in workspace"
 
         try:
-            dataset_for_run = self.client.get(self.Constants.run_dataset_name(name))
+            dataset_for_run = self.beaker.dataset.get(self.Constants.run_dataset_name(name))
             # Make sure the run is in our workspace.
             if dataset_for_run.workspace_ref.id != self.beaker.workspace.get().id:  # type: ignore # TODO
-                raise RemoteDatasetNotFound
-        except RemoteDatasetNotFound:
+                raise DatasetNotFound
+        except DatasetNotFound:
             raise KeyError(err_msg)
 
         run = self._get_run_from_dataset(dataset_for_run)
@@ -248,8 +249,8 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def _save_run_log(self, name: str, log_file: Path):
         run_dataset = self.Constants.run_dataset_name(name)
-        self.client.upload(run_dataset, log_file)
-        self.client.commit(run_dataset)
+        self.beaker.dataset.sync(run_dataset, log_file, quiet=False)
+        self.beaker.dataset.commit(run_dataset)
 
     def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:
         if dataset.name is None:
@@ -288,13 +289,14 @@ class BeakerWorkspace(RemoteWorkspace):
 
         step_info_dataset: RemoteDataset
         try:
-            self.client.create(dataset_name)
-        except RemoteDatasetConflict:
+            self.beaker.dataset.create(dataset_name, commit=False)
+        except DatasetConflict:
             pass
-        step_info_dataset = self.client.get(dataset_name)
+        step_info_dataset = self.beaker.dataset.get(dataset_name)
 
         self.beaker.dataset.upload(
             step_info_dataset,  # folder name
             json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
             self.Constants.STEP_INFO_FNAME,  # step info filename
+            quiet=True,
         )
