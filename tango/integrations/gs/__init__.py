@@ -11,6 +11,7 @@ from tango.common.exceptions import IntegrationMissingError
 
 try:
     from google.cloud import storage
+    from google.cloud import datastore
 except (ModuleNotFoundError, ImportError):
     raise IntegrationMissingError("gs", dependencies={"google-cloud-storage"})
 
