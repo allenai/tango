@@ -6,7 +6,7 @@ import time
 import urllib
 import urllib.parse
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from beaker import Beaker
 from beaker import Dataset as BeakerDataset
