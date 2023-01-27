@@ -254,7 +254,11 @@ class StopEarlyCallback(TrainCallback):
         """
         Return any state that needs to be kept after a restart.
         """
-        return {"patience": self.patience, "best_step": self.best_step, "best_val_metric": self.best_val_metric}
+        return {
+            "patience": self.patience,
+            "best_step": self.best_step,
+            "best_val_metric": self.best_val_metric,
+        }
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         """

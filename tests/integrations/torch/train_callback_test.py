@@ -3,20 +3,25 @@ from pathlib import Path
 import pytest
 from torch.optim import SGD
 
-from .training_engine_test import DummyModel
-from tango.common import Lazy, DatasetDict
-from tango.integrations.torch import TrainConfig, TorchTrainingEngine, Model, Optimizer, DataLoader
-from tango.integrations.torch import StopEarlyCallback, StopEarly
+from tango.common import DatasetDict, Lazy
+from tango.integrations.torch import (
+    DataLoader,
+    StopEarly,
+    StopEarlyCallback,
+    TorchTrainingEngine,
+    TrainConfig,
+)
 from tango.workspaces import MemoryWorkspace
+
+from .training_engine_test import DummyModel
 
 
 def test_stop_early_callback():
     workspace = MemoryWorkspace()
     train_config = TrainConfig(step_id="FakeStep-abc123", work_dir=Path("/tmp"))
     training_engine = TorchTrainingEngine(
-        train_config=train_config,
-        model=DummyModel(),
-        optimizer=Lazy(SGD, lr=0.001))
+        train_config=train_config, model=DummyModel(), optimizer=Lazy(SGD, lr=0.001)
+    )
     dataset_dict = DatasetDict(splits={"train": [1, 2, 3]})
     train_dataloader = Lazy(DataLoader)
 
@@ -26,7 +31,7 @@ def test_stop_early_callback():
         train_config=train_config,
         training_engine=training_engine,
         dataset_dict=dataset_dict,
-        train_dataloader=train_dataloader
+        train_dataloader=train_dataloader,
     )
     callback.post_val_loop(1, 1, 0.5, 0.5)
     callback.post_val_loop(2, 1, 0.5, 0.5)
