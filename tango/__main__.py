@@ -329,16 +329,19 @@ def run(
 
 @main.command(hidden=True)
 @click.argument(
-    "experiment",
+    "step_names",
+    type=str,
+    nargs=-1,
+)
+@click.option(
+    "--experiment",
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    required=True,
 )
-@click.argument(
-    "step_name",
+@click.option(
+    "--workspace-url",
     type=str,
-)
-@click.argument(
-    "workspace_url",
-    type=str,
+    required=True,
 )
 @click.option(
     "-i",
@@ -354,8 +357,8 @@ def run(
     show_choices=True,
 )
 def beaker_executor_run(
+    step_names: Sequence[str],
     experiment: str,
-    step_name: str,
     workspace_url: str,
     include_package: Optional[Sequence[str]] = None,
     log_level: str = "debug",
@@ -369,9 +372,8 @@ def beaker_executor_run(
         for package_name in include_package:
             import_extra_module(package_name)
 
-    # Load step graph and step.
+    # Load step graph.
     step_graph = StepGraph.from_file(experiment)
-    step = step_graph[step_name]
 
     # Initialize workspace and executor.
     # NOTE: We use the default executor here because we're just running the step
@@ -382,8 +384,10 @@ def beaker_executor_run(
     # Initialize logging.
     initialize_logging(log_level=log_level, enable_cli_logs=True, file_friendly_logging=True)
 
-    # Run step.
-    executor.execute_step(step)
+    for step_name in step_names:
+        # Run step.
+        step = step_graph[step_name]
+        executor.execute_step(step)
 
 
 @main.command(**_CLICK_COMMAND_DEFAULTS)

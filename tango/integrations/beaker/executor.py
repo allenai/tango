@@ -949,8 +949,10 @@ class BeakerExecutor(Executor):
             "debug",
             "--called-by-executor",
             "beaker-executor-run",
-            Constants.INPUT_DIR + "/" + Constants.STEP_GRAPH_FILENAME,
             step.name,
+            "--experiment",
+            Constants.INPUT_DIR + "/" + Constants.STEP_GRAPH_FILENAME,
+            "--workspace-url",
             self.workspace.url,
         ]
         if self.include_package is not None:
