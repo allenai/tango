@@ -44,21 +44,15 @@ class GSWorkspace(RemoteWorkspace):
 
     def __init__(self, workspace: str, project: Optional[str] = None, **kwargs):
 
-        self._client = get_client(gcs_workspace=workspace, project=project, **kwargs)
-        self._cache = GSStepCache(workspace, client=self._client)
+        self.client = get_client(gcs_workspace=workspace, project=project, **kwargs)
+        self._cache = GSStepCache(workspace, client=self.client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
         super().__init__()
 
-        # TODO: Ugly. Fix.
-        # TODO: also update the docstring.
         credentials = get_credentials()
         project = project or credentials.quota_project_id
         self._ds = datastore.Client(namespace=workspace, project=project, credentials=credentials)
-
-    @property
-    def client(self):
-        return self._client
 
     @property
     def cache(self):
