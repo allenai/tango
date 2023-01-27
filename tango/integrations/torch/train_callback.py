@@ -237,12 +237,16 @@ class StopEarlyCallback(TrainCallback):
         super().__init__(*args, **kwargs)
         self.patience = patience
         self.best_step = 0
+        self.best_val_metric: Optional[float] = None
 
     def post_val_loop(
         self, step: int, epoch: int, val_metric: float, best_val_metric: float
     ) -> None:
-        if val_metric == best_val_metric:
+        # We can't rely on the best_val_metric parameter, because then we can't detect when the metric stays
+        # the same for many steps.
+        if self.best_val_metric is None or val_metric > self.best_val_metric:
             self.best_step = step
+            self.best_val_metric = val_metric
         elif step > self.best_step + self.patience:
             raise StopEarly
 
@@ -250,7 +254,7 @@ class StopEarlyCallback(TrainCallback):
         """
         Return any state that needs to be kept after a restart.
         """
-        return {"patience": self.patience, "best_step": self.best_step}
+        return {"patience": self.patience, "best_step": self.best_step, "best_val_metric": self.best_val_metric}
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         """
@@ -258,3 +262,4 @@ class StopEarlyCallback(TrainCallback):
         """
         self.patience = state_dict["patience"]
         self.best_step = state_dict["best_step"]
+        self.best_val_metric = state_dict["best_val_metric"]
