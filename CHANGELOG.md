@@ -13,12 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed integration status messages in `tango info` command.
 - Added abstractions for `RemoteClient`, `RemoteStepCache`, and `RemoteWorkspace`.
 - Added a GS integration that comes with `GSWorkspace`, a remote `Workspace` implementation that uses google cloud storage.
+- You can now bind functional steps to the underlying `Step` instance with `@step(bind=True)`, meaning the first argument to the function will be a `Step`.
 
 ### Fixed
 
 - Jsonnet parsing is now much faster and works on Windows.
 - Warnings about locks are now reliably printed every 30 seconds
 - We now make sure Beaker jobs have the latest version of beaker-py, so that we're compatible with the latest API changes.
+- Stopping early now works when the metric doesn't change at all.
 
 ### Changed
 
