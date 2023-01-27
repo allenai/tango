@@ -2,7 +2,7 @@ import os
 
 from tango.common.testing import TangoTestCase
 from tango.common.testing.steps import FloatStep
-from tango.integrations.gs.common import empty_bucket
+from tango.integrations.gs.common import empty_bucket, empty_datastore
 from tango.integrations.gs.workspace import GSWorkspace
 from tango.step_info import StepState
 from tango.workspace import Workspace
@@ -14,6 +14,7 @@ class TestGSWorkspace(TangoTestCase):
     def setup_method(self):
         super().setup_method()
         empty_bucket(GS_BUCKET_NAME)
+        empty_datastore(GS_BUCKET_NAME)
 
     def teardown_method(self):
         super().teardown_method()
