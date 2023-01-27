@@ -20,7 +20,7 @@ def test_stop_early_callback():
     workspace = MemoryWorkspace()
     train_config = TrainConfig(step_id="FakeStep-abc123", work_dir=Path("/tmp"))
     training_engine = TorchTrainingEngine(
-        train_config=train_config, model=DummyModel(), optimizer=Lazy(SGD, lr=0.001)
+        train_config=train_config, model=DummyModel(), optimizer=Lazy(SGD, lr=0.001)  # type: ignore
     )
     dataset_dict = DatasetDict(splits={"train": [1, 2, 3]})
     train_dataloader = Lazy(DataLoader)
