@@ -101,7 +101,7 @@ class GSWorkspace(RemoteWorkspace):
             if self._ds.get(self._ds.key("run", name)):
                 raise ValueError(f"Run name '{name}' is already in use")
 
-        run_entity = self._ds.entity(key=self._ds.key("run", name))
+        run_entity = self._ds.entity(key=self._ds.key("run", name), exclude_from_indexes=("steps",))
         run_entity["start_date"] = datetime.datetime.now()
         run_entity["steps"] = json.dumps(run_data).encode()
         self._ds.put(run_entity)
