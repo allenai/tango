@@ -127,14 +127,14 @@ class Executor(Registrable):
     # serialize steps somehow, and the easiest way to serialize a step is by serializing the
     # whole step config (which can be accessed via the step graph).
 
-    def execute_sub_graph_for_step(
-        self, step_graph: StepGraph, step_name: str, run_name: Optional[str] = None
+    def execute_sub_graph_for_steps(
+        self, step_graph: StepGraph, *step_names: str, run_name: Optional[str] = None
     ) -> ExecutorOutput:
         """
         Execute the sub-graph associated with a particular step in a
         :class:`~tango.step_graph.StepGraph`.
         """
-        sub_graph = step_graph.sub_graph(step_name)
+        sub_graph = step_graph.sub_graph(*step_names)
         return self.execute_step_graph(sub_graph, run_name=run_name)
 
 

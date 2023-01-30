@@ -752,14 +752,9 @@ def _run(
         executor_output: Optional[ExecutorOutput] = None
         if step_names:
             assert sub_graph is not None
-            for step_name in step_names:
-                step = sub_graph[step_name]
-                if step.cache_results and step in workspace.step_cache:
-                    step.log_cache_hit()
-                else:
-                    executor_output = executor.execute_sub_graph_for_step(
-                        sub_graph, step_name, run_name=run.name
-                    )
+            executor_output = executor.execute_sub_graph_for_steps(
+                sub_graph, *step_names, run_name=run.name
+            )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
 
