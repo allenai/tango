@@ -31,7 +31,7 @@ class GSWorkspace(RemoteWorkspace):
     .. tip::
         Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
 
-    :param workspace: The name or ID of the Beaker workspace to use.
+    :param workspace: The name or ID of the Google Cloud bucket to use.
     :param kwargs: Additional keyword arguments passed to :meth:`GCSFileSystem() <gcsfs.GCSFileSystem()>`.
 
     .. important::

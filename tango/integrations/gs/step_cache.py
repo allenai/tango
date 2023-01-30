@@ -2,19 +2,18 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
-from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.step_cache import StepCache
-from tango.step_caches.remote_step_cache import RemoteNotFoundError, RemoteStepCache
-
-from ... import Step
-from ...common import PathOrStr
-from ...common.remote_utils import (
+from tango.common import PathOrStr
+from tango.common.remote_utils import (
     RemoteDatasetConflict,
     RemoteDatasetNotFound,
     RemoteDatasetWriteError,
 )
-from ...step_info import StepInfo
-from .common import Constants, GCSClient, GCSDataset
+from tango.common.util import make_safe_filename, tango_cache_dir
+from tango.integrations.gs.common import Constants, GSClient, GSDataset
+from tango.step import Step
+from tango.step_cache import StepCache
+from tango.step_caches.remote_step_cache import RemoteNotFoundError, RemoteStepCache
+from tango.step_info import StepInfo
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,7 @@ class GSStepCache(RemoteStepCache):
 
     Constants = Constants
 
-    def __init__(self, bucket_name: str, client: Optional[GCSClient] = None):
+    def __init__(self, bucket_name: str, client: Optional[GSClient] = None):
         if client is not None:
             assert (
                 bucket_name == client.bucket_name
@@ -45,7 +44,7 @@ class GSStepCache(RemoteStepCache):
             self.bucket_name = bucket_name
             self._client = client
         else:
-            self._client = GCSClient(bucket_name)
+            self._client = GSClient(bucket_name)
         super().__init__(
             tango_cache_dir() / "gs_cache" / make_safe_filename(self._client.bucket_name)
         )
@@ -54,7 +53,7 @@ class GSStepCache(RemoteStepCache):
     def client(self):
         return self._client
 
-    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GCSDataset]:
+    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GSDataset]:
         """
         Returns a `RemoteDataset` object containing the details of the step.
         This only returns if the step has been finalized (committed).
@@ -65,7 +64,7 @@ class GSStepCache(RemoteStepCache):
         except RemoteDatasetNotFound:
             return None
 
-    def _upload_step_remote(self, step: Step, objects_dir: Path) -> GCSDataset:
+    def _upload_step_remote(self, step: Step, objects_dir: Path) -> GSDataset:
         """
         Uploads the step's output to remote location.
         """

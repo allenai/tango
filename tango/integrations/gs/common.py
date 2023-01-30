@@ -60,19 +60,15 @@ def empty_datastore(namespace: str):
     client.delete_multi(keys)
 
 
-class GCSDataset(RemoteDataset):
+class GSDataset(RemoteDataset):
     """
-    A GCSDataset object is used for representing storage objects in google cloud storage.
+    A GSDataset object is used for representing storage objects in google cloud storage.
     """
 
     pass
 
 
-class GSStep(GCSDataset):
-    pass
-
-
-class GCSClient(RemoteClient):
+class GSClient(RemoteClient):
     """
     A client for interacting with Google Cloud Storage.
     """
@@ -125,7 +121,7 @@ class GCSClient(RemoteClient):
         return path
 
     @classmethod
-    def _convert_blobs_to_dataset(cls, blobs: List[storage.Blob]) -> GCSDataset:
+    def _convert_blobs_to_dataset(cls, blobs: List[storage.Blob]) -> GSDataset:
         name: str
         dataset_path: str
         created: datetime
@@ -139,14 +135,14 @@ class GCSClient(RemoteClient):
             elif blob.name.endswith(cls.uncommitted_file):
                 committed = False
 
-        assert name is not None, "Folder is not a GCSDataset, should not have happened."
-        return GCSDataset(name, dataset_path, created, committed)
+        assert name is not None, "Folder is not a GSDataset, should not have happened."
+        return GSDataset(name, dataset_path, created, committed)
 
     @classmethod
     def from_env(cls, bucket_name: str):
         return cls(bucket_name)
 
-    def get(self, dataset: Union[str, GCSDataset]) -> GCSDataset:
+    def get(self, dataset: Union[str, GSDataset]) -> GSDataset:
         if isinstance(dataset, str):
             path = dataset
         else:
@@ -172,12 +168,12 @@ class GCSClient(RemoteClient):
             bucket.blob(os.path.join(dataset, self.uncommitted_file)).upload_from_string("")
         return self._convert_blobs_to_dataset(list(bucket.list_blobs(prefix=dataset)))
 
-    def delete(self, dataset: GCSDataset):
+    def delete(self, dataset: GSDataset):
         bucket = self.storage.bucket(self.bucket_name)
         blobs = list(bucket.list_blobs(prefix=dataset.dataset_path))
         bucket.delete_blobs(blobs)
 
-    def upload(self, dataset: Union[str, GCSDataset], objects_dir: Path):
+    def upload(self, dataset: Union[str, GSDataset], objects_dir: Path):
         if isinstance(dataset, str):
             folder_path = dataset
         else:
@@ -207,7 +203,7 @@ class GCSClient(RemoteClient):
         except Exception:
             raise RemoteDatasetWriteError()
 
-    def commit(self, dataset: Union[str, GCSDataset]):
+    def commit(self, dataset: Union[str, GSDataset]):
         if isinstance(dataset, str):
             folder_path = dataset
         else:
@@ -220,7 +216,7 @@ class GCSClient(RemoteClient):
                 raise RemoteDatasetNotFound()
             # Otherwise, already committed. No change.
 
-    def download(self, dataset: GCSDataset, target_dir: PathOrStr):
+    def download(self, dataset: GSDataset, target_dir: PathOrStr):
         assert (
             self.storage.bucket(self.bucket_name)
             .blob(os.path.join(dataset.dataset_path, self.placeholder_file))
@@ -241,7 +237,7 @@ class GCSClient(RemoteClient):
         except exceptions.NotFound:
             raise RemoteDatasetWriteError()
 
-    def datasets(self, match: str, uncommitted: bool = True) -> List[GCSDataset]:
+    def datasets(self, match: str, uncommitted: bool = True) -> List[GSDataset]:
         list_of_datasets = []
         for folder_name in self.storage.list_blobs(
             self.bucket_name, prefix=match, delimiter="/"
@@ -283,9 +279,9 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
 
 def get_client(
     gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs
-) -> GCSClient:
+) -> GSClient:
     credentials = get_credentials(credentials)
-    return GCSClient(gcs_workspace, credentials=credentials, **kwargs)
+    return GSClient(gcs_workspace, credentials=credentials, **kwargs)
 
 
 class Constants(RemoteConstants):
@@ -300,13 +296,13 @@ class GCSStepLock:
 
     def __init__(
         self,
-        client: GCSClient,
+        client: GSClient,
         step: Union[str, StepInfo, Step],
     ):
         self._client = client
         self._step_id = step if isinstance(step, str) else step.unique_id
         self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
-        self._lock_dataset: Optional[GCSDataset] = None
+        self._lock_dataset: Optional[GSDataset] = None
         self.lock_dataset_url = self._client.url(self._lock_dataset_name)
 
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
@@ -340,7 +336,7 @@ class GCSStepLock:
                 f"Timeout error occurred while waiting to acquire dataset lock for step '{self._step_id}':\n\n"
                 f"{self.lock_dataset_url}\n\n"
                 f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
-                f"just delete the lock dataset."
+                f"just delete the lock dataset, using the command: \n`gsutil rm -r {self.lock_dataset_url}`"
             )
 
     def release(self):
