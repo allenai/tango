@@ -70,7 +70,17 @@ class GSDataset(RemoteDataset):
 
 class GSClient(RemoteClient):
     """
-    A client for interacting with Google Cloud Storage.
+    A client for interacting with Google Cloud Storage. The authorization works by
+    providing OAuth2 credentials.
+
+    :param bucket_name: The name of the Google Cloud bucket to use.
+
+    :param credentials: OAuth2 credentials can be provided. If not provided, default
+    gcloud credentials are inferred.
+
+    :param project: Optionally, the project ID can be provided. This is not essential
+    for `google.cloud.storage` API, since buckets are at the account level, rather
+    than the project level.
     """
 
     placeholder_file = ".placeholder"
@@ -97,8 +107,6 @@ class GSClient(RemoteClient):
         credentials: Optional[Credentials] = None,
         project: Optional[str] = None,
     ):
-        # https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files
-        # https://googleapis.dev/python/google-api-core/latest/auth.html
         if not credentials:
             credentials, project = google.auth.default()
 
@@ -253,9 +261,17 @@ class GSClient(RemoteClient):
 
 
 def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
-    # BeakerExecutor will use GOOGLE_TOKEN
+    """
+    More details on Google Cloud credentials can be found here:
+    https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files,
+    and https://googleapis.dev/python/google-api-core/latest/auth.html
+    """
+
+    # BeakerExecutor uses GOOGLE_TOKEN
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
     if credentials is not None:
+
+        # Path to the credentials file has been provided
         if isinstance(credentials, str) and credentials.endswith(".json"):
             with open(credentials) as file_ref:
                 credentials = file_ref.read()
@@ -263,25 +279,30 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
             # If credentials dict has been passed as a json string
             credentials_dict = json.loads(credentials)
             credentials_dict.pop("type", None)
-            # sometimes the credentials dict may not contain `token` key, but `Credentials()` needs the parameter.
+
+            # sometimes the credentials dict may not contain `token` and `token_uri` keys,
+            # but `Credentials()` needs the parameter.
             token = credentials_dict.pop("token", None)
             token_uri = credentials_dict.pop("token_uri", "https://oauth2.googleapis.com/token")
             credentials = Credentials(token=token, token_uri=token_uri, **credentials_dict)
         except json.decoder.JSONDecodeError:
             # It is not a json string.
-            # We do this because BeakerExecutor cannot write a None secret.
+            # We use this string because BeakerExecutor cannot write a None secret.
             if credentials == "default":
                 credentials = None
     if not credentials:
+        # Infer default credentials
         credentials, _ = google.auth.default()
     return credentials
 
 
 def get_client(
-    gcs_workspace: str, credentials: Optional[Union[str, Credentials]] = None, **kwargs
+    gcs_workspace: str,
+    credentials: Optional[Union[str, Credentials]] = None,
+    project: Optional[str] = None,
 ) -> GSClient:
     credentials = get_credentials(credentials)
-    return GSClient(gcs_workspace, credentials=credentials, **kwargs)
+    return GSClient(gcs_workspace, credentials=credentials, project=project)
 
 
 class Constants(RemoteConstants):

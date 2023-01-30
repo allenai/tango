@@ -7,6 +7,7 @@ from urllib.parse import ParseResult
 
 import petname
 from google.cloud import datastore
+from google.oauth2.credentials import Credentials
 
 from tango.integrations.gs.common import (
     Constants,
@@ -32,19 +33,37 @@ class GSWorkspace(RemoteWorkspace):
         Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
 
     :param workspace: The name or ID of the Google Cloud bucket to use.
-    :param kwargs: Additional keyword arguments passed to :meth:`GCSFileSystem() <gcsfs.GCSFileSystem()>`.
+
+    :param project: The Google project ID. This is required for the datastore. If not provided,
+    it will be inferred from the Google cloud credentials.
 
     .. important::
-        You can use your default google cloud credentials by running `gcloud auth application-default login`.
-        Otherwise, you can specify the credentials using the `credentials` keyword argument.
+        Credentials can be provided in the following ways:
+
+        - Using the `credentials` keyword argument:
+            - You can specify the path to the credentials json file.
+            - You can specify the `google.oauth2.credentials.Credentials()` object.
+            - You can specify the json string of credentials dict.
+
+        - Using the default credentials: You can use your default google cloud credentials by running
+          `gcloud auth application-default login`. If you are using `GSWorkspace` with
+          :class:`~tango.integrations.beaker.BeakerExecutor`, you will need to set the environment variable
+          `GOOGLE_TOKEN` to the credentials json file. The default location is usually
+          `~/.config/gcloud/application_default_credentials.json`.
+
     """
 
     Constants = Constants
     NUM_CONCURRENT_WORKERS = 9  # TODO: increase and check
 
-    def __init__(self, workspace: str, project: Optional[str] = None, **kwargs):
+    def __init__(
+        self,
+        workspace: str,
+        project: Optional[str] = None,
+        credentials: Optional[Union[str, Credentials]] = None,
+    ):
 
-        self.client = get_client(gcs_workspace=workspace, project=project, **kwargs)
+        self.client = get_client(gcs_workspace=workspace, credentials=credentials, project=project)
         self._cache = GSStepCache(workspace, client=self.client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
