@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional, Tuple, Union, cast
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-
 from tango.common import Lazy, Registrable, Tqdm
 
 from .model import Model
@@ -36,9 +35,9 @@ class TrainingEngine(Registrable):
         self,
         train_config: TrainConfig,
         model: Union[Model, Lazy[Model]],
-        optimizer: Lazy[Optimizer],
+        optimizer: Union[Optimizer, Lazy[Optimizer]],
         *,
-        lr_scheduler: Optional[Lazy[LRScheduler]] = None,
+        lr_scheduler: Optional[Union[LRScheduler, Lazy[LRScheduler]]] = None,
     ) -> None:
         self.train_config = train_config
         self.model = self._construct_model(model)
@@ -52,13 +51,19 @@ class TrainingEngine(Registrable):
             model = model.construct()
         return model.to(self.train_config.worker_local_default_device)
 
-    def _construct_optimizer(self, optimizer: Lazy[Optimizer]) -> Optimizer:
-        optimizer: Optimizer = optimizer.construct(params=self.model.parameters())
-        return optimizer
+    def _construct_optimizer(self, optimizer: Union[Optimizer, Lazy[Optimizer]]) -> Optimizer:
+        if isinstance(optimizer, Lazy):
+            return optimizer.construct(params=self.model.parameters())
+        else:
+            return optimizer
 
-    def _construct_lr_scheduler(self, lr_scheduler: Lazy[LRScheduler]) -> LRScheduler:
-        lr_scheduler: LRScheduler = lr_scheduler.construct(optimizer=self.optimizer)
-        return lr_scheduler
+    def _construct_lr_scheduler(
+        self, lr_scheduler: Union[LRScheduler, Lazy[LRScheduler]]
+    ) -> LRScheduler:
+        if isinstance(lr_scheduler, Lazy):
+            return lr_scheduler.construct(optimizer=self.optimizer)
+        else:
+            return lr_scheduler
 
     @abstractmethod
     def forward_train(
@@ -144,9 +149,9 @@ class TorchTrainingEngine(TrainingEngine):
         self,
         train_config: TrainConfig,
         model: Union[Model, Lazy[Model]],
-        optimizer: Lazy[Optimizer],
+        optimizer: Union[Optimizer, Lazy[Optimizer]],
         *,
-        lr_scheduler: Optional[Lazy[LRScheduler]] = None,
+        lr_scheduler: Optional[Union[LRScheduler, Lazy[LRScheduler]]] = None,
         amp: bool = False,
         max_grad_norm: Optional[float] = None,
         amp_use_bfloat16: Optional[bool] = None,
