@@ -325,8 +325,9 @@ class GCSStepLock:
                     logger.warning(
                         "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
                         "This probably means the step is being run elsewhere, but if you're sure it isn't "
-                        "you can just delete the lock dataset.",
+                        "you can just delete the lock dataset, using the command: \n`gsutil rm -r %s`",
                         self._step_id,
+                        self.lock_dataset_url,
                         self.lock_dataset_url,
                     )
                     last_logged = time.monotonic()
