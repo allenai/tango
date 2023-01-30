@@ -33,9 +33,8 @@ class GSWorkspace(RemoteWorkspace):
         Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
 
     :param workspace: The name or ID of the Google Cloud bucket to use.
-
     :param project: The Google project ID. This is required for the datastore. If not provided,
-    it will be inferred from the Google cloud credentials.
+        it will be inferred from the Google cloud credentials.
 
     .. important::
         Credentials can be provided in the following ways:

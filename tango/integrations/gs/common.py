@@ -74,13 +74,11 @@ class GSClient(RemoteClient):
     providing OAuth2 credentials.
 
     :param bucket_name: The name of the Google Cloud bucket to use.
-
     :param credentials: OAuth2 credentials can be provided. If not provided, default
-    gcloud credentials are inferred.
-
+        gcloud credentials are inferred.
     :param project: Optionally, the project ID can be provided. This is not essential
-    for `google.cloud.storage` API, since buckets are at the account level, rather
-    than the project level.
+        for `google.cloud.storage` API, since buckets are at the account level, rather
+        than the project level.
     """
 
     placeholder_file = ".placeholder"
