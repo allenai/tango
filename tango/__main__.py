@@ -775,7 +775,7 @@ def _run(
                 raise CliRunError
 
     if called_by_executor:
-        assert step_names
+        assert step_names is not None and len(step_names) == 1
 
         from tango.common.aliases import EnvVarNames
 
