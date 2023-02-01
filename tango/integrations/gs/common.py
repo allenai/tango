@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 def empty_bucket(bucket_name: str):
     """
-    Utility function for testing.
+    Removes all the tango-related blobs from the specified bucket.
+    Used for testing.
     """
     credentials, project = google.auth.default()
     client = storage.Client(project=project, credentials=credentials)
@@ -40,7 +41,8 @@ def empty_bucket(bucket_name: str):
 
 def empty_datastore(namespace: str):
     """
-    Utility funtion for testing.
+    Removes all the tango-related entities from the specified namespace in datastore.
+    Used for testing.
     """
     from google.cloud import datastore
 
@@ -326,8 +328,13 @@ class GSClient:
         return list_of_artifacts
 
 
-def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
+def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Credentials:
     """
+    :param credentials:
+        * if OAuth2 credentials are provided, they are returned.
+        * if `str`, it can be either a file path or a json string of credentials dict.
+        * if `None`, credentials are inferred from the environment.
+
     More details on Google Cloud credentials can be found here:
     https://googleapis.dev/python/google-auth/latest/user-guide.html#service-account-private-key-files,
     and https://googleapis.dev/python/google-api-core/latest/auth.html
@@ -363,12 +370,15 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
 
 
 def get_client(
-    gcs_workspace: str,
+    bucket_name: str,
     credentials: Optional[Union[str, Credentials]] = None,
     project: Optional[str] = None,
 ) -> GSClient:
+    """
+    Returns a `GSClient` object for a google cloud bucket.
+    """
     credentials = get_credentials(credentials)
-    return GSClient(gcs_workspace, credentials=credentials, project=project)
+    return GSClient(bucket_name, credentials=credentials, project=project)
 
 
 class Constants(RemoteConstants):

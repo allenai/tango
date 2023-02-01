@@ -62,7 +62,7 @@ class GSWorkspace(RemoteWorkspace):
         credentials: Optional[Union[str, Credentials]] = None,
     ):
 
-        self.client = get_client(gcs_workspace=workspace, credentials=credentials, project=project)
+        self.client = get_client(bucket_name=workspace, credentials=credentials, project=project)
         self._cache = GSStepCache(workspace, client=self.client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
