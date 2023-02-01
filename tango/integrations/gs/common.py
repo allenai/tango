@@ -304,7 +304,6 @@ class GSClient:
         )
 
         def _fetch_blob(blob: storage.Blob):
-            blob.update()  # fetches updated information.
             source_path = blob.name.replace(artifact.artifact_path + "/", "")
             target_path = os.path.join(target_dir, source_path)
             if not os.path.exists(os.path.dirname(target_path)):
@@ -312,7 +311,9 @@ class GSClient:
             blob.download_to_filename(target_path)
 
         try:
-            for blob in self.storage.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
+            bucket = self.storage.bucket(self.bucket_name)
+            bucket.update()
+            for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
                 _fetch_blob(blob)
         except exceptions.NotFound:
             raise GSArtifactWriteError()
