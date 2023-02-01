@@ -1,6 +1,7 @@
 import atexit
 import json
 import logging
+import os.path
 import tempfile
 import time
 import urllib
@@ -24,7 +25,9 @@ class Constants(RemoteConstants):
     ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
     BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
     GOOGLE_TOKEN_SECRET_NAME: str = "GOOGLE_TOKEN"
-    DEFAULT_GOOGLE_CREDENTIALS_FILE: str = "~/.config/gcloud/application_default_credentials.json"
+    DEFAULT_GOOGLE_CREDENTIALS_FILE: str = os.path.expanduser(
+        os.path.join("~", ".config", "gcloud", "application_default_credentials.json")
+    )
     ENTRYPOINT_DIR: str = "/tango/entrypoint"
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
 
