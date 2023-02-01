@@ -212,20 +212,28 @@ class GSClient:
         else:
             raise GSArtifactNotFound()
 
+    @classmethod
+    def _gs_path(cls, *args):
+        """
+        Returns path within google cloud storage bucket. We use this since we cannot
+        use `os.path.join` for cloud storage paths.
+        """
+        return "/".join(args)
+
     def create(self, artifact: str):
         """
         Creates a new artifact in the remote location. By default, it is uncommitted.
         """
         bucket = self.storage.bucket(self.bucket_name)
         # gives refreshed information
-        if bucket.blob(os.path.join(artifact, self.placeholder_file)).exists():
+        if bucket.blob(self._gs_path(artifact, self.placeholder_file)).exists():
             raise GSArtifactConflict(f"{artifact} already exists!")
         else:
             # Additional safety check
-            if bucket.blob(os.path.join(artifact, self.uncommitted_file)).exists():
+            if bucket.blob(self._gs_path(artifact, self.uncommitted_file)).exists():
                 raise GSArtifactConflict(f"{artifact} already exists!")
-            bucket.blob(os.path.join(artifact, self.placeholder_file)).upload_from_string("")
-            bucket.blob(os.path.join(artifact, self.uncommitted_file)).upload_from_string("")
+            bucket.blob(self._gs_path(artifact, self.placeholder_file)).upload_from_string("")
+            bucket.blob(self._gs_path(artifact, self.uncommitted_file)).upload_from_string("")
         return self._convert_blobs_to_artifact(list(bucket.list_blobs(prefix=artifact)))
 
     def delete(self, artifact: GSArtifact):
@@ -257,13 +265,13 @@ class GSClient:
                     for filename in filenames:
                         # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
                         source_file_path = os.path.join(dirpath, filename)
-                        target_file_path = os.path.join(
+                        target_file_path = self._gs_path(
                             folder_path, source_file_path.replace(source_path + "/", "")
                         )
                         _sync_blob(source_file_path, target_file_path)
             else:
                 source_file_path = source_path
-                target_file_path = os.path.join(folder_path, os.path.basename(source_file_path))
+                target_file_path = self._gs_path(folder_path, os.path.basename(source_file_path))
                 _sync_blob(source_file_path, target_file_path)
 
         except Exception:
@@ -279,9 +287,9 @@ class GSClient:
             folder_path = artifact.artifact_path
         bucket = self.storage.bucket(self.bucket_name)
         try:
-            bucket.delete_blob(os.path.join(folder_path, self.uncommitted_file))
+            bucket.delete_blob(self._gs_path(folder_path, self.uncommitted_file))
         except exceptions.NotFound:
-            if not bucket.blob(os.path.join(folder_path, self.placeholder_file)).exists():
+            if not bucket.blob(self._gs_path(folder_path, self.placeholder_file)).exists():
                 raise GSArtifactNotFound()
             # Otherwise, already committed. No change.
 
@@ -291,7 +299,7 @@ class GSClient:
         """
         assert (
             self.storage.bucket(self.bucket_name)
-            .blob(os.path.join(artifact.artifact_path, self.placeholder_file))
+            .blob(self._gs_path(artifact.artifact_path, self.placeholder_file))
             .exists()
         )
 
