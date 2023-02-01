@@ -441,8 +441,14 @@ class BeakerExecutor(Executor):
             )
 
         self.google_token = google_token or os.environ.get("GOOGLE_TOKEN")
-        # If the user passes file path instead of actual credentials dict, load the credentials
-        # so that they can be used in beaker.
+
+        # Check if google auth credentials are in the default location
+        if self.google_token is None and os.path.exists(Constants.DEFAULT_GOOGLE_CREDENTIALS_FILE):
+            self.google_token = Constants.DEFAULT_GOOGLE_CREDENTIALS_FILE
+
+        # If credentials are provided in the form of a file path, load the credentials
+        # so that they can be used in beaker. Do this only if required, i.e., only if GSWorkspace
+        # is being used.
         if self.google_token is not None and self.google_token.endswith(".json"):
             from tango.integrations.gs import GSWorkspace
 
