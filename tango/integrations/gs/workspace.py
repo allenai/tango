@@ -206,8 +206,6 @@ class GSWorkspace(RemoteWorkspace):
         )
 
         # We can store each key separately, but we only index things that are useful for querying.
-        # TODO: do we want to index any other step_info keys?
-
         step_info_entity["step_name"] = step_info.step_name
         step_info_entity["start_time"] = step_info.start_time
         step_info_entity["end_time"] = step_info.end_time

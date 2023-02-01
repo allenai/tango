@@ -186,7 +186,7 @@ class RemoteWorkspace(Workspace):
 
         # Collect step info.
         with concurrent.futures.ThreadPoolExecutor(
-            thread_name_prefix="RemoteWorkspace.register_run()-"
+            thread_name_prefix="RemoteWorkspace._get_run_step_info()-"
         ) as executor:
             step_info_futures = []
             for step in all_steps:
@@ -211,12 +211,6 @@ class RemoteWorkspace(Workspace):
         steps, run_data = self._get_run_step_info(targets)
         run = self._save_run(steps, run_data, name)
         return run
-
-    def registered_runs(self) -> Dict[str, Run]:
-        raise NotImplementedError()
-
-    def registered_run(self, name: str) -> Run:
-        raise NotImplementedError()
 
     @abstractmethod
     def _save_run_log(self, name: str, log_file: Path):
