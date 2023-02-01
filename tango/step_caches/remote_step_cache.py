@@ -4,13 +4,13 @@ import shutil
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
 from tango.common.file_lock import FileLock
 from tango.common.params import Params
-from tango.common.remote_utils import RemoteConstants, RemoteDataset
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
 from tango.step_cache import CacheMetadata
 from tango.step_caches.local_step_cache import LocalStepCache
@@ -45,11 +45,11 @@ class RemoteStepCache(LocalStepCache):
         super().__init__(local_dir)
 
     @abstractmethod
-    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[RemoteDataset]:
+    def _step_result_remote(self, step: Union[Step, StepInfo]):
         raise NotImplementedError()
 
     @abstractmethod
-    def _upload_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
+    def _upload_step_remote(self, step: Step, objects_dir: Path):
         raise NotImplementedError()
 
     @abstractmethod

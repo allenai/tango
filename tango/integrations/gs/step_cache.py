@@ -3,13 +3,15 @@ from pathlib import Path
 from typing import Optional, Union
 
 from tango.common import PathOrStr
-from tango.common.remote_utils import (
-    RemoteDatasetConflict,
-    RemoteDatasetNotFound,
-    RemoteDatasetWriteError,
-)
 from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.integrations.gs.common import Constants, GSClient, GSDataset
+from tango.integrations.gs.common import (
+    Constants,
+    GSArtifact,
+    GSArtifactConflict,
+    GSArtifactNotFound,
+    GSArtifactWriteError,
+    GSClient,
+)
 from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches.remote_step_cache import RemoteNotFoundError, RemoteStepCache
@@ -53,33 +55,33 @@ class GSStepCache(RemoteStepCache):
     def client(self):
         return self._client
 
-    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GSDataset]:
+    def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[GSArtifact]:
         """
-        Returns a `RemoteDataset` object containing the details of the step.
+        Returns a `GSArtifact` object containing the details of the step.
         This only returns if the step has been finalized (committed).
         """
         try:
-            dataset = self.client.get(self.Constants.step_dataset_name(step))
-            return dataset if dataset.committed else None
-        except RemoteDatasetNotFound:
+            artifact = self.client.get(self.Constants.step_artifact_name(step))
+            return artifact if artifact.committed else None
+        except GSArtifactNotFound:
             return None
 
-    def _upload_step_remote(self, step: Step, objects_dir: Path) -> GSDataset:
+    def _upload_step_remote(self, step: Step, objects_dir: Path) -> GSArtifact:
         """
         Uploads the step's output to remote location.
         """
-        dataset_name = self.Constants.step_dataset_name(step)
+        artifact_name = self.Constants.step_artifact_name(step)
         try:
-            self.client.create(dataset_name)
-        except RemoteDatasetConflict:
+            self.client.create(artifact_name)
+        except GSArtifactConflict:
             pass
         try:
-            self.client.upload(dataset_name, objects_dir)
-            self.client.commit(dataset_name)
-        except RemoteDatasetWriteError:
+            self.client.upload(artifact_name, objects_dir)
+            self.client.commit(artifact_name)
+        except GSArtifactWriteError:
             pass
 
-        return self.client.get(dataset_name)
+        return self.client.get(artifact_name)
 
     def _download_step_remote(self, step_result, target_dir: PathOrStr) -> None:
         """
@@ -87,20 +89,20 @@ class GSStepCache(RemoteStepCache):
         """
         try:
             self.client.download(step_result, target_dir)
-        except RemoteDatasetNotFound:
+        except GSArtifactNotFound:
             raise RemoteNotFoundError()
 
     def __len__(self):
         """
         Returns the number of committed step outputs present in the remote location.
         """
-        # NOTE: lock datasets should not count here.
+        # NOTE: lock files should not count here.
         return sum(
             1
-            for ds in self.client.datasets(
-                match=self.Constants.STEP_DATASET_PREFIX, uncommitted=False
+            for ds in self.client.artifacts(
+                prefix=self.Constants.STEP_ARTIFACT_PREFIX, uncommitted=False
             )
             if ds.name is not None
-            and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
-            and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)
+            and ds.name.startswith(self.Constants.STEP_ARTIFACT_PREFIX)
+            and not ds.name.endswith(self.Constants.LOCK_ARTIFACT_SUFFIX)
         )

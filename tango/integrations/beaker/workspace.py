@@ -8,6 +8,7 @@ from typing import Dict, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
+from beaker import Dataset as BeakerDataset
 from beaker import (
     DatasetConflict,
     DatasetNotFound,
@@ -16,7 +17,6 @@ from beaker import (
     ExperimentNotFound,
 )
 
-from tango.common.remote_utils import RemoteDataset
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.integrations.beaker.common import (
     BeakerStepLock,
@@ -78,7 +78,7 @@ class BeakerWorkspace(RemoteWorkspace):
         return f"beaker://{self.beaker.workspace.get().full_name}"
 
     def _step_location(self, step: Step) -> str:
-        return dataset_url(self.beaker, self.Constants.step_dataset_name(step))
+        return dataset_url(self.beaker, self.Constants.step_artifact_name(step))
 
     @classmethod
     def from_parsed_url(cls, parsed_url: ParseResult) -> Workspace:
@@ -151,7 +151,7 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
-            dataset = self.beaker.dataset.get(self.Constants.step_dataset_name(step_or_unique_id))
+            dataset = self.beaker.dataset.get(self.Constants.step_artifact_name(step_or_unique_id))
             file_info = self.beaker.dataset.file_info(dataset, self.Constants.STEP_INFO_FNAME)
             step_info: StepInfo
             cached = (
@@ -179,14 +179,14 @@ class BeakerWorkspace(RemoteWorkspace):
     ) -> Run:
         # Create a remote dataset that represents this run. The dataset which just contain
         # a JSON file that maps step names to step unique IDs.
-        run_dataset: RemoteDataset
+        run_dataset: BeakerDataset
         if name is None:
             # Find a unique name to use.
             while True:
                 name = petname.generate() + str(random.randint(0, 100))
                 try:
                     run_dataset = self.beaker.dataset.create(
-                        self.Constants.run_dataset_name(cast(str, name)), commit=False
+                        self.Constants.run_artifact_name(cast(str, name)), commit=False
                     )
                 except DatasetConflict:
                     continue
@@ -195,7 +195,7 @@ class BeakerWorkspace(RemoteWorkspace):
         else:
             try:
                 run_dataset = self.beaker.dataset.create(
-                    self.Constants.run_dataset_name(name), commit=False
+                    self.Constants.run_artifact_name(name), commit=False
                 )
             except DatasetConflict:
                 raise ValueError(f"Run name '{name}' is already in use")
@@ -220,7 +220,7 @@ class BeakerWorkspace(RemoteWorkspace):
         ) as executor:
             run_futures = []
             for dataset in self.beaker.workspace.iter_datasets(
-                match=self.Constants.RUN_DATASET_PREFIX, uncommitted=True, results=False
+                match=self.Constants.RUN_ARTIFACT_PREFIX, uncommitted=True, results=False
             ):
                 run_futures.append(executor.submit(self._get_run_from_dataset, dataset))
             for future in concurrent.futures.as_completed(run_futures):
@@ -234,7 +234,7 @@ class BeakerWorkspace(RemoteWorkspace):
         err_msg = f"Run '{name}' not found in workspace"
 
         try:
-            dataset_for_run = self.beaker.dataset.get(self.Constants.run_dataset_name(name))
+            dataset_for_run = self.beaker.dataset.get(self.Constants.run_artifact_name(name))
             # Make sure the run is in our workspace.
             if dataset_for_run.workspace_ref.id != self.beaker.workspace.get().id:  # type: ignore # TODO
                 raise DatasetNotFound
@@ -248,18 +248,18 @@ class BeakerWorkspace(RemoteWorkspace):
             return run
 
     def _save_run_log(self, name: str, log_file: Path):
-        run_dataset = self.Constants.run_dataset_name(name)
+        run_dataset = self.Constants.run_artifact_name(name)
         self.beaker.dataset.sync(run_dataset, log_file, quiet=False)
         self.beaker.dataset.commit(run_dataset)
 
-    def _get_run_from_dataset(self, dataset: RemoteDataset) -> Optional[Run]:
+    def _get_run_from_dataset(self, dataset: BeakerDataset) -> Optional[Run]:
         if dataset.name is None:
             return None
-        if not dataset.name.startswith(self.Constants.RUN_DATASET_PREFIX):
+        if not dataset.name.startswith(self.Constants.RUN_ARTIFACT_PREFIX):
             return None
 
         try:
-            run_name = dataset.name[len(self.Constants.RUN_DATASET_PREFIX) :]
+            run_name = dataset.name[len(self.Constants.RUN_ARTIFACT_PREFIX) :]
             steps_info_bytes = self.beaker.dataset.get_file(
                 dataset, self.Constants.RUN_DATA_FNAME, quiet=True
             )
@@ -285,9 +285,9 @@ class BeakerWorkspace(RemoteWorkspace):
         return Run(name=run_name, start_date=dataset.created, steps=steps)
 
     def _update_step_info(self, step_info: StepInfo):
-        dataset_name = self.Constants.step_dataset_name(step_info)
+        dataset_name = self.Constants.step_artifact_name(step_info)
 
-        step_info_dataset: RemoteDataset
+        step_info_dataset: BeakerDataset
         try:
             self.beaker.dataset.create(dataset_name, commit=False)
         except DatasetConflict:

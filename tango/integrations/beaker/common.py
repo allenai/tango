@@ -69,7 +69,7 @@ class BeakerStepLock:
     ):
         self._beaker = beaker
         self._step_id = step if isinstance(step, str) else step.unique_id
-        self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
+        self._lock_dataset_name = RemoteConstants.step_lock_artifact_name(step)
         self._lock_dataset: Optional[BeakerDataset] = None
         self._current_beaker_experiment = current_beaker_experiment
         self.lock_dataset_url = dataset_url(beaker, self._lock_dataset_name)

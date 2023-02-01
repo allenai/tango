@@ -883,7 +883,7 @@ class BeakerExecutor(Executor):
         return entrypoint_dataset
 
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
-        step_graph_dataset_name = f"{Constants.STEP_GRAPH_DATASET_PREFIX}{str(uuid.uuid4())}"
+        step_graph_dataset_name = f"{Constants.STEP_GRAPH_ARTIFACT_PREFIX}{str(uuid.uuid4())}"
         try:
             dataset = self.beaker.dataset.create(step_graph_dataset_name, quiet=True, commit=False)
             self.beaker.dataset.upload(

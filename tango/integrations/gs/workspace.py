@@ -105,7 +105,7 @@ class GSWorkspace(RemoteWorkspace):
         return GCSStepLock(self.client, step)
 
     def _step_location(self, step: Step) -> str:
-        return self.client.url(self.Constants.step_dataset_name(step))
+        return self.client.url(self.Constants.step_artifact_name(step))
 
     def _save_run(
         self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
@@ -221,5 +221,5 @@ class GSWorkspace(RemoteWorkspace):
         The logs are stored in the bucket. The Run object details are stored in
         the remote database.
         """
-        run_dataset = self.Constants.run_dataset_name(name)
+        run_dataset = self.Constants.run_artifact_name(name)
         self.client.upload(run_dataset, log_file)

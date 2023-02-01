@@ -2,11 +2,12 @@
 Classes and utility functions for GSWorkspace and GSStepCache.
 """
 import atexit
+import datetime
 import json
 import logging
 import os
 import time
-from datetime import datetime
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -16,14 +17,8 @@ from google.cloud import storage
 from google.oauth2.credentials import Credentials
 
 from tango.common.aliases import PathOrStr
-from tango.common.remote_utils import (
-    RemoteClient,
-    RemoteConstants,
-    RemoteDataset,
-    RemoteDatasetConflict,
-    RemoteDatasetNotFound,
-    RemoteDatasetWriteError,
-)
+from tango.common.exceptions import TangoError
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
 from tango.step_info import StepInfo
 
@@ -60,15 +55,56 @@ def empty_datastore(namespace: str):
     client.delete_multi(keys)
 
 
-class GSDataset(RemoteDataset):
+@dataclass
+class GSArtifact:
     """
-    A GSDataset object is used for representing storage objects in google cloud storage.
+    A GSArtifact object is used for representing storage objects in google cloud storage.
+    """
+
+    name: str
+    """
+    Name of the artifact.
+    """
+    artifact_path: str
+    """
+    Remote location url for the artifact.
+    """
+    created: datetime.datetime
+    """
+    Time of creation.
+    """
+    committed: bool
+    """
+    If set to True, no further changes to the remote artifact are allowed.
+    If set to False, it means that the artifact is under construction.
+    """
+
+
+class GSArtifactConflict(TangoError):
+    """
+    Error denoting that the storage artifact already exists.
     """
 
     pass
 
 
-class GSClient(RemoteClient):
+class GSArtifactNotFound(TangoError):
+    """
+    Error denoting that the storage artifact does not exist.
+    """
+
+    pass
+
+
+class GSArtifactWriteError(TangoError):
+    """
+    Error denoting that there was an issue writing the artifact to the remote storage.
+    """
+
+    pass
+
+
+class GSClient:
     """
     A client for interacting with Google Cloud Storage. The authorization works by
     providing OAuth2 credentials.
@@ -85,13 +121,13 @@ class GSClient(RemoteClient):
     """
     The placeholder file is used for creation of a folder in the cloud bucket,
     as empty folders are not allowed. It is also used as a marker for the creation
-    time of the folder, hence we use a separate file to mark the dataset as
+    time of the folder, hence we use a separate file to mark the artifact as
     uncommitted.
     """
 
     uncommitted_file = ".uncommitted"
     """
-    The uncommitted file is used to denote a dataset under construction.
+    The uncommitted file is used to denote an artifact under construction.
     """
 
     settings_file = "settings.json"
@@ -120,70 +156,92 @@ class GSClient(RemoteClient):
             with blob.open("w") as file_ref:
                 json.dump(settings, file_ref)
 
-    def url(self, dataset: Optional[str] = None):
+    def url(self, artifact: Optional[str] = None):
+        """
+        Returns the remote url of the storage artifact.
+        """
         path = f"gs://{self.bucket_name}"
-        if dataset is not None:
-            path = f"{path}/{dataset}"
+        if artifact is not None:
+            path = f"{path}/{artifact}"
         return path
 
     @classmethod
-    def _convert_blobs_to_dataset(cls, blobs: List[storage.Blob]) -> GSDataset:
+    def _convert_blobs_to_artifact(cls, blobs: List[storage.Blob]) -> GSArtifact:
+        """
+        Converts a list of `google.cloud.storage.Blob` to a `GSArtifact`.
+        """
         name: str
-        dataset_path: str
-        created: datetime
+        artifact_path: str
+        created: datetime.datetime
         committed: bool = True
 
         for blob in blobs:
             if blob.name.endswith(cls.placeholder_file):
                 created = blob.time_created
                 name = blob.name.replace("/" + cls.placeholder_file, "")
-                dataset_path = name  # does not contain bucket info here.
+                artifact_path = name  # does not contain bucket info here.
             elif blob.name.endswith(cls.uncommitted_file):
                 committed = False
 
-        assert name is not None, "Folder is not a GSDataset, should not have happened."
-        return GSDataset(name, dataset_path, created, committed)
+        assert name is not None, "Folder is not a GSArtifact, should not have happened."
+        return GSArtifact(name, artifact_path, created, committed)
 
     @classmethod
     def from_env(cls, bucket_name: str):
+        """
+        Constructs the client object from the environment, using default credentials.
+        """
         return cls(bucket_name)
 
-    def get(self, dataset: Union[str, GSDataset]) -> GSDataset:
-        if isinstance(dataset, str):
-            path = dataset
+    def get(self, artifact: Union[str, GSArtifact]) -> GSArtifact:
+        """
+        Returns a `GSArtifact` object created by fetching the artifact's information
+        from remote location.
+        """
+        if isinstance(artifact, str):
+            path = artifact
         else:
-            # We have a dataset, and we recreate it with refreshed info.
-            path = dataset.dataset_path
+            # We have an artifact, and we recreate it with refreshed info.
+            path = artifact.artifact_path
 
         blobs = list(self.storage.bucket(self.bucket_name).list_blobs(prefix=path))
         if len(blobs) > 0:
-            return self._convert_blobs_to_dataset(blobs)
+            return self._convert_blobs_to_artifact(blobs)
         else:
-            raise RemoteDatasetNotFound()
+            raise GSArtifactNotFound()
 
-    def create(self, dataset: str):
+    def create(self, artifact: str):
+        """
+        Creates a new artifact in the remote location. By default, it is uncommitted.
+        """
         bucket = self.storage.bucket(self.bucket_name)
         # gives refreshed information
-        if bucket.blob(os.path.join(dataset, self.placeholder_file)).exists():
-            raise RemoteDatasetConflict(f"{dataset} already exists!")
+        if bucket.blob(os.path.join(artifact, self.placeholder_file)).exists():
+            raise GSArtifactConflict(f"{artifact} already exists!")
         else:
             # Additional safety check
-            if bucket.blob(os.path.join(dataset, self.uncommitted_file)).exists():
-                raise RemoteDatasetConflict(f"{dataset} already exists!")
-            bucket.blob(os.path.join(dataset, self.placeholder_file)).upload_from_string("")
-            bucket.blob(os.path.join(dataset, self.uncommitted_file)).upload_from_string("")
-        return self._convert_blobs_to_dataset(list(bucket.list_blobs(prefix=dataset)))
+            if bucket.blob(os.path.join(artifact, self.uncommitted_file)).exists():
+                raise GSArtifactConflict(f"{artifact} already exists!")
+            bucket.blob(os.path.join(artifact, self.placeholder_file)).upload_from_string("")
+            bucket.blob(os.path.join(artifact, self.uncommitted_file)).upload_from_string("")
+        return self._convert_blobs_to_artifact(list(bucket.list_blobs(prefix=artifact)))
 
-    def delete(self, dataset: GSDataset):
+    def delete(self, artifact: GSArtifact):
+        """
+        Removes the artifact from the remote location.
+        """
         bucket = self.storage.bucket(self.bucket_name)
-        blobs = list(bucket.list_blobs(prefix=dataset.dataset_path))
+        blobs = list(bucket.list_blobs(prefix=artifact.artifact_path))
         bucket.delete_blobs(blobs)
 
-    def upload(self, dataset: Union[str, GSDataset], objects_dir: Path):
-        if isinstance(dataset, str):
-            folder_path = dataset
+    def upload(self, artifact: Union[str, GSArtifact], objects_dir: Path):
+        """
+        Writes the contents of objects_dir to the remote artifact location.
+        """
+        if isinstance(artifact, str):
+            folder_path = artifact
         else:
-            folder_path = dataset.dataset_path
+            folder_path = artifact.artifact_path
 
         source_path = str(objects_dir)
 
@@ -207,55 +265,65 @@ class GSClient(RemoteClient):
                 _sync_blob(source_file_path, target_file_path)
 
         except Exception:
-            raise RemoteDatasetWriteError()
+            raise GSArtifactWriteError()
 
-    def commit(self, dataset: Union[str, GSDataset]):
-        if isinstance(dataset, str):
-            folder_path = dataset
+    def commit(self, artifact: Union[str, GSArtifact]):
+        """
+        Marks the artifact as committed. No further changes to the artifact are allowed.
+        """
+        if isinstance(artifact, str):
+            folder_path = artifact
         else:
-            folder_path = dataset.dataset_path
+            folder_path = artifact.artifact_path
         bucket = self.storage.bucket(self.bucket_name)
         try:
             bucket.delete_blob(os.path.join(folder_path, self.uncommitted_file))
         except exceptions.NotFound:
             if not bucket.blob(os.path.join(folder_path, self.placeholder_file)).exists():
-                raise RemoteDatasetNotFound()
+                raise GSArtifactNotFound()
             # Otherwise, already committed. No change.
 
-    def download(self, dataset: GSDataset, target_dir: PathOrStr):
+    def download(self, artifact: GSArtifact, target_dir: PathOrStr):
+        """
+        Writes the contents of the remote artifact to the `target_dir`.
+        """
         assert (
             self.storage.bucket(self.bucket_name)
-            .blob(os.path.join(dataset.dataset_path, self.placeholder_file))
+            .blob(os.path.join(artifact.artifact_path, self.placeholder_file))
             .exists()
         )
 
         def _fetch_blob(blob: storage.Blob):
             blob.update()  # fetches updated information.
-            source_path = blob.name.replace(dataset.dataset_path + "/", "")
+            source_path = blob.name.replace(artifact.artifact_path + "/", "")
             target_path = os.path.join(target_dir, source_path)
             if not os.path.exists(os.path.dirname(target_path)):
                 os.mkdir(os.path.dirname(target_path))
             blob.download_to_filename(target_path)
 
         try:
-            for blob in self.storage.list_blobs(self.bucket_name, prefix=dataset.dataset_path):
+            for blob in self.storage.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
                 _fetch_blob(blob)
         except exceptions.NotFound:
-            raise RemoteDatasetWriteError()
+            raise GSArtifactWriteError()
 
-    def datasets(self, match: str, uncommitted: bool = True) -> List[GSDataset]:
-        list_of_datasets = []
+    def artifacts(self, prefix: str, uncommitted: bool = True) -> List[GSArtifact]:
+        """
+        Lists all the artifacts within the remote storage, based on
+        `match` and `uncommitted` criteria. These can include steps and runs.
+        """
+        list_of_artifacts = []
         for folder_name in self.storage.list_blobs(
-            self.bucket_name, prefix=match, delimiter="/"
+            self.bucket_name, prefix=prefix, delimiter="/"
         )._get_next_page_response()["prefixes"]:
-            dataset = self._convert_blobs_to_dataset(
+            artifact = self._convert_blobs_to_artifact(
                 list(self.storage.list_blobs(self.bucket_name, prefix=folder_name))
             )
             if not uncommitted:
-                if not dataset.committed:
+                if not artifact.committed:
                     continue
-            list_of_datasets.append(dataset)
-        return list_of_datasets
+            list_of_artifacts.append(artifact)
+        return list_of_artifacts
 
 
 def get_credentials(credentials: Optional[Union[str, Credentials]] = None):
@@ -320,30 +388,30 @@ class GCSStepLock:
     ):
         self._client = client
         self._step_id = step if isinstance(step, str) else step.unique_id
-        self._lock_dataset_name = RemoteConstants.step_lock_dataset_name(step)
-        self._lock_dataset: Optional[GSDataset] = None
-        self.lock_dataset_url = self._client.url(self._lock_dataset_name)
+        self._lock_artifact_name = RemoteConstants.step_lock_artifact_name(step)
+        self._lock_artifact: Optional[GSArtifact] = None
+        self.lock_artifact_url = self._client.url(self._lock_artifact_name)
 
     def acquire(self, timeout=None, poll_interval: float = 2.0, log_interval: float = 30.0) -> None:
-        if self._lock_dataset is not None:
+        if self._lock_artifact is not None:
             return
         start = time.monotonic()
         last_logged = None
         while timeout is None or (time.monotonic() - start < timeout):
             try:
-                self._lock_dataset = self._client.create(self._lock_dataset_name)
+                self._lock_artifact = self._client.create(self._lock_artifact_name)
                 atexit.register(self.release)
 
-            except RemoteDatasetConflict:
+            except GSArtifactConflict:
 
                 if last_logged is None or last_logged - start >= log_interval:
                     logger.warning(
-                        "Waiting to acquire lock dataset for step '%s':\n\n%s\n\n"
+                        "Waiting to acquire lock artifact for step '%s':\n\n%s\n\n"
                         "This probably means the step is being run elsewhere, but if you're sure it isn't "
-                        "you can just delete the lock dataset, using the command: \n`gsutil rm -r %s`",
+                        "you can just delete the lock artifact, using the command: \n`gsutil rm -r %s`",
                         self._step_id,
-                        self.lock_dataset_url,
-                        self.lock_dataset_url,
+                        self.lock_artifact_url,
+                        self.lock_artifact_url,
                     )
                     last_logged = time.monotonic()
                 time.sleep(poll_interval)
@@ -352,20 +420,20 @@ class GCSStepLock:
                 break
         else:
             raise TimeoutError(
-                f"Timeout error occurred while waiting to acquire dataset lock for step '{self._step_id}':\n\n"
-                f"{self.lock_dataset_url}\n\n"
+                f"Timeout error occurred while waiting to acquire artifact lock for step '{self._step_id}':\n\n"
+                f"{self.lock_artifact_url}\n\n"
                 f"This probably means the step is being run elsewhere, but if you're sure it isn't you can "
-                f"just delete the lock dataset, using the command: \n`gsutil rm -r {self.lock_dataset_url}`"
+                f"just delete the lock, using the command: \n`gsutil rm -r {self.lock_artifact_url}`"
             )
 
     def release(self):
-        if self._lock_dataset is not None:
+        if self._lock_artifact is not None:
             try:
-                self._client.delete(self._lock_dataset)
-            except RemoteDatasetNotFound:
-                # Dataset must have been manually deleted.
+                self._client.delete(self._lock_artifact)
+            except GSArtifactNotFound:
+                # Artifact must have been manually deleted.
                 pass
-            self._lock_dataset = None
+            self._lock_artifact = None
             atexit.unregister(self.release)
 
     def __del__(self):

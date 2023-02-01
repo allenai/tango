@@ -9,7 +9,6 @@ from beaker import DatasetConflict, DatasetNotFound, DatasetWriteError
 from tango import Step
 from tango.common import PathOrStr
 from tango.common.exceptions import ConfigurationError
-from tango.common.remote_utils import RemoteDataset
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.integrations.beaker.common import Constants, get_client
 from tango.step_cache import StepCache
@@ -56,20 +55,20 @@ class BeakerStepCache(RemoteStepCache):
 
     def _step_result_remote(self, step: Union[Step, StepInfo]) -> Optional[BeakerDataset]:
         """
-        Returns a `RemoteDataset` object containing the details of the step.
+        Returns a `BeakerDataset` object containing the details of the step.
         This only returns if the step has been finalized (committed).
         """
         try:
-            dataset = self.beaker.dataset.get(self.Constants.step_dataset_name(step))
+            dataset = self.beaker.dataset.get(self.Constants.step_artifact_name(step))
             return dataset if dataset.committed is not None else None
         except DatasetNotFound:
             return None
 
-    def _upload_step_remote(self, step: Step, objects_dir: Path) -> RemoteDataset:
+    def _upload_step_remote(self, step: Step, objects_dir: Path) -> BeakerDataset:
         """
         Uploads the step's output to remote location.
         """
-        dataset_name = self.Constants.step_dataset_name(step)
+        dataset_name = self.Constants.step_artifact_name(step)
         try:
             self.beaker.dataset.create(dataset_name, commit=False)
         except DatasetConflict:
@@ -99,9 +98,9 @@ class BeakerStepCache(RemoteStepCache):
         return sum(
             1
             for ds in self.beaker.workspace.iter_datasets(
-                match=self.Constants.STEP_DATASET_PREFIX, uncommitted=False, results=False
+                match=self.Constants.STEP_ARTIFACT_PREFIX, uncommitted=False, results=False
             )
             if ds.name is not None
-            and ds.name.startswith(self.Constants.STEP_DATASET_PREFIX)
-            and not ds.name.endswith(self.Constants.LOCK_DATASET_SUFFIX)
+            and ds.name.startswith(self.Constants.STEP_ARTIFACT_PREFIX)
+            and not ds.name.endswith(self.Constants.LOCK_ARTIFACT_SUFFIX)
         )
