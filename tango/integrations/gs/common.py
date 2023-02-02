@@ -264,6 +264,9 @@ class GSClient:
         import concurrent.futures
 
         try:
+            # TODO: google-cloud-storage==2.7.0 has added a preview feature called `transfer_manager`
+            # which allows for concurrent uploads and downloads. We should upgrade to this once
+            # it is more robustly supported. Also update in `download()`.
             if os.path.isdir(source_path):
                 with concurrent.futures.ThreadPoolExecutor(
                     max_workers=self.NUM_CONCURRENT_WORKERS, thread_name_prefix="GSClient.upload()-"
@@ -286,24 +289,6 @@ class GSClient:
                 _sync_blob(source_file_path, target_file_path)
         except Exception:
             raise GSArtifactWriteError()
-
-        # try:
-        #     if os.path.isdir(source_path):
-        #         for dirpath, _, filenames in os.walk(source_path):
-        #             for filename in filenames:
-        #                 # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
-        #                 source_file_path = os.path.join(dirpath, filename)
-        #                 target_file_path = self._gs_path(
-        #                     folder_path, source_file_path.replace(source_path + "/", "")
-        #                 )
-        #                 _sync_blob(source_file_path, target_file_path)
-        #     else:
-        #         source_file_path = source_path
-        #         target_file_path = self._gs_path(folder_path, os.path.basename(source_file_path))
-        #         _sync_blob(source_file_path, target_file_path)
-        #
-        # except Exception:
-        #     raise GSArtifactWriteError()
 
     def commit(self, artifact: Union[str, GSArtifact]):
         """
@@ -354,14 +339,6 @@ class GSClient:
                     future.result()
         except exceptions.NotFound:
             raise GSArtifactWriteError()
-
-        # try:
-        #     bucket = self.storage.bucket(self.bucket_name)
-        #     bucket.update()
-        #     for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
-        #         _fetch_blob(blob)
-        # except exceptions.NotFound:
-        #     raise GSArtifactWriteError()
 
     def artifacts(self, prefix: str, uncommitted: bool = True) -> List[GSArtifact]:
         """
