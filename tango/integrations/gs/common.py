@@ -137,6 +137,8 @@ class GSClient:
     This file is for storing metadata like version information, etc.
     """
 
+    NUM_CONCURRENT_WORKERS: int = 9
+
     def __init__(
         self,
         bucket_name: str,
@@ -259,23 +261,49 @@ class GSClient:
             blob = self.storage.bucket(self.bucket_name).blob(target_file_path)
             blob.upload_from_filename(source_file_path)
 
+        import concurrent.futures
+
         try:
             if os.path.isdir(source_path):
-                for dirpath, _, filenames in os.walk(source_path):
-                    for filename in filenames:
-                        # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
-                        source_file_path = os.path.join(dirpath, filename)
-                        target_file_path = self._gs_path(
-                            folder_path, source_file_path.replace(source_path + "/", "")
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=self.NUM_CONCURRENT_WORKERS, thread_name_prefix="GSClient.upload()-"
+                ) as executor:
+                    upload_futures = []
+                    for dirpath, _, filenames in os.walk(source_path):
+                        for filename in filenames:
+                            source_file_path = os.path.join(dirpath, filename)
+                            target_file_path = self._gs_path(
+                                folder_path, source_file_path.replace(source_path + "/", "")
+                            )
+                        upload_futures.append(
+                            executor.submit(_sync_blob, source_file_path, target_file_path)
                         )
-                        _sync_blob(source_file_path, target_file_path)
+                    for future in concurrent.futures.as_completed(upload_futures):
+                        future.result()
             else:
                 source_file_path = source_path
                 target_file_path = self._gs_path(folder_path, os.path.basename(source_file_path))
                 _sync_blob(source_file_path, target_file_path)
-
         except Exception:
             raise GSArtifactWriteError()
+
+        # try:
+        #     if os.path.isdir(source_path):
+        #         for dirpath, _, filenames in os.walk(source_path):
+        #             for filename in filenames:
+        #                 # TODO: CI fails with ThreadPoolExecutor parallelism. Debug later.
+        #                 source_file_path = os.path.join(dirpath, filename)
+        #                 target_file_path = self._gs_path(
+        #                     folder_path, source_file_path.replace(source_path + "/", "")
+        #                 )
+        #                 _sync_blob(source_file_path, target_file_path)
+        #     else:
+        #         source_file_path = source_path
+        #         target_file_path = self._gs_path(folder_path, os.path.basename(source_file_path))
+        #         _sync_blob(source_file_path, target_file_path)
+        #
+        # except Exception:
+        #     raise GSArtifactWriteError()
 
     def commit(self, artifact: Union[str, GSArtifact]):
         """
@@ -310,13 +338,30 @@ class GSClient:
                 os.mkdir(os.path.dirname(target_path))
             blob.download_to_filename(target_path)
 
+        import concurrent.futures
+
+        bucket = self.storage.bucket(self.bucket_name)
+        bucket.update()
+
         try:
-            bucket = self.storage.bucket(self.bucket_name)
-            bucket.update()
-            for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
-                _fetch_blob(blob)
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.NUM_CONCURRENT_WORKERS, thread_name_prefix="GSClient.download()-"
+            ) as executor:
+                download_futures = []
+                for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
+                    download_futures.append(executor.submit(_fetch_blob, blob))
+                for future in concurrent.futures.as_completed(download_futures):
+                    future.result()
         except exceptions.NotFound:
             raise GSArtifactWriteError()
+
+        # try:
+        #     bucket = self.storage.bucket(self.bucket_name)
+        #     bucket.update()
+        #     for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
+        #         _fetch_blob(blob)
+        # except exceptions.NotFound:
+        #     raise GSArtifactWriteError()
 
     def artifacts(self, prefix: str, uncommitted: bool = True) -> List[GSArtifact]:
         """

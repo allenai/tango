@@ -53,7 +53,7 @@ class GSWorkspace(RemoteWorkspace):
     """
 
     Constants = Constants
-    NUM_CONCURRENT_WORKERS = 9  # TODO: increase and check
+    NUM_CONCURRENT_WORKERS = 32
 
     def __init__(
         self,
@@ -63,6 +63,8 @@ class GSWorkspace(RemoteWorkspace):
     ):
 
         self.client = get_client(bucket_name=workspace, credentials=credentials, project=project)
+
+        self.client.NUM_CONCURRENT_WORKERS = self.NUM_CONCURRENT_WORKERS
         self._cache = GSStepCache(workspace, client=self.client)
         self._locks: Dict[Step, GCSStepLock] = {}
 
