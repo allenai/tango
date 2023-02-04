@@ -23,7 +23,6 @@ class TestShellStep(TangoTestCase):
         assert f"Output found at: {output_path}" in caplog.text
 
     def test_shell_step_different_validation(self, caplog):
-
         @make_registrable(exist_ok=True)
         def validate_func(path):
             """
