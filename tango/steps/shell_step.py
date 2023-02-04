@@ -6,7 +6,7 @@ from tango.common import PathOrStr, Registrable
 from tango.step import Step
 
 
-class FunctionalRegistrable(Registrable):
+class RegistrableFunction(Registrable):
     WRAPPED_FUNC: ClassVar[Callable]
 
     def __call__(self, *args, **kwargs):
@@ -15,8 +15,8 @@ class FunctionalRegistrable(Registrable):
 
 def make_registrable(name: Optional[str] = None, *, exist_ok: bool = False):
     def function_wrapper(func):
-        @FunctionalRegistrable.register(name or func.__name__, exist_ok=exist_ok)
-        class WrapperFunc(FunctionalRegistrable):
+        @RegistrableFunction.register(name or func.__name__, exist_ok=exist_ok)
+        class WrapperFunc(RegistrableFunction):
             WRAPPED_FUNC = func
 
         return WrapperFunc
@@ -53,7 +53,7 @@ class ShellStep(Step):
         self,
         shell_command: str,
         output_path: Optional[PathOrStr] = None,
-        validate_output: FunctionalRegistrable = check_path_existence,
+        validate_output: RegistrableFunction = check_path_existence,
         **kwargs,
     ):
         output = self.run_command(shell_command, **kwargs)
