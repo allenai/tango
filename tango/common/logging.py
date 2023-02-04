@@ -583,7 +583,7 @@ def _initialize_logging(
     if log_level is None:
         log_level = TANGO_LOG_LEVEL
     if log_level is None:
-        log_level = "error"
+        log_level = "warning"
     if file_friendly_logging is None:
         file_friendly_logging = FILE_FRIENDLY_LOGGING
     if enable_cli_logs is None:

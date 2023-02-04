@@ -263,8 +263,7 @@ def cleanup(*args, **kwargs):
     "-s",
     "--step-name",
     help="Execute a particular step (and its dependencies) in the experiment.",
-    type=str,
-    default=None,
+    multiple=True,
 )
 @click.option(
     "-n",
@@ -289,7 +288,7 @@ def run(
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
     parallelism: Optional[int] = None,
-    step_name: Optional[str] = None,
+    step_name: Optional[Sequence[str]] = None,
     name: Optional[str] = None,
     ext_var: Optional[Sequence[str]] = None,
 ):
@@ -320,7 +319,7 @@ def run(
         overrides=overrides,
         include_package=include_package,
         parallelism=parallelism,
-        step_name=step_name,
+        step_names=step_name,
         name=name,
         called_by_executor=_CALLED_BY_EXECUTOR,
         ext_var=ext_var,
@@ -421,7 +420,7 @@ def info(settings: TangoGlobalSettings):
         name = integration.split(".")[-1]
         is_installed = True
         try:
-            import_module_and_submodules(integration)
+            import_module_and_submodules(integration, recursive=False)
         except (IntegrationMissingError, ModuleNotFoundError, ImportError):
             is_installed = False
         if is_installed:
@@ -644,7 +643,7 @@ def _run(
     workspace_url: Optional[str] = None,
     overrides: Optional[str] = None,
     include_package: Optional[Sequence[str]] = None,
-    step_name: Optional[str] = None,
+    step_names: Optional[Sequence[str]] = None,
     parallelism: Optional[int] = None,
     multicore: Optional[bool] = None,
     name: Optional[str] = None,
@@ -726,12 +725,13 @@ def _run(
 
     # Register run.
     run: "Run"
-    if step_name is not None:
-        assert step_name in step_graph, (
-            f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
-            f"The config contains: {list(step_graph.keys())}."
-        )
-        sub_graph = step_graph.sub_graph(step_name)
+    if step_names:
+        for step_name in step_names:
+            assert step_name in step_graph, (
+                f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
+                f"The config contains: {list(step_graph.keys())}."
+            )
+        sub_graph = step_graph.sub_graph(*step_names)
         if called_by_executor and name is not None:
             try:
                 run = workspace.registered_run(name)
@@ -750,15 +750,11 @@ def _run(
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
 
         executor_output: Optional[ExecutorOutput] = None
-        if step_name is not None:
+        if step_names:
             assert sub_graph is not None
-            step = sub_graph[step_name]
-            if step.cache_results and step in workspace.step_cache:
-                step.log_cache_hit()
-            else:
-                executor_output = executor.execute_sub_graph_for_step(
-                    sub_graph, step_name, run_name=run.name
-                )
+            executor_output = executor.execute_sub_graph_for_steps(
+                sub_graph, *step_names, run_name=run.name
+            )
         else:
             executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
 
@@ -774,12 +770,14 @@ def _run(
                 raise CliRunError
 
     if called_by_executor:
+        assert step_names is not None and len(step_names) == 1
+
         from tango.common.aliases import EnvVarNames
 
         # We set this environment variable so that any steps that contain multiprocessing
         # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
-        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
-        initialize_prefix_logging(prefix=f"step {step_name}", main_process=False)
+        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_names[0]}"
+        initialize_prefix_logging(prefix=f"step {step_names[0]}", main_process=False)
         log_and_execute_run()
     else:
         # Capture logs to file.

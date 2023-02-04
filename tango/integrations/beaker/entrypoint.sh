@@ -80,6 +80,12 @@ else
     conda activate "$VENV_NAME"
 fi
 
+# Every time Beaker changes their APIs, we need to upgrade beaker-py. This happens all the
+# time, so we make sure we have the latest.
+# We do this when the conda environment is up, but before the requirements, so that
+# requirements can request a particular beaker-py version if they want.
+pip install --upgrade beaker-py
+
 if [[ -z "$INSTALL_CMD" ]]; then
     # Check for a 'requirements.txt' and/or 'setup.py' file.
     if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
