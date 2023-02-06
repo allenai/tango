@@ -25,9 +25,9 @@ class ShellStep(Step):
         output, you can optionally specify the output path for recording the output location, and optionally
         validating it. See `validate_output` argument for this.
     :param validate_output: If an expected `output_path` has been specified, you can choose to validate that the
-    step produced the correct output. By default, it will just check if the `output_path` exists, but you can
-    pass any other validating function. For example, if your command is a script generating a model output,
-    you can check if the model weights can be loaded.
+        step produced the correct output. By default, it will just check if the `output_path` exists, but you can
+        pass any other validating function. For example, if your command is a script generating a model output,
+        you can check if the model weights can be loaded.
     :param kwargs: Other kwargs to be passed to `subprocess.run()`. If you need to take advantage of environment
         variables, set `shell = True`.
     """
