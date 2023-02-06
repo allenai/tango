@@ -1,27 +1,9 @@
 import os
 import subprocess
-from typing import Callable, ClassVar, Optional
+from typing import Optional
 
-from tango.common import PathOrStr, Registrable
+from tango.common import PathOrStr, RegistrableFunction, make_registrable
 from tango.step import Step
-
-
-class RegistrableFunction(Registrable):
-    WRAPPED_FUNC: ClassVar[Callable]
-
-    def __call__(self, *args, **kwargs):
-        return self.__class__.WRAPPED_FUNC(*args, **kwargs)
-
-
-def make_registrable(name: Optional[str] = None, *, exist_ok: bool = False):
-    def function_wrapper(func):
-        @RegistrableFunction.register(name or func.__name__, exist_ok=exist_ok)
-        class WrapperFunc(RegistrableFunction):
-            WRAPPED_FUNC = func
-
-        return WrapperFunc()
-
-    return function_wrapper
 
 
 @make_registrable(exist_ok=True)
