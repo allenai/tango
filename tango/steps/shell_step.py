@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Optional
+from typing import List, Optional, Union
 
 from tango.common import PathOrStr, RegistrableFunction, make_registrable
 from tango.step import Step
@@ -28,13 +28,13 @@ class ShellStep(Step):
     step produced the correct output. By default, it will just check if the `output_path` exists, but you can
     pass any other validating function. For example, if your command is a script generating a model output,
     you can check if the model weights can be loaded.
-    :param kwargs: Other kwargs to be passed to `subprocess.run()`. Note that by default we
-        set `shell = True`.
+    :param kwargs: Other kwargs to be passed to `subprocess.run()`. If you need to take advantage of environment
+        variables, set `shell = True`.
     """
 
     def run(  # type: ignore[override]
         self,
-        shell_command: str,
+        shell_command: Union[str, List[str]],
         output_path: Optional[PathOrStr] = None,
         validate_output: RegistrableFunction = check_path_existence,
         **kwargs,
@@ -47,10 +47,17 @@ class ShellStep(Step):
 
         return str(output.decode("utf-8"))
 
-    def run_command(self, command: str, **kwargs):
-        self.logger.info("Command: " + command)
-        # shell=True to take advantage of environment variables, etc.
-        process = subprocess.run(command, capture_output=True, shell=True, **kwargs)
+    def run_command(self, command: Union[str, List[str]], **kwargs):
+        import shlex
+
+        if kwargs.get("shell", None):
+            if isinstance(command, list):
+                command = shlex.join(command)
+        else:
+            if isinstance(command, str):
+                command = shlex.split(command)
+        self.logger.info(f"Command: {command}")
+        process = subprocess.run(command, capture_output=True, **kwargs)
         if process.returncode != 0:
             raise RuntimeError(f"The command failed with the following errors: {process.stderr}")
         return process.stdout
