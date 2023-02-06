@@ -36,7 +36,7 @@ class TestShellStep(TangoTestCase):
         output_path = self.TEST_DIR / "hello.json"
         command = f"python3 -c \"import json; print(json.dumps({{'a': 23}}))\" > {output_path}"
         step = ShellStep()
-        step.run(command, output_path=output_path, validate_output=validate_func)
+        step.run(command, output_path=output_path, validate_output=validate_func, shell=True)
         assert f"Output found at: {output_path}" in caplog.text
 
     def test_shell_step_in_config(self, caplog):
