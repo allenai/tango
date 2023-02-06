@@ -40,7 +40,7 @@ class ShellStep(Step):
 
     :param shell_command: The shell command to run.
     :param output_path: The step makes no assumptions about the command being run. If your command produces some
-        output, ou can optionally specify the output path, for recording the output location, and optionally
+        output, you can optionally specify the output path for recording the output location, and optionally
         validating it. See `validate_output` argument for this.
     :param validate_output: If an expected `output_path` has been specified, you can choose to validate that the
     step produced the correct output. By default, it will just check if the `output_path` exists, but you can
