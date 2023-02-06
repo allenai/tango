@@ -46,7 +46,8 @@ class ShellStep(Step):
     step produced the correct output. By default, it will just check if the `output_path` exists, but you can
     pass any other validating function. For example, if your command is a script generating a model output,
     you can check if the model weights can be loaded.
-    :param kwargs: Other kwargs to be passed to the shell command.
+    :param kwargs: Other kwargs to be passed to `subprocess.run()`. Note that by default we
+        set `shell = True`.
     """
 
     def run(  # type: ignore[override]
