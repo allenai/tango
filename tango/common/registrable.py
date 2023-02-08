@@ -340,6 +340,38 @@ class Registrable(FromParams):
             return [default] + [k for k in keys if k != default]
 
 
+class RegistrableFunction(Registrable):
+    """
+    A registrable class mimicking a `Callable`. This is to allow
+    referring to functions by their name in tango configurations.
+    """
+
+    WRAPPED_FUNC: ClassVar[Callable]
+
+    def __call__(self, *args, **kwargs):
+        return self.__class__.WRAPPED_FUNC(*args, **kwargs)
+
+
+def make_registrable(name: Optional[str] = None, *, exist_ok: bool = False):
+    """
+    A decorator to create a :class:`RegistrableFunction` from a function.
+
+    :param name: A name to register the function under. By default the name of the function is used.
+    :param exist_ok:
+        If True, overwrites any existing function registered under the same ``name``. Else,
+        throws an error if a function is already registered under ``name``.
+    """
+
+    def function_wrapper(func):
+        @RegistrableFunction.register(name or func.__name__, exist_ok=exist_ok)
+        class WrapperFunc(RegistrableFunction):
+            WRAPPED_FUNC = func
+
+        return WrapperFunc()
+
+    return function_wrapper
+
+
 def _get_suggestion(name: str, available: List[str]) -> Optional[str]:
     # Check for simple mistakes like using '-' instead of '_', or vice-versa.
     for ch, repl_ch in (("_", "-"), ("-", "_")):

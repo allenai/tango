@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added abstractions for `RemoteClient`, `RemoteStepCache`, and `RemoteWorkspace`.
 - Added a GS integration that comes with `GSWorkspace`, a remote `Workspace` implementation that uses google cloud storage.
 - You can now bind functional steps to the underlying `Step` instance with `@step(bind=True)`, meaning the first argument to the function will be a `Step`.
+- Added `ShellStep` for running arbitrary shell commands.
+- Added `@make_registrable` decorator to make arbitrary functions registrable, to make it easier to refer to them in tango configurations.
 
 ### Fixed
 
