@@ -219,6 +219,8 @@ class BeakerExecutor(Executor):
     :param beaker_workspace: The name or ID of the Beaker workspace to use.
     :param github_token: You can use this parameter to set a GitHub personal access token instead of using
         the ``GITHUB_TOKEN`` environment variable.
+    :param google_token: You can use this parameter to set a Google Cloud token instead of using
+        the ``GOOGLE_TOKEN`` environment variable.
     :param beaker_image: The name or ID of a Beaker image to use for running steps on Beaker.
         The image must come with bash and `conda <https://docs.conda.io/en/latest/index.html>`_
         installed (Miniconda is okay).
@@ -342,6 +344,7 @@ class BeakerExecutor(Executor):
         include_package: Optional[Sequence[str]] = None,
         beaker_workspace: Optional[str] = None,
         github_token: Optional[str] = None,
+        google_token: Optional[str] = None,
         beaker_image: Optional[str] = None,
         docker_image: Optional[str] = None,
         datasets: Optional[List[DataMount]] = None,
@@ -392,6 +395,7 @@ class BeakerExecutor(Executor):
                 )
 
         super().__init__(workspace, include_package=include_package, parallelism=parallelism)
+
         self.max_thread_workers = self.parallelism or min(32, (os.cpu_count() or 1) + 4)
         self.beaker = get_client(beaker_workspace=beaker_workspace, **kwargs)
         self.beaker_image = beaker_image
@@ -435,6 +439,24 @@ class BeakerExecutor(Executor):
                 "This can be set with the 'github_token' argument to the BeakerExecutor, "
                 "or as the environment variable 'GITHUB_TOKEN'."
             )
+
+        self.google_token = google_token or os.environ.get("GOOGLE_TOKEN")
+
+        # Check if google auth credentials are in the default location
+        if self.google_token is None and os.path.exists(Constants.DEFAULT_GOOGLE_CREDENTIALS_FILE):
+            self.google_token = Constants.DEFAULT_GOOGLE_CREDENTIALS_FILE
+
+        # If credentials are provided in the form of a file path, load the credentials
+        # so that they can be used in beaker. Do this only if required, i.e., only if GSWorkspace
+        # is being used.
+        if self.google_token is not None and self.google_token.endswith(".json"):
+            from tango.integrations.gs import GSWorkspace
+
+            if isinstance(workspace, GSWorkspace):
+                with open(self.google_token) as f:
+                    self.google_token = f.read()
+        else:
+            self.google_token = "default"
 
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
@@ -867,7 +889,7 @@ class BeakerExecutor(Executor):
         return entrypoint_dataset
 
     def _ensure_step_graph_dataset(self, step_graph: StepGraph) -> Dataset:
-        step_graph_dataset_name = f"{Constants.STEP_GRAPH_DATASET_PREFIX}{str(uuid.uuid4())}"
+        step_graph_dataset_name = f"{Constants.STEP_GRAPH_ARTIFACT_PREFIX}{str(uuid.uuid4())}"
         try:
             dataset = self.beaker.dataset.create(step_graph_dataset_name, quiet=True, commit=False)
             self.beaker.dataset.upload(
@@ -942,6 +964,10 @@ class BeakerExecutor(Executor):
         self.beaker.secret.write(Constants.BEAKER_TOKEN_SECRET_NAME, self.beaker.config.user_token)
         self._check_if_cancelled()
 
+        # Write the Google Cloud token secret.
+        self.beaker.secret.write(Constants.GOOGLE_TOKEN_SECRET_NAME, self.google_token)
+        self._check_if_cancelled()
+
         # Build Tango command to run.
         command = [
             "tango",
@@ -982,6 +1008,7 @@ class BeakerExecutor(Executor):
             .with_env_var(name="TANGO_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=Constants.GITHUB_TOKEN_SECRET_NAME)
             .with_env_var(name="BEAKER_TOKEN", secret=Constants.BEAKER_TOKEN_SECRET_NAME)
+            .with_env_var(name="GOOGLE_TOKEN", secret=Constants.GOOGLE_TOKEN_SECRET_NAME)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=python_version)

@@ -1,21 +1,19 @@
 import atexit
 import json
 import logging
+import os.path
 import tempfile
 import time
+import urllib
 import urllib.parse
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from beaker import (
-    Beaker,
-    Dataset,
-    DatasetConflict,
-    DatasetNotFound,
-    Experiment,
-    ExperimentNotFound,
-)
+from beaker import Beaker
+from beaker import Dataset as BeakerDataset
+from beaker import DatasetConflict, DatasetNotFound, Experiment, ExperimentNotFound
 
+from tango.common.remote_utils import RemoteConstants
 from tango.step import Step
 from tango.step_info import StepInfo
 from tango.version import VERSION
@@ -23,22 +21,15 @@ from tango.version import VERSION
 logger = logging.getLogger(__name__)
 
 
-class Constants:
-    RUN_DATASET_PREFIX = "tango-run-"
-    RUN_DATA_FNAME = "run.json"
-    STEP_DATASET_PREFIX = "tango-step-"
-    STEP_INFO_FNAME = "step_info.json"
-    STEP_RESULT_DIR = "result"
+class Constants(RemoteConstants):
     ENTRYPOINT_DATASET_PREFIX = "tango-entrypoint-"
-    STEP_GRAPH_DATASET_PREFIX = "tango-step-graph-"
-    STEP_EXPERIMENT_PREFIX = "tango-step-"
-    STEP_GRAPH_FILENAME = "config.json"
-    GITHUB_TOKEN_SECRET_NAME: str = "TANGO_GITHUB_TOKEN"
     BEAKER_TOKEN_SECRET_NAME: str = "BEAKER_TOKEN"
-    RESULTS_DIR: str = "/tango/output"
+    GOOGLE_TOKEN_SECRET_NAME: str = "GOOGLE_TOKEN"
+    DEFAULT_GOOGLE_CREDENTIALS_FILE: str = os.path.expanduser(
+        os.path.join("~", ".config", "gcloud", "application_default_credentials.json")
+    )
     ENTRYPOINT_DIR: str = "/tango/entrypoint"
     ENTRYPOINT_FILENAME: str = "entrypoint.sh"
-    INPUT_DIR: str = "/tango/input"
 
 
 def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
@@ -54,29 +45,21 @@ def get_client(beaker_workspace: Optional[str] = None, **kwargs) -> Beaker:
         return Beaker.from_env(session=True, user_agent=user_agent, **kwargs)
 
 
-def step_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{Constants.STEP_DATASET_PREFIX}{step if isinstance(step, str) else step.unique_id}"
-
-
-def step_lock_dataset_name(step: Union[str, StepInfo, Step]) -> str:
-    return f"{step_dataset_name(step)}-lock"
-
-
-def run_dataset_name(name: str) -> str:
-    return f"{Constants.RUN_DATASET_PREFIX}{name}"
-
-
-def dataset_url(workspace_url: str, dataset_name: str) -> str:
-    return (
-        workspace_url
-        + "/datasets?"
-        + urllib.parse.urlencode(
-            {
-                "text": dataset_name,
-                "committed": "false",
-            }
+def dataset_url(beaker: Beaker, dataset: Optional[str] = None) -> str:
+    # this just creates a string url.
+    workspace_url = beaker.workspace.url()
+    if dataset:
+        return (
+            workspace_url
+            + "/datasets?"
+            + urllib.parse.urlencode(
+                {
+                    "text": dataset,
+                    "committed": "false",
+                }
+            )
         )
-    )
+    return workspace_url
 
 
 class BeakerStepLock:
@@ -90,10 +73,10 @@ class BeakerStepLock:
     ):
         self._beaker = beaker
         self._step_id = step if isinstance(step, str) else step.unique_id
-        self._lock_dataset_name = step_lock_dataset_name(step)
-        self._lock_dataset: Optional[Dataset] = None
+        self._lock_dataset_name = RemoteConstants.step_lock_artifact_name(step)
+        self._lock_dataset: Optional[BeakerDataset] = None
         self._current_beaker_experiment = current_beaker_experiment
-        self.lock_dataset_url = dataset_url(beaker.workspace.url(), self._lock_dataset_name)
+        self.lock_dataset_url = dataset_url(beaker, self._lock_dataset_name)
 
     @property
     def metadata(self) -> Dict[str, Any]:

@@ -14,3 +14,4 @@ Integrations
    wandb
    beaker
    flax
+   gs

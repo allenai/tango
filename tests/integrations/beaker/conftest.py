@@ -27,10 +27,10 @@ def patched_unique_id_suffix(monkeypatch) -> str:
 @pytest.fixture(autouse=True)
 def patched_constants_prefix(monkeypatch) -> str:
     PREFIX = os.environ.get("GITHUB_SHA", "A")[:6] + "-" + str(uuid.uuid1())[:6] + "-"
-    monkeypatch.setattr(Constants, "STEP_DATASET_PREFIX", "tango-step-" + PREFIX)
-    monkeypatch.setattr(Constants, "RUN_DATASET_PREFIX", "tango-run-" + PREFIX)
+    monkeypatch.setattr(Constants, "STEP_ARTIFACT_PREFIX", "tango-step-" + PREFIX)
+    monkeypatch.setattr(Constants, "RUN_ARTIFACT_PREFIX", "tango-run-" + PREFIX)
     monkeypatch.setattr(Constants, "ENTRYPOINT_DATASET_PREFIX", "tango-entrypoint-" + PREFIX)
-    monkeypatch.setattr(Constants, "STEP_GRAPH_DATASET_PREFIX", "tango-step-graph-" + PREFIX)
+    monkeypatch.setattr(Constants, "STEP_GRAPH_ARTIFACT_PREFIX", "tango-step-graph-" + PREFIX)
     monkeypatch.setattr(Constants, "STEP_EXPERIMENT_PREFIX", "tango-step-" + PREFIX)
     return PREFIX
 
