@@ -374,7 +374,6 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
     # BeakerExecutor uses GOOGLE_TOKEN
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
     if credentials is not None:
-
         # Path to the credentials file has been provided
         if isinstance(credentials, str) and credentials.endswith(".json"):
             with open(credentials) as file_ref:
@@ -444,7 +443,6 @@ class GCSStepLock:
                 atexit.register(self.release)
 
             except GSArtifactConflict:
-
                 if last_logged is None or last_logged - start >= log_interval:
                     logger.warning(
                         "Waiting to acquire lock artifact for step '%s':\n\n%s\n\n"

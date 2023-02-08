@@ -5,7 +5,6 @@ from tango.integrations.transformers.ia3 import GPT_2_IA3_CONFIG, modify_with_ia
 
 
 def test_ia3():
-
     config = GPT_2_IA3_CONFIG
     model_name = "sshleifer/tiny-gpt2"
 

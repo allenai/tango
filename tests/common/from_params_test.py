@@ -516,7 +516,6 @@ class TestFromParams(TangoTestCase):
         Testing.from_params(Params({"lazy_object": {"string": test_string}}))
 
     def test_lazy_and_from_params_can_be_pickled(self):
-
         import pickle
 
         baz = Baz.from_params(Params({"bar": {"foo": {"a": 2}}}))

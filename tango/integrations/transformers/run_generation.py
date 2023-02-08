@@ -104,7 +104,6 @@ def _generate(
     num_return_sequences: int = 1,
     fp16: bool = False,
 ) -> Iterable[List[str]]:
-
     if not isinstance(model.config, tuple(SEQ2SEQ + CAUSAL)):
         raise NotImplementedError(
             "This function is only defined for huggingface models seq2seq/causal models."

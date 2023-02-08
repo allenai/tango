@@ -134,7 +134,6 @@ class Registrable(FromParams):
         def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
             # Add to registry, raise an error if key has already been used.
             if name in registry:
-
                 already_in_use_for = registry[name][0]
                 if already_in_use_for.__module__ == "__main__":
                     # Sometimes the same class shows up under module.submodule.Class and __main__.Class, and we
