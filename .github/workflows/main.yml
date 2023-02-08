@@ -307,7 +307,7 @@ jobs:
     needs: [gpu_tests, checks]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v1  # needs v1 for now
+      - uses: actions/checkout@v3  # needs v1 for now
 
       - name: Setup Python
         uses: actions/setup-python@v4
