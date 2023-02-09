@@ -162,7 +162,7 @@ class BeakerWorkspace(RemoteWorkspace):
             if cached is not None:
                 step_info = cached
             else:
-                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info)
+                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
                 step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
                 if file_info.digest is not None:
                     self._add_object_to_cache(file_info.digest, step_info)
@@ -249,7 +249,7 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def _save_run_log(self, name: str, log_file: Path):
         run_dataset = self.Constants.run_artifact_name(name)
-        self.beaker.dataset.sync(run_dataset, log_file, quiet=False)
+        self.beaker.dataset.sync(run_dataset, log_file, quiet=True)
         self.beaker.dataset.commit(run_dataset)
 
     def _get_run_from_dataset(self, dataset: BeakerDataset) -> Optional[Run]:

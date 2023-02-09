@@ -301,4 +301,4 @@ class Workspace(Registrable):
         return do_nothing()
 
 
-Workspace.register("from_url", constructor="from_url")
+Workspace.register("from_url", constructor="from_url")(Workspace)
