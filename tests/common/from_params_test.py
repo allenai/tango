@@ -141,6 +141,15 @@ class TestFromParams(TangoTestCase):
         assert c.name == "extra_c"  # type: ignore[attr-defined]
         assert c.size == 20  # type: ignore[attr-defined]
 
+    def test_variable_length_tuple(self):
+        class Foo(FromParams):
+            def __init__(self, x: Tuple[Optional[int], ...]):
+                self.x = x
+
+        assert Foo.from_params({"x": [None, 1, 2, 3]}).x == (None, 1, 2, 3)
+        assert Foo.from_params({"x": [1, 2]}).x == (1, 2)
+        assert Foo.from_params({"x": [1]}).x == (1,)
+
     def test_union(self):
         class A(FromParams):
             def __init__(self, a: Union[int, List[int]]) -> None:
