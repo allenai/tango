@@ -127,14 +127,18 @@ class StepGraph(Mapping[str, Step]):
 
         return cls(step_dict)
 
-    def sub_graph(self, step_name: str) -> "StepGraph":
-        if step_name not in self.parsed_steps:
-            raise KeyError(
-                f"{step_name} is not a part of this StepGraph. "
-                f"Available steps are: {list(self.parsed_steps.keys())}"
+    def sub_graph(self, *step_names: str) -> "StepGraph":
+        step_dict: Dict[str, Step] = {}
+        for step_name in step_names:
+            if step_name not in self.parsed_steps:
+                raise KeyError(
+                    f"{step_name} is not a part of this StepGraph. "
+                    f"Available steps are: {list(self.parsed_steps.keys())}"
+                )
+            step_dict.update(
+                {dep.name: dep for dep in self.parsed_steps[step_name].recursive_dependencies}
             )
-        step_dict = {dep.name: dep for dep in self.parsed_steps[step_name].recursive_dependencies}
-        step_dict[step_name] = self.parsed_steps[step_name]
+            step_dict[step_name] = self.parsed_steps[step_name]
         return StepGraph(step_dict)
 
     @staticmethod

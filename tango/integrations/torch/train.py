@@ -252,7 +252,6 @@ class TorchTrainStep(Step):
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
         remove_stale_checkpoints: bool = True,
     ) -> Model:
-
         is_distributed = False
         num_workers = 1
         if devices and len(devices) > 1:

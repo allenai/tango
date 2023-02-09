@@ -6,15 +6,15 @@
 flake8
 
 # Static type checking
-mypy==0.991
+mypy==1.0.0
 types-PyYAML
 types-setuptools
 types-pytz
 types-retry
 
 # Automatic code formatting
-black==22.10.0
-isort==5.10.1
+black==23.1.0
+isort==5.12.0
 
 # Running tests
 pytest
@@ -51,7 +51,7 @@ sphinx-copybutton==0.5.1
 sphinx-autobuild==2021.3.14
 
 # Automatically adds types to docs
-sphinx-autodoc-typehints
+sphinx-autodoc-typehints<=1.23.0
 
 # For working with version numbers.
 packaging

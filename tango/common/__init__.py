@@ -4,7 +4,7 @@ from .det_hash import det_hash
 from .from_params import FromParams
 from .lazy import Lazy
 from .params import Params
-from .registrable import Registrable
+from .registrable import Registrable, RegistrableFunction, make_registrable
 from .tqdm import Tqdm
 from .util import filename_is_safe, threaded_generator
 
@@ -17,6 +17,8 @@ __all__ = [
     "Params",
     "FromParams",
     "Registrable",
+    "RegistrableFunction",
+    "make_registrable",
     "Lazy",
     "Tqdm",
     "filename_is_safe",

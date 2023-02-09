@@ -8,7 +8,6 @@ from tango.workspaces import LocalWorkspace
 
 @Step.register("sum_numbers")
 class AdditionStep(Step):
-
     DETERMINISTIC = True
     CACHEABLE = True
 

@@ -141,6 +141,15 @@ class TestFromParams(TangoTestCase):
         assert c.name == "extra_c"  # type: ignore[attr-defined]
         assert c.size == 20  # type: ignore[attr-defined]
 
+    def test_variable_length_tuple(self):
+        class Foo(FromParams):
+            def __init__(self, x: Tuple[Optional[int], ...]):
+                self.x = x
+
+        assert Foo.from_params({"x": [None, 1, 2, 3]}).x == (None, 1, 2, 3)
+        assert Foo.from_params({"x": [1, 2]}).x == (1, 2)
+        assert Foo.from_params({"x": [1]}).x == (1,)
+
     def test_union(self):
         class A(FromParams):
             def __init__(self, a: Union[int, List[int]]) -> None:
@@ -516,7 +525,6 @@ class TestFromParams(TangoTestCase):
         Testing.from_params(Params({"lazy_object": {"string": test_string}}))
 
     def test_lazy_and_from_params_can_be_pickled(self):
-
         import pickle
 
         baz = Baz.from_params(Params({"bar": {"foo": {"a": 2}}}))
@@ -559,7 +567,7 @@ class TestFromParams(TangoTestCase):
         assert test3.lazy3.a == 3
         assert test3.lazy4 is None
 
-        with pytest.raises(ConfigurationError, match='key "lazy1" is required'):
+        with pytest.raises(ConfigurationError, match='Missing key "lazy1" for Testing'):
             Testing.from_params(Params({}))
 
     def test_wrapper_kwargs_passed_down(self):

@@ -217,7 +217,6 @@ class FlaxTrainStep(Step):
         callbacks: Optional[List[Lazy[TrainCallback]]] = None,
         remove_stale_checkpoints: bool = True,
     ) -> PyTree:
-
         if validate_every is not None and validation_split is None:
             raise ConfigurationError(
                 "You have set a validation interval, but no validation split. "
