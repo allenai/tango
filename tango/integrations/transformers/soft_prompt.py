@@ -120,7 +120,6 @@ def add_soft_prompt(
     old_forward = model.forward
 
     def new_forward(*args, **kwargs):
-
         # Massage the input to include the prompt
         if kwargs.get("past_key_values") is not None:
             # If we have already been running this model, we don't need to do anything with the prefix now.
