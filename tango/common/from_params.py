@@ -348,7 +348,7 @@ def pop_and_construct_arg(
     try:
         popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
     except ConfigurationError:
-        raise ConfigurationError(f"Missing key '{name}' for {class_name}")
+        raise ConfigurationError(f'Missing key "{name}" for {class_name}')
 
     if popped_params is None:
         return None
