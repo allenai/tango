@@ -559,7 +559,7 @@ class TestFromParams(TangoTestCase):
         assert test3.lazy3.a == 3
         assert test3.lazy4 is None
 
-        with pytest.raises(ConfigurationError, match='key "lazy1" is required'):
+        with pytest.raises(ConfigurationError, match='Missing key "lazy1" for Testing'):
             Testing.from_params(Params({}))
 
     def test_wrapper_kwargs_passed_down(self):
