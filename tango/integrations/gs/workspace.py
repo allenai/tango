@@ -61,7 +61,6 @@ class GSWorkspace(RemoteWorkspace):
         project: Optional[str] = None,
         credentials: Optional[Union[str, Credentials]] = None,
     ):
-
         self.client = get_client(bucket_name=workspace, credentials=credentials, project=project)
 
         self.client.NUM_CONCURRENT_WORKERS = self.NUM_CONCURRENT_WORKERS
@@ -201,7 +200,6 @@ class GSWorkspace(RemoteWorkspace):
             return step_info
 
     def _update_step_info(self, step_info: StepInfo):
-
         step_info_entity = self._ds.entity(
             key=self._ds.key("stepinfo", step_info.unique_id),
             exclude_from_indexes=("step_info_dict",),

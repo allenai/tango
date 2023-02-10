@@ -237,7 +237,6 @@ class Params(MutableMapping):
         self.history = history
 
     def pop(self, key: str, default: Any = DEFAULT, keep_as_dict: bool = False) -> Any:
-
         """
         Performs the functionality associated with ``dict.pop(key)``, along with checking for
         returned dictionaries, replacing them with Param objects with an updated history

@@ -345,7 +345,11 @@ def pop_and_construct_arg(
                 "get unexpected behavior."
             )
 
-    popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
+    try:
+        popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
+    except ConfigurationError:
+        raise ConfigurationError(f'Missing key "{name}" for {class_name}')
+
     if popped_params is None:
         return None
 
@@ -555,7 +559,14 @@ def construct_arg(
     elif origin in (Tuple, tuple):
         value_list = []
 
-        for i, (value_cls, value_params) in enumerate(zip(annotation.__args__, popped_params)):
+        value_types = list(annotation.__args__)
+        if value_types[-1] == Ellipsis:
+            # Variable length tuples, e.g. 'Tuple[int, ...]', we set value_types to '[int] * len(popped_params)'.
+            value_types = value_types[:-1] + [value_types[-2]] * (
+                len(popped_params) - len(annotation.__args__) + 1
+            )
+
+        for i, (value_cls, value_params) in enumerate(zip(value_types, popped_params)):
             value = construct_arg(
                 str(value_cls),
                 argument_name + f".{i}",

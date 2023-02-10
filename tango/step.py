@@ -541,7 +541,8 @@ class Step(Registrable, Generic[T]):
         """Returns the unique ID for this step.
 
         Unique IDs are of the shape ``$class_name-$version-$hash``, where the hash is the hash of the
-        inputs for deterministic steps, and a random string of characters for non-deterministic ones."""
+        inputs for deterministic steps, and a random string of characters for non-deterministic ones.
+        """
         if self.unique_id_cache is None:
             self.unique_id_cache = self.class_name
             if self.VERSION is not None:
