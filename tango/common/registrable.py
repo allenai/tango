@@ -134,7 +134,6 @@ class Registrable(FromParams):
         def add_subclass_to_registry(subclass: Type[_T]) -> Type[_T]:
             # Add to registry, raise an error if key has already been used.
             if name in registry:
-
                 already_in_use_for = registry[name][0]
                 if already_in_use_for.__module__ == "__main__":
                     # Sometimes the same class shows up under module.submodule.Class and __main__.Class, and we
@@ -338,6 +337,38 @@ class Registrable(FromParams):
             raise ConfigurationError(f"Default implementation '{default}' is not registered")
         else:
             return [default] + [k for k in keys if k != default]
+
+
+class RegistrableFunction(Registrable):
+    """
+    A registrable class mimicking a `Callable`. This is to allow
+    referring to functions by their name in tango configurations.
+    """
+
+    WRAPPED_FUNC: ClassVar[Callable]
+
+    def __call__(self, *args, **kwargs):
+        return self.__class__.WRAPPED_FUNC(*args, **kwargs)
+
+
+def make_registrable(name: Optional[str] = None, *, exist_ok: bool = False):
+    """
+    A decorator to create a :class:`RegistrableFunction` from a function.
+
+    :param name: A name to register the function under. By default the name of the function is used.
+    :param exist_ok:
+        If True, overwrites any existing function registered under the same ``name``. Else,
+        throws an error if a function is already registered under ``name``.
+    """
+
+    def function_wrapper(func):
+        @RegistrableFunction.register(name or func.__name__, exist_ok=exist_ok)
+        class WrapperFunc(RegistrableFunction):
+            WRAPPED_FUNC = func
+
+        return WrapperFunc()
+
+    return function_wrapper
 
 
 def _get_suggestion(name: str, available: List[str]) -> Optional[str]:
