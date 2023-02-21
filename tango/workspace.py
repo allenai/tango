@@ -193,7 +193,7 @@ class Workspace(Registrable):
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> List[str]:
+    ) -> List[StepInfo]:
         """
         Search through steps in the workspace.
 
@@ -230,7 +230,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        return [step.unique_id for step in steps[slice(start, stop)]]
+        return steps[slice(start, stop)]
 
     def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
         """
