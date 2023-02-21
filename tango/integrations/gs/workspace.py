@@ -2,7 +2,7 @@ import datetime
 import json
 import random
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, TypeVar, Union, cast
+from typing import Dict, Generator, Iterable, List, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
@@ -180,7 +180,7 @@ class GSWorkspace(RemoteWorkspace):
         start: Optional[int] = None,
         stop: Optional[int] = None,
     ) -> List[Run]:
-        run_entities = self._fetch_run_entities(match=match)
+        run_entities: Iterable[datastore.Entity] = self._fetch_run_entities(match=match)
         if sort_by == RunSort.START_DATE:
             run_entities = sorted(
                 run_entities, key=lambda e: e["start_date"], reverse=sort_descending
@@ -221,7 +221,9 @@ class GSWorkspace(RemoteWorkspace):
         start: int = 0,
         stop: Optional[int] = None,
     ) -> List[StepInfo]:
-        step_info_entities = self._fetch_step_info_entities(match=match, state=state)
+        step_info_entities: Iterable[datastore.Entity] = self._fetch_step_info_entities(
+            match=match, state=state
+        )
         if sort_by == StepInfoSort.CREATED:
             now = utc_now_datetime()
             step_info_entities = sorted(
