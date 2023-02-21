@@ -2,13 +2,14 @@ import datetime
 import json
 import random
 from pathlib import Path
-from typing import Dict, Optional, TypeVar, Union, cast
+from typing import Dict, Generator, List, Optional, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
 from google.cloud import datastore
 from google.oauth2.credentials import Credentials
 
+from tango.common.util import utc_now_datetime
 from tango.integrations.gs.common import (
     Constants,
     GCSStepLock,
@@ -17,8 +18,8 @@ from tango.integrations.gs.common import (
 )
 from tango.integrations.gs.step_cache import GSStepCache
 from tango.step import Step
-from tango.step_info import StepInfo
-from tango.workspace import Run, Workspace
+from tango.step_info import StepInfo, StepState
+from tango.workspace import Run, RunSort, StepInfoSort, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
 T = TypeVar("T")
@@ -170,6 +171,114 @@ class GSWorkspace(RemoteWorkspace):
 
         return runs
 
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: RunSort = RunSort.START_DATE,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        start: Optional[int] = None,
+        stop: Optional[int] = None,
+    ) -> List[Run]:
+        run_entities = self._fetch_run_entities(match=match)
+        if sort_by == RunSort.START_DATE:
+            run_entities = sorted(
+                run_entities, key=lambda e: e["start_date"], reverse=sort_descending
+            )
+        elif sort_by == RunSort.NAME:
+            run_entities = sorted(run_entities, key=lambda e: e.key.name, reverse=sort_descending)
+        else:
+            raise NotImplementedError
+
+        out = []
+        for e in list(run_entities)[slice(start, stop)]:
+            run = self._get_run_from_entity(e)
+            if run is not None:
+                out.append(run)
+        return out
+
+    def num_registered_runs(self, *, match: Optional[str] = None) -> int:
+        count = 0
+        for _ in self._fetch_run_entities(match=match):
+            count += 1
+        return count
+
+    def _fetch_run_entities(
+        self, *, match: Optional[str] = None
+    ) -> Generator[datastore.Entity, None, None]:
+        query = self._ds.query(kind="run")
+        for entity in query.fetch():
+            if match is None or match in entity.key.name:
+                yield entity
+
+    def search_step_info(
+        self,
+        *,
+        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        state: Optional[StepState] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
+    ) -> List[StepInfo]:
+        step_info_entities = self._fetch_step_info_entities(match=match, state=state)
+        if sort_by == StepInfoSort.CREATED:
+            now = utc_now_datetime()
+            step_info_entities = sorted(
+                step_info_entities,
+                key=lambda e: e["start_time"] or now,
+                reverse=sort_descending,
+            )
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            step_info_entities = sorted(
+                step_info_entities, key=lambda e: e.key.name, reverse=sort_descending  # type: ignore
+            )
+        else:
+            raise NotImplementedError
+
+        return [
+            StepInfo.from_json_dict(json.loads(e["step_info_dict"]))
+            for e in list(step_info_entities)[slice(start, stop)]
+        ]
+
+    def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
+        count = 0
+        for _ in self._fetch_step_info_entities(match=match, state=state):
+            count += 1
+        return count
+
+    def _fetch_step_info_entities(
+        self, *, match: Optional[str] = None, state: Optional[StepState] = None
+    ) -> Generator[datastore.Entity, None, None]:
+        query = self._ds.query(kind="stepinfo")
+        if state == StepState.INCOMPLETE:
+            query.add_filter("start_time", "=", None)
+        elif state == StepState.RUNNING:
+            # NOTE: we can't use both filters because that would require a composite
+            # index, which we can't create programmatically through the Python client.
+            # So we choose one filter and then apply the other below as we iterate
+            # over the fetched entities.
+            #  query.add_filter("start_time", "!=", None)
+            query.add_filter("end_time", "=", None)
+        elif state == StepState.COMPLETED:
+            # NOTE: see above, can't use two filters.
+            query.add_filter("error", "=", None)
+            #  query.add_filter("end_time", "!=", None)
+        elif state == StepState.FAILED:
+            query.add_filter("error", "!=", None)
+        elif state == StepState.UNCACHEABLE:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} cannot fetch uncacheable steps efficiently"
+            )
+
+        for entity in query.fetch():
+            if match is None or match in entity.key.name:
+                if state == StepState.RUNNING and entity["start_time"] is None:
+                    continue
+                elif state == StepState.COMPLETED and entity["end_time"] is None:
+                    continue
+                yield entity
+
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
 
@@ -209,6 +318,7 @@ class GSWorkspace(RemoteWorkspace):
         step_info_entity["step_name"] = step_info.step_name
         step_info_entity["start_time"] = step_info.start_time
         step_info_entity["end_time"] = step_info.end_time
+        step_info_entity["error"] = step_info.error
         step_info_entity["result_location"] = step_info.result_location
         step_info_entity["step_info_dict"] = json.dumps(step_info.to_json_dict()).encode()
 
