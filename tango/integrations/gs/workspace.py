@@ -179,7 +179,7 @@ class GSWorkspace(RemoteWorkspace):
         match: Optional[str] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> List[Run]:
+    ) -> List[str]:
         run_entities: Iterable[datastore.Entity] = self._fetch_run_entities(match=match)
         if sort_by == RunSort.START_DATE:
             run_entities = sorted(
@@ -190,12 +190,7 @@ class GSWorkspace(RemoteWorkspace):
         else:
             raise NotImplementedError
 
-        out = []
-        for e in list(run_entities)[slice(start, stop)]:
-            run = self._get_run_from_entity(e)
-            if run is not None:
-                out.append(run)
-        return out
+        return [e.key.name for e in list(run_entities)[slice(start, stop)]]
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         count = 0

@@ -193,7 +193,7 @@ class Workspace(Registrable):
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> List[StepInfo]:
+    ) -> List[str]:
         """
         Search through steps in the workspace.
 
@@ -230,7 +230,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        return steps[slice(start, stop)]
+        return [step.unique_id for step in steps[slice(start, stop)]]
 
     def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
         """
@@ -300,7 +300,7 @@ class Workspace(Registrable):
         match: Optional[str] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> List[Run]:
+    ) -> List[str]:
         """
         Search through registered runs in the workspace.
 
@@ -328,7 +328,7 @@ class Workspace(Registrable):
         else:
             raise NotImplementedError
 
-        return runs[slice(start, stop)]
+        return [run.name for run in runs[slice(start, stop)]]
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         """

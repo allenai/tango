@@ -239,7 +239,7 @@ class BeakerWorkspace(RemoteWorkspace):
         match: Optional[str] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> List[Run]:
+    ) -> List[str]:
         if match is None:
             match = Constants.RUN_ARTIFACT_PREFIX
         else:
@@ -261,9 +261,11 @@ class BeakerWorkspace(RemoteWorkspace):
             sort_by=sort,
             descending=sort_descending,
         ):
-            run = self._get_run_from_dataset(dataset)
-            if run is not None:
-                runs.append(run)
+            if dataset.name is not None and dataset.name.startswith(
+                self.Constants.RUN_ARTIFACT_PREFIX
+            ):
+                run_name = dataset.name[len(self.Constants.RUN_ARTIFACT_PREFIX) :]
+                runs.append(run_name)
 
         return runs
 
