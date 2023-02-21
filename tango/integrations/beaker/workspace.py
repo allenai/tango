@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
+from beaker import Dataset
 from beaker import Dataset as BeakerDataset
 from beaker import (
     DatasetConflict,
@@ -18,19 +19,14 @@ from beaker import (
     ExperimentNotFound,
 )
 
-
 from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.integrations.beaker.common import (
-    BeakerStepLock,
-    Constants,
-    dataset_url,
-    get_client,
-)
-from tango.integrations.beaker.step_cache import BeakerStepCache
 from tango.step import Step
-from tango.step_info import StepInfo
+from tango.step_info import StepInfo, StepState
 from tango.workspace import Run, RunSort, StepInfoSort, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
+
+from .common import BeakerStepLock, Constants, dataset_url, get_client
+from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
 U = TypeVar("U", Run, StepInfo)
@@ -273,16 +269,16 @@ class BeakerWorkspace(RemoteWorkspace):
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         if match is None:
-            match = Constants.RUN_DATASET_PREFIX
+            match = Constants.RUN_ARTIFACT_PREFIX
         else:
-            match = Constants.RUN_DATASET_PREFIX + match
+            match = Constants.RUN_ARTIFACT_PREFIX + match
 
         count = 0
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
         ):
-            if dataset.name is not None and dataset.name.startswith(Constants.RUN_DATASET_PREFIX):
+            if dataset.name is not None and dataset.name.startswith(Constants.RUN_ARTIFACT_PREFIX):
                 count += 1
 
         return count
@@ -303,9 +299,9 @@ class BeakerWorkspace(RemoteWorkspace):
             )
 
         if match is None:
-            match = Constants.STEP_DATASET_PREFIX
+            match = Constants.STEP_ARTIFACT_PREFIX
         else:
-            match = Constants.STEP_DATASET_PREFIX + match
+            match = Constants.STEP_ARTIFACT_PREFIX + match
 
         if sort_by == StepInfoSort.CREATED:
             sort = DatasetSort.created
@@ -337,16 +333,16 @@ class BeakerWorkspace(RemoteWorkspace):
             )
 
         if match is None:
-            match = Constants.STEP_DATASET_PREFIX
+            match = Constants.STEP_ARTIFACT_PREFIX
         else:
-            match = Constants.STEP_DATASET_PREFIX + match
+            match = Constants.STEP_ARTIFACT_PREFIX + match
 
         count = 0
         for dataset in self.beaker.workspace.iter_datasets(
             match=match,
             results=False,
         ):
-            if dataset.name is not None and dataset.name.startswith(Constants.STEP_DATASET_PREFIX):
+            if dataset.name is not None and dataset.name.startswith(Constants.STEP_ARTIFACT_PREFIX):
                 count += 1
 
         return count
