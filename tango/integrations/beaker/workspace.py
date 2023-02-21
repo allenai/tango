@@ -241,9 +241,9 @@ class BeakerWorkspace(RemoteWorkspace):
         stop: Optional[int] = None,
     ) -> List[Run]:
         if match is None:
-            match = Constants.RUN_DATASET_PREFIX
+            match = Constants.RUN_ARTIFACT_PREFIX
         else:
-            match = Constants.RUN_DATASET_PREFIX + match
+            match = Constants.RUN_ARTIFACT_PREFIX + match
 
         if sort_by == RunSort.START_DATE:
             sort = DatasetSort.created
