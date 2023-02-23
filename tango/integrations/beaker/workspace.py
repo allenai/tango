@@ -234,7 +234,7 @@ class BeakerWorkspace(RemoteWorkspace):
     def search_registered_runs(
         self,
         *,
-        sort_by: RunSort = RunSort.START_DATE,
+        sort_by: Optional[RunSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         start: Optional[int] = None,
@@ -245,7 +245,7 @@ class BeakerWorkspace(RemoteWorkspace):
         else:
             match = Constants.RUN_ARTIFACT_PREFIX + match
 
-        if sort_by == RunSort.START_DATE:
+        if sort_by is None or sort_by == RunSort.START_DATE:
             sort = DatasetSort.created
         elif sort_by == RunSort.NAME:
             sort = DatasetSort.dataset_name
@@ -288,7 +288,7 @@ class BeakerWorkspace(RemoteWorkspace):
     def search_step_info(
         self,
         *,
-        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_by: Optional[StepInfoSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         state: Optional[StepState] = None,
@@ -305,11 +305,12 @@ class BeakerWorkspace(RemoteWorkspace):
         else:
             match = Constants.STEP_ARTIFACT_PREFIX + match
 
-        if sort_by == StepInfoSort.CREATED:
+        sort: Optional[DatasetSort] = None
+        if sort_by is None or sort_by == StepInfoSort.START_TIME:
             sort = DatasetSort.created
         elif sort_by == StepInfoSort.UNIQUE_ID:
             sort = DatasetSort.dataset_name
-        else:
+        elif sort_by is not None:
             raise NotImplementedError
 
         steps = []
@@ -318,7 +319,7 @@ class BeakerWorkspace(RemoteWorkspace):
             results=False,
             cursor=start or 0,
             limit=None if stop is None else stop - (start or 0),
-            sort_by=sort,
+            sort_by=sort or DatasetSort.created,
             descending=sort_descending,
         ):
             try:

@@ -365,7 +365,7 @@ class LocalWorkspace(Workspace):
     def search_step_info(
         self,
         *,
-        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_by: Optional[StepInfoSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         state: Optional[StepState] = None,
@@ -380,7 +380,7 @@ class LocalWorkspace(Workspace):
                 and (state is None or step.state == state)
             ]
 
-        if sort_by == StepInfoSort.CREATED:
+        if sort_by == StepInfoSort.START_TIME:
             now = utc_now_datetime()
             steps = sorted(
                 steps,
@@ -389,7 +389,7 @@ class LocalWorkspace(Workspace):
             )
         elif sort_by == StepInfoSort.UNIQUE_ID:
             steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
-        else:
+        elif sort_by is not None:
             raise NotImplementedError
 
         return steps[slice(start, stop)]

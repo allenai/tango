@@ -77,7 +77,7 @@ class RunSort(StrEnum):
 
 class StepInfoSort(StrEnum):
     UNIQUE_ID = "unique_id"
-    CREATED = "created"
+    START_TIME = "start_time"
 
 
 class Workspace(Registrable):
@@ -187,7 +187,7 @@ class Workspace(Registrable):
     def search_step_info(
         self,
         *,
-        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_by: Optional[StepInfoSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         state: Optional[StepState] = None,
@@ -218,7 +218,7 @@ class Workspace(Registrable):
             if (match is None or match in step.unique_id) and (state is None or step.state == state)
         ]
 
-        if sort_by == StepInfoSort.CREATED:
+        if sort_by == StepInfoSort.START_TIME:
             now = utc_now_datetime()
             steps = sorted(
                 steps,
@@ -227,7 +227,7 @@ class Workspace(Registrable):
             )
         elif sort_by == StepInfoSort.UNIQUE_ID:
             steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
-        else:
+        elif sort_by is not None:
             raise NotImplementedError
 
         return steps[slice(start, stop)]
@@ -295,7 +295,7 @@ class Workspace(Registrable):
     def search_registered_runs(
         self,
         *,
-        sort_by: RunSort = RunSort.START_DATE,
+        sort_by: Optional[RunSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         start: int = 0,
@@ -325,7 +325,7 @@ class Workspace(Registrable):
             runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
         elif sort_by == RunSort.NAME:
             runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
-        else:
+        elif sort_by is not None:
             raise NotImplementedError
 
         return [run.name for run in runs[slice(start, stop)]]

@@ -1,4 +1,3 @@
-import datetime
 import json
 import random
 from pathlib import Path
@@ -122,7 +121,10 @@ class GSWorkspace(RemoteWorkspace):
                 raise ValueError(f"Run name '{name}' is already in use")
 
         run_entity = self._ds.entity(key=self._ds.key("run", name), exclude_from_indexes=("steps",))
-        run_entity["start_date"] = datetime.datetime.now()
+        # Even though the run's name is part of the key, we add this as a
+        # field so we can index on it and order asc/desc (indices on the key field don't allow ordering).
+        run_entity["name"] = name
+        run_entity["start_date"] = utc_now_datetime()
         run_entity["steps"] = json.dumps(run_data).encode()
         self._ds.put(run_entity)
 
@@ -174,23 +176,16 @@ class GSWorkspace(RemoteWorkspace):
     def search_registered_runs(
         self,
         *,
-        sort_by: RunSort = RunSort.START_DATE,
+        sort_by: Optional[RunSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
-        start: Optional[int] = None,
+        start: int = 0,
         stop: Optional[int] = None,
     ) -> List[str]:
-        run_entities: Iterable[datastore.Entity] = self._fetch_run_entities(match=match)
-        if sort_by == RunSort.START_DATE:
-            run_entities = sorted(
-                run_entities, key=lambda e: e["start_date"], reverse=sort_descending
-            )
-        elif sort_by == RunSort.NAME:
-            run_entities = sorted(run_entities, key=lambda e: e.key.name, reverse=sort_descending)
-        else:
-            raise NotImplementedError
-
-        return [e.key.name for e in list(run_entities)[slice(start, stop)]]
+        run_entities = self._fetch_run_entities(
+            sort_by=sort_by, sort_descending=sort_descending, match=match, start=start, stop=stop
+        )
+        return [e.key.name for e in run_entities]
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         count = 0
@@ -199,43 +194,78 @@ class GSWorkspace(RemoteWorkspace):
         return count
 
     def _fetch_run_entities(
-        self, *, match: Optional[str] = None
+        self,
+        *,
+        sort_by: Optional[RunSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[datastore.Entity, None, None]:
-        query = self._ds.query(kind="run")
-        for entity in query.fetch():
-            if match is None or match in entity.key.name:
-                yield entity
+        from itertools import islice
+
+        # Note: we can't query or order by multiple fields without a suitable
+        # composite index. So in that case we have to apply remaining filters
+        # or slice and order locally. We'll default to using 'match' in the query.
+        # But if 'match' is null we can sort with the query.
+        sort_locally = match is not None
+
+        sort_field: Optional[str] = None
+        if sort_by == RunSort.START_DATE:
+            sort_field = "start_date"
+        elif sort_by == RunSort.NAME:
+            sort_field = "name"
+        elif sort_by is not None:
+            raise NotImplementedError(sort_by)
+
+        order: List[str] = []
+        if sort_field is not None and not sort_locally:
+            order = [sort_field if not sort_descending else f"-{sort_field}"]
+
+        query = self._ds.query(kind="run", order=order)
+        if match is not None:
+            # HACK: Datastore has no direct string matching functionality,
+            # but we can assume that run names are alphanumeric. So this comparison
+            # is equivalent to checking if 'name' starts with 'match'.
+            query.add_filter("name", ">=", match)
+            query.add_filter("name", "<=", match + "~")
+
+        entity_iter: Iterable[datastore.Entity] = query.fetch(
+            offset=0 if sort_locally else start,
+            limit=None if (stop is None or sort_locally) else stop - start,
+        )
+
+        if sort_field is not None and sort_locally:
+            entity_iter = sorted(
+                entity_iter, key=lambda entity: entity[sort_field], reverse=sort_descending
+            )
+
+        if sort_locally:
+            entity_iter = islice(entity_iter, start, stop)
+
+        for entity in entity_iter:
+            yield entity
 
     def search_step_info(
         self,
         *,
-        sort_by: StepInfoSort = StepInfoSort.CREATED,
+        sort_by: Optional[StepInfoSort] = None,
         sort_descending: bool = True,
         match: Optional[str] = None,
         state: Optional[StepState] = None,
         start: int = 0,
         stop: Optional[int] = None,
     ) -> List[StepInfo]:
-        step_info_entities: Iterable[datastore.Entity] = self._fetch_step_info_entities(
-            match=match, state=state
+        step_info_entities = self._fetch_step_info_entities(
+            sort_by=sort_by,
+            sort_descending=sort_descending,
+            match=match,
+            state=state,
+            start=start,
+            stop=stop,
         )
-        if sort_by == StepInfoSort.CREATED:
-            now = utc_now_datetime()
-            step_info_entities = sorted(
-                step_info_entities,
-                key=lambda e: e["start_time"] or now,
-                reverse=sort_descending,
-            )
-        elif sort_by == StepInfoSort.UNIQUE_ID:
-            step_info_entities = sorted(
-                step_info_entities, key=lambda e: e.key.name, reverse=sort_descending  # type: ignore
-            )
-        else:
-            raise NotImplementedError
-
         return [
-            StepInfo.from_json_dict(json.loads(e["step_info_dict"]))
-            for e in list(step_info_entities)[slice(start, stop)]
+            StepInfo.from_json_dict(json.loads(e["step_info_dict"])) for e in step_info_entities
         ]
 
     def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
@@ -245,36 +275,67 @@ class GSWorkspace(RemoteWorkspace):
         return count
 
     def _fetch_step_info_entities(
-        self, *, match: Optional[str] = None, state: Optional[StepState] = None
+        self,
+        *,
+        sort_by: Optional[StepInfoSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        state: Optional[StepState] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
     ) -> Generator[datastore.Entity, None, None]:
-        query = self._ds.query(kind="stepinfo")
-        if state == StepState.INCOMPLETE:
-            query.add_filter("start_time", "=", None)
-        elif state == StepState.RUNNING:
-            # NOTE: we can't use both filters because that would require a composite
-            # index, which we can't create programmatically through the Python client.
-            # So we choose one filter and then apply the other below as we iterate
-            # over the fetched entities.
-            #  query.add_filter("start_time", "!=", None)
-            query.add_filter("end_time", "=", None)
-        elif state == StepState.COMPLETED:
-            # NOTE: see above, can't use two filters.
-            query.add_filter("error", "=", None)
-            #  query.add_filter("end_time", "!=", None)
-        elif state == StepState.FAILED:
-            query.add_filter("error", "!=", None)
-        elif state == StepState.UNCACHEABLE:
-            raise NotImplementedError(
-                f"{self.__class__.__name__} cannot fetch uncacheable steps efficiently"
+        from itertools import islice
+
+        # Note: we can't query or order by multiple fields without a suitable
+        # composite index. So in that case we have to apply remaining filters
+        # or slice and order locally. We'll default to using 'match' in the query.
+        # But if 'match' is null, we'll use 'state' to filter in the query.
+        # If 'state' is also null, we can sort with the query.
+        sort_locally = sort_by is not None and (match is not None or state is not None)
+        filter_locally = state is not None and match is not None
+        slice_locally = sort_locally or filter_locally
+
+        sort_field: Optional[str] = None
+        if sort_by == StepInfoSort.START_TIME:
+            sort_field = "start_time"
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            sort_field = "step_id"
+        elif sort_by is not None:
+            raise NotImplementedError(sort_by)
+
+        order: List[str] = []
+        if sort_field is not None and not sort_locally:
+            order = [sort_field if not sort_descending else f"-{sort_field}"]
+
+        query = self._ds.query(kind="stepinfo", order=order)
+
+        if match is not None:
+            # HACK: Datastore has no direct string matching functionality,
+            # but we can assume that step IDs are alphanumeric. So this comparison
+            # is equivalent to checking if 'step_id' starts with 'match'.
+            query.add_filter("step_id", ">=", match)
+            query.add_filter("step_id", "<=", match + "~")
+        elif state is not None and not filter_locally:
+            query.add_filter("state", "=", str(state.value))
+
+        entity_iter: Iterable[datastore.Entity] = query.fetch(
+            offset=0 if slice_locally else start,
+            limit=None if (stop is None or slice_locally) else stop - start,
+        )
+
+        if state is not None and filter_locally:
+            entity_iter = filter(lambda entity: entity["state"] == state, entity_iter)
+
+        if sort_field is not None and sort_locally:
+            entity_iter = sorted(
+                entity_iter, key=lambda entity: entity[sort_field], reverse=sort_descending
             )
 
-        for entity in query.fetch():
-            if match is None or match in entity.key.name:
-                if state == StepState.RUNNING and entity["start_time"] is None:
-                    continue
-                elif state == StepState.COMPLETED and entity["end_time"] is None:
-                    continue
-                yield entity
+        if slice_locally:
+            entity_iter = islice(entity_iter, start, stop)
+
+        for entity in entity_iter:
+            yield entity
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
@@ -294,7 +355,7 @@ class GSWorkspace(RemoteWorkspace):
             step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
         )
         step_info_entity = self._ds.get(key=self._ds.key("stepinfo", unique_id))
-        if step_info_entity:
+        if step_info_entity is not None:
             step_info_bytes = step_info_entity["step_info_dict"]
             step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
             return step_info
@@ -311,12 +372,14 @@ class GSWorkspace(RemoteWorkspace):
             exclude_from_indexes=("step_info_dict",),
         )
 
-        # We can store each key separately, but we only index things that are useful for querying.
+        # Even though the step's unique ID is part of the key, we add this as a
+        # field so we can index on it and order asc/desc (indices on the key field don't allow ordering).
+        step_info_entity["step_id"] = step_info.unique_id
         step_info_entity["step_name"] = step_info.step_name
         step_info_entity["start_time"] = step_info.start_time
         step_info_entity["end_time"] = step_info.end_time
-        step_info_entity["error"] = step_info.error
-        step_info_entity["result_location"] = step_info.result_location
+        step_info_entity["state"] = str(step_info.state.value)
+        step_info_entity["updated"] = utc_now_datetime()
         step_info_entity["step_info_dict"] = json.dumps(step_info.to_json_dict()).encode()
 
         self._ds.put(step_info_entity)
