@@ -208,7 +208,7 @@ class GSWorkspace(RemoteWorkspace):
         # composite index. So in that case we have to apply remaining filters
         # or slice and order locally. We'll default to using 'match' in the query.
         # But if 'match' is null we can sort with the query.
-        sort_locally = match is not None
+        sort_locally = bool(match)
 
         sort_field: Optional[str] = None
         if sort_by == RunSort.START_DATE:
@@ -223,12 +223,11 @@ class GSWorkspace(RemoteWorkspace):
             order = [sort_field if not sort_descending else f"-{sort_field}"]
 
         query = self._ds.query(kind="run", order=order)
-        if match is not None:
+        if match:
             # HACK: Datastore has no direct string matching functionality,
-            # but if we assume that run names are ASCII then this comparison
-            # is equivalent to checking if 'name' starts with 'match'.
+            # but this comparison is equivalent to checking if 'name' starts with 'match'.
             query.add_filter("name", ">=", match)
-            query.add_filter("name", "<=", match + chr(127))
+            query.add_filter("name", "<=", match + chr(ord(match[-1]) + 1))
 
         entity_iter: Iterable[datastore.Entity] = query.fetch(
             offset=0 if sort_locally else start,
@@ -311,10 +310,9 @@ class GSWorkspace(RemoteWorkspace):
 
         if match is not None:
             # HACK: Datastore has no direct string matching functionality,
-            # but we can assume that step IDs are alphanumeric. So this comparison
-            # is equivalent to checking if 'step_id' starts with 'match'.
+            # but this comparison is equivalent to checking if 'step_id' starts with 'match'.
             query.add_filter("step_id", ">=", match)
-            query.add_filter("step_id", "<=", match + chr(127))
+            query.add_filter("step_id", "<=", match + chr(ord(match[-1]) + 1))
         elif state is not None and not filter_locally:
             query.add_filter("state", "=", str(state.value))
 
