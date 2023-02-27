@@ -225,10 +225,10 @@ class GSWorkspace(RemoteWorkspace):
         query = self._ds.query(kind="run", order=order)
         if match is not None:
             # HACK: Datastore has no direct string matching functionality,
-            # but we can assume that run names are alphanumeric. So this comparison
+            # but if we assume that run names are ASCII then this comparison
             # is equivalent to checking if 'name' starts with 'match'.
             query.add_filter("name", ">=", match)
-            query.add_filter("name", "<=", match + "~")
+            query.add_filter("name", "<=", match + chr(127))
 
         entity_iter: Iterable[datastore.Entity] = query.fetch(
             offset=0 if sort_locally else start,
@@ -314,7 +314,7 @@ class GSWorkspace(RemoteWorkspace):
             # but we can assume that step IDs are alphanumeric. So this comparison
             # is equivalent to checking if 'step_id' starts with 'match'.
             query.add_filter("step_id", ">=", match)
-            query.add_filter("step_id", "<=", match + "~")
+            query.add_filter("step_id", "<=", match + chr(127))
         elif state is not None and not filter_locally:
             query.add_filter("state", "=", str(state.value))
 
