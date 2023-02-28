@@ -13,8 +13,10 @@ from typing import List, Optional, Union
 
 import google.auth
 from google.api_core import exceptions
+from google.auth.credentials import Credentials
 from google.cloud import storage
-from google.oauth2.credentials import Credentials
+from google.oauth2.credentials import Credentials as OAuth2Credentials
+from google.oauth2.service_account import Credentials as ServiceAccountCredentials
 
 from tango.common.aliases import PathOrStr
 from tango.common.exceptions import TangoError
@@ -381,14 +383,17 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
         try:
             # If credentials dict has been passed as a json string
             credentials_dict = json.loads(credentials)
-            credentials_dict.pop("type", None)
-
-            # sometimes the credentials dict may not contain `token` and `token_uri` keys,
-            # but `Credentials()` needs the parameter.
-            token = credentials_dict.pop("token", None)
-            token_uri = credentials_dict.pop("token_uri", "https://oauth2.googleapis.com/token")
-            credentials = Credentials(token=token, token_uri=token_uri, **credentials_dict)
-        except json.decoder.JSONDecodeError:
+            if credentials_dict.pop("type", None) == "service_account":
+                credentials = ServiceAccountCredentials.from_service_account_info(credentials_dict)
+            else:
+                # sometimes the credentials dict may not contain `token` and `token_uri` keys,
+                # but `Credentials()` needs the parameter.
+                token = credentials_dict.pop("token", None)
+                token_uri = credentials_dict.pop("token_uri", "https://oauth2.googleapis.com/token")
+                credentials = OAuth2Credentials(
+                    token=token, token_uri=token_uri, **credentials_dict
+                )
+        except (json.decoder.JSONDecodeError, TypeError, ValueError):
             # It is not a json string.
             # We use this string because BeakerExecutor cannot write a None secret.
             if credentials == "default":

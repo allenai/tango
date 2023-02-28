@@ -5,8 +5,8 @@ from typing import Dict, Generator, Iterable, List, Optional, TypeVar, Union, ca
 from urllib.parse import ParseResult
 
 import petname
+from google.auth.credentials import Credentials
 from google.cloud import datastore
-from google.oauth2.credentials import Credentials
 
 from tango.common.util import utc_now_datetime
 from tango.integrations.gs.common import (
