@@ -7,6 +7,7 @@ import traceback
 from collections import OrderedDict
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, tzinfo
+from enum import Enum
 from pathlib import Path
 from typing import Any, Iterable, Optional, Set, Tuple, Union
 
@@ -319,3 +320,8 @@ def jsonify(o: Any) -> Any:
         return str(o)
     else:
         return o
+
+
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        return self.value

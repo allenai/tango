@@ -23,10 +23,10 @@ import pytz
 
 from .common import Registrable
 from .common.from_params import FromParams
-from .common.util import jsonify
+from .common.util import StrEnum, jsonify, utc_now_datetime
 from .step import Step
 from .step_cache import StepCache
-from .step_info import StepInfo
+from .step_info import StepInfo, StepState
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +68,16 @@ class Run(FromParams):
         )
         params["steps"] = {k: StepInfo.from_json_dict(v) for k, v in params["steps"].items()}
         return cls.from_params(params)
+
+
+class RunSort(StrEnum):
+    START_DATE = "start_date"
+    NAME = "name"
+
+
+class StepInfoSort(StrEnum):
+    UNIQUE_ID = "unique_id"
+    START_TIME = "start_time"
 
 
 class Workspace(Registrable):
@@ -174,6 +184,63 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
+    def search_step_info(
+        self,
+        *,
+        sort_by: Optional[StepInfoSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        state: Optional[StepState] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
+    ) -> List[StepInfo]:
+        """
+        Search through steps in the workspace.
+
+        This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
+        need to implement all `sort_by` or filter operations. They should only implement those
+        that can be done efficiently.
+
+        :param sort_by: The field to sort the results by.
+        :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
+        :param match: Only return steps with a unique ID matching this string.
+        :param state: Only return steps that are in the given state.
+        :param start: Start from a certain index in the results.
+        :param stop: Stop at a certain index in the results.
+
+        :raises NotImplementedError: If a workspace doesn't support an efficient implementation
+            for the given sorting/filtering criteria.
+        """
+        steps = [
+            step
+            for run in self.registered_runs().values()
+            for step in run.steps.values()
+            if (match is None or match in step.unique_id) and (state is None or step.state == state)
+        ]
+
+        if sort_by == StepInfoSort.START_TIME:
+            now = utc_now_datetime()
+            steps = sorted(
+                steps,
+                key=lambda step: step.start_time or now,
+                reverse=sort_descending,
+            )
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
+        elif sort_by is not None:
+            raise NotImplementedError
+
+        return steps[slice(start, stop)]
+
+    def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
+        """
+        Get the total number of registered steps.
+
+        :param match: Only count steps with a unique ID matching this string.
+        :param state: Only count steps that are in the given state.
+        """
+        return len(self.search_step_info(match=match, state=state))
+
     @abstractmethod
     def step_starting(self, step: Step) -> None:
         """
@@ -225,6 +292,52 @@ class Workspace(Registrable):
         """
         raise NotImplementedError()
 
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: Optional[RunSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
+    ) -> List[str]:
+        """
+        Search through registered runs in the workspace.
+
+        This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
+        need to implement all `sort_by` or filter operations. They should only implement those
+        that can be done efficiently.
+
+        :param sort_by: The field to sort the results by.
+        :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
+        :param match: Only return results with a name matching this string.
+        :param start: Start from a certain index in the results.
+        :param stop: Stop at a certain index in the results.
+
+        :raises NotImplementedError: If a workspace doesn't support an efficient implementation
+            for the given sorting/filtering criteria.
+        """
+        runs = [
+            run for run in self.registered_runs().values() if match is None or match in run.name
+        ]
+
+        if sort_by == RunSort.START_DATE:
+            runs = sorted(runs, key=lambda run: run.start_date, reverse=sort_descending)
+        elif sort_by == RunSort.NAME:
+            runs = sorted(runs, key=lambda run: run.name, reverse=sort_descending)
+        elif sort_by is not None:
+            raise NotImplementedError
+
+        return [run.name for run in runs[slice(start, stop)]]
+
+    def num_registered_runs(self, *, match: Optional[str] = None) -> int:
+        """
+        Get the number of registered runs.
+
+        :param match: Only count runs with a name matching this string.
+        """
+        return len(self.search_registered_runs(match=match))
+
     @abstractmethod
     def registered_runs(self) -> Dict[str, Run]:
         """
@@ -232,7 +345,7 @@ class Workspace(Registrable):
 
         :return: A dictionary mapping run names to :class:`Run` objects
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def registered_run(self, name: str) -> Run:

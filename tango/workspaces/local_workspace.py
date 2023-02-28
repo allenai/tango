@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, Iterator, Optional, Set, TypeVar, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Set, TypeVar, Union
 from urllib.parse import ParseResult
 
 import dill
@@ -19,7 +19,7 @@ from tango.step import Step
 from tango.step_cache import StepCache
 from tango.step_caches import LocalStepCache
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, Workspace
+from tango.workspace import Run, StepInfoSort, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -361,6 +361,38 @@ class LocalWorkspace(Workspace):
             for run_dir in self.runs_dir.iterdir()
             if run_dir.is_dir()
         }
+
+    def search_step_info(
+        self,
+        *,
+        sort_by: Optional[StepInfoSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        state: Optional[StepState] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
+    ) -> List[StepInfo]:
+        with SqliteDict(self.step_info_file, flag="r") as d:
+            steps = [
+                step
+                for step in d.values()
+                if (match is None or match in step.unique_id)
+                and (state is None or step.state == state)
+            ]
+
+        if sort_by == StepInfoSort.START_TIME:
+            now = utc_now_datetime()
+            steps = sorted(
+                steps,
+                key=lambda step: step.start_time or now,
+                reverse=sort_descending,
+            )
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            steps = sorted(steps, key=lambda step: step.unique_id, reverse=sort_descending)
+        elif sort_by is not None:
+            raise NotImplementedError
+
+        return steps[slice(start, stop)]
 
     def registered_run(self, name: str) -> Run:
         run_dir = self.runs_dir / name
