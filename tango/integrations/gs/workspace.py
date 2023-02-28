@@ -227,7 +227,7 @@ class GSWorkspace(RemoteWorkspace):
             # HACK: Datastore has no direct string matching functionality,
             # but this comparison is equivalent to checking if 'name' starts with 'match'.
             query.add_filter("name", ">=", match)
-            query.add_filter("name", "<=", match + chr(ord(match[-1]) + 1))
+            query.add_filter("name", "<=", match[:-1] + chr(ord(match[-1]) + 1))
 
         entity_iter: Iterable[datastore.Entity] = query.fetch(
             offset=0 if sort_locally else start,
@@ -312,7 +312,7 @@ class GSWorkspace(RemoteWorkspace):
             # HACK: Datastore has no direct string matching functionality,
             # but this comparison is equivalent to checking if 'step_id' starts with 'match'.
             query.add_filter("step_id", ">=", match)
-            query.add_filter("step_id", "<=", match + chr(ord(match[-1]) + 1))
+            query.add_filter("step_id", "<=", match[:-1] + chr(ord(match[-1]) + 1))
         elif state is not None and not filter_locally:
             query.add_filter("state", "=", str(state.value))
 
