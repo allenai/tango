@@ -1053,12 +1053,12 @@ class TestFromParams(TangoTestCase):
 
     def test_from_params_that_takes_step_directly(self):
         class FakeStepBase(Step):
-            def run(self, test_input: int) -> int:
+            def run(self, test_input: int) -> int:  # type: ignore
                 return test_input
 
         @FakeStepBase.register("fake_step")
         class FakeStep(FakeStepBase):
-            def run(self, test_input: int) -> int:
+            def run(self, test_input: int) -> int:  # type: ignore
                 return test_input * 2
 
         class FromParamsWithStepInput(FromParams):
