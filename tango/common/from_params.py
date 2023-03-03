@@ -460,12 +460,7 @@ def construct_arg(
                     result = annotation.from_params(popped_params)
 
             if isinstance(result, Step):
-                try:
-                    expected_return_type = args[0]
-                except IndexError:
-                    print(annotation, origin, args)
-                    raise
-                #  expected_return_type = args[0] if args else None
+                expected_return_type = args[0] if args else None
                 if isinstance(result, FunctionalStep):
                     return_type = inspect.signature(result.WRAPPED_FUNC).return_annotation
                 else:
