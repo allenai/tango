@@ -22,7 +22,7 @@ from beaker import (
 from tango.common.util import make_safe_filename, tango_cache_dir
 from tango.step import Step
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, RunSort, StepInfoSort, Workspace
+from tango.workspace import Run, RunInfo, RunSort, StepInfoSort, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
 from .common import BeakerStepLock, Constants, dataset_url, get_client
@@ -239,7 +239,7 @@ class BeakerWorkspace(RemoteWorkspace):
         match: Optional[str] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> List[str]:
+    ) -> List[RunInfo]:
         if match is None:
             match = Constants.RUN_ARTIFACT_PREFIX
         else:
@@ -265,7 +265,7 @@ class BeakerWorkspace(RemoteWorkspace):
                 self.Constants.RUN_ARTIFACT_PREFIX
             ):
                 run_name = dataset.name[len(self.Constants.RUN_ARTIFACT_PREFIX) :]
-                runs.append(run_name)
+                runs.append(RunInfo(name=run_name, start_date=dataset.created))
 
         return runs
 

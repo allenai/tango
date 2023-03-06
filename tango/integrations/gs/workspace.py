@@ -18,7 +18,7 @@ from tango.integrations.gs.common import (
 from tango.integrations.gs.step_cache import GSStepCache
 from tango.step import Step
 from tango.step_info import StepInfo, StepState
-from tango.workspace import Run, RunSort, StepInfoSort, Workspace
+from tango.workspace import Run, RunInfo, RunSort, StepInfoSort, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
 
 T = TypeVar("T")
@@ -181,11 +181,14 @@ class GSWorkspace(RemoteWorkspace):
         match: Optional[str] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> List[str]:
+    ) -> List[RunInfo]:
         run_entities = self._fetch_run_entities(
             sort_by=sort_by, sort_descending=sort_descending, match=match, start=start, stop=stop
         )
-        return [e.key.name for e in run_entities]
+        return [
+            RunInfo(name=e.key.name, start_date=e["start_date"], steps=json.loads(e["steps"]))
+            for e in run_entities
+        ]
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         count = 0

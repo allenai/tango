@@ -18,6 +18,8 @@ __all__ = [
     "StepResources",
     "StepCache",
     "StepGraph",
+    "Run",
+    "RunInfo",
     "RunSort",
     "Workspace",
 ]
@@ -35,4 +37,4 @@ from .step import Step, StepResources, step
 from .step_cache import StepCache
 from .step_graph import StepGraph
 from .step_info import StepInfo, StepState
-from .workspace import RunSort, StepInfoSort, Workspace
+from .workspace import Run, RunInfo, RunSort, StepInfoSort, Workspace
