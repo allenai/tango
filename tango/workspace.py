@@ -70,6 +70,31 @@ class Run(FromParams):
         return cls.from_params(params)
 
 
+@dataclass
+class RunInfo(FromParams):
+    """
+    Stores partial data about a run. This is the type that you get back from
+    :meth:`Workspace.search_registered_runs()`. The data here is a subset of
+    the data in the :class:`Run` type because not all workspaces can fetch all
+    of the data in the :class:`Run` type efficiently.
+    """
+
+    name: str
+    """
+    The name of the run.
+    """
+
+    steps: Optional[Dict[str, str]] = None
+    """
+    The steps within the run. An optional mapping of step name to step unique ID.
+    """
+
+    start_date: Optional[datetime] = None
+    """
+    The time at which the run was registered in the workspace.
+    """
+
+
 class RunSort(StrEnum):
     START_DATE = "start_date"
     NAME = "name"
@@ -300,13 +325,17 @@ class Workspace(Registrable):
         match: Optional[str] = None,
         start: int = 0,
         stop: Optional[int] = None,
-    ) -> List[str]:
+    ) -> List[RunInfo]:
         """
         Search through registered runs in the workspace.
 
         This method is primarily meant to be used to implement a UI, and workspaces don't necessarily
         need to implement all `sort_by` or filter operations. They should only implement those
         that can be done efficiently.
+
+        .. note::
+            The data type returned in the list here is :class:`RunInfo`, which
+            contains a subset of the data in the :class:`Run` type.
 
         :param sort_by: The field to sort the results by.
         :param sort_descending: Sort the results in descending order of the ``sort_by`` field.
@@ -328,7 +357,14 @@ class Workspace(Registrable):
         elif sort_by is not None:
             raise NotImplementedError
 
-        return [run.name for run in runs[slice(start, stop)]]
+        return [
+            RunInfo(
+                name=run.name,
+                start_date=run.start_date,
+                steps={k: s.unique_id for k, s in run.steps.items()},
+            )
+            for run in runs[slice(start, stop)]
+        ]
 
     def num_registered_runs(self, *, match: Optional[str] = None) -> int:
         """

@@ -19,3 +19,15 @@ Metadata
 
 .. autoclass:: tango.workspace.Run
    :members:
+
+.. autoclass:: tango.workspace.RunInfo
+   :members:
+
+Miscellaneous
+-------------
+
+.. autoclass:: tango.workspace.RunSort
+   :members:
+
+.. autoclass:: tango.workspace.StepInfoSort
+   :members:
