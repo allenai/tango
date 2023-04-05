@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixes a bug where `FromParams` would fail to parse when an object takes a `Step` argument directly.
+- Changed a name so we don't override the built-in name `set`.
+
 
 ## [v1.2.0](https://github.com/allenai/tango/releases/tag/v1.2.0) - 2023-02-10
 
