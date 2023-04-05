@@ -156,6 +156,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::constant_with_warmup
             transformers::cosine
             transformers::cosine_with_restarts
+            transformers::inverse_sqrt
             transformers::linear
             transformers::polynomial
 
