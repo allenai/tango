@@ -432,6 +432,14 @@ class Step(Registrable, Generic[T]):
 
         return subclass(step_name=step_name, step_config=raw_step_config, **kwargs)
 
+    # We only want one step object per step with a given unique id.
+    def __copy__(self):
+        return self
+
+    # We only want one step object per step with a given unique id.
+    def __deepcopy__(self, memo=None):
+        return self
+
     @abstractmethod
     def run(self, **kwargs) -> T:
         """
