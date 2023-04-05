@@ -106,6 +106,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForVision2Seq::from_pretrained
             transformers::AutoModelForVisualQuestionAnswering::from_config
             transformers::AutoModelForVisualQuestionAnswering::from_pretrained
+            transformers::AutoModelForZeroShotImageClassification::from_config
+            transformers::AutoModelForZeroShotImageClassification::from_pretrained
             transformers::AutoModelForZeroShotObjectDetection::from_config
             transformers::AutoModelForZeroShotObjectDetection::from_pretrained
             transformers::AutoModelWithLMHead::from_config
