@@ -375,7 +375,7 @@ class Step(Registrable, Generic[T]):
                 elif isinstance(o, Params):
                     return Params(result, history=o.history)
             elif isinstance(o, Step):
-                return {"type": "ref", "ref": o.unique_id}
+                return {"type": "ref", "ref": o.name}
             else:
                 return deepcopy(o)
 
