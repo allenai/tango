@@ -465,7 +465,7 @@ def init(settings: TangoGlobalSettings, path: Optional[str] = None, force: bool 
     )
 
 
-@settings.group(**_CLICK_GROUP_DEFAULTS)
+@settings.group(name="set", **_CLICK_GROUP_DEFAULTS)
 @click.pass_obj
 def set_setting(settings: TangoGlobalSettings):
     """
