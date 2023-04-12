@@ -1,8 +1,10 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [tool.black]
 line-length = 100
-
 include = '\.pyi?$'
-
 exclude = '''
 (
       __pycache__
@@ -20,6 +22,36 @@ exclude = '''
 profile = "black"
 multi_line_output = 3
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.mypy]
+ignore_missing_imports = true
+no_site_packages = false
+allow_redefinition = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+strict_optional = false
+disable_error_code = [
+  "var-annotated",
+  "no-redef",
+  "dict-item"
+]
+allow_redefinition = true
+
+[tool.pytest.ini_options]
+testpaths = "tests/"
+python_classes = [
+  "Test*",
+  "*Test"
+]
+log_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+log_level = "DEBUG"
+markers = [
+  "gpu: marks tests that need GPUs"
+]
+filterwarnings = [
+  "ignore:.*Consider increasing the value of the `num_workers` argument.*:UserWarning:pytorch_lightning\.trainer\.data_loading",
+  "ignore:.*you defined a validation_step but have no val_dataloader.*:UserWarning:pytorch_lightning\.trainer\.configuration_validator",
+  "ignore::UserWarning:tango\.*"
+]
+doctest_optionflags = "NORMALIZE_WHITESPACE"
