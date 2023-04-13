@@ -23,13 +23,6 @@ pytest-sphinx
 # Flaky tests
 flaky
 
-# Allows generation of coverage reports with pytest.
-pytest-cov
-
-# Allows codecov to generate coverage reports
-coverage
-codecov
-
 # Needed for packaging and uploading to PyPi
 twine>=1.11.0
 setuptools
