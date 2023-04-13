@@ -28,7 +28,6 @@ pytest-cov
 
 # Allows codecov to generate coverage reports
 coverage
-codecov
 
 # Needed for packaging and uploading to PyPi
 twine>=1.11.0
