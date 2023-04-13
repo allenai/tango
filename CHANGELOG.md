@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.2.1](https://github.com/allenai/tango/releases/tag/v1.2.1) - 2023-04-06
+
 ### Added
 
 - Added the following workspace methods to support the Tango viz UI: `Workspace.search_registered_runs()`, `Workspace.search_step_info()`, `Workspace.num_registered_runs()`, and `Workspace.num_steps()`.
@@ -14,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixes a bug where `FromParams` would fail to parse when an object takes a `Step` argument directly.
+- Changed a name so we don't override the built-in name `set`.
+- Fixed a bug that would cause O(n^2) memory consumption in dense step graphs.
+
 
 ## [v1.2.0](https://github.com/allenai/tango/releases/tag/v1.2.0) - 2023-02-10
 

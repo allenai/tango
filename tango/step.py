@@ -364,7 +364,22 @@ class Step(Registrable, Generic[T]):
                     f"This happened when constructing an object of type {cls}."
                 )
 
-        raw_step_config = deepcopy(params.as_dict(quiet=True))
+        # Build up a raw step config
+        def replace_steps_with_refs(o: Any) -> Any:
+            if isinstance(o, (list, tuple, set)):
+                return o.__class__(replace_steps_with_refs(i) for i in o)
+            elif isinstance(o, (dict, Params)):
+                result = {key: replace_steps_with_refs(value) for key, value in o.items()}
+                if isinstance(o, dict):
+                    return result
+                elif isinstance(o, Params):
+                    return Params(result, history=o.history)
+            elif isinstance(o, Step):
+                return {"type": "ref", "ref": o.name}
+            else:
+                return deepcopy(o)
+
+        raw_step_config = replace_steps_with_refs(params.as_dict(quiet=True))
 
         as_registrable = cast(Type[Registrable], cls)
         if "type" in params and params["type"] not in as_registrable.list_available():
