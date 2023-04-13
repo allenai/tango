@@ -9,13 +9,12 @@ on:
     branches:
       - main
     paths:
-      - 'Dockerfile'
-      - '.dockerignore'
-      - 'requirements.txt'
-      - 'setup.py'
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 jobs:
   build:

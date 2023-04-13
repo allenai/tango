@@ -6,15 +6,15 @@ concurrency:
 on:
   pull_request:
     branches:
-      - '*'
+      - "*"
   push:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 env:
-  CACHE_PREFIX: v3  # Change this to invalidate existing cache.
+  CACHE_PREFIX: v3 # Change this to invalidate existing cache.
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.9
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -30,12 +30,12 @@ jobs:
     runs-on: [ubuntu-latest]
     timeout-minutes: 30
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.9']
+        python: ["3.9"]
         task:
           - name: Lint
             extras: dev,all
@@ -54,8 +54,7 @@ jobs:
             requires_torch: true
             run: |
               tango --version
-              python setup.py check
-              python setup.py bdist_wheel sdist
+              python -m build
 
           - name: Style
             extras: dev
@@ -139,7 +138,7 @@ jobs:
               requires_torch: false
               run: |
                 pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.8'
+            python: "3.8"
 
           - task:
               name: Test
@@ -147,10 +146,10 @@ jobs:
               requires_torch: false
               run: |
                 pytest -v --durations=10 --color=yes --doctest-modules --ignore=tests/integrations --ignore=tango/integrations tests/ tango/
-            python: '3.10'
+            python: "3.10"
 
     steps:
-      - uses: 'actions/checkout@v3'
+      - uses: "actions/checkout@v3"
       - name: Checkout
         if: github.event_name != 'pull_request'
         uses: actions/checkout@v3
@@ -187,7 +186,7 @@ jobs:
         id: virtualenv-cache
         with:
           path: .venv
-          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-${{ hashFiles('*requirements.txt') }}
+          key: ${{ env.CACHE_PREFIX }}-${{ env.WEEK_NUMBER }}-${{ runner.os }}-${{ env.RUNNER_ARCH }}-${{ env.PYTHON_VERSION }}-${{ env.EXTRAS_HASH }}-${{ hashFiles('pyproject.toml') }}
 
       - name: Setup virtual environment (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
@@ -196,10 +195,10 @@ jobs:
 
       # Reference: https://github.com/marketplace/actions/authenticate-to-google-cloud#setup
       - name: Authenticate to Google Cloud
-        uses: 'google-github-actions/auth@v1'
+        uses: "google-github-actions/auth@v1"
         with:
-          workload_identity_provider: 'projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider'
-          service_account: 'tango-service@ai2-allennlp.iam.gserviceaccount.com'
+          workload_identity_provider: "projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider"
+          service_account: "tango-service@ai2-allennlp.iam.gserviceaccount.com"
 
       - name: Pre-install torch
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'torch') || contains(matrix.task.extras, 'all') || matrix.task.requires_torch)
@@ -317,7 +316,7 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install -r dev-requirements.txt
+          pip install -e .[dev]
 
       - name: Prepare environment
         run: |
