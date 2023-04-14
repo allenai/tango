@@ -195,6 +195,7 @@ jobs:
 
       # Reference: https://github.com/marketplace/actions/authenticate-to-google-cloud#setup
       - name: Authenticate to Google Cloud
+        if: matrix.task.name == 'GS integration'
         uses: "google-github-actions/auth@v1"
         with:
           workload_identity_provider: "projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider"
