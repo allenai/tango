@@ -17,7 +17,7 @@ classifiers=[
 authors = [
     {name = "Allen Institute for Artificial Intelligence", email = "contact@allenai.org"}
 ]
-license = "Apache-2.0"
+license = {file = "LICENSE"}
 requires-python = ">=3.8.1"
 dependencies = [
   "cached-path>=1.0,<2.0",
@@ -109,6 +109,9 @@ all = [
   "tango[dev, examples, torch, transformers, datasets, fairscale, flax, wandb, beaker, gs]"
 ]
 
+[project.scripts]
+tango = "tango.__main__:main"
+
 [project.urls]
 homepage = "https://github.com/allenai/tango"
 repository = "https://github.com/allenai/tango"
@@ -128,11 +131,6 @@ exclude = [
 [tool.setuptools.package-data]
 tango = ["py.typed"]
 "tango.integrations.beaker" = ["*.sh"]
-
-[tool.setuptools.entry_points]
-console_scripts = [
-    "tango=tango.__main__:main"
-]
 
 [tool.black]
 line-length = 100
@@ -182,8 +180,8 @@ markers = [
   "gpu: marks tests that need GPUs"
 ]
 filterwarnings = [
-  "ignore:.*Consider increasing the value of the `num_workers` argument.*:UserWarning:pytorch_lightning\.trainer\.data_loading",
-  "ignore:.*you defined a validation_step but have no val_dataloader.*:UserWarning:pytorch_lightning\.trainer\.configuration_validator",
-  "ignore::UserWarning:tango\.*"
+  'ignore:.*Consider increasing the value of the `num_workers` argument.*:UserWarning:pytorch_lightning\.trainer\.data_loading',
+  'ignore:.*you defined a validation_step but have no val_dataloader.*:UserWarning:pytorch_lightning\.trainer\.configuration_validator',
+  'ignore::UserWarning:tango\.*'
 ]
 doctest_optionflags = "NORMALIZE_WHITESPACE"
