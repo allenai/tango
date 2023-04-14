@@ -6,7 +6,7 @@ FROM ${BASE_IMAGE}
 WORKDIR /stage
 
 COPY requirements.txt requirements.txt
-RUN /opt/conda/bin/pip install --no-cache-dir -r requirements.txt
+RUN /opt/conda/bin/pip install --no-cache-dir -e .
 
 COPY . .
 RUN /opt/conda/bin/pip install --no-cache-dir --no-deps .[all]
