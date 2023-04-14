@@ -132,6 +132,9 @@ exclude = [
 tango = ["py.typed"]
 "tango.integrations.beaker" = ["*.sh"]
 
+[tool.setuptools.dynamic]
+version = {attr = "tango.version.VERSION"}
+
 [tool.black]
 line-length = 100
 include = '\.pyi?$'
