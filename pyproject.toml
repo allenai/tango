@@ -124,8 +124,9 @@ exclude = [
     "tests",
     "test_fixtures",
     "test_fixtures.*",
-    "scripts",
-    "scripts.*"
+    "docs*",
+    "scripts*",
+    "examples*"
 ]
 
 [tool.setuptools.package-data]
