@@ -6,7 +6,6 @@ import socket
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -14,7 +13,7 @@ import pytz
 
 from .common.from_params import FromParams
 from .common.logging import log_exception
-from .common.util import jsonify, local_timezone, replace_steps_with_unique_id
+from .common.util import StrEnum, jsonify, local_timezone, replace_steps_with_unique_id
 from .step import Step
 from .version import VERSION
 
@@ -37,7 +36,7 @@ def get_pip_packages() -> Optional[List[Tuple[str, str]]]:
     return None
 
 
-class StepState(Enum):
+class StepState(StrEnum):
     """Describes the possible state a step can be in."""
 
     INCOMPLETE = "incomplete"

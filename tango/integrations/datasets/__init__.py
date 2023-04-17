@@ -23,7 +23,6 @@ You could run this with:
 """
 
 
-import random
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TypeVar, Union, overload
@@ -56,7 +55,7 @@ def convert_to_tango_dataset_dict(hf_dataset_dict: ds.DatasetDict) -> DatasetDic
 
 
 @overload
-def convert_to_tango_dataset_dict(hf_dataset_dict: ds.IterableDatasetDict) -> IterableDatasetDict:
+def convert_to_tango_dataset_dict(hf_dataset_dict: ds.IterableDatasetDict) -> IterableDatasetDict:  # type: ignore
     ...
 
 

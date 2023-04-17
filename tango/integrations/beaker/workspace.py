@@ -4,31 +4,29 @@ import os
 import random
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, Optional, Type, TypeVar, Union, cast
+from typing import Dict, List, Optional, Type, TypeVar, Union, cast
 from urllib.parse import ParseResult
 
 import petname
+from beaker import Dataset
 from beaker import Dataset as BeakerDataset
 from beaker import (
     DatasetConflict,
     DatasetNotFound,
+    DatasetSort,
     Digest,
     Experiment,
     ExperimentNotFound,
 )
 
 from tango.common.util import make_safe_filename, tango_cache_dir
-from tango.integrations.beaker.common import (
-    BeakerStepLock,
-    Constants,
-    dataset_url,
-    get_client,
-)
-from tango.integrations.beaker.step_cache import BeakerStepCache
 from tango.step import Step
-from tango.step_info import StepInfo
-from tango.workspace import Run, Workspace
+from tango.step_info import StepInfo, StepState
+from tango.workspace import Run, RunInfo, RunSort, StepInfoSort, Workspace
 from tango.workspaces.remote_workspace import RemoteWorkspace
+
+from .common import BeakerStepLock, Constants, dataset_url, get_client
+from .step_cache import BeakerStepCache
 
 T = TypeVar("T")
 U = TypeVar("U", Run, StepInfo)
@@ -152,27 +150,30 @@ class BeakerWorkspace(RemoteWorkspace):
     def step_info(self, step_or_unique_id: Union[Step, str]) -> StepInfo:
         try:
             dataset = self.beaker.dataset.get(self.Constants.step_artifact_name(step_or_unique_id))
-            file_info = self.beaker.dataset.file_info(dataset, self.Constants.STEP_INFO_FNAME)
-            step_info: StepInfo
-            cached = (
-                None
-                if file_info.digest is None
-                else self._get_object_from_cache(file_info.digest, StepInfo)
-            )
-            if cached is not None:
-                step_info = cached
-            else:
-                step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
-                step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-                if file_info.digest is not None:
-                    self._add_object_to_cache(file_info.digest, step_info)
-            return step_info
+            return self._get_step_info_from_dataset(dataset)
         except (DatasetNotFound, FileNotFoundError):
             if not isinstance(step_or_unique_id, Step):
                 raise KeyError(step_or_unique_id)
             step_info = StepInfo.new_from_step(step_or_unique_id)
             self._update_step_info(step_info)
             return step_info
+
+    def _get_step_info_from_dataset(self, dataset: Dataset) -> StepInfo:
+        file_info = self.beaker.dataset.file_info(dataset, Constants.STEP_INFO_FNAME)
+        step_info: StepInfo
+        cached = (
+            None
+            if file_info.digest is None
+            else self._get_object_from_cache(file_info.digest, StepInfo)
+        )
+        if cached is not None:
+            step_info = cached
+        else:
+            step_info_bytes = self.beaker.dataset.get_file(dataset, file_info, quiet=True)
+            step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
+            if file_info.digest is not None:
+                self._add_object_to_cache(file_info.digest, step_info)
+        return step_info
 
     def _save_run(
         self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
@@ -229,6 +230,125 @@ class BeakerWorkspace(RemoteWorkspace):
                     runs[run.name] = run
 
         return runs
+
+    def search_registered_runs(
+        self,
+        *,
+        sort_by: Optional[RunSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        start: Optional[int] = None,
+        stop: Optional[int] = None,
+    ) -> List[RunInfo]:
+        if match is None:
+            match = Constants.RUN_ARTIFACT_PREFIX
+        else:
+            match = Constants.RUN_ARTIFACT_PREFIX + match
+
+        if sort_by is None or sort_by == RunSort.START_DATE:
+            sort = DatasetSort.created
+        elif sort_by == RunSort.NAME:
+            sort = DatasetSort.dataset_name
+        else:
+            raise NotImplementedError
+
+        runs = []
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+            cursor=start or 0,
+            limit=None if stop is None else stop - (start or 0),
+            sort_by=sort,
+            descending=sort_descending,
+        ):
+            if dataset.name is not None and dataset.name.startswith(
+                self.Constants.RUN_ARTIFACT_PREFIX
+            ):
+                run_name = dataset.name[len(self.Constants.RUN_ARTIFACT_PREFIX) :]
+                runs.append(RunInfo(name=run_name, start_date=dataset.created))
+
+        return runs
+
+    def num_registered_runs(self, *, match: Optional[str] = None) -> int:
+        if match is None:
+            match = Constants.RUN_ARTIFACT_PREFIX
+        else:
+            match = Constants.RUN_ARTIFACT_PREFIX + match
+
+        count = 0
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.RUN_ARTIFACT_PREFIX):
+                count += 1
+
+        return count
+
+    def search_step_info(
+        self,
+        *,
+        sort_by: Optional[StepInfoSort] = None,
+        sort_descending: bool = True,
+        match: Optional[str] = None,
+        state: Optional[StepState] = None,
+        start: int = 0,
+        stop: Optional[int] = None,
+    ) -> List[StepInfo]:
+        if state is not None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} cannot filter steps efficiently by state"
+            )
+
+        if match is None:
+            match = Constants.STEP_ARTIFACT_PREFIX
+        else:
+            match = Constants.STEP_ARTIFACT_PREFIX + match
+
+        sort: Optional[DatasetSort] = None
+        if sort_by is None or sort_by == StepInfoSort.START_TIME:
+            sort = DatasetSort.created
+        elif sort_by == StepInfoSort.UNIQUE_ID:
+            sort = DatasetSort.dataset_name
+        elif sort_by is not None:
+            raise NotImplementedError
+
+        steps = []
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+            cursor=start or 0,
+            limit=None if stop is None else stop - (start or 0),
+            sort_by=sort or DatasetSort.created,
+            descending=sort_descending,
+        ):
+            try:
+                steps.append(self._get_step_info_from_dataset(dataset))
+            except (DatasetNotFound, FileNotFoundError):
+                continue
+
+        return steps
+
+    def num_steps(self, *, match: Optional[str] = None, state: Optional[StepState] = None) -> int:
+        if state is not None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} cannot filter steps efficiently by state"
+            )
+
+        if match is None:
+            match = Constants.STEP_ARTIFACT_PREFIX
+        else:
+            match = Constants.STEP_ARTIFACT_PREFIX + match
+
+        count = 0
+        for dataset in self.beaker.workspace.iter_datasets(
+            match=match,
+            results=False,
+        ):
+            if dataset.name is not None and dataset.name.startswith(Constants.STEP_ARTIFACT_PREFIX):
+                count += 1
+
+        return count
 
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
