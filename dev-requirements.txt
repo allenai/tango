@@ -6,7 +6,7 @@
 flake8
 
 # Static type checking
-mypy==1.0.0
+mypy==1.0.1
 types-PyYAML
 types-setuptools
 types-pytz
