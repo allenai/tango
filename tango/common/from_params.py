@@ -460,7 +460,7 @@ def construct_arg(
                     result = annotation.from_params(popped_params)
 
             if isinstance(result, Step):
-                expected_return_type = args[0]
+                expected_return_type = args[0] if args else None
                 if isinstance(result, FunctionalStep):
                     return_type = inspect.signature(result.WRAPPED_FUNC).return_annotation
                 else:
@@ -473,7 +473,9 @@ def construct_arg(
                     )
                 else:
                     try:
-                        if not issubclass(return_type, expected_return_type):
+                        if expected_return_type is not None and not issubclass(
+                            return_type, expected_return_type
+                        ):
                             raise ConfigurationError(
                                 f"Step {result.name} returns {return_type}, but "
                                 f"we expected {expected_return_type}."

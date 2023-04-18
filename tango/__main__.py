@@ -465,9 +465,9 @@ def init(settings: TangoGlobalSettings, path: Optional[str] = None, force: bool 
     )
 
 
-@settings.group(**_CLICK_GROUP_DEFAULTS)
+@settings.group(name="set", **_CLICK_GROUP_DEFAULTS)
 @click.pass_obj
-def set(settings: TangoGlobalSettings):
+def set_setting(settings: TangoGlobalSettings):
     """
     Set a value in the settings file.
     """
@@ -477,12 +477,12 @@ def set(settings: TangoGlobalSettings):
         )
 
 
-@set.result_callback()
+@set_setting.result_callback()
 def save_settings(settings: TangoGlobalSettings):
     settings.save()
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "workspace",
     type=str,
@@ -516,7 +516,7 @@ def workspace(
     return settings
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "packages",
     type=str,
@@ -562,7 +562,7 @@ def include_package(
     return settings
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "level",
     type=click.Choice(["debug", "info", "warning", "error"], case_sensitive=False),
@@ -576,7 +576,7 @@ def log_level(settings: TangoGlobalSettings, level: str) -> TangoGlobalSettings:
     return settings
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "value",
     type=bool,
@@ -590,7 +590,7 @@ def file_friendly_logging(settings: TangoGlobalSettings, value: bool) -> TangoGl
     return settings
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "start_method",
     type=click.Choice(["fork", "spawn", "forkserver"], case_sensitive=True),
@@ -606,7 +606,7 @@ def multiprocessing_start_method(
     return settings
 
 
-@set.command(**_CLICK_COMMAND_DEFAULTS)
+@set_setting.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument(
     "key",
     type=str,
