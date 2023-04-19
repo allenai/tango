@@ -57,7 +57,7 @@ dev = [
   "wheel",
   "build",
   "Sphinx==5.3.0",
-  "furo==2022.12.7",
+  "furo==2023.3.27",
   "myst-parser==1.0.0",
   "sphinx-copybutton==0.5.2",
   "sphinx-autobuild==2021.3.14",
@@ -95,7 +95,7 @@ flax = [
   "tensorflow-cpu>=2.9.1"
 ]
 wandb = [
-  "wandb>=0.12,<0.13.11",
+  "wandb>=0.12,<0.14.3",
   "retry"
 ]
 beaker = [
