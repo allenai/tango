@@ -42,6 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "flake8",
+  "Flake8-pyproject",
   "mypy==1.2.0",
   "types-PyYAML",
   "types-setuptools",
@@ -151,6 +152,25 @@ exclude = '''
     | \bdoc\b
 )
 '''
+
+[tool.flake8]
+max-line-length = 115
+ignore = [
+  "E203",
+  "W503"
+]
+exclude = [
+  ".venv",
+  ".git",
+  "__pycache__",
+  "docs/build",
+  "dist",
+  ".mypy_cache"
+]
+per-file-ignores = [
+  "*/__init__.py:F401",
+  "*/**/**/__init__.py:F401,E501"
+]
 
 [tool.isort]
 profile = "black"
