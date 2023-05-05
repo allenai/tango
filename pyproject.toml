@@ -41,7 +41,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "flake8",
+  "ruff",
   "mypy==1.2.0",
   "types-PyYAML",
   "types-setuptools",
@@ -155,6 +155,22 @@ exclude = '''
 [tool.isort]
 profile = "black"
 multi_line_output = 3
+
+[tool.ruff]
+line-length = 115
+ignore = ["E203"]
+exclude = [
+  ".venv",
+  ".git",
+  "__pycache__",
+  ".mypy_cache",
+  "docs/build",
+  "dist"
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+"*/**/**/__init__.py" = ["F401","E501"]
 
 [tool.mypy]
 ignore_missing_imports = true
