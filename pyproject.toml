@@ -68,11 +68,11 @@ examples = [
   "torchmetrics>=0.7.0"
 ]
 torch = [
-  "torch>=1.9,<1.14",
+  "torch>=1.9,<2.1",
   "numpy",
 ]
 transformers = [
-  "torch>=1.9,<1.14",
+  "torch>=1.9,<2.1",
   "numpy",
   "datasets>=1.12,<3.0",
   "transformers>=4.12.3",
@@ -83,7 +83,7 @@ datasets = [
   "datasets>=1.12,<3.0"
 ]
 fairscale = [
-  "torch>=1.9,<1.14",
+  "torch>=1.9,<2.1",
   "numpy",
   "fairscale>=0.4.6,<0.5"
 ]
