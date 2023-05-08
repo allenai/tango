@@ -76,7 +76,7 @@ transformers = [
   "numpy",
   "datasets>=1.12,<3.0",
   "transformers>=4.12.3",
-  "sentencepiece==0.1.98",
+  "sentencepiece==0.1.99",
   "sacremoses"
 ]
 datasets = [
