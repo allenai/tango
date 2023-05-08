@@ -1,8 +1,144 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai2-tango"
+dynamic = ["version"]
+readme = "README.md"
+description = "A library for choreographing your machine learning research."
+classifiers=[
+  "Intended Audience :: Science/Research",
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+authors = [
+    {name = "Allen Institute for Artificial Intelligence", email = "contact@allenai.org"}
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.8.1"
+dependencies = [
+  "cached-path>=1.0,<2.0",
+  "rjsonnet>=0.5.0",
+  "GitPython>=3.0,<4.0",
+  "PyYAML>=5.4.1,<7.0",
+  "dill",
+  "base58",
+  "xxhash",
+  "filelock>=3.4,<4.0",
+  "click>=8.0,<9.0",
+  "click-help-colors>=0.9.1,<0.10",
+  "rich>=12.3,<14.0",
+  "tqdm>=4.62,<5.0",
+  "more-itertools>=8.0,<10.0",
+  "sqlitedict",
+  "glob2>=0.7",
+  "petname>=2.6,<3.0",
+  "pytz"
+]
+
+[project.optional-dependencies]
+dev = [
+  "flake8",
+  "mypy==1.2.0",
+  "types-PyYAML",
+  "types-setuptools",
+  "types-pytz",
+  "types-retry",
+  "black==23.3.0",
+  "isort==5.12.0",
+  "pytest",
+  "pytest-sphinx",
+  "flaky",
+  "twine>=1.11.0",
+  "setuptools",
+  "wheel",
+  "build",
+  "Sphinx==5.3.0",
+  "furo==2023.3.27",
+  "myst-parser==1.0.0",
+  "sphinx-copybutton==0.5.2",
+  "sphinx-autobuild==2021.3.14",
+  "sphinx-autodoc-typehints<=1.23.0",
+  "packaging"
+]
+examples = [
+  "torchmetrics>=0.7.0"
+]
+torch = [
+  "torch>=1.9,<2.1",
+  "numpy",
+]
+transformers = [
+  "torch>=1.9,<2.1",
+  "numpy",
+  "datasets>=1.12,<3.0",
+  "transformers>=4.12.3",
+  "sentencepiece==0.1.98",
+  "sacremoses"
+]
+datasets = [
+  "datasets>=1.12,<3.0"
+]
+fairscale = [
+  "torch>=1.9,<2.1",
+  "numpy",
+  "fairscale>=0.4.6,<0.5"
+]
+flax = [
+  "datasets>=1.12,<3.0",
+  "jax>=0.3.13",
+  "flax>=0.5.0",
+  "optax>=0.1.2",
+  "tensorflow-cpu>=2.9.1"
+]
+wandb = [
+  "wandb>=0.12,<0.14.3",
+  "retry"
+]
+beaker = [
+  "beaker-py>=1.14.0,<2.0"
+]
+gs = [
+  "google-cloud-storage>=2.6.0",
+  "google-cloud-datastore>=2.12.0"
+]
+all = [
+  "ai2-tango[examples,torch,transformers,datasets,fairscale,flax,wandb,beaker,gs]"
+]
+
+[project.scripts]
+tango = "tango.__main__:main"
+
+[project.urls]
+homepage = "https://github.com/allenai/tango"
+repository = "https://github.com/allenai/tango"
+
+[tool.setuptools.packages.find]
+exclude = [
+    "*.tests",
+    "*.tests.*",
+    "tests.*",
+    "tests",
+    "test_fixtures",
+    "test_fixtures.*",
+    "docs*",
+    "scripts*",
+    "examples*"
+]
+
+[tool.setuptools.package-data]
+tango = ["py.typed"]
+"tango.integrations.beaker" = ["*.sh"]
+
+[tool.setuptools.dynamic]
+version = {attr = "tango.version.VERSION"}
+
 [tool.black]
 line-length = 100
-
 include = '\.pyi?$'
-
 exclude = '''
 (
       __pycache__
@@ -20,6 +156,38 @@ exclude = '''
 profile = "black"
 multi_line_output = 3
 
-[build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.mypy]
+ignore_missing_imports = true
+no_site_packages = false
+allow_redefinition = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+strict_optional = false
+disable_error_code = [
+  "var-annotated",
+  "no-redef",
+  "dict-item"
+]
+allow_redefinition = true
+
+[tool.pytest.ini_options]
+testpaths = "tests/"
+python_classes = [
+  "Test*",
+  "*Test"
+]
+log_format = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+log_level = "DEBUG"
+markers = [
+  "gpu: marks tests that need GPUs"
+]
+filterwarnings = [
+  'ignore:.*Consider increasing the value of the `num_workers` argument.*:UserWarning:pytorch_lightning\.trainer\.data_loading',
+  'ignore:.*you defined a validation_step but have no val_dataloader.*:UserWarning:pytorch_lightning\.trainer\.configuration_validator',
+  'ignore::UserWarning:tango\.*',
+  'ignore::DeprecationWarning:pkg_resources',
+  'ignore::DeprecationWarning:google\.rpc'
+]
+doctest_optionflags = "NORMALIZE_WHITESPACE"

@@ -106,7 +106,7 @@ class DataLoader(torch.utils.data.DataLoader, Registrable):
         dataset: torch.utils.data.Dataset,
         collate_fn: Optional[DataCollator] = ConcatTensorDictsCollator(),
         sampler: Optional[Union[Lazy[Sampler], Sampler]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             dataset,
@@ -114,7 +114,7 @@ class DataLoader(torch.utils.data.DataLoader, Registrable):
             sampler=sampler.construct(data_source=dataset, dataset=dataset)
             if isinstance(sampler, Lazy)
             else sampler,
-            **kwargs
+            **kwargs,
         )
 
 
