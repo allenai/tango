@@ -298,7 +298,7 @@ jobs:
                   path: /unused
           token: ${{ secrets.BEAKER_TOKEN }}
           workspace: ${{ env.BEAKER_WORKSPACE }}
-          clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale
+          clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale,ai2/mosaic-cirrascale-a100,ai2/prior-cirrascale,ai2/general-cirrascale-a100-80g-ib
 
   release:
     name: Release
