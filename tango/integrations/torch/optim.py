@@ -73,11 +73,29 @@ for name, cls in torch.optim.__dict__.items():
     ):
         Optimizer.register("torch::" + name)(cls)
 
+if torch.__version__.startswith("1."):
+
+    def isLrSchedulerClass(cls):
+        return (
+            isinstance(cls, type)
+            and issubclass(cls, torch.optim.lr_scheduler._LRScheduler)
+            and not cls == torch.optim.lr_scheduler._LRScheduler
+        )
+
+elif torch.__version__.startswith("2."):
+
+    def isLrSchedulerClass(cls):
+        return (
+            isinstance(cls, type)
+            and issubclass(cls, torch.optim.lr_scheduler.LRScheduler)
+            and not cls == torch.optim.lr_scheduler.LRScheduler
+            and not cls == torch.optim.lr_scheduler._LRScheduler
+        )
+
+else:
+    raise Exception("Unknown version of PyTorch")
+
 # Register all learning rate schedulers.
 for name, cls in torch.optim.lr_scheduler.__dict__.items():
-    if (
-        isinstance(cls, type)
-        and issubclass(cls, torch.optim.lr_scheduler._LRScheduler)
-        and not cls == torch.optim.lr_scheduler._LRScheduler
-    ):
+    if isLrSchedulerClass(cls):
         LRScheduler.register("torch::" + name)(cls)
