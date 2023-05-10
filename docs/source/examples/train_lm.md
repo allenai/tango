@@ -33,5 +33,5 @@ Next you'll need to create a configuration file that defines the experiment. Jus
 Now we can run the experiment with:
 
 ```bash
-tango run config.jsonnet -i tokenize_step.py -d /tmp/results
+tango run fsdp_config.jsonnet -i tokenize_step.py -d /tmp/results
 ```

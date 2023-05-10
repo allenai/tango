@@ -62,7 +62,6 @@ intersphinx_mapping = {
     "rich": ("https://rich.readthedocs.io/en/latest", None),
     "torch": ("https://pytorch.org/docs/stable", None),
     "flax": ("https://flax.readthedocs.io/en/latest", None),
-    "fairscale": ("https://fairscale.readthedocs.io/en/latest/", None),
     "datasets": ("https://huggingface.co/docs/datasets/master/en", None),
     "transformers": ("https://huggingface.co/docs/transformers/master/en", None),
     "beaker": ("https://beaker-py.readthedocs.io/en/latest/", None),

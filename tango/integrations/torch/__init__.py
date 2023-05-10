@@ -166,6 +166,9 @@ from .eval import TorchEvalStep
 from .eval_callback import EvalCallback
 from .exceptions import StopEarly
 from .format import TorchFormat
+from .fsdp_config import FSDPConfig
+from .fsdp_module_wrapper import with_wrapped_modules
+from .fsdp_training_engine import FSDPTrainingEngine
 from .model import Model
 from .optim import LRScheduler, Optimizer
 from .train import TorchTrainStep

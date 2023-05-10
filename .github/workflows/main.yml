@@ -93,12 +93,6 @@ jobs:
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
 
-          - name: FairScale integration
-            extras: dev,fairscale
-            requires_torch: true
-            run: |
-              pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
-
           - name: W&B integration
             extras: dev,torch,flax,wandb
             requires_torch: true

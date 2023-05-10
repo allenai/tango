@@ -7,7 +7,7 @@ from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
 
-class TestFairScaleTrain(TangoTestCase):
+class TestFSDPTrain(TangoTestCase):
     def setup_method(self):
         super().setup_method()
         initialize_logging(log_level="info")
@@ -68,7 +68,7 @@ class TestFairScaleTrain(TangoTestCase):
             },
         }
         if fsdp:
-            training_engine["type"] = "fairscale"
+            training_engine["type"] = "torch::fsdp"
             fsdp_config = {"reshard_after_forward": True, "mixed_precision": amp}
             training_engine["fsdp_config"] = fsdp_config
             overrides["steps.trained_model.model.fsdp_config"] = fsdp_config
@@ -77,8 +77,8 @@ class TestFairScaleTrain(TangoTestCase):
             overrides["steps.trained_model.model.fsdp_config"] = None
         overrides["steps.trained_model.training_engine"] = training_engine
         run_dir = self.run(
-            self.FIXTURES_ROOT / "integrations" / "fairscale" / "config.jsonnet",
-            include_package=["test_fixtures.integrations.fairscale.components"],
+            self.FIXTURES_ROOT / "integrations" / "torch" / "fsdp_config.jsonnet",
+            include_package=["test_fixtures.integrations.torch.components"],
             overrides=overrides,
         )
         assert (run_dir / "trained_model").is_dir()

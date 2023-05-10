@@ -32,6 +32,8 @@ Model
 .. autoclass:: tango.integrations.torch.Model
    :members:
 
+.. autofunction:: tango.integrations.torch.with_wrapped_modules
+
 TrainingEngine
 ~~~~~~~~~~~~~~
 
@@ -39,6 +41,11 @@ TrainingEngine
    :members:
 
 .. autoclass:: tango.integrations.torch.TorchTrainingEngine
+
+.. autoclass:: tango.integrations.torch.FSDPTrainingEngine
+
+.. autoclass:: tango.integrations.torch.FSDPConfig
+    :members:
 
 Optim
 ~~~~~

@@ -13,7 +13,7 @@ class TestTrainStep(TangoTestCase):
 
     def test_trainer(self):
         result_dir = self.run(
-            self.FIXTURES_ROOT / "integrations" / "flax" / "config.jsonnet",
+            self.FIXTURES_ROOT / "integrations" / "flax" / "fsdp_config.jsonnet",
             include_package=[
                 "test_fixtures.integrations.common",
                 "test_fixtures.integrations.flax",

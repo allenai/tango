@@ -424,7 +424,7 @@ class FinetuneStep(TorchTrainStep):
 
         # Hacky way to deal with resizing the model embeddings.
         model_params_dict = model._params.as_dict()
-        if "fairscale" in model_params_dict["type"]:
+        if "fsdp" in model_params_dict["type"]:
             model_params_dict["model"]["num_tokens"] = len(tokenizer)  # type: ignore
         else:
             model_params_dict["num_tokens"] = len(tokenizer)  # type: ignore

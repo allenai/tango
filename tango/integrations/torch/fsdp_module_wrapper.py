@@ -3,14 +3,15 @@ from typing import Optional, Set
 
 import torch
 import torch.nn as nn
-from fairscale.nn.checkpoint import checkpoint_wrapper
+from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
+    checkpoint_wrapper,
+)
 
-from tango.integrations.torch import Model
-
+from .model import Model
 from .fsdp_config import FSDPConfig
 
 
-@Model.register("fairscale::with_wrapped_modules")  # type: ignore[arg-type]
+@Model.register("torch::with_wrapped_modules")  # type: ignore[arg-type]
 def with_wrapped_modules(
     model: Model,
     modules_to_wrap: Set[str],
@@ -19,15 +20,15 @@ def with_wrapped_modules(
 ) -> Model:
     """
     A :class:`~tango.integrations.torch.Model` wrapper that can be used to easily wrap
-    inner modules of a model with FairScale's :class:`~fairscale.nn.FullyShardedDataParallel` wrapper
-    and/or :class:`~fairscale.nn.checkpoint.checkpoint_wrapper`.
+    inner modules of a model with Torch's :class:`~torch.distributed.fsdp.FullyShardedDataParallel` wrapper
+    and/or :class:`~torch.distributed.algorithms._checkpoint.checkpoint_wrapper.checkpoint_wrapper`.
 
     .. tip::
         Registered as a :class:`~tango.integrations.torch.Model` constructor under the name
-        "fairscale::with_wrapped_modules".
+        "torch::with_wrapped_modules".
 
     .. important::
-        This is meant to be used with the :class:`FairScaleTrainingEngine`.
+        This is meant to be used with the :class:`FSDPTrainingEngine`.
 
     :param model:
         The model to wrap.
@@ -37,8 +38,8 @@ def with_wrapped_modules(
         The ``FullyShardedDataParallel`` configuration to use when wrapping the modules.
         If not specified, the modules will NOT be wrapped with FSDP.
     :param activation_checkpointing:
-        Whether to wrap the modules with FairScale's
-        :class:`~fairscale.nn.checkpoint.checkpoint_wrapper`.
+        Whether to wrap the modules with Torch's
+        :class:`~torch.distributed.algorithms._checkpoint.checkpoint_wrapper.checkpoint_wrapper`.
 
     Examples
     --------
@@ -77,7 +78,7 @@ def with_wrapped_modules(
 
 
         model = Model.from_params({
-            "type": "fairscale::with_wrapped_modules",
+            "type": "torch::with_wrapped_modules",
             "model": {
                 "type": "simple_regression_model",
             },

@@ -237,7 +237,7 @@ Tango will warn you when you try to cache a non-deterministic step.
 This time when we run the experiment we'll designate a specific directory for Tango to use:
 
 ```bash
-$ tango run config.jsonnet -i components -d workspace/
+$ tango run fsdp_config.jsonnet -i components -d workspace/
 ```
 ```
 Starting new run live-tarpon
@@ -262,7 +262,7 @@ $ cat workspace/runs/live-tarpon/add_numbers/data.json
 Now look what happens when we run this step again:
 
 ```bash
-$ tango run config.jsonnet -i components -d workspace/
+$ tango run fsdp_config.jsonnet -i components -d workspace/
 ```
 ```
 Starting new run modest-shrimp
@@ -290,7 +290,7 @@ If we changed the inputs to the step in `config.jsonnet`:
 And ran it again:
 
 ```bash
-$ tango run config.jsonnet -i components -d workspace/
+$ tango run fsdp_config.jsonnet -i components -d workspace/
 ```
 ```
 Starting new run true-parrot

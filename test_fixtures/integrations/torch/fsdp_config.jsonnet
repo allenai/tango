@@ -32,7 +32,7 @@ local fsdp_config = {
 };
 
 local training_engine = {
-    type: "fairscale",
+    type: "forch::fsdp",
     optimizer: {
         type: "torch::AdamW",
         lr: learning_rate,
@@ -60,7 +60,7 @@ local dataloader = {
         trained_model: {
             type: "torch::train",
             model: {
-                type: "fairscale::with_wrapped_modules",
+                type: "torch::with_wrapped_modules",
                 model: {
                     type: "simple_regression_model",
                 },

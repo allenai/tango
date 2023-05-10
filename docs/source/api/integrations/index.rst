@@ -8,7 +8,6 @@ Integrations
    :caption: Integrations
 
    torch
-   fairscale
    datasets
    transformers
    wandb

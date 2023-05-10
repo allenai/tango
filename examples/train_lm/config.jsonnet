@@ -51,7 +51,7 @@ local fsdp_config = if fsdp then {
 } else null;
 
 local training_engine = {
-    type: if fsdp then "fairscale" else "torch",
+    type: if fsdp then "torch::fsdp" else "torch",
     optimizer: {
         type: "torch::AdamW",
         lr: learning_rate,
@@ -100,13 +100,13 @@ local dataloader = if devices > 1 then distributed_dataloader else single_device
         trained_model: {
             type: "torch::train",
             model: {
-                type: "fairscale::with_wrapped_modules",
+                type: "torch::with_wrapped_modules",
                 model: {
                     type: "transformers::AutoModelForCausalLM::from_pretrained",
                     pretrained_model_name_or_path: pretrained_model,
                     low_cpu_mem_usage: load_with_low_cpu_mem_usage,
                 },
-                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],  # tell FairScale to wrap the transformer's blocks individually
+                modules_to_wrap: ["transformer\\.h\\.[0-9]+"],  # tell torch to wrap the transformer's blocks individually
                 fsdp_config: fsdp_config,
                 activation_checkpointing: activation_checkpointing,
             },
