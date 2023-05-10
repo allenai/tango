@@ -159,7 +159,6 @@ multi_line_output = 3
 [tool.ruff]
 line-length = 115
 select = ["E"]
-ignore = ["E203"]
 exclude = [
   ".venv",
   ".git",
