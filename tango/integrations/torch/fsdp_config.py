@@ -14,11 +14,6 @@ class FSDPConfig(FromParams):
 
     """  # noqa: E501
 
-    reshard_after_forward: bool = True
-    """
-    See the docstring for :class:`~torch.distributed.fsdp.FullyShardedDataParallel`.
-    """
-
     move_params_to_cpu: bool = False
     """
     See the docstring for :class:`~torch.distributed.fsdp.FullyShardedDataParallel`.
