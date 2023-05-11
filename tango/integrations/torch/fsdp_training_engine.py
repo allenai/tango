@@ -15,10 +15,10 @@ from tango.common import Lazy, Tqdm
 from tango.common.exceptions import ConfigurationError
 
 from .fsdp_config import FSDPConfig
-from .optim import LRScheduler, Optimizer
 from .model import Model
-from .training_engine import TrainingEngine, TorchTrainingEngine
+from .optim import LRScheduler, Optimizer
 from .train_config import TrainConfig
+from .training_engine import TorchTrainingEngine, TrainingEngine
 
 
 @TrainingEngine.register("torch::fsdp")

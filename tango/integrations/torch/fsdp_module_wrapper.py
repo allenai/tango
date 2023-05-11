@@ -7,8 +7,8 @@ from torch.distributed.algorithms._checkpoint.checkpoint_wrapper import (
     checkpoint_wrapper,
 )
 
-from .model import Model
 from .fsdp_config import FSDPConfig
+from .model import Model
 
 
 @Model.register("torch::with_wrapped_modules")  # type: ignore[arg-type]

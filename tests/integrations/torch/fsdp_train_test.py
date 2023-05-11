@@ -19,7 +19,8 @@ class TestFSDPTrain(TangoTestCase):
         "fsdp,activation_checkpoint",
         [
             pytest.param(
-                True, False,
+                True,
+                False,
                 id="fsdp=True,checkpointing=False",
                 marks=[
                     pytest.mark.gpu,
@@ -29,7 +30,8 @@ class TestFSDPTrain(TangoTestCase):
                 ],
             ),
             pytest.param(
-                True, True,
+                True,
+                True,
                 id="fsdp=True,checkpointing=True",
                 marks=[
                     pytest.mark.gpu,
@@ -41,8 +43,8 @@ class TestFSDPTrain(TangoTestCase):
             pytest.param(False, False, id="fsdp=False,checkpointing=False"),
             # This last configuration will try to use DDP with checkpointing, which is not supported by torch.
             # TODO: remove DDP and recommend just using FSDP for everything
-            #pytest.param(False, True, id="fsdp=False,checkpointing=True"),
-        ]
+            # pytest.param(False, True, id="fsdp=False,checkpointing=True"),
+        ],
     )
     @pytest.mark.parametrize(
         "amp",
