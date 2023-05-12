@@ -77,7 +77,7 @@ class TestFSDPTrain(TangoTestCase):
         }
         if fsdp:
             training_engine["type"] = "torch::fsdp"
-            fsdp_config = {"reshard_after_forward": True, "mixed_precision": amp}
+            fsdp_config = {"mixed_precision": amp}
             training_engine["fsdp_config"] = fsdp_config
             overrides["steps.trained_model.model.fsdp_config"] = fsdp_config
         else:

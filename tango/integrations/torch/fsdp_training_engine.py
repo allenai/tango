@@ -55,7 +55,6 @@ class FSDPTrainingEngine(TorchTrainingEngine):
         from tango.integrations.torch import FSDPConfig
 
         fsdp_config = FSDPConfig(
-            reshard_after_forward=True,
             move_params_to_cpu=True,
             move_grads_to_cpu=True,
             mixed_precision=True,
@@ -69,7 +68,6 @@ class FSDPTrainingEngine(TorchTrainingEngine):
         from tango.integrations.torch import FSDPConfig
 
         fsdp_config = FSDPConfig(
-            reshard_after_forward=False,
             move_params_to_cpu=False,
             move_grads_to_cpu=False,
             mixed_precision=True,

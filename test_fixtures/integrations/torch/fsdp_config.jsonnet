@@ -25,7 +25,6 @@ local learning_rate = 0.005;
 
 
 local fsdp_config = {
-    reshard_after_forward: true,
     move_params_to_cpu: cpu_offloading,
     move_grads_to_cpu: cpu_offloading,
     mixed_precision: amp,
