@@ -247,7 +247,7 @@ Computing...: 100%|##########| 100/100 [00:05<00:00, 18.99it/s]
 ✓ The output for "add_numbers" is in workspace/runs/live-tarpon/add_numbers
 ```
 
-The last line in the output tells us where we can find the result of our "add_numbers" step. `live-parpon` is
+The last line in the output tells us where we can find the result of our "add_numbers" step. `live-tarpon` is
 the name of the run. Run names are randomly generated and may be different on your machine. `add_numbers` is the
 name of the step in your config. The whole path is a symlink to a directory, which contains (among other things)
 a file `data.json`:
