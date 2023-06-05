@@ -72,6 +72,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForImageSegmentation::from_pretrained
             transformers::AutoModelForInstanceSegmentation::from_config
             transformers::AutoModelForInstanceSegmentation::from_pretrained
+            transformers::AutoModelForMaskGeneration::from_config
+            transformers::AutoModelForMaskGeneration::from_pretrained
             transformers::AutoModelForMaskedImageModeling::from_config
             transformers::AutoModelForMaskedImageModeling::from_pretrained
             transformers::AutoModelForMaskedLM::from_config
