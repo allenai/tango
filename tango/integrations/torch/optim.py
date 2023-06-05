@@ -77,7 +77,7 @@ for name, cls in torch.optim.__dict__.items():
 for name, cls in torch.optim.lr_scheduler.__dict__.items():
     if (
         isinstance(cls, type)
-        and issubclass(cls, torch.optim.lr_scheduler._LRScheduler)
-        and not cls == torch.optim.lr_scheduler._LRScheduler
+        and issubclass(cls, torch.optim.lr_scheduler.LRScheduler)
+        and not cls == torch.optim.lr_scheduler.LRScheduler
     ):
         LRScheduler.register("torch::" + name)(cls)
