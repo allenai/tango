@@ -41,7 +41,7 @@ jobs:
             extras: dev,all
             requires_torch: true
             run: |
-              flake8 .
+              ruff check .
 
           - name: Type check
             extras: dev,all
