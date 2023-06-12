@@ -95,7 +95,7 @@ flax = [
   "tensorflow-cpu>=2.9.1"
 ]
 wandb = [
-  "wandb>=0.12,<0.14.3",
+  "wandb>=0.12,<0.15.5",
   "retry"
 ]
 beaker = [
