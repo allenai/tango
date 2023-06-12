@@ -7,7 +7,7 @@ from tango.common.logging import initialize_logging, teardown_logging
 from tango.common.testing import TangoTestCase
 
 
-class TestFairScaleTrain(TangoTestCase):
+class TestFSDPTrain(TangoTestCase):
     def setup_method(self):
         super().setup_method()
         initialize_logging(log_level="info")
@@ -16,11 +16,12 @@ class TestFairScaleTrain(TangoTestCase):
         teardown_logging()
 
     @pytest.mark.parametrize(
-        "fsdp",
-        (
+        "fsdp,activation_checkpoint",
+        [
             pytest.param(
                 True,
-                id="fsdp=True",
+                False,
+                id="fsdp=True-checkpointing=False",
                 marks=[
                     pytest.mark.gpu,
                     pytest.mark.skipif(
@@ -28,15 +29,22 @@ class TestFairScaleTrain(TangoTestCase):
                     ),
                 ],
             ),
-            pytest.param(False, id="fsdp=False"),
-        ),
-    )
-    @pytest.mark.parametrize(
-        "activation_checkpoint",
-        (
-            pytest.param(True, id="checkpointing=True"),
-            pytest.param(False, id="checkpointing=False"),
-        ),
+            pytest.param(
+                True,
+                True,
+                id="fsdp=True-checkpointing=True",
+                marks=[
+                    pytest.mark.gpu,
+                    pytest.mark.skipif(
+                        torch.cuda.device_count() < 2, reason="Requires CUDA devices"
+                    ),
+                ],
+            ),
+            pytest.param(False, False, id="fsdp=False-checkpointing=False"),
+            # This last configuration will try to use DDP with checkpointing, which is not supported by torch.
+            # TODO: remove DDP and recommend just using FSDP for everything
+            # pytest.param(False, True, id="fsdp=False-checkpointing=True"),
+        ],
     )
     @pytest.mark.parametrize(
         "amp",
@@ -68,8 +76,8 @@ class TestFairScaleTrain(TangoTestCase):
             },
         }
         if fsdp:
-            training_engine["type"] = "fairscale"
-            fsdp_config = {"reshard_after_forward": True, "mixed_precision": amp}
+            training_engine["type"] = "torch::fsdp"
+            fsdp_config = {"mixed_precision": amp}
             training_engine["fsdp_config"] = fsdp_config
             overrides["steps.trained_model.model.fsdp_config"] = fsdp_config
         else:
@@ -77,8 +85,8 @@ class TestFairScaleTrain(TangoTestCase):
             overrides["steps.trained_model.model.fsdp_config"] = None
         overrides["steps.trained_model.training_engine"] = training_engine
         run_dir = self.run(
-            self.FIXTURES_ROOT / "integrations" / "fairscale" / "config.jsonnet",
-            include_package=["test_fixtures.integrations.fairscale.components"],
+            self.FIXTURES_ROOT / "integrations" / "torch" / "fsdp_config.jsonnet",
+            include_package=["test_fixtures.integrations.torch.components"],
             overrides=overrides,
         )
         assert (run_dir / "trained_model").is_dir()

@@ -88,7 +88,7 @@ class TestParams(TangoTestCase):
         assert params == {"a": 10, "b.c": 20, "b.d": "stuff"}
 
     def test_jsonnet_features(self):
-        config_file = self.TEST_DIR / "config.jsonnet"
+        config_file = self.TEST_DIR / "fsdp_config.jsonnet"
         with open(config_file, "w") as f:
             f.write(
                 """{
@@ -187,7 +187,7 @@ class TestParams(TangoTestCase):
         params_dict = {"keyA": "valA", "keyB": "valB"}
         expected_ordered_params_dict = OrderedDict({"keyB": "valB", "keyA": "valA"})
         params = Params(params_dict)
-        file_path = self.TEST_DIR / "config.jsonnet"
+        file_path = self.TEST_DIR / "fsdp_config.jsonnet"
         # check with preference orders
         params.to_file(file_path, [["keyB", "keyA"]])
         with open(file_path, "r") as handle:

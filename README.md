@@ -230,7 +230,7 @@ The motivation behind this library is that we can make research easier by compos
 You can run the `tango` command through [pdb](https://docs.python.org/3/library/pdb.html). For example:
 
 ```bash
-python -m pdb -m tango run config.jsonnet
+python -m pdb -m tango run fsdp_config.jsonnet
 ```
 
 ### How is Tango different from [Metaflow](https://metaflow.org), [Airflow](https://airflow.apache.org), or [redun](https://github.com/insitro/redun)?

@@ -76,16 +76,11 @@ transformers = [
   "numpy",
   "datasets>=1.12,<3.0",
   "transformers>=4.12.3",
-  "sentencepiece==0.1.98",
+  "sentencepiece==0.1.99",
   "sacremoses"
 ]
 datasets = [
   "datasets>=1.12,<3.0"
-]
-fairscale = [
-  "torch>=1.9,<2.1",
-  "numpy",
-  "fairscale>=0.4.6,<0.5"
 ]
 flax = [
   "datasets>=1.12,<3.0",
@@ -106,7 +101,7 @@ gs = [
   "google-cloud-datastore>=2.12.0"
 ]
 all = [
-  "ai2-tango[examples,torch,transformers,datasets,fairscale,flax,wandb,beaker,gs]"
+  "ai2-tango[examples,torch,transformers,datasets,flax,wandb,beaker,gs]"
 ]
 
 [project.scripts]

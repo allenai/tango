@@ -25,14 +25,13 @@ local learning_rate = 0.005;
 
 
 local fsdp_config = {
-    reshard_after_forward: true,
     move_params_to_cpu: cpu_offloading,
     move_grads_to_cpu: cpu_offloading,
     mixed_precision: amp,
 };
 
 local training_engine = {
-    type: "fairscale",
+    type: "forch::fsdp",
     optimizer: {
         type: "torch::AdamW",
         lr: learning_rate,
@@ -60,7 +59,7 @@ local dataloader = {
         trained_model: {
             type: "torch::train",
             model: {
-                type: "fairscale::with_wrapped_modules",
+                type: "torch::with_wrapped_modules",
                 model: {
                     type: "simple_regression_model",
                 },

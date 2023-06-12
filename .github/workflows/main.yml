@@ -20,7 +20,7 @@ env:
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
   BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
   BEAKER_WORKSPACE: ai2/tango-testing
-  BEAKER_DEFAULT_CLUSTER: ai2/tango-gpu-tests
+  BEAKER_DEFAULT_CLUSTER: ai2/canary
   BEAKER_IMAGE: petew/tango-testing
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -92,12 +92,6 @@ jobs:
             requires_torch: true
             run: |
               pytest -v --color=yes --doctest-modules tango/integrations/transformers tests/integrations/transformers
-
-          - name: FairScale integration
-            extras: dev,fairscale
-            requires_torch: true
-            run: |
-              pytest -v --color=yes --doctest-modules tango/integrations/fairscale tests/integrations/fairscale
 
           - name: W&B integration
             extras: dev,torch,flax,wandb
@@ -298,7 +292,7 @@ jobs:
                   path: /unused
           token: ${{ secrets.BEAKER_TOKEN }}
           workspace: ${{ env.BEAKER_WORKSPACE }}
-          clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale
+          clusters: ai2/general-cirrascale,ai2/allennlp-cirrascale,ai2/aristo-cirrascale,ai2/mosaic-cirrascale,ai2/s2-cirrascale,ai2/mosaic-cirrascale-a100,ai2/prior-cirrascale,ai2/general-cirrascale-a100-80g-ib
 
   release:
     name: Release
