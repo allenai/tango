@@ -335,7 +335,7 @@ class GSClient:
                 max_workers=self.NUM_CONCURRENT_WORKERS, thread_name_prefix="GSClient.download()-"
             ) as executor:
                 download_futures = []
-                for blob in bucket.list_blobs(self.bucket_name, prefix=artifact.artifact_path):
+                for blob in bucket.list_blobs(prefix=artifact.artifact_path):
                     download_futures.append(executor.submit(_fetch_blob, blob))
                 for future in concurrent.futures.as_completed(download_futures):
                     future.result()
