@@ -161,6 +161,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::inverse_sqrt
             transformers::linear
             transformers::polynomial
+            transformers::reduce_lr_on_plateau
 
 - :class:`~tango.integrations.torch.DataCollator`: All data collators from transformers
   are registered according to their class name (e.g. "transformers::DefaultDataCollator").
