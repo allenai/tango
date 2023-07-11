@@ -430,19 +430,19 @@ class Workspace(Registrable):
         # get path to dir dynamically
         sqlite_path = self.dir / "stepinfo.sqlite"
         with SqliteDict(sqlite_path) as d:
-        try:
-            step_location = d[step_name].result_location
-            # remove step info from the sqlite dict
-            del d[step_name]
-            d.commit()
-            # remove cache directory
             try:
-                shutil.rmtree(step_location)
-            except OSError:
-                raise OSError('Step Cache folder not found')
-            return('Step deleted')
-        except KeyError:
-            raise KeyError(f"No step named '{step_name}' found")
+                step_location = d[step_name].result_location
+                # remove step info from the sqlite dict
+                del d[step_name]
+                d.commit()
+                # remove cache directory
+                try:
+                    shutil.rmtree(step_location)
+                except OSError:
+                    raise OSError('Step Cache folder not found')
+                return('Step deleted')
+            except KeyError:
+                raise KeyError(f"No step named '{step_name}' found")
 
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
