@@ -20,6 +20,8 @@ from typing import (
 from urllib.parse import ParseResult, urlparse
 
 import pytz
+from sqlitedict import SqliteDict
+import shutil
 
 from .common import Registrable
 from .common.from_params import FromParams
@@ -418,6 +420,29 @@ class Workspace(Registrable):
             if step_name in run.steps:
                 return self.step_cache[run.steps[step_name]]
         raise KeyError(f"No step named '{step_name}' found in previous runs")
+
+
+    def remove_step(self, step_name: str) -> Any:
+        """
+        Get Step name (Unique ID) from the user and remove the step information from cache
+        :raises KeyError: If no step with the unique name found in the cache dir
+        """
+        # get path to dir dynamically
+        sqlite_path = self.dir / "stepinfo.sqlite"
+        with SqliteDict(sqlite_path) as d:
+            try:
+                step_location = d[step_name].result_location
+                # remove step info from the sqlite dict
+                del d[step_name]
+                d.commit()
+                # remove cache directory
+                try:
+                    shutil.rmtree(step_location)
+                except OSError:
+                    raise OSError('Step Cache folder not found')
+                return('Step deleted')
+            except KeyError:
+                raise KeyError(f"No step named '{step_name}' found")
 
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
