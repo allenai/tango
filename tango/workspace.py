@@ -422,7 +422,7 @@ class Workspace(Registrable):
         raise KeyError(f"No step named '{step_name}' found in previous runs")
 
 
-    def step_cache_remove(self, step_unique_id: str) -> Any:
+    def step_cache_remove(self, step_unique_id: str):
         """
         Removes cached step using the given unique step id
         :raises KeyError: If there is no step with the given name.
