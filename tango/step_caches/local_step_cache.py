@@ -150,12 +150,12 @@ class LocalStepCache(StepCache):
             raise
 
     def __delitem__(self, step_unique_id) -> None:
-        location = str(self.dir) + '/' + str(step_unique_id)
+        location = str(self.dir) + "/" + str(step_unique_id)
         try:
             shutil.rmtree(location)
             assert not os.path.exists(location)
         except OSError:
-            raise OSError('Step Cache folder not found')
+            raise OSError("Step Cache folder not found")
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob(f"*/{self.METADATA_FILE_NAME}"))

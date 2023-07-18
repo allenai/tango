@@ -419,15 +419,12 @@ class Workspace(Registrable):
                 return self.step_cache[run.steps[step_name]]
         raise KeyError(f"No step named '{step_name}' found in previous runs")
 
-
     def step_cache_remove(self, step_unique_id: str):
         """
         Removes cached step using the given unique step id
         :raises KeyError: If there is no step with the given name.
         """
         raise NotImplementedError()
-
-
 
     def capture_logs_for_run(self, name: str) -> ContextManager[None]:
         """
