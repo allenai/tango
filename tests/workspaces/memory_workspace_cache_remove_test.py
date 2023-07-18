@@ -20,5 +20,3 @@ def test_step_cache_remove():
     assert step_info.state == StepState.COMPLETED
     step1_unique_id = step1.unique_id
     workspace.step_cache_remove(step1_unique_id)
-
-
