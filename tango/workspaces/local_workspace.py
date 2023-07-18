@@ -329,8 +329,10 @@ class LocalWorkspace(Workspace):
         """
         with SqliteDict(self.step_info_file) as d:
             try:
+                assert step_unique_id in d
                 del d[step_unique_id]
                 d.commit()
+                assert step_unique_id not in d
                 self.cache.__delitem__(step_unique_id)
             except KeyError:
                 raise KeyError(f"No step named '{step_unique_id}' found")

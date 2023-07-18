@@ -1,4 +1,5 @@
 import collections
+import os
 import logging
 import warnings
 import weakref
@@ -149,9 +150,10 @@ class LocalStepCache(StepCache):
             raise
 
     def __delitem__(self, step_unique_id) -> None:
-        location = self.dir / step_unique_id
+        location = str(self.dir) + '/' + str(step_unique_id)
         try:
             shutil.rmtree(location)
+            assert not os.path.exists(location)
         except OSError:
             raise OSError('Step Cache folder not found')
 

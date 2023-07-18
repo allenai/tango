@@ -38,6 +38,7 @@ class MemoryStepCache(StepCache):
     def __delitem__(self, step_unique_id) -> None:
         if step_unique_id in self.cache:
             del self.cache[step_unique_id]
+            assert step_unique_id not in self.cache
         else:
             raise KeyError(f"{step_unique_id} not present in the memory cache. Can't be deleted")
 

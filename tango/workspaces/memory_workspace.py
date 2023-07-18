@@ -105,7 +105,8 @@ class MemoryWorkspace(Workspace):
         """
         try:
             del self.unique_id_to_info[step_unique_id]
-            self.step_cache.__delitem__(step_unique_id)
+            assert step_unique_id not in self.unique_id_to_info
+            del self.step_cache[step_unique_id]
         except KeyError:
             raise KeyError(f"{step_unique_id} step info not found, step cache cannot be deleted")
 
