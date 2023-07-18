@@ -1,9 +1,9 @@
 import collections
-import os
 import logging
+import os
+import shutil
 import warnings
 import weakref
-import shutil
 from pathlib import Path
 from typing import Any, MutableMapping, Optional, OrderedDict, Union, cast
 

@@ -20,8 +20,6 @@ from typing import (
 from urllib.parse import ParseResult, urlparse
 
 import pytz
-from sqlitedict import SqliteDict
-import shutil
 
 from .common import Registrable
 from .common.from_params import FromParams
