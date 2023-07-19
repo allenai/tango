@@ -48,6 +48,7 @@ class StepCache(Registrable):
         """Writes the results for the given step. Throws an exception if the step is already cached."""
         raise NotImplementedError()
 
+    @abstractmethod
     def __delitem__(self, step_unique_id) -> None:
         """Removes a step from step cache"""
         raise NotImplementedError()
