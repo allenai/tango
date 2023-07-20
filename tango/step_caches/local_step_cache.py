@@ -91,6 +91,17 @@ class LocalStepCache(StepCache):
         except KeyError:
             return None
 
+    def _remove_from_cache(self, key:str) -> None:
+        # check and remove from strong cache
+        if key in self.strong_cache:
+            del self.strong_cache[key]
+            assert key not in self.strong_cache
+
+        # check and remove from weak cache
+        if key in self.weak_cache:
+            del self.weak_cache[key]
+            assert key not in self.weak_cache
+
     def _metadata_path(self, step_or_unique_id: Union[Step, StepInfo, str]) -> Path:
         return self.step_dir(step_or_unique_id) / self.METADATA_FILE_NAME
 

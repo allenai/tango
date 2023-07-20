@@ -385,6 +385,16 @@ class GSWorkspace(RemoteWorkspace):
 
         self._ds.put(step_info_entity)
 
+    def _remove_step_info(self, step_info: StepInfo) -> None:
+        # remove dir from bucket
+        step_artifact = self.client.get(self.Constants.step_artifact_name(step_info))
+        if step_artifact is not None:
+            self.client.delete(step_artifact)
+
+        # remove datastore entities
+        self._ds.delete(key=self._ds.key("stepinfo", step_info.unique_id))
+
+
     def _save_run_log(self, name: str, log_file: Path):
         """
         The logs are stored in the bucket. The Run object details are stored in
