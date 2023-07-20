@@ -91,7 +91,7 @@ class LocalStepCache(StepCache):
         except KeyError:
             return None
 
-    def _remove_from_cache(self, key:str) -> None:
+    def _remove_from_cache(self, key: str) -> None:
         # check and remove from strong cache
         if key in self.strong_cache:
             del self.strong_cache[key]

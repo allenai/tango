@@ -6,7 +6,7 @@ from tango.workspaces import MemoryWorkspace
 
 
 class AdditionStep(Step):
-    def run(self, a: int, b: int) -> int:
+    def run(self, a: int, b: int) -> int:  # type: ignore
         return a + b
 
 

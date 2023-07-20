@@ -292,6 +292,13 @@ class WandbWorkspace(Workspace):
             if step.unique_id in self._running_step_info:
                 del self._running_step_info[step.unique_id]
 
+    def step_cache_remove(self, step_unique_id: str):
+        """
+        Removes cached step using the given unique step id
+        :raises KeyError: If there is no step with the given name.
+        """
+        raise NotImplementedError()
+
     def register_run(self, targets: Iterable[Step], name: Optional[str] = None) -> Run:
         all_steps = set(targets)
         for step in targets:

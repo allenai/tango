@@ -394,7 +394,6 @@ class GSWorkspace(RemoteWorkspace):
         # remove datastore entities
         self._ds.delete(key=self._ds.key("stepinfo", step_info.unique_id))
 
-
     def _save_run_log(self, name: str, log_file: Path):
         """
         The logs are stored in the bucket. The Run object details are stored in

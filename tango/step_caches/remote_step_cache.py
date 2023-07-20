@@ -156,7 +156,6 @@ class RemoteStepCache(LocalStepCache):
         # Finally, add to in-memory caches.
         self._add_to_cache(step.unique_id, value)
 
-
     def __delitem__(self, step_unique_id) -> None:
         # check and delete local cache dir
         if self.step_dir(step_unique_id).is_dir():
@@ -166,4 +165,3 @@ class RemoteStepCache(LocalStepCache):
         self._remove_from_cache(key=step_unique_id)
 
         return None
-
