@@ -7,7 +7,7 @@ from tango.workspaces import LocalWorkspace
 
 
 class AdditionStep(Step):
-    def run(self, a: int, b: int) -> int: # type: ignore
+    def run(self, a: int, b: int) -> int:  # type: ignore
         return a + b
 
 
