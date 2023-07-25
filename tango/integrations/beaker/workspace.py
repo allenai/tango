@@ -427,4 +427,3 @@ class BeakerWorkspace(RemoteWorkspace):
         step_dataset = self.beaker.dataset.get(dataset_name)
         if step_dataset is not None:
             self.beaker.dataset.delete(step_dataset)
-
