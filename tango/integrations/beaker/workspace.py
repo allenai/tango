@@ -417,6 +417,14 @@ class BeakerWorkspace(RemoteWorkspace):
         self.beaker.dataset.upload(
             step_info_dataset,  # folder name
             json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
-            self.Constants.STEP_INFO_FNAME,  # step info filename
+            self.Constants.STEP_INFO_FNAME,  # step info filenambeake
             quiet=True,
         )
+
+    def _remove_step_info(self, step_info: StepInfo) -> None:
+        # remove dir from beaker workspace
+        dataset_name = self.Constants.step_artifact_name(step_info)
+        step_dataset = self.beaker.dataset.get(dataset_name)
+        if step_dataset is not None:
+            self.beaker.dataset.delete(step_dataset)
+

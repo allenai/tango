@@ -163,5 +163,3 @@ class RemoteStepCache(LocalStepCache):
 
         # remove from memory cache
         self._remove_from_cache(key=step_unique_id)
-
-        return None

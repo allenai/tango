@@ -181,7 +181,6 @@ class RemoteWorkspace(Workspace):
         """
         try:
             step_info = self.step_info(step_unique_id)
-
             # remove remote objects
             self._remove_step_info(step_info)
 
