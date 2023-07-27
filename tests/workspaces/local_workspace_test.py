@@ -1,13 +1,12 @@
 from shutil import copytree
-from sqlitedict import SqliteDict
 
 import pytest
+from sqlitedict import SqliteDict
 
 from tango import Step
 from tango.common.testing import TangoTestCase
 from tango.step_info import StepState
 from tango.workspaces import LocalWorkspace
-
 
 
 class AdditionStep(Step):
