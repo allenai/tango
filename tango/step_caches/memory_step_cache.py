@@ -35,12 +35,11 @@ class MemoryStepCache(StepCache):
                 UserWarning,
             )
 
-    def __delitem__(self, step_unique_id) -> None:
-        if step_unique_id in self.cache:
-            del self.cache[step_unique_id]
-            assert step_unique_id not in self.cache
+    def __delitem__(self, step: Union[Step, StepInfo]) -> None:
+        if step.unique_id in self.cache:
+            del self.cache[step.unique_id]
         else:
-            raise KeyError(f"{step_unique_id} not present in the memory cache. Can't be deleted")
+            raise KeyError(f"{step.unique_id} not present in the memory cache. Cannot be deleted.")
 
     def __contains__(self, step: object) -> bool:
         if isinstance(step, (Step, StepInfo)):

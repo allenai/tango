@@ -174,7 +174,7 @@ class RemoteWorkspace(Workspace):
         finally:
             self.locks.pop(step).release()
 
-    def step_cache_remove(self, step_unique_id: str) -> None:
+    def remove_step(self, step_unique_id: str) -> None:
         """
         Get Step unique id from the user and remove the step information from cache
         :raises KeyError: If no step with the unique name found in the cache dir
@@ -185,7 +185,7 @@ class RemoteWorkspace(Workspace):
             self._remove_step_info(step_info)
 
             # remove cache info
-            del self.cache[step_unique_id]
+            del self.cache[step_info]
         except KeyError:
             raise KeyError(f"No step named '{step_unique_id}' found.")
         return None

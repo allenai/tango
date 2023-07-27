@@ -1,4 +1,5 @@
 from shutil import copytree
+from sqlitedict import SqliteDict
 
 import pytest
 
@@ -6,6 +7,7 @@ from tango import Step
 from tango.common.testing import TangoTestCase
 from tango.step_info import StepState
 from tango.workspaces import LocalWorkspace
+
 
 
 class AdditionStep(Step):
@@ -73,3 +75,23 @@ class TestLocalWorkspace(TangoTestCase):
         while len(dependencies) > 0:
             step_info = workspace.step_info(dependencies.pop())
             dependencies.extend(step_info.dependencies)
+
+    def test_remove_step(self):
+        workspace = LocalWorkspace(self.TEST_DIR)
+        step = AdditionStep(a=1, b=2)
+        workspace.step_starting(step)
+        workspace.step_finished(step, 1.0)
+
+        with SqliteDict(workspace.step_info_file) as d:
+            assert step.unique_id in d
+
+        cache = workspace.step_cache
+        assert step in cache
+
+        workspace.remove_step(step.unique_id)
+
+        with SqliteDict(workspace.step_info_file) as d:
+            assert step.unique_id not in d
+
+        cache = workspace.step_cache
+        assert step not in cache

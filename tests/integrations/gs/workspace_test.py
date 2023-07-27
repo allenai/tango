@@ -40,3 +40,31 @@ class TestGSWorkspace(TangoTestCase):
         workspace.step_finished(step, 1.0)
         assert workspace.step_info(step).state == StepState.COMPLETED
         assert workspace.step_result_for_run(run.name, "float") == 1.0
+
+    def test_remove_step(self):
+        workspace = GSWorkspace(GS_BUCKET_NAME)
+        step = FloatStep(step_name="float", result=1.0)
+        step_info = workspace.step_info(step)
+
+        workspace.step_starting(step)
+        workspace.step_finished(step, 1.0)
+        bucket_artifact = workspace.Constants.step_artifact_name(step_info)
+        ds_entity = workspace._ds.get(key=workspace._ds.key("stepinfo", step_info.unique_id))
+        cache = workspace.step_cache
+
+        assert workspace.client.artifacts(prefix=bucket_artifact) is not None
+        assert ds_entity is not None
+        assert step in cache
+
+        workspace.remove_step(step.unique_id)
+        cache = workspace.step_cache
+
+        ds_entity = workspace._ds.get(key=workspace._ds.key("stepinfo", step_info.unique_id))
+
+        try:
+            workspace.client.artifacts(prefix=bucket_artifact)
+        except KeyError:
+            pass
+            #to assert that the artifact is no longer present in the bucket
+        assert ds_entity is None
+        assert step not in cache

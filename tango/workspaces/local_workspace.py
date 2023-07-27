@@ -322,18 +322,17 @@ class LocalWorkspace(Workspace):
             lock.release()
             del self.locks[step]
 
-    def step_cache_remove(self, step_unique_id: str) -> None:
+    def remove_step(self, step_unique_id: str) -> None:
         """
         Get Step unique id from the user and remove the step information from cache
         :raises KeyError: If no step with the unique name found in the cache dir
         """
         with SqliteDict(self.step_info_file) as d:
             try:
-                assert step_unique_id in d
+                step_info = self.step_info(step_unique_id)
                 del d[step_unique_id]
                 d.commit()
-                assert step_unique_id not in d
-                self.cache.__delitem__(step_unique_id)
+                del self.cache[step_info]
             except KeyError:
                 raise KeyError(f"No step named '{step_unique_id}' found")
 

@@ -160,11 +160,11 @@ class LocalStepCache(StepCache):
                 pass
             raise
 
-    def __delitem__(self, step_unique_id) -> None:
-        location = str(self.dir) + "/" + str(step_unique_id)
+    def __delitem__(self, step: Union[Step, StepInfo]) -> None:
+        location = str(self.dir) + "/" + str(step.unique_id)
         try:
             shutil.rmtree(location)
-            assert not os.path.exists(location)
+            self._remove_from_cache(step.unique_id)
         except OSError:
             raise OSError("Step Cache folder not found")
 

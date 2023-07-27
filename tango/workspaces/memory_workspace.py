@@ -98,15 +98,15 @@ class MemoryWorkspace(Workspace):
         existing_step_info.end_time = utc_now_datetime()
         existing_step_info.error = exception_to_string(e)
 
-    def step_cache_remove(self, step_unique_id: str) -> None:
+    def remove_step(self, step_unique_id: str) -> None:
         """
         Get Step unique id from the user and remove the step information from memory cache
         :raises KeyError: If no step with the unique name found in the cache dir
         """
         try:
+            step_info = self.step_info(step_unique_id)
             del self.unique_id_to_info[step_unique_id]
-            assert step_unique_id not in self.unique_id_to_info
-            del self.step_cache[step_unique_id]
+            del self.step_cache[step_info]
         except KeyError:
             raise KeyError(f"{step_unique_id} step info not found, step cache cannot be deleted")
 
