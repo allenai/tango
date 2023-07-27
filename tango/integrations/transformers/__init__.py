@@ -98,6 +98,8 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::AutoModelForSpeechSeq2Seq::from_pretrained
             transformers::AutoModelForTableQuestionAnswering::from_config
             transformers::AutoModelForTableQuestionAnswering::from_pretrained
+            transformers::AutoModelForTextEncoding::from_config
+            transformers::AutoModelForTextEncoding::from_pretrained
             transformers::AutoModelForTokenClassification::from_config
             transformers::AutoModelForTokenClassification::from_pretrained
             transformers::AutoModelForUniversalSegmentation::from_config
