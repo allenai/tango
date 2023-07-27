@@ -157,9 +157,4 @@ class RemoteStepCache(LocalStepCache):
         self._add_to_cache(step.unique_id, value)
 
     def __delitem__(self, step: Union[Step, StepInfo]) -> None:
-        # check and delete local cache dir
-        if self.step_dir(step.unique_id).is_dir():
-            shutil.rmtree(self.step_dir(step.unique_id))
-
-        # remove from memory cache
-        self._remove_from_cache(key=step.unique_id)
+        super().__delitem__(step)
