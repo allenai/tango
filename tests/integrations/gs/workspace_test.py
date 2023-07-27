@@ -66,6 +66,6 @@ class TestGSWorkspace(TangoTestCase):
         with pytest.raises(Exception) as excinfo:
             workspace.client.artifacts(prefix=bucket_artifact)
 
-        assert 'KeyError' in str(excinfo)
+        assert "KeyError" in str(excinfo)
         assert ds_entity is None
         assert step not in cache

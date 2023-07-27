@@ -26,8 +26,9 @@ def test_direct_usage(beaker_workspace: str):
     assert workspace.step_info(step).state == StepState.COMPLETED
     assert workspace.step_result_for_run(run.name, "float") == 1.0
 
+
 def test_remove_step(beaker_workspace: str):
-    beaker_workspace = 'ai2/tango_remove_cache_test'
+    beaker_workspace = "ai2/tango_remove_cache_test"
     workspace = BeakerWorkspace(beaker_workspace)
     step = FloatStep(step_name="float", result=1.0)
 
@@ -47,5 +48,5 @@ def test_remove_step(beaker_workspace: str):
 
     with pytest.raises(Exception) as excinfo:
         workspace.beaker.dataset.get(dataset_name)
-    assert 'DatasetNotFound' in str(excinfo)
+    assert "DatasetNotFound" in str(excinfo)
     assert step not in cache
