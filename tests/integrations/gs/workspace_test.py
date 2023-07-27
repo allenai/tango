@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from tango.common.testing import TangoTestCase
 from tango.common.testing.steps import FloatStep
 from tango.integrations.gs.common import empty_bucket, empty_datastore
@@ -61,10 +63,9 @@ class TestGSWorkspace(TangoTestCase):
 
         ds_entity = workspace._ds.get(key=workspace._ds.key("stepinfo", step_info.unique_id))
 
-        try:
+        with pytest.raises(Exception) as excinfo:
             workspace.client.artifacts(prefix=bucket_artifact)
-        except KeyError:
-            pass
-            #to assert that the artifact is no longer present in the bucket
+
+        assert 'KeyError' in str(excinfo)
         assert ds_entity is None
         assert step not in cache
