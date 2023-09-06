@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unnecessary code coverage dev requirements.
 - Fixed issue where new version of torch caused no LR schedulers to be registered.
 
+### Changed
+
+- Added `display()` to `ExecutorOutput` for producing a table that summarizes the run
+
+
 ## [v1.2.1](https://github.com/allenai/tango/releases/tag/v1.2.1) - 2023-04-06
 
 ### Added
