@@ -765,7 +765,7 @@ def _run(
 
         if executor_output is not None:
             if not called_by_executor:
-                _display_run_results(run, step_graph, workspace, executor_output)
+                executor_output.display()
             if executor_output.failed:
                 raise CliRunError
 
@@ -785,71 +785,6 @@ def _run(
             log_and_execute_run()
 
     return run.name
-
-
-def _display_run_results(
-    run: "Run", step_graph: StepGraph, workspace: Workspace, executor_output: "ExecutorOutput"
-) -> None:
-    from rich.table import Table
-
-    table = Table(caption_style="")
-    table.add_column("Step Name", justify="left", style="cyan")
-    table.add_column("Status", justify="left")
-    table.add_column("Results", justify="left")
-    last_cached_step: Optional[str] = None
-    for step_name in sorted(step_graph):
-        status_str: str
-        result_str: str = "[grey62]N/A[/]"
-        if step_name in executor_output.failed:
-            status_str = "[red]\N{ballot x} failed[/]"
-            execution_metadata = executor_output.failed[step_name]
-            if execution_metadata.logs_location is not None:
-                result_str = f"[cyan]{execution_metadata.logs_location}[/]"
-        elif step_name in executor_output.not_run:
-            status_str = "[yellow]- not run[/]"
-        elif step_name in executor_output.successful:
-            status_str = "[green]\N{check mark} succeeded[/]"
-            execution_metadata = executor_output.successful[step_name]
-            if execution_metadata.result_location is not None:
-                result_str = f"[cyan]{execution_metadata.result_location}[/]"
-                last_cached_step = step_name
-            elif execution_metadata.logs_location is not None:
-                result_str = f"[cyan]{execution_metadata.logs_location}[/]"
-        else:
-            continue
-
-        table.add_row(step_name, status_str, result_str)
-
-    caption_parts: List[str] = []
-    if executor_output.failed:
-        caption_parts.append(
-            f"[red]\N{ballot x}[/] [italic]{len(executor_output.failed)} failed[/]"
-        )
-    if executor_output.successful:
-        caption_parts.append(
-            f"[green]\N{check mark}[/] [italic]{len(executor_output.successful)} succeeded[/]"
-        )
-    if executor_output.not_run:
-        caption_parts.append(f"[italic]{len(executor_output.not_run)} not run[/]")
-    table.caption = ", ".join(caption_parts)
-
-    cli_logger.info(table)
-
-    if not executor_output.failed and last_cached_step is not None:
-        from rich.syntax import Syntax
-
-        example = Syntax(
-            "\n".join(
-                [
-                    ">>> from tango import Workspace",
-                    f'>>> workspace = Workspace.from_url("{workspace.url}")',
-                    f'>>> workspace.step_result_for_run("{run.name}", "{last_cached_step}")',
-                ]
-            ),
-            "python",
-        )
-        cli_logger.info("Use your workspace to get the cached result of a step, e.g.")
-        cli_logger.info(example)
 
 
 if __name__ == "__main__":
