@@ -74,6 +74,7 @@ import sys
 import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Union
+from contextlib import nullcontext
 
 import click
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
@@ -91,6 +92,7 @@ from tango.common.util import (
     import_extra_module,
     import_module_and_submodules,
 )
+from tango.executor import Executor
 from tango.settings import TangoGlobalSettings
 from tango.step_graph import StepGraph
 from tango.version import VERSION
@@ -650,10 +652,6 @@ def _run(
     called_by_executor: bool = False,
     ext_var: Optional[Sequence[str]] = None,
 ) -> str:
-    from tango.executor import Executor
-    from tango.executors import MulticoreExecutor
-    from tango.workspaces import MemoryWorkspace, default_workspace
-
     # Read params.
     ext_vars: Dict[str, str] = {}
     for var in ext_var or []:
@@ -675,6 +673,44 @@ def _run(
         import_extra_module(package_name)
 
     # Prepare workspace.
+    workspace: Workspace = _workspace(settings=settings, workspace_url=workspace_url)
+
+    # Initialize step graph.
+    step_graph: StepGraph = StepGraph.from_params(params.pop("steps"))
+    params.assert_empty("'tango run'")
+
+    if step_names:
+        for step_name in step_names:
+            assert step_name in step_graph, (
+                f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
+                f"The config contains: {list(step_graph.keys())}."
+            )
+        step_graph = step_graph.sub_graph(*step_names)
+
+    executor: Executor = _executor(
+        settings=settings,
+        parallelism=parallelism,
+        multicore=multicore,
+        called_by_executor=called_by_executor
+    )
+
+    run_name = _execute_step_graph(
+        workspace=workspace,
+        step_graph=step_graph,
+        executor=executor,
+        name=name,
+        called_by_executor=called_by_executor,
+    )
+
+    return run_name
+
+
+def _workspace(
+    settings: TangoGlobalSettings,
+    workspace_url: str = None,
+) -> Workspace:
+    from tango.workspaces import default_workspace
+
     workspace: Workspace
     if workspace_url is not None:
         workspace = Workspace.from_url(workspace_url)
@@ -682,6 +718,18 @@ def _run(
         workspace = Workspace.from_params(settings.workspace)
     else:
         workspace = default_workspace
+
+    return workspace
+
+
+def _executor(
+    settings: TangoGlobalSettings,
+    parallelism: Optional[int] = None,
+    multicore: Optional[bool] = None,
+    called_by_executor: bool = False,
+):
+    from tango.executors import MulticoreExecutor
+    from tango.workspaces import MemoryWorkspace
 
     executor: Executor
     if not called_by_executor and settings.executor is not None:
@@ -718,47 +766,48 @@ def _run(
         else:
             executor = Executor(workspace=workspace, include_package=include_package)
 
-    # Initialize step graph.
-    step_graph = StepGraph.from_params(params.pop("steps"))
-    sub_graph: Optional[StepGraph] = None
-    params.assert_empty("'tango run'")
+    return executor
 
+
+def _execute_step_graph(
+    workspace: Workspace,
+    step_graph: StepGraph,
+    executor: Executor,
+    name: Optional[str] = None,
+    called_by_executor: bool = False,
+) -> str:
     # Register run.
     run: "Run"
-    if step_names:
-        for step_name in step_names:
-            assert step_name in step_graph, (
-                f"You want to run a step called '{step_name}', but it cannot be found in the experiment config. "
-                f"The config contains: {list(step_graph.keys())}."
+    if called_by_executor and name is not None:
+        try:
+            run = workspace.registered_run(name)
+        except KeyError:
+            raise RuntimeError(
+                "The CLI was called by `MulticoreExecutor.execute_step_graph`, but "
+                f"'{name}' is not already registered as a run. This should never happen!"
             )
-        sub_graph = step_graph.sub_graph(*step_names)
-        if called_by_executor and name is not None:
-            try:
-                run = workspace.registered_run(name)
-            except KeyError:
-                raise RuntimeError(
-                    "The CLI was called by `MulticoreExecutor.execute_step_graph`, but "
-                    f"'{name}' is not already registered as a run. This should never happen!"
-                )
-        else:
-            run = workspace.register_run((step for step in sub_graph.values()), name)
     else:
         run = workspace.register_run((step for step in step_graph.values()), name)
 
-    def log_and_execute_run():
+    if called_by_executor:
+        assert len(step_graph) == 1
+
+        from tango.common.aliases import EnvVarNames
+
+        # We set this environment variable so that any steps that contain multiprocessing
+        # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
+        step_name = next(iter(step_graph))
+        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
+        initialize_prefix_logging(prefix=f"step {step_name}", main_process=False)
+
+    # Capture logs to file.
+    with workspace.capture_logs_for_run(run.name) if not called_by_executor else nullcontext():
         if not called_by_executor:
             cli_logger.info("[green]Starting new run [bold]%s[/][/]", run.name)
 
-        executor_output: Optional[ExecutorOutput] = None
-        if step_names:
-            assert sub_graph is not None
-            executor_output = executor.execute_sub_graph_for_steps(
-                sub_graph, *step_names, run_name=run.name
-            )
-        else:
-            executor_output = executor.execute_step_graph(step_graph, run_name=run.name)
+        executor_output: ExecutorOutput = executor.execute_step_graph(step_graph, run_name=run.name)
 
-        if executor_output is not None and executor_output.failed:
+        if executor_output.failed:
             cli_logger.error("[red]\N{ballot x} Run [bold]%s[/] finished with errors[/]", run.name)
         elif not called_by_executor:
             cli_logger.info("[green]\N{check mark} Finished run [bold]%s[/][/]", run.name)
@@ -768,21 +817,6 @@ def _run(
                 executor_output.display()
             if executor_output.failed:
                 raise CliRunError
-
-    if called_by_executor:
-        assert step_names is not None and len(step_names) == 1
-
-        from tango.common.aliases import EnvVarNames
-
-        # We set this environment variable so that any steps that contain multiprocessing
-        # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
-        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_names[0]}"
-        initialize_prefix_logging(prefix=f"step {step_names[0]}", main_process=False)
-        log_and_execute_run()
-    else:
-        # Capture logs to file.
-        with workspace.capture_logs_for_run(run.name):
-            log_and_execute_run()
 
     return run.name
 
