@@ -691,7 +691,7 @@ def _run(
         settings=settings,
         parallelism=parallelism,
         multicore=multicore,
-        called_by_executor=called_by_executor
+        called_by_executor=called_by_executor,
     )
 
     run_name = _execute_step_graph(
