@@ -158,6 +158,7 @@ def execute_step_graph(
     executor: Executor,
     name: Optional[str] = None,
     called_by_executor: bool = False,
+    step_names: Optional[Sequence[str]] = None,
 ) -> str:
     # Register run.
     run: "Run"
@@ -173,15 +174,13 @@ def execute_step_graph(
         run = workspace.register_run((step for step in step_graph.values()), name)
 
     if called_by_executor:
-        assert len(step_graph) == 1
-
+        assert step_names is not None and len(step_names) == 1
         from tango.common.aliases import EnvVarNames
 
         # We set this environment variable so that any steps that contain multiprocessing
         # and call `initialize_worker_logging` also log the messages with the `step_name` prefix.
-        step_name = next(iter(step_graph))
-        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_name}"
-        initialize_prefix_logging(prefix=f"step {step_name}", main_process=False)
+        os.environ[EnvVarNames.LOGGING_PREFIX.value] = f"step {step_names[0]}"
+        initialize_prefix_logging(prefix=f"step {step_names[0]}", main_process=False)
 
     # Capture logs to file.
     with workspace.capture_logs_for_run(run.name) if not called_by_executor else nullcontext():

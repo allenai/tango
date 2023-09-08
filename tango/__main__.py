@@ -436,8 +436,8 @@ def set_setting(obj: SettingsObject):
 
 
 @set_setting.result_callback()
-def save_settings(obj: SettingsObject):
-    obj.settings.save()
+def save_settings(settings: TangoGlobalSettings):
+    settings.save()
 
 
 @set_setting.command(**_CLICK_COMMAND_DEFAULTS)
@@ -655,6 +655,7 @@ def _run(
         executor=executor,
         name=name,
         called_by_executor=called_by_executor,
+        step_names=step_names
     )
 
     return run_name

@@ -3,10 +3,10 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, TypeVar
 
-from rich.console import Console
+from rich import get_console
 from rich.table import Table
 
-from .common.logging import log_exception
+from .common.logging import cli_logger, log_exception
 from .common.registrable import Registrable
 from .common.util import import_extra_module
 from .step_graph import StepGraph
@@ -90,8 +90,12 @@ class ExecutorOutput:
             caption_parts.append(f"[italic]{len(self.not_run)} not run[/]")
         table.caption = ", ".join(caption_parts)
 
-        console = Console()
-        console.print(table)
+        if logger.isEnabledFor(logging.INFO):
+            logger.info(table)
+        elif cli_logger.isEnabledFor(logging.INFO):
+            cli_logger.info(table)
+        else:
+            get_console().print(table)
 
 
 class Executor(Registrable):
