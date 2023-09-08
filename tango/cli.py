@@ -169,7 +169,6 @@ def execute_step_graph(
     called_by_executor: bool = False,
     step_names: Optional[Sequence[str]] = None,
 ) -> str:
-
     if workspace is None:
         workspace = prepare_workspace()
 
