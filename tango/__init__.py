@@ -3,12 +3,18 @@ A Python library for choreographing your machine learning research.
 """
 
 __all__ = [
+    "cleanup_cli",
+    "initialize_cli",
+    "execute_step_graph",
     "Format",
     "DillFormat",
     "DillFormatIterator",
     "Executor",
     "JsonFormat",
     "JsonFormatIterator",
+    "load_settings",
+    "prepare_executor",
+    "prepare_workspace",
     "SqliteDictFormat",
     "Step",
     "step",
@@ -24,6 +30,14 @@ __all__ = [
     "Workspace",
 ]
 
+from .cli import (
+    cleanup_cli,
+    execute_step_graph,
+    initialize_cli,
+    load_settings,
+    prepare_executor,
+    prepare_workspace,
+)
 from .executor import Executor
 from .format import (
     DillFormat,
