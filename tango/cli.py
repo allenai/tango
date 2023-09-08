@@ -50,9 +50,12 @@ def tango_cli(settings: Union[TangoGlobalSettings, str, Params, dict, None] = No
 
 
 def initialize_cli(
-    settings: TangoGlobalSettings,
+    settings: Optional[TangoGlobalSettings] = None,
     called_by_executor: bool = False,
 ):
+    if settings is None:
+        settings = TangoGlobalSettings.default()
+
     if not sys.warnoptions:
         warnings.simplefilter("default", category=DeprecationWarning)
 
@@ -87,10 +90,13 @@ def cleanup_cli():
 
 
 def prepare_workspace(
-    settings: TangoGlobalSettings,
+    settings: Optional[TangoGlobalSettings] = None,
     workspace_url: Optional[str] = None,
 ) -> Workspace:
     from tango.workspaces import default_workspace
+
+    if settings is None:
+        settings = TangoGlobalSettings.default()
 
     workspace: Workspace
     if workspace_url is not None:
@@ -104,8 +110,8 @@ def prepare_workspace(
 
 
 def prepare_executor(
-    settings: TangoGlobalSettings,
     workspace: Workspace,
+    settings: Optional[TangoGlobalSettings] = None,
     include_package: Optional[Sequence[str]] = None,
     parallelism: Optional[int] = None,
     multicore: Optional[bool] = None,
@@ -113,6 +119,9 @@ def prepare_executor(
 ) -> Executor:
     from tango.executors import MulticoreExecutor
     from tango.workspaces import MemoryWorkspace
+
+    if settings is None:
+        settings = TangoGlobalSettings.default()
 
     executor: Executor
     if not called_by_executor and settings.executor is not None:
@@ -154,12 +163,19 @@ def prepare_executor(
 
 def execute_step_graph(
     step_graph: StepGraph,
-    workspace: Workspace,
-    executor: Executor,
+    workspace: Optional[Workspace] = None,
+    executor: Optional[Executor] = None,
     name: Optional[str] = None,
     called_by_executor: bool = False,
     step_names: Optional[Sequence[str]] = None,
 ) -> str:
+
+    if workspace is None:
+        workspace = prepare_workspace()
+
+    if executor is None:
+        executor = prepare_executor(workspace=workspace)
+
     # Register run.
     run: "Run"
     if called_by_executor and name is not None:
