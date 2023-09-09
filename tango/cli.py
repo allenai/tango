@@ -171,8 +171,8 @@ def execute_step_graph(
 ) -> str:
     if workspace is None:
         workspace = prepare_workspace()
-
-    if executor is None:
+        executor = prepare_executor(workspace=workspace)
+    elif executor is None:
         executor = prepare_executor(workspace=workspace)
 
     # Register run.
