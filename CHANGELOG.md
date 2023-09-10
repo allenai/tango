@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Added CLI-style execution functions for experiments defined in Python
 - Added `display()` to `ExecutorOutput` for producing a table that summarizes the run
 
 
