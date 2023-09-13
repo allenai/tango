@@ -417,7 +417,7 @@ class BeakerWorkspace(RemoteWorkspace):
         self.beaker.dataset.upload(
             step_info_dataset,  # folder name
             json.dumps(step_info.to_json_dict()).encode(),  # step info dict.
-            self.Constants.STEP_INFO_FNAME,  # step info filenambeake
+            self.Constants.STEP_INFO_FNAME,  # step info filename
             quiet=True,
         )
 
