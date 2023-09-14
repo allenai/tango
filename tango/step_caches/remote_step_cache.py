@@ -155,6 +155,3 @@ class RemoteStepCache(LocalStepCache):
 
         # Finally, add to in-memory caches.
         self._add_to_cache(step.unique_id, value)
-
-    def __delitem__(self, step: Union[Step, StepInfo]) -> None:
-        super().__delitem__(step)
