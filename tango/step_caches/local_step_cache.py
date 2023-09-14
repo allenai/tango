@@ -166,7 +166,7 @@ class LocalStepCache(StepCache):
             shutil.rmtree(location)
             self._remove_from_cache(step.unique_id)
         except OSError:
-            raise OSError("Step Cache folder not found")
+            raise OSError(f"Step cache folder for '{step.unique_id}' not found. Cannot be deleted.")
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob(f"*/{self.METADATA_FILE_NAME}"))
