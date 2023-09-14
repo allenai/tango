@@ -49,7 +49,7 @@ class StepCache(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
-    def __delitem__(self, step_unique_id) -> None:
+    def __delitem__(self, step_unique_id: str) -> None:
         """Removes a step from step cache"""
         raise NotImplementedError()
 
