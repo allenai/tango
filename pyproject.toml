@@ -90,7 +90,6 @@ fairscale = [
 flax = [
   "datasets>=1.12,<3.0",
   "jax>=0.3.13",
-  "jaxlib>=0.4.11",
   "flax>=0.5.0",
   "optax>=0.1.2",
   "tensorflow-cpu>=2.9.1"
