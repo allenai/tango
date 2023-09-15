@@ -46,7 +46,6 @@ def test_remove_step(beaker_workspace: str):
     cache = workspace.step_cache
     dataset_name = workspace.Constants.step_artifact_name(step_info)
 
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(DatasetNotFound):
         workspace.beaker.dataset.get(dataset_name)
-    assert "DatasetNotFound" in str(excinfo)
     assert step not in cache
