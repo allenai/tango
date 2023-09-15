@@ -1,4 +1,5 @@
 import pytest
+from beaker import DatasetNotFound
 
 from tango.common.testing.steps import FloatStep
 from tango.integrations.beaker.workspace import BeakerWorkspace
