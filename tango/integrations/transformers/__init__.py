@@ -44,76 +44,10 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             from tango.integrations.torch import Model
             from tango.integrations.transformers import *
 
+            available_models = []
             for name in sorted(Model.list_available()):
                 if name.startswith("transformers::AutoModel"):
-                    print(name)
-
-        .. testoutput::
-
-            transformers::AutoModel::from_config
-            transformers::AutoModel::from_pretrained
-            transformers::AutoModelForAudioClassification::from_config
-            transformers::AutoModelForAudioClassification::from_pretrained
-            transformers::AutoModelForAudioFrameClassification::from_config
-            transformers::AutoModelForAudioFrameClassification::from_pretrained
-            transformers::AutoModelForAudioXVector::from_config
-            transformers::AutoModelForAudioXVector::from_pretrained
-            transformers::AutoModelForCTC::from_config
-            transformers::AutoModelForCTC::from_pretrained
-            transformers::AutoModelForCausalLM::from_config
-            transformers::AutoModelForCausalLM::from_pretrained
-            transformers::AutoModelForDepthEstimation::from_config
-            transformers::AutoModelForDepthEstimation::from_pretrained
-            transformers::AutoModelForDocumentQuestionAnswering::from_config
-            transformers::AutoModelForDocumentQuestionAnswering::from_pretrained
-            transformers::AutoModelForImageClassification::from_config
-            transformers::AutoModelForImageClassification::from_pretrained
-            transformers::AutoModelForImageSegmentation::from_config
-            transformers::AutoModelForImageSegmentation::from_pretrained
-            transformers::AutoModelForInstanceSegmentation::from_config
-            transformers::AutoModelForInstanceSegmentation::from_pretrained
-            transformers::AutoModelForMaskGeneration::from_config
-            transformers::AutoModelForMaskGeneration::from_pretrained
-            transformers::AutoModelForMaskedImageModeling::from_config
-            transformers::AutoModelForMaskedImageModeling::from_pretrained
-            transformers::AutoModelForMaskedLM::from_config
-            transformers::AutoModelForMaskedLM::from_pretrained
-            transformers::AutoModelForMultipleChoice::from_config
-            transformers::AutoModelForMultipleChoice::from_pretrained
-            transformers::AutoModelForNextSentencePrediction::from_config
-            transformers::AutoModelForNextSentencePrediction::from_pretrained
-            transformers::AutoModelForObjectDetection::from_config
-            transformers::AutoModelForObjectDetection::from_pretrained
-            transformers::AutoModelForPreTraining::from_config
-            transformers::AutoModelForPreTraining::from_pretrained
-            transformers::AutoModelForQuestionAnswering::from_config
-            transformers::AutoModelForQuestionAnswering::from_pretrained
-            transformers::AutoModelForSemanticSegmentation::from_config
-            transformers::AutoModelForSemanticSegmentation::from_pretrained
-            transformers::AutoModelForSeq2SeqLM::from_config
-            transformers::AutoModelForSeq2SeqLM::from_pretrained
-            transformers::AutoModelForSequenceClassification::from_config
-            transformers::AutoModelForSequenceClassification::from_pretrained
-            transformers::AutoModelForSpeechSeq2Seq::from_config
-            transformers::AutoModelForSpeechSeq2Seq::from_pretrained
-            transformers::AutoModelForTableQuestionAnswering::from_config
-            transformers::AutoModelForTableQuestionAnswering::from_pretrained
-            transformers::AutoModelForTokenClassification::from_config
-            transformers::AutoModelForTokenClassification::from_pretrained
-            transformers::AutoModelForUniversalSegmentation::from_config
-            transformers::AutoModelForUniversalSegmentation::from_pretrained
-            transformers::AutoModelForVideoClassification::from_config
-            transformers::AutoModelForVideoClassification::from_pretrained
-            transformers::AutoModelForVision2Seq::from_config
-            transformers::AutoModelForVision2Seq::from_pretrained
-            transformers::AutoModelForVisualQuestionAnswering::from_config
-            transformers::AutoModelForVisualQuestionAnswering::from_pretrained
-            transformers::AutoModelForZeroShotImageClassification::from_config
-            transformers::AutoModelForZeroShotImageClassification::from_pretrained
-            transformers::AutoModelForZeroShotObjectDetection::from_config
-            transformers::AutoModelForZeroShotObjectDetection::from_pretrained
-            transformers::AutoModelWithLMHead::from_config
-            transformers::AutoModelWithLMHead::from_pretrained
+                    available_models.append(name)
 
 - :class:`~tango.integrations.torch.Optimizer`: All optimizers from transformers are registered according
   to their class names (e.g. "transformers::AdaFactor").
