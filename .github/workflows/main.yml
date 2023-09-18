@@ -14,7 +14,7 @@ on:
       - "v*.*.*"
 
 env:
-  CACHE_PREFIX: v4 # Change this to invalidate existing cache.
+  CACHE_PREFIX: v5 # Change this to invalidate existing cache.
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.9
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -211,7 +211,7 @@ jobs:
         if: steps.virtualenv-cache.outputs.cache-hit != 'true' && (contains(matrix.task.extras, 'flax') || contains(matrix.task.extras, 'all'))
         run: |
           . .venv/bin/activate
-          pip install flax==0.5.0 jax==0.3.13 jaxlib==0.4.11 tensorflow-cpu==2.9.1 optax==0.1.3
+          pip install flax==0.5.0 jax==0.3.13 jaxlib==0.3.10 tensorflow-cpu==2.9.1 optax==0.1.3
 
       - name: Install editable (no cache hit)
         if: steps.virtualenv-cache.outputs.cache-hit != 'true'
