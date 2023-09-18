@@ -14,7 +14,7 @@ on:
       - "v*.*.*"
 
 env:
-  CACHE_PREFIX: v3 # Change this to invalidate existing cache.
+  CACHE_PREFIX: v4 # Change this to invalidate existing cache.
   PYTHON_PATH: ./
   DEFAULT_PYTHON: 3.9
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
