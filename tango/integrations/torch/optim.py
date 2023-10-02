@@ -1,3 +1,5 @@
+from typing import Type
+
 import torch
 
 from tango.common.registrable import Registrable
@@ -74,6 +76,7 @@ for name, cls in torch.optim.__dict__.items():
         Optimizer.register("torch::" + name)(cls)
 
 # Note: This is a hack. Remove after we upgrade the torch version.
+base_class: Type
 try:
     base_class = torch.optim.lr_scheduler.LRScheduler
 except AttributeError:
