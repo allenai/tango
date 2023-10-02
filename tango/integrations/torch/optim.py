@@ -81,9 +81,5 @@ except AttributeError:
 
 # Register all learning rate schedulers.
 for name, cls in torch.optim.lr_scheduler.__dict__.items():
-    if (
-        isinstance(cls, type)
-        and issubclass(cls, base_class)
-        and not cls == base_class
-    ):
+    if isinstance(cls, type) and issubclass(cls, base_class) and not cls == base_class:
         LRScheduler.register("torch::" + name)(cls)
