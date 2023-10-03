@@ -1,3 +1,5 @@
+from typing import Type
+
 import torch
 
 from tango.common.registrable import Registrable
@@ -73,11 +75,14 @@ for name, cls in torch.optim.__dict__.items():
     ):
         Optimizer.register("torch::" + name)(cls)
 
+# Note: This is a hack. Remove after we upgrade the torch version.
+base_class: Type
+try:
+    base_class = torch.optim.lr_scheduler.LRScheduler
+except AttributeError:
+    base_class = torch.optim.lr_scheduler._LRScheduler
+
 # Register all learning rate schedulers.
 for name, cls in torch.optim.lr_scheduler.__dict__.items():
-    if (
-        isinstance(cls, type)
-        and issubclass(cls, torch.optim.lr_scheduler.LRScheduler)
-        and not cls == torch.optim.lr_scheduler.LRScheduler
-    ):
+    if isinstance(cls, type) and issubclass(cls, base_class) and not cls == base_class:
         LRScheduler.register("torch::" + name)(cls)

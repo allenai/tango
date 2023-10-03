@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed unnecessary code coverage dev requirements.
 - Fixed issue where new version of torch caused no LR schedulers to be registered.
+- Updated pinned versions of jax, jaxlib, and flax.
 
 ### Changed
 

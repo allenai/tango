@@ -39,9 +39,9 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
             if err.errno not in (1, 13, 30):
                 raise
 
-            if os.path.isfile(self._lock_file) and self._read_only_ok:
+            if os.path.isfile(self._lock_file) and self._read_only_ok:  # type: ignore
                 warnings.warn(
-                    f"Lacking permissions required to obtain lock '{self._lock_file}'. "
+                    f"Lacking permissions required to obtain lock '{self._lock_file}'. "  # type: ignore
                     "Race conditions are possible if other processes are writing to the same resource.",
                     UserWarning,
                 )
@@ -62,7 +62,7 @@ class FileLock(_FileLock):  # type: ignore[valid-type,misc]
         from .tqdm import Tqdm
 
         if desc is None:
-            desc = f"acquiring lock at {self._lock_file}"
+            desc = f"acquiring lock at {self._lock_file}"  # type: ignore
 
         progress = Tqdm.tqdm(desc=desc, bar_format="{desc} [{elapsed}]")
         while True:
