@@ -461,6 +461,20 @@ class BeakerExecutor(Executor):
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
 
+        # Get repo info and make sure we're in a GitHub-hosted repository.
+        git = GitMetadata.check_for_repo()
+        if (
+            git is None
+            or git.commit is None
+            or git.remote is None
+            or "github.com" not in git.remote
+        ):
+            raise ExecutorError(
+                f"Missing git data. "
+                f"BeakerExecutor requires a git repository with a GitHub remote."
+            )
+        self.git = git
+
     def check_repo_state(self):
         if not self.allow_dirty:
             # Make sure repository is clean, if we're in one.
@@ -917,22 +931,11 @@ class BeakerExecutor(Executor):
         )
 
         # Ensure we're working in a GitHub repository.
-        git = GitMetadata.check_for_repo()
-        if (
-            git is None
-            or git.commit is None
-            or git.remote is None
-            or "github.com" not in git.remote
-        ):
-            raise ExecutorError(
-                f"Missing git data for step '{step.unique_id}'. "
-                f"BeakerExecutor requires a git repository with a GitHub remote."
-            )
         try:
-            github_account, github_repo = self._parse_git_remote(git.remote)
+            github_account, github_repo = self._parse_git_remote(self.git.remote)
         except ValueError:
             raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
-        git_ref = git.commit
+        git_ref = self.git.commit
 
         if not self._logged_git_info:
             self._logged_git_info = True
