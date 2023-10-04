@@ -8,7 +8,6 @@ from tango.integrations.gs.common import empty_bucket_folder
 from tango.integrations.gs.step_cache import GSStepCache
 
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
-# GS_SUBFOLDER = f"{GS_BUCKET_NAME}/subfolder"
 GS_SUBFOLDER = f"{GS_BUCKET_NAME}/my-workspaces/workspace1"
 
 

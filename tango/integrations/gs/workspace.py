@@ -115,11 +115,11 @@ class GSWorkspace(RemoteWorkspace):
 
     @property
     def _run_key(self):
-        return self.client._gs_path(self.prefix, "run")
+        return self.client._gs_path("run")
 
     @property
     def _stepinfo_key(self):
-        return self.client._gs_path(self.prefix, "stepinfo")
+        return self.client._gs_path("stepinfo")
 
     def _save_run(
         self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
