@@ -473,7 +473,8 @@ class BeakerExecutor(Executor):
                 f"Missing git data. "
                 f"BeakerExecutor requires a git repository with a GitHub remote."
             )
-        self.git = git
+        self._github_account, self._github_repo = self._parse_git_remote(git)
+        self._git_commit = git.commit
 
     def check_repo_state(self):
         if not self.allow_dirty:
@@ -929,14 +930,11 @@ class BeakerExecutor(Executor):
         experiment_name = (
             f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
         )
-
-        # Ensure we're working in a GitHub repository.
-        try:
-            github_account, github_repo = self._parse_git_remote(self.git.remote)
-        except ValueError:
-            raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
-        git_ref = self.git.commit
-
+        github_account, github_repo, git_ref = (
+            self._github_account,
+            self._github_repo,
+            self._git_commit,
+        )
         if not self._logged_git_info:
             self._logged_git_info = True
             cli_logger.info(
