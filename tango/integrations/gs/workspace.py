@@ -12,6 +12,7 @@ from tango.common.util import utc_now_datetime
 from tango.integrations.gs.common import (
     Constants,
     GCSStepLock,
+    get_bucket_and_prefix,
     get_client,
     get_credentials,
 )
@@ -32,7 +33,7 @@ class GSWorkspace(RemoteWorkspace):
     .. tip::
         Registered as a :class:`~tango.workspace.Workspace` under the name "gs".
 
-    :param workspace: The name or ID of the Google Cloud bucket to use.
+    :param workspace: The name or ID of the Google Cloud bucket folder to use.
     :param project: The Google project ID. This is required for the datastore. If not provided,
         it will be inferred from the Google cloud credentials.
 
@@ -61,7 +62,7 @@ class GSWorkspace(RemoteWorkspace):
         project: Optional[str] = None,
         credentials: Optional[Union[str, Credentials]] = None,
     ):
-        self.client = get_client(bucket_name=workspace, credentials=credentials, project=project)
+        self.client = get_client(folder_name=workspace, credentials=credentials, project=project)
 
         self.client.NUM_CONCURRENT_WORKERS = self.NUM_CONCURRENT_WORKERS
         self._cache = GSStepCache(workspace, client=self.client)
@@ -71,7 +72,11 @@ class GSWorkspace(RemoteWorkspace):
 
         credentials = get_credentials()
         project = project or credentials.quota_project_id
-        self._ds = datastore.Client(namespace=workspace, project=project, credentials=credentials)
+
+        self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)
+        self._ds = datastore.Client(
+            namespace=self.bucket_name, project=project, credentials=credentials
+        )
 
     @property
     def cache(self):
@@ -108,19 +113,29 @@ class GSWorkspace(RemoteWorkspace):
     def _step_location(self, step: Step) -> str:
         return self.client.url(self.Constants.step_artifact_name(step))
 
+    @property
+    def _run_key(self):
+        return self.client._gs_path("run")
+
+    @property
+    def _stepinfo_key(self):
+        return self.client._gs_path("stepinfo")
+
     def _save_run(
         self, steps: Dict[str, StepInfo], run_data: Dict[str, str], name: Optional[str] = None
     ) -> Run:
         if name is None:
             while True:
                 name = petname.generate() + str(random.randint(0, 100))
-                if not self._ds.get(self._ds.key("run", name)):
+                if not self._ds.get(self._ds.key(self._run_key, name)):
                     break
         else:
-            if self._ds.get(self._ds.key("run", name)):
+            if self._ds.get(self._ds.key(self._run_key, name)):
                 raise ValueError(f"Run name '{name}' is already in use")
 
-        run_entity = self._ds.entity(key=self._ds.key("run", name), exclude_from_indexes=("steps",))
+        run_entity = self._ds.entity(
+            key=self._ds.key(self._run_key, name), exclude_from_indexes=("steps",)
+        )
         # Even though the run's name is part of the key, we add this as a
         # field so we can index on it and order asc/desc (indices on the key field don't allow ordering).
         run_entity["name"] = name
@@ -164,7 +179,7 @@ class GSWorkspace(RemoteWorkspace):
             thread_name_prefix="GSWorkspace.registered_runs()-",
         ) as executor:
             run_futures = []
-            for run_entity in self._ds.query(kind="run").fetch():
+            for run_entity in self._ds.query(kind=self._run_key).fetch():
                 run_futures.append(executor.submit(self._get_run_from_entity, run_entity))
             for future in concurrent.futures.as_completed(run_futures):
                 run = future.result()
@@ -225,7 +240,7 @@ class GSWorkspace(RemoteWorkspace):
         if sort_field is not None and not sort_locally:
             order = [sort_field if not sort_descending else f"-{sort_field}"]
 
-        query = self._ds.query(kind="run", order=order)
+        query = self._ds.query(kind=self._run_key, order=order)
         if match:
             # HACK: Datastore has no direct string matching functionality,
             # but this comparison is equivalent to checking if 'name' starts with 'match'.
@@ -309,7 +324,7 @@ class GSWorkspace(RemoteWorkspace):
         if sort_field is not None and not sort_locally:
             order = [sort_field if not sort_descending else f"-{sort_field}"]
 
-        query = self._ds.query(kind="stepinfo", order=order)
+        query = self._ds.query(kind=self._stepinfo_key, order=order)
 
         if match is not None:
             # HACK: Datastore has no direct string matching functionality,
@@ -341,7 +356,7 @@ class GSWorkspace(RemoteWorkspace):
     def registered_run(self, name: str) -> Run:
         err_msg = f"Run '{name}' not found in workspace"
 
-        run_entity = self._ds.get(key=self._ds.key("run", name))
+        run_entity = self._ds.get(key=self._ds.key(self._run_key, name))
         if not run_entity:
             raise KeyError(err_msg)
 
@@ -355,7 +370,7 @@ class GSWorkspace(RemoteWorkspace):
         unique_id = (
             step_or_unique_id if isinstance(step_or_unique_id, str) else step_or_unique_id.unique_id
         )
-        step_info_entity = self._ds.get(key=self._ds.key("stepinfo", unique_id))
+        step_info_entity = self._ds.get(key=self._ds.key(self._stepinfo_key, unique_id))
         if step_info_entity is not None:
             step_info_bytes = step_info_entity["step_info_dict"]
             step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
@@ -369,7 +384,7 @@ class GSWorkspace(RemoteWorkspace):
 
     def _update_step_info(self, step_info: StepInfo):
         step_info_entity = self._ds.entity(
-            key=self._ds.key("stepinfo", step_info.unique_id),
+            key=self._ds.key(self._stepinfo_key, step_info.unique_id),
             exclude_from_indexes=("step_info_dict",),
         )
 
