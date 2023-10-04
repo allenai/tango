@@ -1,34 +1,42 @@
 import os
 
+import pytest
+
 from tango.common.testing import TangoTestCase
 from tango.common.testing.steps import FloatStep
-from tango.integrations.gs.common import empty_bucket, empty_datastore
+from tango.integrations.gs.common import empty_bucket_folder, empty_datastore
 from tango.integrations.gs.workspace import GSWorkspace
 from tango.step_info import StepState
 from tango.workspace import Workspace
 
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "allennlp-tango-bucket")
+GS_SUBFOLDER = f"{GS_BUCKET_NAME}/my-workspaces/workspace1"
 
 
 class TestGSWorkspace(TangoTestCase):
     def setup_method(self):
         super().setup_method()
-        empty_bucket(GS_BUCKET_NAME)
+        empty_bucket_folder(GS_BUCKET_NAME)
+        empty_bucket_folder(GS_SUBFOLDER)
         empty_datastore(GS_BUCKET_NAME)
+        empty_datastore(GS_SUBFOLDER)
 
     def teardown_method(self):
         super().teardown_method()
 
-    def test_from_url(self):
-        workspace = Workspace.from_url(f"gs://{GS_BUCKET_NAME}")
+    @pytest.mark.parametrize("gs_path", [GS_BUCKET_NAME, GS_SUBFOLDER])
+    def test_from_url(self, gs_path: str):
+        workspace = Workspace.from_url(f"gs://{gs_path}")
         assert isinstance(workspace, GSWorkspace)
 
-    def test_from_params(self):
-        workspace = Workspace.from_params({"type": "gs", "workspace": GS_BUCKET_NAME})
+    @pytest.mark.parametrize("gs_path", [GS_BUCKET_NAME, GS_SUBFOLDER])
+    def test_from_params(self, gs_path: str):
+        workspace = Workspace.from_params({"type": "gs", "workspace": gs_path})
         assert isinstance(workspace, GSWorkspace)
 
-    def test_direct_usage(self):
-        workspace = GSWorkspace(GS_BUCKET_NAME)
+    @pytest.mark.parametrize("gs_path", [GS_BUCKET_NAME, GS_SUBFOLDER])
+    def test_direct_usage(self, gs_path: str):
+        workspace = GSWorkspace(gs_path)
 
         step = FloatStep(step_name="float", result=1.0)
         run = workspace.register_run([step])
