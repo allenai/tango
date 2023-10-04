@@ -473,7 +473,7 @@ class BeakerExecutor(Executor):
                 f"Missing git data. "
                 f"BeakerExecutor requires a git repository with a GitHub remote."
             )
-        self._github_account, self._github_repo = self._parse_git_remote(git)
+        self._github_account, self._github_repo = self._parse_git_remote(git.remote)
         self._git_commit = git.commit
 
     def check_repo_state(self):
