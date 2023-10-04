@@ -360,7 +360,8 @@ class GSClient:
         import concurrent.futures
 
         bucket = self.storage.bucket(self.bucket_name)
-        bucket.update()
+        # We may not need updates that frequently, with list_blobs(prefix).
+        # bucket.update()
 
         try:
             with concurrent.futures.ThreadPoolExecutor(
