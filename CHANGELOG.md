@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-
+ - Added the `Workspace.remove_step()` method to safely remove steps.
 - The `GSWorkspace()` can now be initialized with google cloud bucket subfolders.
 
 ### Fixed

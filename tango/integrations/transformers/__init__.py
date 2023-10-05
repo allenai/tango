@@ -45,6 +45,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             from tango.integrations.transformers import *
 
             available_models = []
+
             for name in sorted(Model.list_available()):
                 if name.startswith("transformers::AutoModel"):
                     available_models.append(name)
