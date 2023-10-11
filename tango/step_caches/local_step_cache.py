@@ -1,5 +1,7 @@
 import collections
 import logging
+import os
+import shutil
 import warnings
 import weakref
 from pathlib import Path
@@ -89,6 +91,17 @@ class LocalStepCache(StepCache):
         except KeyError:
             return None
 
+    def _remove_from_cache(self, key: str) -> None:
+        # check and remove from strong cache
+        if key in self.strong_cache:
+            del self.strong_cache[key]
+            assert key not in self.strong_cache
+
+        # check and remove from weak cache
+        if key in self.weak_cache:
+            del self.weak_cache[key]
+            assert key not in self.weak_cache
+
     def _metadata_path(self, step_or_unique_id: Union[Step, StepInfo, str]) -> Path:
         return self.step_dir(step_or_unique_id) / self.METADATA_FILE_NAME
 
@@ -146,6 +159,14 @@ class LocalStepCache(StepCache):
             except FileNotFoundError:
                 pass
             raise
+
+    def __delitem__(self, step: Union[Step, StepInfo]) -> None:
+        location = str(self.dir) + "/" + str(step.unique_id)
+        try:
+            shutil.rmtree(location)
+            self._remove_from_cache(step.unique_id)
+        except OSError:
+            raise OSError(f"Step cache folder for '{step.unique_id}' not found. Cannot be deleted.")
 
     def __len__(self) -> int:
         return sum(1 for _ in self.dir.glob(f"*/{self.METADATA_FILE_NAME}"))
