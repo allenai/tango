@@ -12,7 +12,7 @@ authors:
   affiliation: "Allen Institute for Artificial Intelligence"
 title: "AI2 Tango"
 abstract: "Organize your experiments into discrete steps that can be cached and reused throughout the lifetime of your research project."
-version: "1.2.1"
+version: "1.3.0"
 repository-code: "https://github.com/allenai/tango"
 license: "Apache-2.0"
 date-released: "2023-10-13"
