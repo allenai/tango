@@ -1,7 +1,0 @@
-{
-    "format": {
-        "type": "tango.format.DillFormat",
-        "compress": "gz"
-    },
-    "step": "ConcatStringsStep-4iG3gm8pXSwTXW5TEx7EPa9YRpUE1S9T"
-}
