@@ -319,7 +319,7 @@ class GSClient:
                         future.result()
             else:
                 source_file_path = source_path
-                target_file_path = self._gs_path(folder_path, os.path.basename(source_file_path))
+                target_file_path = join_path(folder_path, os.path.basename(source_file_path))
                 _sync_blob(source_file_path, target_file_path)
         except Exception:
             raise GSArtifactWriteError()
