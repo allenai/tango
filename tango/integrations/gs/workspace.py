@@ -71,7 +71,7 @@ class GSWorkspace(RemoteWorkspace):
         super().__init__()
 
         credentials = get_credentials()
-        project = project or credentials.quota_project_id
+        project = project or self.client.storage.project  # credentials.quota_project_id
 
         self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)
         self._ds = datastore.Client(
