@@ -408,15 +408,23 @@ class GSWorkspace(RemoteWorkspace):
             key = self._ds.key(self._stepinfo_key, unique_id)
             all_unique_id_keys.append(key)
 
-        step_info_entities = self._ds.get_multi(keys=all_unique_id_keys)
+        missing: List = []
+        step_info_entities = self._ds.get_multi(keys=all_unique_id_keys, missing=missing)
+        missing_steps = [entity.key.name for entity in missing]
 
         step_infos = []
         for step_info_entity in step_info_entities:
-            if step_info_entity is not None:
-                step_info_bytes = step_info_entity["step_info_dict"]
-                step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
-                step_infos.append(step_info)
-            else:
+            step_info_bytes = step_info_entity["step_info_dict"]
+            step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
+            step_infos.append(step_info)
+
+        for step_or_unique_id in step_or_unique_ids:
+            step_id = (
+                step_or_unique_id
+                if isinstance(step_or_unique_id, str)
+                else step_or_unique_id.unique_id
+            )
+            if step_id in missing_steps:
                 if not isinstance(step_or_unique_id, Step):
                     raise KeyError(step_or_unique_id)
                 step_info = StepInfo.new_from_step(step_or_unique_id)
