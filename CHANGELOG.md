@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Minor bugs in the `GSWorkspace()`.
+
 ## [v1.3.0](https://github.com/allenai/tango/releases/tag/v1.3.0) - 2023-10-13
 
 ### Added
