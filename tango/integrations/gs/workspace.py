@@ -1,7 +1,17 @@
 import json
 import random
 from pathlib import Path
-from typing import Dict, Generator, Iterable, List, Optional, TypeVar, Union, cast
+from typing import (
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 from urllib.parse import ParseResult
 
 import petname
@@ -71,7 +81,7 @@ class GSWorkspace(RemoteWorkspace):
         super().__init__()
 
         credentials = get_credentials()
-        project = project or credentials.quota_project_id
+        project = project or self.client.storage.project  # credentials.quota_project_id
 
         self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)
         self._ds = datastore.Client(
@@ -381,6 +391,64 @@ class GSWorkspace(RemoteWorkspace):
             step_info = StepInfo.new_from_step(step_or_unique_id)
             self._update_step_info(step_info)
             return step_info
+
+    def _step_info_multiple(
+        self, step_or_unique_ids: Union[List[Step], List[str]]
+    ) -> List[StepInfo]:
+        """
+        This method is to combine all calls to the datastore api in a single transaction.
+        """
+        all_unique_id_keys = []
+        for step_or_unique_id in step_or_unique_ids:
+            unique_id = (
+                step_or_unique_id
+                if isinstance(step_or_unique_id, str)
+                else step_or_unique_id.unique_id
+            )
+            key = self._ds.key(self._stepinfo_key, unique_id)
+            all_unique_id_keys.append(key)
+
+        missing: List = []
+        step_info_entities = self._ds.get_multi(keys=all_unique_id_keys, missing=missing)
+        missing_steps = [entity.key.name for entity in missing]
+
+        step_infos = []
+        for step_info_entity in step_info_entities:
+            step_info_bytes = step_info_entity["step_info_dict"]
+            step_info = StepInfo.from_json_dict(json.loads(step_info_bytes))
+            step_infos.append(step_info)
+
+        for step_or_unique_id in step_or_unique_ids:
+            step_id = (
+                step_or_unique_id
+                if isinstance(step_or_unique_id, str)
+                else step_or_unique_id.unique_id
+            )
+            if step_id in missing_steps:
+                if not isinstance(step_or_unique_id, Step):
+                    raise KeyError(step_or_unique_id)
+                step_info = StepInfo.new_from_step(step_or_unique_id)
+                self._update_step_info(step_info)
+                step_infos.append(step_info)
+        return step_infos
+
+    def _get_run_step_info(self, targets: Iterable[Step]) -> Tuple[Dict, Dict]:
+        all_steps = set(targets)
+        for step in targets:
+            all_steps |= step.recursive_dependencies
+
+        steps: Dict[str, StepInfo] = {}
+        run_data: Dict[str, str] = {}
+
+        all_valid_steps = [step for step in all_steps if step.name is not None]
+        step_infos = self._step_info_multiple(all_valid_steps)
+
+        for step_info in step_infos:
+            assert step_info.step_name is not None
+            steps[step_info.step_name] = step_info
+            run_data[step_info.step_name] = step_info.unique_id
+
+        return steps, run_data
 
     def _update_step_info(self, step_info: StepInfo):
         step_info_entity = self._ds.entity(
