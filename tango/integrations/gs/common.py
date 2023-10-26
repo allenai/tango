@@ -409,7 +409,11 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
     """
 
     # BeakerExecutor uses GOOGLE_TOKEN
+    debug_env_var = os.environ.get("MY_DEBUG_ENV_VAR")
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
+    logger.debug(f"Is google_token None: {os.environ.get("GOOGLE_TOKEN") is None}")
+    logger.debug(f"Are credentials None: {credentials is None}")
+    logger.debug(f"Debug env var: {debug_env_var}")
     if credentials is not None:
         # Path to the credentials file has been provided
         if isinstance(credentials, str) and credentials.endswith(".json"):
