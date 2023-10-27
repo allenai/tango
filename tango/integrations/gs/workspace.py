@@ -84,6 +84,8 @@ class GSWorkspace(RemoteWorkspace):
         project = project or self.client.storage.project  # credentials.quota_project_id
 
         self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)
+        print(credentials)
+        print(f"Project: {project}")
         self._ds = datastore.Client(
             namespace=self.bucket_name, project=project, credentials=credentials
         )
