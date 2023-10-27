@@ -409,29 +409,20 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
     """
 
     # BeakerExecutor uses GOOGLE_TOKEN
-    logger.error(f"Input credentials: {credentials}")
-    debug_env_var = os.environ.get("MY_DEBUG_ENV_VAR")
     credentials = os.environ.get("GOOGLE_TOKEN", credentials)
-    logger.error(f"token: {os.environ.get('GOOGLE_TOKEN')}")
-    logger.error(f"Is google_token None: {os.environ.get('GOOGLE_TOKEN') is None}")
-    logger.error(f"Are credentials None: {credentials is None}")
-    logger.error(f"Debug env var: {debug_env_var}")
     if credentials is not None:
         # Path to the credentials file has been provided
         if isinstance(credentials, str) and credentials.endswith(".json"):
             with open(credentials) as file_ref:
                 credentials = file_ref.read()
-            logger.error(".json file path")
         try:
             # If credentials dict has been passed as a json string
             credentials_dict = json.loads(credentials)
             if credentials_dict.pop("type", None) == "service_account":
-                logger.error("service account")
                 credentials = ServiceAccountCredentials.from_service_account_info(credentials_dict)
             else:
                 # sometimes the credentials dict may not contain `token` and `token_uri` keys,
                 # but `Credentials()` needs the parameter.
-                logger.error("oauth2 credentials")
                 token = credentials_dict.pop("token", None)
                 token_uri = credentials_dict.pop("token_uri", "https://oauth2.googleapis.com/token")
                 credentials = OAuth2Credentials(
@@ -440,11 +431,7 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
         except (json.decoder.JSONDecodeError, TypeError, ValueError):
             # It is not a json string.
             # We use this string because BeakerExecutor cannot write a None secret.
-            import traceback
-            traceback.print_exc()
-            logger.error("credentials exception")
             if credentials == "default":
-                logger.error("default credentials")
                 credentials = None
     if not credentials:
         # Infer default credentials

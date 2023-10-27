@@ -457,7 +457,6 @@ class BeakerExecutor(Executor):
                     self.google_token = f.read()
 
         if self.google_token is None:
-        #else:
             self.google_token = "default"
 
         # Ensure entrypoint dataset exists.

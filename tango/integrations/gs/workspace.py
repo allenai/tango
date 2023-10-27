@@ -72,7 +72,7 @@ class GSWorkspace(RemoteWorkspace):
         project: Optional[str] = None,
         credentials: Optional[Union[str, Credentials]] = None,
     ):
-        credentials = credentials or get_credentials()
+        credentials = get_credentials(credentials)
         self.client = get_client(folder_name=workspace, credentials=credentials, project=project)
 
         self.client.NUM_CONCURRENT_WORKERS = self.NUM_CONCURRENT_WORKERS
@@ -84,8 +84,6 @@ class GSWorkspace(RemoteWorkspace):
         project = project or self.client.storage.project or credentials.quota_project_id
 
         self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)
-        print(credentials)
-        print(f"Project: {project}")
         self._ds = datastore.Client(
             namespace=self.bucket_name, project=project, credentials=credentials
         )
