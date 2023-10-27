@@ -438,6 +438,8 @@ def get_credentials(credentials: Optional[Union[str, Credentials]] = None) -> Cr
         except (json.decoder.JSONDecodeError, TypeError, ValueError):
             # It is not a json string.
             # We use this string because BeakerExecutor cannot write a None secret.
+            import traceback
+            traceback.print_exc()
             logger.error("credentials exception")
             if credentials == "default":
                 logger.error("default credentials")
