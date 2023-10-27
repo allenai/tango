@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.3.2](https://github.com/allenai/tango/releases/tag/v1.3.2) - 2023-10-27
+
 ### Fixed
 
 - Fix issues with gcloud auth in beaker executor.
