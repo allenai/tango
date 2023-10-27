@@ -72,6 +72,7 @@ class GSWorkspace(RemoteWorkspace):
         project: Optional[str] = None,
         credentials: Optional[Union[str, Credentials]] = None,
     ):
+        credentials = credentials or get_credentials()
         self.client = get_client(folder_name=workspace, credentials=credentials, project=project)
 
         self.client.NUM_CONCURRENT_WORKERS = self.NUM_CONCURRENT_WORKERS
@@ -80,7 +81,6 @@ class GSWorkspace(RemoteWorkspace):
 
         super().__init__()
 
-        credentials = get_credentials()
         project = project or self.client.storage.project  # credentials.quota_project_id
 
         self.bucket_name, self.prefix = get_bucket_and_prefix(workspace)

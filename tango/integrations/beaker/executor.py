@@ -455,7 +455,9 @@ class BeakerExecutor(Executor):
             if isinstance(workspace, GSWorkspace):
                 with open(self.google_token) as f:
                     self.google_token = f.read()
-        else:
+
+        if self.google_token is None:
+        #else:
             self.google_token = "default"
 
         # Ensure entrypoint dataset exists.
