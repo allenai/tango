@@ -743,9 +743,22 @@ class FromParams(DetHashWithVersion):
         if issubclass(cls, Registrable) and not constructor_to_call:
             # We know `cls` inherits from Registrable, so we'll use a cast to make mypy happy.
             as_registrable = cast(Type[Registrable], cls)
-
-            if "type" in params and params["type"] not in as_registrable.list_available():
-                as_registrable.search_modules(params["type"])
+            import importlib
+            if "type" in params:
+                if "::" in params["type"]:
+                    module_name, remaining = params["type"].split("::", 1)
+                    try:
+                        importlib.import_module(module_name)
+                        print(f"Successfully imported module: {module_name}")
+                    except ImportError as e:
+                        print(f"Failed to import module {module_name}: {e}")
+                
+                    if remaining not in as_registrable.list_available():
+                        as_registrable.search_modules(remaining)
+                    params["type"] = remaining
+                else:
+                    if params["type"] not in as_registrable.list_available():
+                        as_registrable.search_modules(params["type"])
 
             # Resolve the subclass and constructor.
             if is_base_registrable(cls) or "type" in params:
