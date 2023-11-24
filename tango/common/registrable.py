@@ -204,7 +204,6 @@ class Registrable(FromParams):
             if name in Registrable._registry[cls]:
                 return None
 
-    ### UPDATE - 11/15
         if "::" in name:
             # Try to guess the integration that it comes from.
             maybe_integration = name.split("::")[0]
@@ -213,51 +212,6 @@ class Registrable(FromParams):
                 integrations_imported.add(maybe_integration)
                 if name in Registrable._registry[cls]:
                     return None
-
-        if "::" in name:
-            _, name = name.split("::", 1)
-            
-        # Check Python files and modules in the current directory.
-        # import os
-        # import fnmatch
-        # from glob import glob
-        # from pathlib import Path
-
-        # ignore_file = os.path.join('.', '.ignore')
-        # if os.path.exists(ignore_file):
-        #     with open(ignore_file, 'r') as f:
-        #         ignored_patterns = [line.strip() for line in f if line.strip() and not line.startswith('#')]
-        # else:
-        #     ignored_patterns = []
-
-    
-    
-        # # extract all py files and match patterns
-        # pyfiles_to_load = [f for f in glob("*.py") if not any(fnmatch.fnmatch(f, pattern) for pattern in ignored_patterns)]
-        
-        # for file in pyfiles_to_load:
-        #     module = str(Path(file).with_suffix(""))
-        #     if module == "setup":
-        #         continue
-        #     try:
-        #         try_import(module)
-        #         if name in Registrable._registry[cls]:
-        #             return None
-        #     except:  # noqa: E722
-        #         continue
-            
-        # # extract init files and match patterns
-        # pyinit_to_load = [f for f in glob("**/__init__.py") if not any(fnmatch.fnmatch(f, pattern) for pattern in ignored_patterns)]
-        # for pyinit in pyinit_to_load:
-        #     module = str(Path(pyinit).parent)
-        #     if module == "tango" or module.startswith("test"):
-        #         continue
-        #     try:
-        #         try_import(module)
-        #         if name in Registrable._registry[cls]:
-        #             return None
-        #     except:  # noqa: E722
-        #         continue
 
         # Search all other modules in Tango.
         for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
