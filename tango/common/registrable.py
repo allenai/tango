@@ -213,31 +213,6 @@ class Registrable(FromParams):
                 if name in Registrable._registry[cls]:
                     return None
 
-        # Check Python files and modules in the current directory.
-        from glob import glob
-        from pathlib import Path
-
-        for pyfile in glob("*.py"):
-            module = str(Path(pyfile).with_suffix(""))
-            if module == "setup":
-                continue
-            try:
-                try_import(module)
-                if name in Registrable._registry[cls]:
-                    return None
-            except:  # noqa: E722
-                continue
-        for pyinit in glob("**/__init__.py"):
-            module = str(Path(pyinit).parent)
-            if module == "tango" or module.startswith("test"):
-                continue
-            try:
-                try_import(module)
-                if name in Registrable._registry[cls]:
-                    return None
-            except:  # noqa: E722
-                continue
-
         # Search all other modules in Tango.
         for module in find_submodules(exclude={"tango.integrations*"}, recursive=False):
             try_import(module)
