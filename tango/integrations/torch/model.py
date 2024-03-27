@@ -1,3 +1,5 @@
+# from typing import Any, Dict
+
 import torch
 
 from tango.common.registrable import Registrable
@@ -10,3 +12,6 @@ class Model(torch.nn.Module, Registrable):
     Its :meth:`~torch.nn.Module.forward()` method should return a :class:`dict` that
     includes the ``loss`` during training and any tracked metrics during validation.
     """
+
+    # def _to_params(self) -> Dict[str, Any]:
+    #     return {}
