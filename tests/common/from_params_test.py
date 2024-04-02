@@ -470,7 +470,7 @@ class TestFromParams(TangoTestCase):
         assert instance.x == 42
         assert instance.a == -1
         assert len(instance.rest) == 1  # type: ignore
-        assert type(instance.rest["raw_a"]) == str  # type: ignore
+        assert isinstance(instance.rest["raw_a"], str)  # type: ignore
         assert instance.rest["raw_a"] == "123"  # type: ignore
 
     def test_kwargs_are_passed_to_deeper_superclasses(self):

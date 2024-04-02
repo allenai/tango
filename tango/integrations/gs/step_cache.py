@@ -11,6 +11,7 @@ from tango.integrations.gs.common import (
     GSArtifactNotFound,
     GSArtifactWriteError,
     GSClient,
+    get_bucket_and_prefix,
 )
 from tango.step import Step
 from tango.step_cache import StepCache
@@ -32,24 +33,23 @@ class GSStepCache(RemoteStepCache):
     .. tip::
         Registered as a :class:`~tango.step_cache.StepCache` under the name "gs".
 
-    :param bucket_name: The name of the google cloud bucket to use.
+    :param folder_name: The name of the google cloud bucket folder to use.
     :param client: The google cloud storage client to use.
     """
 
     Constants = Constants
 
-    def __init__(self, bucket_name: str, client: Optional[GSClient] = None):
+    def __init__(self, folder_name: str, client: Optional[GSClient] = None):
         if client is not None:
+            bucket_name, _ = get_bucket_and_prefix(folder_name)
             assert (
                 bucket_name == client.bucket_name
             ), "Assert that bucket name is same as client bucket until we do better"
-            self.bucket_name = bucket_name
+            self.folder_name = folder_name
             self._client = client
         else:
-            self._client = GSClient(bucket_name)
-        super().__init__(
-            tango_cache_dir() / "gs_cache" / make_safe_filename(self._client.bucket_name)
-        )
+            self._client = GSClient(folder_name)
+        super().__init__(tango_cache_dir() / "gs_cache" / make_safe_filename(folder_name))
 
     @property
     def client(self):

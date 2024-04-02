@@ -174,6 +174,22 @@ class RemoteWorkspace(Workspace):
         finally:
             self.locks.pop(step).release()
 
+    def remove_step(self, step_unique_id: str) -> None:
+        """
+        Get Step unique id from the user and remove the step information from cache
+        :raises KeyError: If no step with the unique name found in the cache dir
+        """
+        try:
+            step_info = self.step_info(step_unique_id)
+            # remove remote objects
+            self._remove_step_info(step_info)
+
+            # remove cache info
+            del self.cache[step_info]
+        except KeyError:
+            raise KeyError(f"No step named '{step_unique_id}' found.")
+        return None
+
     def _get_run_step_info(self, targets: Iterable[Step]) -> Tuple[Dict, Dict]:
         import concurrent.futures
 
@@ -228,4 +244,8 @@ class RemoteWorkspace(Workspace):
 
     @abstractmethod
     def _update_step_info(self, step_info: StepInfo):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _remove_step_info(self, step_info: StepInfo):
         raise NotImplementedError()
