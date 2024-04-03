@@ -89,10 +89,10 @@ fairscale = [
 ]
 flax = [
   "datasets>=1.12,<3.0",
-  "jax>=0.4.1,<0.5",
-  "jaxlib>=0.4.1,<0.5",
-  "flax>=0.6.1,<=0.7.0",
-  "optax>=0.1.2",
+  "jax",
+  "jaxlib",
+  "flax",
+  "optax",
   "tensorflow-cpu>=2.9.1"
 ]
 wandb = [
