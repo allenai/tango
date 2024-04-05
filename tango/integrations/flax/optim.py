@@ -28,6 +28,7 @@ class Optimizer(Registrable):
             :options: +ELLIPSIS
 
             optax::adabelief
+            optax::adadelta
             optax::adafactor
             optax::adagrad
             optax::adam
