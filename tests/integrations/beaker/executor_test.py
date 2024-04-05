@@ -19,6 +19,7 @@ def test_from_params(beaker_workspace_name: str):
             beaker_image="ai2/conda",
             github_token="FAKE_TOKEN",
             datasets=[{"source": {"beaker": "some-dataset"}, "mount_path": "/input"}],
+            budget="ai2/allennlp",
         ),
         workspace=BeakerWorkspace(workspace=beaker_workspace_name),
         clusters=["fake-cluster"],
@@ -38,6 +39,7 @@ def test_init_with_mem_workspace(beaker_workspace_name: str):
             beaker_image="ai2/conda",
             github_token="FAKE_TOKEN",
             clusters=["fake-cluster"],
+            budget="ai2/allennlp",
         )
 
 
@@ -50,6 +52,7 @@ def settings(beaker_workspace_name: str) -> TangoGlobalSettings:
             "beaker_workspace": beaker_workspace_name,
             "install_cmd": "pip install .[beaker]",
             "clusters": ["ai2/allennlp-cirrascale", "ai2/general-cirrascale"],
+            "budget": "ai2/allennlp",
         },
     )
 

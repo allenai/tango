@@ -115,7 +115,7 @@ class SettingsObject(NamedTuple):
     called_by_executor: bool
 
 
-@click.group(**_CLICK_GROUP_DEFAULTS)
+@click.group(name=None, **_CLICK_GROUP_DEFAULTS)
 @click.version_option(version=VERSION)
 @click.option(
     "--settings",

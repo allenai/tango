@@ -40,7 +40,7 @@ class FlaxDataLoader(DataLoader):
 
         self.logger = logging.getLogger(FlaxDataLoader.__name__)
 
-    def __call__(self, rng: jax.random.PRNGKeyArray, do_distributed: bool):
+    def __call__(self, rng: jax._src.random.KeyArrayLike, do_distributed: bool):
         steps_per_epoch = self.dataset_size // self.batch_size
 
         if self.shuffle:
