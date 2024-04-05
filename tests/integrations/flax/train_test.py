@@ -20,5 +20,5 @@ class TestTrainStep(TangoTestCase):
             ],
         )
         assert (
-            result_dir / "train" / "work" / "checkpoint_state_latest" / "checkpoint_0"
+            result_dir / "train" / "work" / "checkpoint_state_latest" / "checkpoint_0" / "checkpoint"
         ).is_file()
