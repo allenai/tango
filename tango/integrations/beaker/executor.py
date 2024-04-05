@@ -483,7 +483,6 @@ class BeakerExecutor(Executor):
         self._github_account, self._github_repo = self._parse_git_remote(git.remote)
         self._git_commit = git.commit
 
-
     def check_repo_state(self):
         if not self.allow_dirty:
             # Make sure repository is clean, if we're in one.
@@ -1038,7 +1037,7 @@ class BeakerExecutor(Executor):
             ExperimentSpec(
                 tasks=[task_spec],
                 description=f'Tango step "{step_name}" ({step.unique_id})',
-                budget=self._budget
+                budget=self._budget,
             ),
             [step_graph_dataset],
         )
