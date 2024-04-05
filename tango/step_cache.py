@@ -49,6 +49,11 @@ class StepCache(Registrable):
         raise NotImplementedError()
 
     @abstractmethod
+    def __delitem__(self, step_unique_id: Union[Step, StepInfo]) -> None:
+        """Removes a step from step cache"""
+        raise NotImplementedError()
+
+    @abstractmethod
     def __len__(self) -> int:
         """Returns the number of results saved in this cache."""
         raise NotImplementedError()

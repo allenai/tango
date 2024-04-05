@@ -9,8 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a bunch of dependencies
+
+## [v1.3.2](https://github.com/allenai/tango/releases/tag/v1.3.2) - 2023-10-27
+
+### Fixed
+
+- Fix issues with gcloud auth in beaker executor.
+
+## [v1.3.1](https://github.com/allenai/tango/releases/tag/v1.3.1) - 2023-10-25
+
+### Fixed
+
+- Minor bugs in the `GSWorkspace()`.
+
+### Changed
+
+- Added CLI-style execution functions for experiments defined in Python.
+- Added `display()` to `ExecutorOutput` for producing a table that summarizes the run.
+
+## [v1.3.0](https://github.com/allenai/tango/releases/tag/v1.3.0) - 2023-10-13
+
+### Added
+ - Added the `Workspace.remove_step()` method to safely remove steps.
+- The `GSWorkspace()` can now be initialized with google cloud bucket subfolders.
+
+### Changed
+
+- The `BeakerExecutor` now uses the HEAD commit at the time the executor is instantiated to executor a step instead of the HEAD commit at the time the step is run.
+
+### Fixed
+
 - Removed unnecessary code coverage dev requirements.
 - Fixed issue where new version of torch caused no LR schedulers to be registered.
+- Updated pinned versions of jax, jaxlib, and flax.
 
 ## [v1.2.1](https://github.com/allenai/tango/releases/tag/v1.2.1) - 2023-04-06
 

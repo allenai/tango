@@ -28,6 +28,7 @@ class Optimizer(Registrable):
             :options: +ELLIPSIS
 
             optax::adabelief
+            optax::adadelta
             optax::adafactor
             optax::adagrad
             optax::adam
@@ -100,7 +101,7 @@ for name, cls in optax._src.alias.__dict__.items():
         Optimizer.register("optax::" + name)(factory_func)
 
 # Register all learning rate schedulers.
-for name, cls in optax._src.schedule.__dict__.items():
+for name, cls in optax.schedules.__dict__.items():
     if isfunction(cls) and not name.startswith("_") and cls.__annotations__:
         factory_func = scheduler_factory(cls)
         LRScheduler.register("optax::" + name)(factory_func)

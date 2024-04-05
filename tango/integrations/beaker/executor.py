@@ -355,6 +355,7 @@ class BeakerExecutor(Executor):
         priority: Optional[Union[str, Priority]] = None,
         allow_dirty: bool = False,
         scheduler: Optional[BeakerScheduler] = None,
+        budget: Optional[str] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -364,6 +365,11 @@ class BeakerExecutor(Executor):
             raise ConfigurationError(
                 "Either 'beaker_image' or 'docker_image' must be specified for BeakerExecutor, but not both."
             )
+
+        if budget is None:
+            raise ConfigurationError("You must specify a budget to use the beaker executor.")
+        else:
+            self._budget = budget
 
         from tango.workspaces import LocalWorkspace, MemoryWorkspace
 
@@ -455,11 +461,27 @@ class BeakerExecutor(Executor):
             if isinstance(workspace, GSWorkspace):
                 with open(self.google_token) as f:
                     self.google_token = f.read()
-        else:
+
+        if self.google_token is None:
             self.google_token = "default"
 
         # Ensure entrypoint dataset exists.
         self._ensure_entrypoint_dataset()
+
+        # Get repo info and make sure we're in a GitHub-hosted repository.
+        git = GitMetadata.check_for_repo()
+        if (
+            git is None
+            or git.commit is None
+            or git.remote is None
+            or "github.com" not in git.remote
+        ):
+            raise ExecutorError(
+                f"Missing git data. "
+                f"BeakerExecutor requires a git repository with a GitHub remote."
+            )
+        self._github_account, self._github_repo = self._parse_git_remote(git.remote)
+        self._git_commit = git.commit
 
     def check_repo_state(self):
         if not self.allow_dirty:
@@ -915,25 +937,11 @@ class BeakerExecutor(Executor):
         experiment_name = (
             f"{Constants.STEP_EXPERIMENT_PREFIX}{step.unique_id}-{str(uuid.uuid4())[:8]}"
         )
-
-        # Ensure we're working in a GitHub repository.
-        git = GitMetadata.check_for_repo()
-        if (
-            git is None
-            or git.commit is None
-            or git.remote is None
-            or "github.com" not in git.remote
-        ):
-            raise ExecutorError(
-                f"Missing git data for step '{step.unique_id}'. "
-                f"BeakerExecutor requires a git repository with a GitHub remote."
-            )
-        try:
-            github_account, github_repo = self._parse_git_remote(git.remote)
-        except ValueError:
-            raise ExecutorError("BeakerExecutor requires a git repository with a GitHub remote.")
-        git_ref = git.commit
-
+        github_account, github_repo, git_ref = (
+            self._github_account,
+            self._github_repo,
+            self._git_commit,
+        )
         if not self._logged_git_info:
             self._logged_git_info = True
             cli_logger.info(
@@ -1027,7 +1035,9 @@ class BeakerExecutor(Executor):
         return (
             experiment_name,
             ExperimentSpec(
-                tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+                tasks=[task_spec],
+                description=f'Tango step "{step_name}" ({step.unique_id})',
+                budget=self._budget,
             ),
             [step_graph_dataset],
         )

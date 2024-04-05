@@ -514,7 +514,7 @@ def construct_arg(
             )
     elif annotation == str:
         # Strings are special because we allow casting from Path to str.
-        if type(popped_params) == str or isinstance(popped_params, Path):
+        if isinstance(popped_params, str) or isinstance(popped_params, Path):
             return str(popped_params)  # type: ignore
         else:
             raise TypeError(
