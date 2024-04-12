@@ -13,7 +13,9 @@ def is_missing_artifact_error(err: WandbError):
     Check if a specific W&B error is caused by a 404 on the artifact we're looking for.
     """
     # This is brittle, but at least we have a test for it.
-    return "does not contain artifact" in err.message
+    return ("does not contain artifact" in err.message) or (
+        err.message == "'NoneType' object has no attribute 'get'"
+    )  # This is a workaround for a bug in the wandb API
 
 
 def check_environment():
