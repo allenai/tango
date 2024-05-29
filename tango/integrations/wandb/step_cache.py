@@ -142,7 +142,7 @@ class WandbStepCache(RemoteStepCache):
 
     def _download_step_remote(self, step_result, target_dir: PathOrStr):
         try:
-            step_result.download(root=target_dir, recursive=True)
+            step_result.download(root=target_dir)
         except (WandbError, ValueError):
             raise RemoteNotFoundError()
 
