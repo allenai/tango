@@ -31,7 +31,7 @@ jobs:
       BEAKER_WORKSPACE: ai2/tango-testing
       IMAGE_NAME: tango-testing
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: allenai/setup-beaker@v2
         with:

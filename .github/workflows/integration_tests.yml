@@ -39,7 +39,7 @@ jobs:
       # BEAKER_CLUSTER: ai2/allennlp-cirrascale  # for pull request checks
       IMAGE_NAME: petew/tango-testing
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Validate inputs
         run: |
