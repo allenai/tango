@@ -42,7 +42,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "ruff",
-  "mypy==1.2.0",
+  "mypy==1.10.0",
   "types-PyYAML",
   "types-setuptools",
   "types-pytz",
