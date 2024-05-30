@@ -20,7 +20,6 @@ env:
   WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
   BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
   BEAKER_WORKSPACE: ai2/tango-testing
-  BEAKER_DEFAULT_CLUSTER: ai2/allennlp-cirrascale
   BEAKER_IMAGE: petew/tango-testing
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -288,7 +287,7 @@ jobs:
                 image:
                   beaker: ${{ env.BEAKER_IMAGE }}
                 context:
-                  cluster: ${{ env.BEAKER_DEFAULT_CLUSTER }}
+                  preemptible: true 
                 resources:
                   gpuCount: 2
                 envVars:
