@@ -22,5 +22,5 @@ to create the same configuration for all 10 prompts:
 You can run the experiment with:
 
 ```bash
-tango run config.jsonnet -i eval -d /tmp/workspace
+tango run config.jsonnet -i eval -w /tmp/workspace
 ```
