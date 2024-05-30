@@ -61,7 +61,7 @@ dev = [
   "myst-parser==1.0.0",
   "sphinx-copybutton==0.5.2",
   "sphinx-autobuild==2021.3.14",
-  "sphinx-autodoc-typehints<=1.23.0",
+  "sphinx-autodoc-typehints<=2.1.0",
   "packaging"
 ]
 examples = [
