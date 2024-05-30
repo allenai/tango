@@ -1,4 +1,5 @@
 import os
+import re
 import warnings
 from enum import Enum
 
@@ -13,7 +14,17 @@ def is_missing_artifact_error(err: WandbError):
     Check if a specific W&B error is caused by a 404 on the artifact we're looking for.
     """
     # This is brittle, but at least we have a test for it.
-    return "does not contain artifact" in err.message
+
+    # This is a workaround for a bug in the wandb API
+    if err.message == "'NoneType' object has no attribute 'get'":
+        return True
+
+    if re.search(r"^artifact '.*' not found in '.*'$", err.message):
+        return True
+
+    return ("does not contain artifact" in err.message) or (
+        "Unable to fetch artifact with name" in err.message
+    )
 
 
 def check_environment():

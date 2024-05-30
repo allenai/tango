@@ -70,6 +70,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
 
             transformers::Adafactor
             transformers::AdamW
+            transformers::LayerWiseDummyOptimizer
 
 - :class:`~tango.integrations.torch.LRScheduler`: All learning rate scheduler function from transformers
   are registered according to their type name (e.g. "transformers::linear").
@@ -92,6 +93,7 @@ library under the corresponding class from the `torch <torch.html>`_ integration
             transformers::constant
             transformers::constant_with_warmup
             transformers::cosine
+            transformers::cosine_with_min_lr
             transformers::cosine_with_restarts
             transformers::inverse_sqrt
             transformers::linear

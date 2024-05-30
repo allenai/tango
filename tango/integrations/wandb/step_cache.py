@@ -72,7 +72,7 @@ class WandbStepCache(RemoteStepCache):
 
     def _step_result_remote(  # type: ignore
         self, step: Union[Step, StepInfo]
-    ) -> Optional[wandb.apis.public.Artifact]:
+    ) -> Optional[wandb.Artifact]:
         artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         try:
             return self.wandb_client.artifact(
@@ -88,9 +88,7 @@ class WandbStepCache(RemoteStepCache):
     def create_step_result_artifact(self, step: Step, objects_dir: Optional[PathOrStr] = None):
         self._upload_step_remote(step, objects_dir)
 
-    def get_step_result_artifact(
-        self, step: Union[Step, StepInfo]
-    ) -> Optional[wandb.apis.public.Artifact]:
+    def get_step_result_artifact(self, step: Union[Step, StepInfo]) -> Optional[wandb.Artifact]:
         artifact_kind = (step.metadata or {}).get("artifact_kind", ArtifactKind.STEP_RESULT.value)
         try:
             return self.wandb_client.artifact(
@@ -144,7 +142,7 @@ class WandbStepCache(RemoteStepCache):
 
     def _download_step_remote(self, step_result, target_dir: PathOrStr):
         try:
-            step_result.download(root=target_dir, recursive=True)
+            step_result.download(root=target_dir)
         except (WandbError, ValueError):
             raise RemoteNotFoundError()
 

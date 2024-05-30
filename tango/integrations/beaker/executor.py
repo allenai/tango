@@ -355,6 +355,7 @@ class BeakerExecutor(Executor):
         priority: Optional[Union[str, Priority]] = None,
         allow_dirty: bool = False,
         scheduler: Optional[BeakerScheduler] = None,
+        budget: Optional[str] = None,
         **kwargs,
     ):
         # Pre-validate arguments.
@@ -364,6 +365,11 @@ class BeakerExecutor(Executor):
             raise ConfigurationError(
                 "Either 'beaker_image' or 'docker_image' must be specified for BeakerExecutor, but not both."
             )
+
+        if budget is None:
+            raise ConfigurationError("You must specify a budget to use the beaker executor.")
+        else:
+            self._budget = budget
 
         from tango.workspaces import LocalWorkspace, MemoryWorkspace
 
@@ -1029,7 +1035,9 @@ class BeakerExecutor(Executor):
         return (
             experiment_name,
             ExperimentSpec(
-                tasks=[task_spec], description=f'Tango step "{step_name}" ({step.unique_id})'
+                tasks=[task_spec],
+                description=f'Tango step "{step_name}" ({step.unique_id})',
+                budget=self._budget,
             ),
             [step_graph_dataset],
         )
