@@ -400,10 +400,11 @@ class WandbWorkspace(Workspace):
                 if updated_step_info is not None:
                     step_info = updated_step_info
             step_name_to_info[step_name] = step_info
+
         return Run(
             name=wandb_run.name,
             steps=step_name_to_info,
-            start_date=datetime.strptime(wandb_run.created_at, "%Y-%m-%dT%H:%M:%S").replace(
+            start_date=datetime.strptime(wandb_run.created_at, "%Y-%m-%dT%H:%M:%SZ").replace(
                 tzinfo=pytz.utc
             ),
         )
