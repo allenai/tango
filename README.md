@@ -10,7 +10,7 @@ AI2 Tango replaces messy directories and spreadsheets full of file versions by o
 </p>
 <hr/>
 <a href="https://github.com/allenai/tango/actions">
-    <img alt="CI" src="https://github.com/allenai/tango/workflows/CI/badge.svg?event=push&branch=main">
+    <img alt="CI" src="https://github.com/allenai/tango/actions/workflows/main.yml/badge.svg">
 </a>
 <a href="https://pypi.org/project/ai2-tango/">
     <img alt="PyPI" src="https://img.shields.io/pypi/v/ai2-tango">
